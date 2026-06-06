@@ -38,6 +38,7 @@ public class LoginController {
         return "login";
     }
 
+    // TODO: Los mensajes de error no se muestran
     @PostMapping("/login")
     public String procesarLogin(@RequestParam String usuario, @RequestParam String clave, HttpSession session,
                                 RedirectAttributes redirectAttributes) {
