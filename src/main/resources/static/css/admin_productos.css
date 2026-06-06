@@ -1,0 +1,221 @@
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-peach: #fed7aa;
+    --lajama-skin: #FFB38A;
+    --lajama-cream: #FFF7ED;
+    --lajama-brown: #933D2D;
+    --lajama-white: #FFFFFF;
+}
+
+/* --- MAQUETACIÓN --- */
+.main-content {
+    background-color: var(--lajama-cream);
+    min-height: 100vh;
+}
+
+.card-jama {
+    background: var(--lajama-white);
+    border: 2px solid var(--lajama-peach) !important;
+    border-radius: 25px !important;
+}
+
+.text-jama-green {
+    color: var(--lajama-green) !important;
+}
+
+.text-ocre {
+    color: var(--lajama-brown) !important;
+}
+
+/* --- BUSCADOR --- */
+.search-group-jama {
+    border: 2px solid var(--lajama-peach);
+    border-radius: 12px;
+    background-color: var(--lajama-white);
+    overflow: hidden;
+}
+
+.search-group-jama .input-group-text {
+    color: var(--lajama-green);
+}
+
+/* --- FORMULARIOS --- */
+.input-jama {
+    border: 2px solid var(--lajama-peach) !important;
+    border-radius: 12px !important;
+    background-color: var(--lajama-white) !important;
+}
+
+.input-jama:focus {
+    border-color: var(--lajama-skin) !important;
+    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.2) !important;
+    outline: none;
+}
+
+/* --- TABLA --- */
+#tablaProductos {
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+
+#tablaProductos thead th {
+    background-color: var(--lajama-green);
+    color: var(--lajama-white);
+    padding: 15px;
+    border: none;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+#tablaProductos thead th:first-child { border-radius: 12px 0 0 12px; }
+#tablaProductos thead th:last-child { border-radius: 0 12px 12px 0; }
+
+#tablaProductos tbody td {
+    padding: 15px;
+    background-color: var(--lajama-white);
+    border-top: 1px solid var(--lajama-cream);
+    border-bottom: 1px solid var(--lajama-cream);
+}
+
+#tablaProductos tbody tr:hover td {
+    background-color: var(--lajama-cream) !important;
+}
+
+.img-producto-jama {
+    width: 55px;
+    height: 55px;
+    object-fit: cover;
+    border: 2px solid var(--lajama-peach);
+    transition: transform 0.2s ease;
+}
+
+.img-producto-jama:hover {
+    transform: scale(1.15);
+}
+
+/* --- BADGES --- */
+.badge-frio {
+    background-color: #e0e7ff !important;
+    color: #3730a3 !important;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.badge-caliente {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.badge-stock-ok {
+    background-color: #dcfce7 !important;
+    color: #166534 !important;
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+
+.badge-stock-low {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-weight: bold;
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(153, 27, 27, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(153, 27, 27, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(153, 27, 27, 0); }
+}
+
+/* --- CONTROLES FORM SWITCH --- */
+.custom-switch-jama .form-check-input {
+    width: 2.5em;
+    height: 1.25em;
+    background-color: #ccc;
+    border-color: transparent;
+    cursor: pointer;
+}
+
+.custom-switch-jama .form-check-input:checked {
+    background-color: var(--lajama-green);
+    border-color: var(--lajama-green);
+}
+
+/* --- BOTONES --- */
+.btn-jama {
+    background-color: var(--lajama-green);
+    color: var(--lajama-white);
+    font-weight: 700;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.btn-jama:hover {
+    background-color: #0d231a;
+    color: var(--lajama-white);
+    transform: scale(1.04);
+}
+
+.btn-outline-jama-green {
+    border: 2px solid var(--lajama-green);
+    color: var(--lajama-green);
+    font-weight: 700;
+}
+
+.btn-outline-jama-green:hover {
+    background-color: var(--lajama-green);
+    color: var(--lajama-white);
+}
+
+.btn-action-jama {
+    border: none;
+    padding: 8px 12px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+
+.btn-edit { color: var(--lajama-green); }
+.btn-edit:hover { background-color: var(--lajama-cream); transform: scale(1.1); }
+.btn-delete { color: var(--lajama-brown); }
+.btn-delete:hover { background-color: #fee2e2; transform: scale(1.1); }
+
+/* --- MODALES --- */
+.modal-content {
+    border-radius: 25px !important;
+    overflow: hidden;
+}
+
+.modal-header {
+    background-color: var(--lajama-green);
+}
+
+.bg-jama-cream-modal {
+    background-color: var(--lajama-cream);
+}
+
+.bg-light-footer {
+    background-color: var(--lajama-white);
+    border-top: 1px solid var(--lajama-peach) !important;
+}
+
+.border-peach-light {
+    border-color: var(--lajama-peach) !important;
+}
+
+.img-preview-box {
+    border: 3px solid var(--lajama-peach);
+    max-height: 150px;
+    object-fit: cover;
+}
+
+.file-input-jama {
+    border: 2px solid var(--lajama-peach);
+    background-color: white;
+}

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <style>
+        body { width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .line { border-bottom: 1px dashed black; margin: 10px 0; }
+        .mesa-box { border: 2px solid black; font-size: 24px; padding: 10px; margin: 10px 0; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body onload="window.print()"> <div class="center">
+    <h2 th:text="${tipoCocina}">COCINA</h2>
+    <div class="line"></div>
+</div>
+
+<div class="center">
+    <div class="mesa-box">MESA #[[${pedido.cliente}]]</div>
+</div>
+
+<div>
+    <strong>Orden:</strong> #[[${pedido.id}]]<br>
+    <strong>Hora:</strong> [[${#temporals.format(pedido.fechaCreacion, 'HH:mm')}]]
+</div>
+
+<div class="line"></div>
+
+<table style="width: 100%">
+    <tr th:each="d : ${detalles}">
+        <td style="width: 20%" th:text="${d.cantidad} + 'x'"></td>
+        <td th:text="${d.producto.nombre}"></td>
+    </tr>
+</table>
+
+<div class="line"></div>
+<div class="center">*** FIN DE COMANDA ***</div>
+
+<div class="no-print center" style="margin-top: 20px;">
+    <button onclick="window.close()">Cerrar Ventana</button>
+</div>
+</body>
+</html>

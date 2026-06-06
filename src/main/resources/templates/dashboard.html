@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>La Jama - Dashboard Principal</title>
+
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <link th:href="@{/css/dashboard.css}" rel="stylesheet" />
+</head>
+<body class="bg-light">
+<div class="wrapper">
+    <div th:replace="~{sidebar :: sidebar(activeUri='/')}"></div>
+
+    <main id="main-content" class="main-content">
+        <div th:replace="~{sidebar :: logistica_header('Panel de Control')}"></div>
+
+        <div class="container-fluid p-4">
+            <div class="welcome-section mb-4 p-4 rounded-4 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="fw-bold text-jama mb-1">¡Sazón Casera de Alma Peruana!</h2>
+                        <p class="mb-0 opacity-75">Bienvenido al sistema de gestión de La Jama. Aquí tienes el resumen de hoy.</p>
+                    </div>
+                    <div class="date-badge-jama px-3 py-2 rounded-pill shadow-sm">
+                        <i class="bi bi-calendar3 me-2"></i>
+                        <span class="small fw-bold">[[${#temporals.format(#temporals.createNow(), 'dd MMMM, yyyy')}]]</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card card-jama-kpi border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-body d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-uppercase small fw-bold mb-1 opacity-75">Usuarios</p>
+                                <h3 class="mb-0 fw-bold">[[${totalUsuarios}]]</h3>
+                            </div>
+                            <div class="icon-box-kpi bg-jama-light">
+                                <i class="bi bi-person-badge-fill"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card card-jama-kpi border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-body d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-uppercase small fw-bold mb-1 opacity-75">Platos Hoy</p>
+                                <h3 class="mb-0 fw-bold" id="kpiPlatosVendidosHoy">0</h3>
+                            </div>
+                            <div class="icon-box-kpi bg-jama-light">
+                                <i class="bi bi-egg-fried"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card card-jama-kpi border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-body d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-uppercase small fw-bold mb-1 opacity-75">Personal</p>
+                                <h3 class="mb-0 fw-bold">[[${totalEmpleados}]]</h3>
+                            </div>
+                            <div class="icon-box-kpi bg-jama-light">
+                                <i class="bi bi-people-fill"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card card-jama-kpi-highlight border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-body d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-uppercase small fw-bold mb-1">Ingresos Hoy</p>
+                                <h3 class="mb-0 fw-bold">S/ <span th:text="${totalVentasHoy != null ? #numbers.formatDecimal(totalVentasHoy, 1, 2) : '0.00'}"></span></h3>
+                            </div>
+                            <div class="icon-box-kpi bg-white-translucent">
+                                <i class="bi bi-currency-dollar"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<th:block th:replace="~{links :: scriptLinks}"></th:block>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

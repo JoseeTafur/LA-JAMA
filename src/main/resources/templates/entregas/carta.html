@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Jama · Carta Digital</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --verde: #1B3A2C;
+            --rojo:  #933D2D;
+            --crema: #fdf6f0;
+            --gold:  #c8973a;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--crema);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+        }
+
+        /* ── NAVBAR ── */
+        .navbar-carta {
+            background: var(--verde);
+            padding: 0.75rem 1.2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+        }
+        .logo-wrap { display: flex; align-items: center; gap: 0.6rem; }
+        .logo-wrap img { height: 36px; border-radius: 6px; }
+        .logo-nombre {
+            font-family: 'Playfair Display', serif;
+            color: white;
+            font-size: 1.3rem;
+            line-height: 1;
+        }
+        .logo-sub { color: #a8c5b5; font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase; }
+
+        /* ── HERO ── */
+        .hero {
+            background: linear-gradient(160deg, var(--verde) 0%, #2d5a42 60%, #1a4a30 100%);
+            color: white;
+            padding: 2.5rem 1.5rem 3rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url('/img/Banner.png') center/cover no-repeat;
+            opacity: 0.08;
+        }
+        .hero-content { position: relative; z-index: 1; }
+        .hero-badge {
+            display: inline-block;
+            background: rgba(200,151,58,0.25);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            padding: 0.3rem 0.9rem;
+            border-radius: 50px;
+            margin-bottom: 0.8rem;
+        }
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.4rem;
+            margin: 0 0 0.4rem;
+        }
+        .hero p { color: #b8d4c4; font-size: 0.9rem; margin-bottom: 1.2rem; }
+        .btn-ubicacion {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: transparent;
+            border: 1.5px solid rgba(255,255,255,0.4);
+            color: white;
+            border-radius: 50px;
+            padding: 0.45rem 1.1rem;
+            font-size: 0.82rem;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-ubicacion:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        /* ── BUSCADOR ── */
+        .buscador-wrap {
+            position: sticky;
+            top: 56px;
+            z-index: 900;
+            background: var(--crema);
+            padding: 0.75rem 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        }
+        .buscador-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .buscador-input-wrap {
+            position: relative;
+            flex: 1;
+        }
+        .buscador-input-wrap i {
+            position: absolute;
+            left: 0.9rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+            font-size: 0.95rem;
+            pointer-events: none;
+        }
+        .input-buscar {
+            width: 100%;
+            border: 1.5px solid #ddd;
+            border-radius: 50px;
+            padding: 0.55rem 2.8rem 0.55rem 2.5rem;
+            font-size: 0.88rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            background: white;
+            transition: border-color 0.2s;
+        }
+        .input-buscar:focus { border-color: var(--verde); }
+        .btn-limpiar-buscar {
+            position: absolute;
+            right: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            padding: 0;
+            display: none;
+        }
+        .btn-limpiar-buscar:hover { color: var(--rojo); }
+        .buscar-counter {
+            font-size: 0.78rem;
+            color: #999;
+            white-space: nowrap;
+        }
+        .sin-resultados {
+            text-align: center;
+            padding: 4rem 1rem;
+            color: #bbb;
+            display: none;
+        }
+        .sin-resultados i { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
+        .sin-resultados strong { color: #888; }
+
+        /* ── SECCIÓN CATEGORÍA ── */
+        .cat-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin: 2rem 0 1.2rem;
+        }
+        .cat-header .cat-icon {
+            width: 42px; height: 42px;
+            background: var(--rojo);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .cat-header .cat-nombre {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.35rem;
+            color: var(--verde);
+            margin: 0;
+        }
+        .cat-header .cat-linea {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, #d0c8be, transparent);
+        }
+
+        /* ── CARDS PRODUCTO ── */
+        .grid-productos {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        @media (min-width: 640px)  { .grid-productos { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 1024px) { .grid-productos { grid-template-columns: repeat(4, 1fr); } }
+
+        .card-prod {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+            cursor: pointer;
+            transition: transform 0.18s, box-shadow 0.18s;
+            position: relative;
+        }
+        .card-prod:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.13); }
+        .card-prod:active { transform: scale(0.97); }
+
+        .prod-img-wrap {
+            width: 100%;
+            aspect-ratio: 4/3;
+            overflow: hidden;
+            background: #f0ece6;
+        }
+        .prod-img-wrap img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+        .card-prod:hover .prod-img-wrap img { transform: scale(1.06); }
+        .prod-img-placeholder {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #f5efe8, #e8ddd2);
+            font-size: 3rem;
+        }
+
+        .prod-body {
+            padding: 0.85rem 1rem 1rem;
+        }
+        .prod-nombre {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            margin-bottom: 0.25rem;
+            line-height: 1.25;
+        }
+        .prod-desc {
+            color: #777;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            margin-bottom: 0.6rem;
+        }
+        .prod-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .prod-precio {
+            color: var(--rojo);
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+        .btn-add {
+            width: 32px; height: 32px;
+            background: var(--verde);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            flex-shrink: 0;
+        }
+        .btn-add:hover { background: var(--rojo); }
+        .btn-add:active { transform: scale(0.9); }
+
+        .card-prod.flash { animation: flashCard 0.4s ease; }
+        @keyframes flashCard {
+            0%   { box-shadow: 0 0 0 0 rgba(147,61,45,0.5); }
+            50%  { box-shadow: 0 0 0 8px rgba(147,61,45,0.15); }
+            100% { box-shadow: 0 2px 14px rgba(0,0,0,0.07); }
+        }
+
+        /* ── BOTÓN FLOTANTE CARRITO ── */
+        .btn-carrito-float {
+            position: fixed;
+            bottom: 22px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--rojo);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 0.85rem 1.8rem;
+            font-weight: 700;
+            font-size: 0.95rem;
+            box-shadow: 0 6px 24px rgba(147,61,45,0.45);
+            z-index: 1000;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            gap: 0.6rem;
+            min-width: 200px;
+            justify-content: center;
+            animation: popIn 0.25s ease;
+        }
+        @keyframes popIn { from { transform: translateX(-50%) scale(0.8); opacity:0; } to { transform: translateX(-50%) scale(1); opacity:1; } }
+        .badge-count {
+            background: white;
+            color: var(--rojo);
+            border-radius: 50px;
+            padding: 1px 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        /* ── MODAL CARRITO ── */
+        .modal-carrito .modal-header {
+            background: var(--verde);
+            color: white;
+            border-radius: 0;
+        }
+        .modal-carrito .btn-close { filter: invert(1); }
+        .item-carrito {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f3ede8;
+            gap: 0.5rem;
+        }
+        .item-nombre { font-weight: 600; font-size: 0.9rem; color: #1a1a1a; }
+        .item-precio { color: var(--rojo); font-size: 0.82rem; }
+        .controles-cant {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+        .btn-cant {
+            width: 28px; height: 28px;
+            background: var(--verde);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 1rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0 0.5rem;
+            border-top: 2px solid #f0ebe4;
+        }
+        .total-label { font-weight: 700; font-size: 1.1rem; }
+        .total-monto { color: var(--rojo); font-weight: 800; font-size: 1.4rem; }
+        .seccion-entrega { margin-top: 0.5rem; }
+        .seccion-entrega label { font-weight: 600; font-size: 0.85rem; color: var(--verde); margin-bottom: 0.3rem; display: block; }
+        .input-entrega {
+            width: 100%;
+            border: 1.5px solid #ddd;
+            border-radius: 10px;
+            padding: 0.6rem 0.85rem;
+            font-size: 0.88rem;
+            outline: none;
+            transition: border-color 0.2s;
+            margin-bottom: 0.7rem;
+        }
+        .input-entrega:focus { border-color: var(--verde); }
+
+        .direccion-wrap { position: relative; margin-bottom: 0.7rem; }
+        .dir-input-group {
+            display: flex;
+            border: 1.5px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .dir-input-group:focus-within { border-color: var(--verde); }
+        .dir-icon {
+            padding: 0 0.7rem;
+            background: #f8f4f0;
+            display: flex; align-items: center;
+            color: var(--rojo);
+            border-right: 1px solid #eee;
+        }
+        .dir-input-group input {
+            border: none; outline: none;
+            padding: 0.6rem 0.8rem;
+            font-size: 0.88rem;
+            flex: 1;
+            background: white;
+        }
+        .sugerencias-lista {
+            position: absolute;
+            top: 100%; left: 0; right: 0;
+            background: white;
+            border: 1px solid #e0d8d0;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+            z-index: 9999;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            padding: 0; margin: 0;
+        }
+        .sugerencias-lista li {
+            list-style: none;
+            padding: 0.55rem 0.9rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #f5f0eb;
+            display: flex; gap: 0.5rem; align-items: flex-start;
+            line-height: 1.35;
+        }
+        .sugerencias-lista li:last-child { border-bottom: none; }
+        .sugerencias-lista li:hover { background: #f5f0eb; }
+        .sugerencias-lista li i { color: var(--rojo); margin-top: 2px; flex-shrink: 0; }
+
+        #mapa-pedido { height: 220px; border-radius: 12px; margin-top: 0.5rem; overflow: hidden; }
+
+        .tip-mapa { font-size: 0.75rem; color: #999; margin-bottom: 0.4rem; }
+
+        .modal-carrito .modal-footer { border-top: 1px solid #f0ebe4; padding: 0.8rem 1rem; }
+        .btn-seguir {
+            background: #f0ebe4;
+            color: var(--verde);
+            border: none;
+            border-radius: 50px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+        }
+        .btn-confirmar {
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 0.6rem 1.4rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex; align-items: center; gap: 0.4rem;
+            flex: 1;
+            justify-content: center;
+        }
+
+        /* ── BOTONES TIPO ENTREGA ── */
+        .btn-tipo {
+            flex: 1;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 10px;
+            padding: 0.6rem 0.5rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .btn-tipo.activo {
+            border-color: var(--verde);
+            background: var(--verde);
+            color: white;
+        }
+
+        /* ── FOOTER ── */
+        .footer-carta {
+            background: var(--verde);
+            color: white;
+            text-align: center;
+            padding: 2rem 1.5rem;
+            margin-top: 4rem;
+        }
+        .footer-carta .f-logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.6rem;
+            margin-bottom: 0.3rem;
+        }
+        .footer-carta .f-sub { color: #a8c5b5; font-size: 0.8rem; margin-bottom: 1rem; }
+        .footer-carta .f-dato { font-size: 0.85rem; color: #c8d8cc; margin-bottom: 0.3rem; }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar-carta">
+    <div class="logo-wrap">
+        <img th:src="@{/img/logo.png}" alt="La Jama" onerror="this.style.display='none'">
+        <div>
+            <div class="logo-nombre">La Jama</div>
+            <div class="logo-sub">Comida Peruana</div>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+    <div class="hero-content">
+        <div class="hero-badge"> Delivery en Chiclayo</div>
+        <h1>Nuestra Carta</h1>
+        <p>Sabor peruano a tu puerta · Comer rico es ley</p>
+        <a href="https://www.google.com/maps/search/?api=1&query=Calle+Amarantos+091+Santa+Victoria+Chiclayo"
+           target="_blank" class="btn-ubicacion">
+            <i class="bi bi-geo-alt-fill"></i> Cómo llegar
+        </a>
+    </div>
+</div>
+    
+<!-- BUSCADOR -->
+<div class="buscador-wrap">
+    <div class="buscador-inner">
+        <div class="buscador-input-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text" id="inputBuscar" class="input-buscar"
+                   placeholder="Buscar plato… ej: ceviche, pollo, arroz"
+                   autocomplete="off">
+            <button class="btn-limpiar-buscar" id="btnLimpiarBuscar" onclick="limpiarBusqueda()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <span class="buscar-counter" id="buscarCounter" style="display:none;"></span>
+    </div>
+</div>
+
+<!-- Mensaje sin resultados -->
+<div class="sin-resultados" id="sinResultados" style="max-width:1100px; margin:0 auto; padding: 4rem 1rem;">
+    <i class="bi bi-search"></i>
+    No encontramos "<strong id="txtSinResultados"></strong>" en la carta
+</div>
+
+<!-- MENÚ -->
+<div style="max-width: 1100px; margin: 0 auto; padding: 0 1rem 6rem;">
+
+    <div th:each="cat : ${categorias}"
+         th:id="'bloque-' + ${cat.id}"
+         class="categoria-bloque">
+
+        <div class="cat-header">
+            <div class="cat-icon">
+                <span th:if="${#strings.containsIgnoreCase(cat.nombre, 'fría') or #strings.containsIgnoreCase(cat.nombre, 'fria') or #strings.containsIgnoreCase(cat.nombre, 'cevich') or #strings.containsIgnoreCase(cat.nombre, 'causa')}"></span>
+                <span th:if="${#strings.containsIgnoreCase(cat.nombre, 'caliente') or #strings.containsIgnoreCase(cat.nombre, 'fondo') or #strings.containsIgnoreCase(cat.nombre, 'lomo') or #strings.containsIgnoreCase(cat.nombre, 'pollo')}"></span>
+                <span th:if="${!#strings.containsIgnoreCase(cat.nombre, 'fría') and !#strings.containsIgnoreCase(cat.nombre, 'fria') and !#strings.containsIgnoreCase(cat.nombre, 'cevich') and !#strings.containsIgnoreCase(cat.nombre, 'causa') and !#strings.containsIgnoreCase(cat.nombre, 'caliente') and !#strings.containsIgnoreCase(cat.nombre, 'fondo') and !#strings.containsIgnoreCase(cat.nombre, 'lomo') and !#strings.containsIgnoreCase(cat.nombre, 'pollo')}"></span>
+            </div>
+            <h2 class="cat-nombre"
+                th:text="${#strings.containsIgnoreCase(cat.nombre, 'fría') or #strings.containsIgnoreCase(cat.nombre, 'fria') ? 'Entradas  Frescos' : (#strings.containsIgnoreCase(cat.nombre, 'caliente') ? 'Platos de Fondo' : cat.nombre)}">
+            </h2>
+            <div class="cat-linea"></div>
+        </div>
+
+        <div class="grid-productos">
+            <div th:each="p : ${productos}"
+                 th:if="${p.categoria != null and p.categoria.id == cat.id}"
+                 class="card-prod"
+                 th:id="'prod-' + ${p.id}"
+                 th:data-id="${p.id}"
+                 th:data-nombre="${p.nombre}"
+                 th:data-precio="${p.precio}"
+                 onclick="agregarDesdeCard(this)">
+
+                <div class="prod-img-wrap">
+                    <img th:if="${p.imagen != null and !#strings.isEmpty(p.imagen)}"
+                         th:src="'/imagenes/' + ${p.imagen}"
+                         th:alt="${p.nombre}"
+                         onerror="this.parentElement.innerHTML='<div class=\'prod-img-placeholder\'>🍽️</div>'">
+                    <div th:if="${p.imagen == null or #strings.isEmpty(p.imagen)}"
+                         class="prod-img-placeholder">🍽️</div>
+                </div>
+
+                <div class="prod-body">
+                    <div class="prod-nombre" th:text="${p.nombre}">Plato</div>
+                    <div class="prod-desc" th:text="${p.descripcion}">Descripción</div>
+                    <div class="prod-footer">
+                        <div class="prod-precio">S/ <span th:text="${p.precio}"></span></div>
+                        <button class="btn-add" onclick="event.stopPropagation(); agregarDesdeCard(this.closest('.card-prod'))">+</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BOTÓN FLOTANTE -->
+<button class="btn-carrito-float" id="btnCarrito" onclick="abrirCarrito()">
+    <i class="bi bi-bag-fill"></i>
+    Ver mi pedido
+    <span class="badge-count" id="badgeCount">0</span>
+</button>
+
+<!-- MODAL CARRITO -->
+<div class="modal fade modal-carrito" id="modalCarrito" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-bag-fill me-2"></i>Tu Pedido</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body" style="padding: 1rem 1.1rem;">
+
+                <div id="listaCarrito"></div>
+
+                <div class="total-row">
+                    <span class="total-label">Total</span>
+                    <span class="total-monto">S/ <span id="totalCarrito">0.00</span></span>
+                </div>
+
+                <div class="seccion-entrega" style="margin-top:1rem;">
+                    <label><i class="bi bi-person-fill me-1"></i>Tu nombre</label>
+                    <input type="text" id="nombreCliente" class="input-entrega" placeholder="Ej: María García">
+
+                    <!-- ✅ BOTONES TIPO ENTREGA -->
+                    <label><i class="bi bi-send me-1"></i>¿Cómo lo recibes?</label>
+                    <div class="d-flex gap-2 mb-3">
+                        <button class="btn-tipo" id="btnRecoger" onclick="seleccionarTipo('RECOGER')">
+                            🛍️ Recoger en local
+                        </button>
+                        <button class="btn-tipo" id="btnDelivery" onclick="seleccionarTipo('DELIVERY')">
+                            🚴 Delivery
+                        </button>
+                    </div>
+
+                    <!-- Sección dirección: solo visible si elige Delivery -->
+                    <div id="seccionDireccion">
+                        <label><i class="bi bi-geo-alt-fill me-1"></i>¿Dónde te entregamos?</label>
+                        <div class="direccion-wrap">
+                            <div class="dir-input-group">
+                                <div class="dir-icon"><i class="bi bi-search"></i></div>
+                                <input type="text" id="direccionCliente" placeholder="Busca tu calle o barrio..." autocomplete="off">
+                            </div>
+                            <ul id="sugerencias-dir" class="sugerencias-lista"></ul>
+                        </div>
+
+                        <p class="tip-mapa"><i class="bi bi-info-circle me-1"></i>También puedes tocar el mapa para marcar tu punto exacto</p>
+
+                        <input type="hidden" id="latCliente">
+                        <input type="hidden" id="lngCliente">
+                        <div id="mapa-pedido"></div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer" style="gap:0.6rem;">
+                <button class="btn-seguir" data-bs-dismiss="modal">Seguir viendo</button>
+                <button class="btn-confirmar" onclick="enviarPedido()">
+                    <i class="bi bi-whatsapp"></i> Confirmar pedido
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer-carta">
+    <div class="f-logo">La Jama</div>
+    <div class="f-sub">COMIDA PERUANA · CHICLAYO</div>
+    <div class="f-dato"><i class="bi bi-geo-alt-fill me-1"></i>Calle Amarantos 091, Santa Victoria</div>
+    <div class="f-dato"><i class="bi bi-whatsapp me-1"></i>+51 955 563 199</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    let carrito = {};
+    let mapa = null;
+    let marcador = null;
+    let modalCarrito = null;
+    let tipoEntrega = 'DELIVERY'; // por defecto
+
+    /* ── TIPO ENTREGA ── */
+    function seleccionarTipo(tipo) {
+        tipoEntrega = tipo;
+        document.getElementById('btnRecoger').className = 'btn-tipo' + (tipo === 'RECOGER' ? ' activo' : '');
+        document.getElementById('btnDelivery').className = 'btn-tipo' + (tipo === 'DELIVERY' ? ' activo' : '');
+        document.getElementById('seccionDireccion').style.display = tipo === 'DELIVERY' ? 'block' : 'none';
+        if (tipo === 'DELIVERY' && !mapa) setTimeout(iniciarMapa, 300);
+    }
+
+    /* ── CARRITO ── */
+    function agregarDesdeCard(el) {
+        const id     = el.getAttribute('data-id');
+        const nombre = el.getAttribute('data-nombre');
+        const precio = parseFloat(el.getAttribute('data-precio'));
+        agregarProducto(id, nombre, precio);
+
+        el.classList.add('flash');
+        setTimeout(() => el.classList.remove('flash'), 400);
+    }
+
+    function agregarProducto(id, nombre, precio) {
+        if (carrito[id]) {
+            carrito[id].cantidad++;
+        } else {
+            carrito[id] = { id, nombre, precio, cantidad: 1 };
+        }
+        actualizarUI();
+    }
+
+    function cambiarCantidad(id, delta) {
+        if (!carrito[id]) return;
+        carrito[id].cantidad += delta;
+        if (carrito[id].cantidad <= 0) delete carrito[id];
+        actualizarUI();
+        renderCarrito();
+    }
+
+    function actualizarUI() {
+        const total = Object.values(carrito).reduce((s, i) => s + i.cantidad, 0);
+        document.getElementById('badgeCount').textContent = total;
+        const btn = document.getElementById('btnCarrito');
+        btn.style.display = total > 0 ? 'flex' : 'none';
+    }
+
+    function renderCarrito() {
+        const lista = document.getElementById('listaCarrito');
+        const items = Object.values(carrito);
+
+        if (items.length === 0) {
+            lista.innerHTML = '<p class="text-muted text-center py-3" style="font-size:0.9rem;">Tu carrito está vacío</p>';
+            document.getElementById('totalCarrito').textContent = '0.00';
+            return;
+        }
+
+        let total = 0;
+        lista.innerHTML = items.map(item => {
+            const sub = item.precio * item.cantidad;
+            total += sub;
+            return `
+                <div class="item-carrito">
+                    <div style="flex:1; min-width:0;">
+                        <div class="item-nombre">${item.nombre}</div>
+                        <div class="item-precio">S/ ${item.precio.toFixed(2)} c/u</div>
+                    </div>
+                    <div class="controles-cant">
+                        <button class="btn-cant" onclick="cambiarCantidad(${item.id}, -1)">−</button>
+                        <span style="font-weight:700; min-width:18px; text-align:center;">${item.cantidad}</span>
+                        <button class="btn-cant" onclick="cambiarCantidad(${item.id}, 1)">+</button>
+                    </div>
+                </div>`;
+        }).join('');
+
+        document.getElementById('totalCarrito').textContent = total.toFixed(2);
+    }
+
+    function abrirCarrito() {
+        renderCarrito();
+        if (!modalCarrito) {
+            modalCarrito = new bootstrap.Modal(document.getElementById('modalCarrito'));
+        }
+        modalCarrito.show();
+        if (!mapa && tipoEntrega === 'DELIVERY') setTimeout(iniciarMapa, 300);
+    }
+
+    /* ── MAPA ── */
+    function iniciarMapa() {
+        mapa = L.map('mapa-pedido').setView([-6.7768, -79.8428], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
+
+        mapa.on('click', async (e) => {
+            fijarPunto(e.latlng.lat, e.latlng.lng);
+            try {
+                const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}&accept-language=es`);
+                const data = await res.json();
+                if (data.display_name) {
+                    document.getElementById('direccionCliente').value =
+                        data.display_name.split(',').slice(0, 3).join(',').trim();
+                }
+            } catch(err) {}
+        });
+
+        const inputDir  = document.getElementById('direccionCliente');
+        const listaDir  = document.getElementById('sugerencias-dir');
+        let timer = null;
+
+        inputDir.addEventListener('input', () => {
+            clearTimeout(timer);
+            const q = inputDir.value.trim();
+            if (q.length < 3) { listaDir.style.display = 'none'; return; }
+            timer = setTimeout(async () => {
+                try {
+                    const res  = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=pe&limit=6&accept-language=es`);
+                    const data = await res.json();
+                    if (!data.length) { listaDir.style.display = 'none'; return; }
+                    listaDir.innerHTML = data.map(r =>
+                        `<li onclick="elegirSugerencia(${r.lat}, ${r.lon}, '${r.display_name.replace(/'/g,"\\'")}')">
+                            <i class="bi bi-geo-alt-fill"></i><span>${r.display_name}</span>
+                        </li>`
+                    ).join('');
+                    listaDir.style.display = 'block';
+                } catch(err) {}
+            }, 350);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.direccion-wrap')) listaDir.style.display = 'none';
+        });
+    }
+
+    function elegirSugerencia(lat, lng, nombre) {
+        document.getElementById('direccionCliente').value = nombre.split(',').slice(0, 3).join(',').trim();
+        document.getElementById('sugerencias-dir').style.display = 'none';
+        fijarPunto(parseFloat(lat), parseFloat(lng));
+        mapa.setView([lat, lng], 16);
+    }
+
+    function fijarPunto(lat, lng) {
+        document.getElementById('latCliente').value  = lat;
+        document.getElementById('lngCliente').value  = lng;
+        if (marcador) mapa.removeLayer(marcador);
+        marcador = L.marker([lat, lng]).addTo(mapa).bindPopup('<b>Tu ubicación</b>').openPopup();
+    }
+
+    /* ── ENVIAR PEDIDO ── */
+    async function enviarPedido() {
+        const nombre    = document.getElementById('nombreCliente').value.trim();
+        const direccion = tipoEntrega === 'RECOGER'
+            ? 'Recojo en local - Calle Amarantos 091, Santa Victoria'
+            : document.getElementById('direccionCliente').value.trim();
+        const lat       = document.getElementById('latCliente').value;
+        const lng       = document.getElementById('lngCliente').value;
+        const items     = Object.values(carrito);
+
+        if (!nombre)       { alert('Por favor ingresa tu nombre');    return; }
+        if (!items.length) { alert('Tu carrito está vacío');          return; }
+        if (tipoEntrega === 'DELIVERY' && !direccion) {
+            alert('Por favor escribe tu dirección'); return;
+        }
+
+        const total   = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        const detalle = items.map(i => `• ${i.cantidad}x ${i.nombre} = S/${(i.precio*i.cantidad).toFixed(2)}`).join('\n');
+
+        const mensaje =
+`🍽️ PEDIDO LA JAMA
+
+👤 Cliente: ${nombre}
+📍 ${tipoEntrega === 'RECOGER' ? 'Recojo en local' : 'Delivery'}: ${direccion}
+
+🛒 Pedido:
+${detalle}
+
+💰 TOTAL: S/ ${total.toFixed(2)}`;
+
+        try {
+            await fetch('/carta/pedido', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cliente:    nombre,
+                    direccion:  direccion,
+                    latitud:    lat ? parseFloat(lat) : null,
+                    longitud:   lng ? parseFloat(lng) : null,
+                    montoTotal: parseFloat(total.toFixed(2)),
+                    tipoPedido: tipoEntrega === 'DELIVERY' ? 'DELIVERY' : 'LOCAL',
+                    listaDetalles: items.map(i => ({
+                        producto:       { id: parseInt(i.id) },
+                        cantidad:       i.cantidad,
+                        precioUnitario: i.precio,
+                        subtotal:       parseFloat((i.precio*i.cantidad).toFixed(2))
+                    }))
+                })
+            });
+        } catch(e) { console.warn('No se pudo registrar en sistema:', e); }
+
+        window.open('https://wa.me/51955563199?text=' + encodeURIComponent(mensaje), '_blank');
+    }
+
+    /* ── BUSCADOR ── */
+    const inputBuscar       = document.getElementById('inputBuscar');
+    const btnLimpiarBuscar  = document.getElementById('btnLimpiarBuscar');
+    const buscarCounter     = document.getElementById('buscarCounter');
+    const sinResultados     = document.getElementById('sinResultados');
+    const txtSinResultados  = document.getElementById('txtSinResultados');
+
+    inputBuscar.addEventListener('input', function () {
+        const q = this.value.trim();
+        btnLimpiarBuscar.style.display = q ? 'block' : 'none';
+        filtrarCarta(q);
+    });
+
+    function limpiarBusqueda() {
+        inputBuscar.value = '';
+        btnLimpiarBuscar.style.display = 'none';
+        filtrarCarta('');
+        inputBuscar.focus();
+    }
+
+    function filtrarCarta(q) {
+        const termino = q.toLowerCase();
+        let totalVisibles = 0;
+
+        document.querySelectorAll('.categoria-bloque').forEach(bloque => {
+            let visiblesEnBloque = 0;
+
+            bloque.querySelectorAll('.card-prod').forEach(card => {
+                const nombre = (card.getAttribute('data-nombre') || '').toLowerCase();
+                const desc   = (card.querySelector('.prod-desc') ? card.querySelector('.prod-desc').textContent : '').toLowerCase();
+                const coincide = !termino || nombre.includes(termino) || desc.includes(termino);
+
+                card.style.display = coincide ? '' : 'none';
+                if (coincide) visiblesEnBloque++;
+            });
+
+            bloque.style.display = visiblesEnBloque > 0 ? '' : 'none';
+            totalVisibles += visiblesEnBloque;
+        });
+
+        if (q) {
+            buscarCounter.style.display = 'inline';
+            buscarCounter.textContent   = totalVisibles === 1 ? '1 resultado' : totalVisibles + ' resultados';
+            sinResultados.style.display = totalVisibles === 0 ? 'block' : 'none';
+            txtSinResultados.textContent = q;
+        } else {
+            buscarCounter.style.display = 'none';
+            sinResultados.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>

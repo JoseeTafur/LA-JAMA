@@ -1,0 +1,148 @@
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-peach: #fed7aa;
+    --lajama-skin: #FFB38A;
+    --lajama-cream: #FFF7ED;
+    --lajama-brown: #933D2D;
+}
+
+/* Fondo principal */
+.main-content {
+    background-color: var(--lajama-cream);
+}
+
+/* Paneles laterales */
+.panel-blanco {
+    background-color: #ffffff;
+    border: 2px solid var(--lajama-peach);
+    border-radius: 20px;
+    padding: 1.5rem;
+    height: calc(100vh - 160px);
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-title {
+    color: var(--lajama-green);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    border-bottom: 2px solid var(--lajama-cream);
+    padding-bottom: 10px;
+    margin-bottom: 1rem;
+}
+
+.scroll-v {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.scroll-v::-webkit-scrollbar { width: 5px; }
+.scroll-v::-webkit-scrollbar-thumb { background: var(--lajama-peach); border-radius: 10px; }
+
+/* Tarjetas de Pedido */
+.tarjeta-pedido {
+    background-color: var(--lajama-cream);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.tarjeta-pedido:hover {
+    border-color: var(--lajama-skin);
+    transform: translateY(-2px);
+}
+
+.tarjeta-pedido.selected {
+    border-color: var(--lajama-green);
+    background-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(27, 58, 44, 0.1);
+}
+
+.id-pedido {
+    background-color: var(--lajama-green);
+    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.monto-pedido {
+    color: var(--lajama-brown);
+}
+
+.cliente-nombre {
+    color: var(--lajama-green);
+}
+
+/* Tarjetas de Repartidor */
+.tarjeta-repartidor {
+    background-color: #ffffff;
+    border: 1px solid var(--lajama-peach);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.tarjeta-repartidor:hover {
+    background-color: var(--lajama-cream);
+}
+
+.avatar-sm {
+    width: 35px;
+    height: 35px;
+    background-color: var(--lajama-green) !important;
+    color: #ffffff;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+/* Badge de asignados */
+.contenedor-asignados .badge {
+    background-color: var(--lajama-skin) !important;
+    color: var(--lajama-green);
+    margin: 2px;
+}
+
+/* --- TARJETAS DE PEDIDO (Ajuste para estado Seleccionado) --- */
+.tarjeta-pedido {
+    background-color: var(--lajama-cream);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border: 2px solid transparent; /* Reserva el espacio para el borde */
+    transition: all 0.2s ease;
+}
+
+/* Estado cuando pasas el mouse */
+.tarjeta-pedido:hover {
+    border-color: var(--lajama-skin);
+    transform: translateY(-2px);
+}
+
+/* ESTADO PRESIONADO / SELECCIONADO */
+.tarjeta-pedido.selected {
+    border-color: var(--lajama-green) !important; /* Verde oscuro de La Jama */
+    background-color: #ffffff !important;        /* Fondo blanco para resaltar */
+    box-shadow: 0 4px 15px rgba(27, 58, 44, 0.2) !important; /* Sombra más fuerte */
+    transform: scale(1.02); /* Crece un poquito para indicar selección */
+}
+
+/* Añade esto a tu despacho-estilo.css */
+.repartidor-ocupado {
+    opacity: 0.8;
+    background-color: var(--lajama-cream) !important;
+    cursor: default;
+}
+
+.mini-pedido-asignado {
+    background-color: white !important;
+    border-left: 4px solid var(--lajama-green);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}

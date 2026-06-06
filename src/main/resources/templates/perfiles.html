@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>La Jama - Gestión de Perfiles</title>
+
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <link th:href="@{/css/perfiles.css}" rel="stylesheet" />
+</head>
+<body>
+<div class="wrapper">
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/perfiles')}"></div>
+
+    <main id="main-content" class="main-content w-100">
+
+        <div th:replace="~{sidebar :: logistica_header('Gestión de Perfiles')}"></div>
+
+        <div class="container-fluid px-4">
+            <div class="card card-jama shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <h1 class="card-title h5 mb-0 fw-bold text-jama-green">Lista de Roles del Sistema</h1>
+                        <span class="badge badge-jama-peach px-3 py-2 rounded-pill">
+                            <i class="bi bi-info-circle me-1"></i> Configuración de accesos
+                        </span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table
+                                id="tabla"
+                                class="table table-hover align-middle w-100"
+                        >
+                            <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div class="modal fade" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true" id="modal">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white">
+                <h5 class="modal-title fw-bold" id="modalTitle">
+                    <i class="bi bi-pencil-square me-2"></i>Agregar Perfil
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="form" novalidate>
+                    <input type="hidden" id="id" name="id" />
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label for="nombre" class="form-label fw-bold text-jama-green">Nombre del Rol:</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-jama-cream border-jama-peach"><i class="bi bi-tag"></i></span>
+                                <input
+                                        id="nombre" name="nombre"
+                                        type="text" class="form-control"
+                                        placeholder="Ej: Administrador, Cocinero..."
+                                />
+                            </div>
+                            <div id="nombre-error" class="invalid-feedback d-block"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="descripcion" class="form-label fw-bold text-jama-green">Descripción:</label>
+                            <textarea
+                                    id="descripcion"
+                                    name="descripcion"
+                                    class="form-control"
+                                    rows="3"
+                                    placeholder="Define las responsabilidades de este perfil..."
+                            ></textarea>
+                            <div id="descripcion-error" class="invalid-feedback d-block"></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-outline-jama-green rounded-pill px-4" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="submit" form="form" class="btn btn-jama-primary rounded-pill px-4">
+                    <i class="bi bi-save me-2"></i>Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="permisosModal" class="modal fade" tabindex="-1" aria-labelledby="permisosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-jama-skin text-white">
+                <h5 class="modal-title fw-bold" id="permisosModalLabel">
+                    <i class="bi bi-lock-fill me-2"></i>Asignar Permisos
+                </h5>
+                <button
+                        type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                ></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formPermisos">
+                    <input type="hidden" id="permisoPerfilId" />
+                    <div class="alert alert-jama-skin border-0 rounded-4 mb-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Seleccione los módulos a los que tendrá acceso el perfil:
+                        <strong id="permisoPerfilNombre" class="d-block mt-1 text-dark"></strong>
+                    </div>
+
+                    <div id="listaOpciones" class="list-group list-group-flush rounded-4 overflow-hidden border border-jama-peach">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button
+                        type="button"
+                        class="btn btn-outline-jama-green rounded-pill px-4"
+                        data-bs-dismiss="modal"
+                >
+                    Cancelar
+                </button>
+                <button
+                        type="button"
+                        id="btnGuardarPermisos"
+                        class="btn btn-jama-primary rounded-pill px-4 text-white"
+                >
+                    <i class="bi bi-check-all me-2"></i>Guardar Permisos
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+<script th:src="@{/js/perfiles.js}"></script>
+</body>
+</html>

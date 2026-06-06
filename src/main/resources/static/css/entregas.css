@@ -1,0 +1,28 @@
+.card-delivery {
+    background: white;
+    border: none;
+    border-radius: 12px;
+    border-bottom: 5px solid #933D2D; /* El ocre de La Jama */
+}
+
+.cliente-nombre {
+    font-family: 'Vollkorn', serif;
+    font-weight: 800;
+    color: #1B3A2C;
+}
+
+.text-brown { color: #933D2D; }
+
+.btn-jama-dark {
+    background-color: #1B3A2C;
+    color: #FCE8D5;
+    font-weight: bold;
+    border: none;
+    padding: 10px;
+    font-family: 'Vollkorn', serif;
+}
+
+.btn-jama-dark:hover {
+    background-color: #933D2D;
+    color: white;
+}

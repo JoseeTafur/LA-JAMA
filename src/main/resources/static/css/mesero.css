@@ -1,0 +1,215 @@
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-peach: #fed7aa;
+    --lajama-skin: #FFB38A;
+    --lajama-cream: #FFF7ED;
+    --lajama-white: #FFFFFF;
+    --lajama-gray: #f8fafc;
+    --lajama-dark: #0f172a;
+}
+
+/* --- LOGÍSTICA DE PANTALLA BASE --- */
+body, .main-content {
+    background-color: var(--lajama-cream) !important;
+    font-family: 'Inter', sans-serif;
+    color: var(--lajama-dark);
+}
+
+/* --- PANEL DE DOBLE COLUMNA (Estructura Principal) --- */
+.comanda-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 992px) {
+    .comanda-wrapper {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- SECCIÓN IZQUIERDA: MENÚ Y BUSCADOR --- */
+.productos-seccion {
+    background: var(--lajama-white);
+    border: 2px solid var(--lajama-peach);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Barra de Búsqueda de Alta Gama */
+.search-box {
+    position: relative;
+    margin-bottom: 24px;
+}
+
+.search-box i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--lajama-green);
+    opacity: 0.7;
+}
+
+.search-box input {
+    padding-left: 48px;
+    height: 52px;
+    border-radius: 14px;
+    border: 2px solid var(--lajama-cream) !important;
+    background-color: var(--lajama-gray);
+    font-weight: 500;
+    transition: all 0.25s ease;
+}
+
+.search-box input:focus {
+    border-color: var(--lajama-skin) !important;
+    background-color: var(--lajama-white);
+    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.15);
+}
+
+/* Tarjetas de la Carta (Grid) */
+.menu-item {
+    border: 1px solid var(--lajama-cream);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--lajama-white);
+}
+
+.menu-item:hover {
+    transform: translateY(-4px);
+    border-color: var(--lajama-skin);
+    box-shadow: 0 10px 15px -3px rgba(27, 58, 44, 0.1) !important;
+}
+
+.menu-item img {
+    height: 140px;
+    object-fit: cover;
+    border-bottom: 1px solid var(--lajama-cream);
+}
+
+.text-ocre {
+    color: #c2410c !important;
+}
+
+/* --- SECCIÓN DERECHA: EL CARRITO COMPLEMENTARIO --- */
+.carrito-sidebar {
+    background: var(--lajama-white);
+    border: 2px solid var(--lajama-peach);
+    border-radius: 20px;
+    padding: 24px;
+    position: sticky;
+    top: 24px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+/* Inputs de Control (Mesa / Notas) */
+.carrito-sidebar .form-control {
+    border-radius: 12px;
+    border: 2px solid var(--lajama-cream);
+    background-color: var(--lajama-gray);
+    font-weight: 600;
+}
+
+.carrito-sidebar .form-control:focus {
+    border-color: var(--lajama-skin);
+    box-shadow: none;
+    background-color: var(--lajama-white);
+}
+
+/* Contenedor Flotante del Scroll de Comandas */
+.lista-items-scroll {
+    max-height: calc(100vh - 440px);
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+/* Tarjetas Internas de Items en Carrito */
+.cart-item-card {
+    background: var(--lajama-gray);
+    border-left: 4px solid var(--lajama-green);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+}
+
+.cart-item-card:hover {
+    background: var(--lajama-cream);
+    transform: translateX(2px);
+}
+
+/* --- COMPONENTES MODAL (Personalización de Insumos) --- */
+.modal-content {
+    background-color: var(--lajama-white);
+    border: 2px solid var(--lajama-peach);
+}
+
+.modal-header {
+    background-color: var(--lajama-dark) !important;
+    border-bottom: none;
+}
+
+/* Switches y Checkboxes del Modal */
+.form-check-input:checked {
+    background-color: var(--lajama-green) !important;
+    border-color: var(--lajama-green) !important;
+}
+
+.form-check-label {
+    user-select: none;
+    font-weight: 500;
+}
+
+/* --- BOTONES DE EJECUCIÓN (Estilo La Jama) --- */
+.btn-success {
+    background-color: var(--lajama-green) !important;
+    border: none !important;
+    border-radius: 14px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease !important;
+}
+
+.btn-success:hover {
+    background-color: #0d231a !important;
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(27, 58, 44, 0.2);
+}
+
+.btn-success:active {
+    transform: scale(0.98);
+}
+
+/* Botón Eliminar del Carrito */
+.cart-item-card .btn-sm i {
+    font-size: 1.1rem;
+    transition: color 0.15s ease;
+}
+
+.cart-item-card .btn-sm:hover i {
+    color: #991b1b !important;
+}
+
+/* --- SCROLLBAR PREMIUM PERSONALIZADA --- */
+.lista-items-scroll::-webkit-scrollbar,
+.scroll-productos::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lista-items-scroll::-webkit-scrollbar-track,
+.scroll-productos::-webkit-scrollbar-track {
+    background: var(--lajama-cream);
+    border-radius: 10px;
+}
+
+.lista-items-scroll::-webkit-scrollbar-thumb,
+.scroll-productos::-webkit-scrollbar-thumb {
+    background: var(--lajama-skin);
+    border-radius: 10px;
+}

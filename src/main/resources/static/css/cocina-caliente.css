@@ -1,0 +1,175 @@
+/* --- TARJETAS ESTILO TICKET PREMIUM --- */
+.card-pedido {
+    background: var(--lajama-white) !important;
+    border: 2px solid var(--lajama-peach) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 6px 16px rgba(27, 58, 44, 0.03) !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease !important;
+}
+
+.card-pedido:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 16px 28px rgba(147, 61, 45, 0.07) !important;
+    border-color: var(--lajama-skin) !important;
+}
+
+/* Encabezado del Ticket */
+.card-header {
+    background: transparent !important;
+    border-bottom: 2px dashed var(--lajama-peach) !important;
+    padding: 1rem 1.1rem 0.7rem 1.1rem !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.badge-id {
+    color: var(--lajama-green) !important;
+    font-family: var(--font-sans) !important;
+    font-weight: 800 !important;
+    font-size: 0.85rem !important;
+}
+
+/* Temporizador */
+.timer-container {
+    color: var(--lajama-hot) !important;
+    font-family: var(--font-serif) !important;
+    font-weight: 700 !important;
+    font-size: 1.2rem !important;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 6px;
+}
+
+.timer-urgent {
+    background-color: #fee2e2;
+    animation: pulso-urgente 2.5s infinite ease-in-out;
+}
+
+@keyframes pulso-urgente {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* Cuerpo del Ticket */
+.card-body {
+    padding: 1.1rem !important;
+    flex-grow: 1;
+}
+
+.cliente-nombre {
+    color: var(--lajama-green) !important;
+    font-family: var(--font-serif) !important;
+    font-weight: 800 !important;
+    font-size: 1.3rem !important;
+    margin-bottom: 1rem !important;
+}
+
+/* Lista de Platos */
+.items-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.item-plato {
+    border: 1px solid transparent;
+    background-color: #f8f9fa;
+    padding: 8px 10px !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+}
+
+.item-cantidad {
+    color: var(--lajama-hot) !important;
+    font-family: var(--font-sans) !important;
+    font-weight: 800 !important;
+    font-size: 1rem !important;
+    background-color: var(--lajama-cream) !important;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    border: 1px solid var(--lajama-peach) !important;
+    margin-right: 10px;
+    display: inline-block;
+    text-align: center;
+}
+
+.item-nombre {
+    font-family: var(--font-sans) !important;
+    font-size: 0.9rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Si el nombre del plato es larguísimo, no deforma la fila */
+    max-width: 60%; /* Reserva espacio garantizado para las etiquetas de la derecha */
+}
+
+/* =========================================================================
+   🔥 SOLUCIÓN: BADGES MICRO-COMPACTOS PARA EVITAR DESBORDES
+   ========================================================================= */
+.badge {
+    padding: 4px 6px !important; /* Relleno ultra-ajustado */
+    font-size: 0.65rem !important; /* Letra pequeña y legible */
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-radius: 4px !important;
+    max-width: 95px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* Modificación de la etiqueta de Merma para que entre sin problemas */
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.15);
+}
+
+/* Botón de acción individual */
+.item-plato button.btn-outline-success {
+    padding: 2px 6px !important;
+    font-size: 0.8rem !important;
+    border-radius: 5px !important;
+}
+
+/* Pie de Tarjeta */
+.card-footer {
+    border-top: 1px solid rgba(27, 58, 44, 0.05) !important;
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+.footer-actions {
+    display: flex;
+    width: 100%;
+}
+
+.btn-printer, .footer-actions a {
+    font-family: var(--font-sans) !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px !important;
+    border: none !important;
+    border-radius: 0 0 12px 12px !important;
+    transition: all 0.2s ease !important;
+}
+
+.status-badge-jama {
+    background-color: var(--lajama-hot) !important;
+    color: var(--lajama-white) !important;
+    font-family: var(--font-sans) !important;
+    font-weight: 700 !important;
+    font-size: 0.8rem !important;
+    border: 2px solid var(--lajama-peach) !important;
+}

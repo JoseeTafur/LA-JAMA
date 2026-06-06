@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Mis Entregas | La Jama</title>
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/cocina-core.css}">
+    <link rel="stylesheet" th:href="@{/css/entregas.css}">
+</head>
+<body class="cocina-body">
+
+<div class="wrapper">
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/entregas/mis-pedidos')}"></div>
+
+    <main class="main-content">
+        <!-- Cabecera unificada -->
+        <div th:replace="~{sidebar :: logistica_header('Rutas de Entrega')}"></div>
+
+        <div class="container-fluid px-4 mt-3">
+
+            <div class="recaudacion-banner d-flex justify-content-between align-items-center p-4 mb-4 rounded-4 shadow-sm" style="background-color: var(--lajama-green); color: white;">
+                <div>
+                    <h5 class="mb-0 fw-bold text-white">Hoja de Ruta Activa</h5>
+                    <p class="mb-0 text-white-50 small">Gestión de despachos asignados para despacho externo</p>
+                </div>
+                <div class="card-stat-jama p-3 px-4 rounded-4 shadow-sm" style="background-color: var(--lajama-skin); color: var(--lajama-green); text-align: right; min-width: 180px;">
+                    <small class="d-block fw-bold text-uppercase opacity-75" style="font-size: 0.7rem;">Operador Asignado</small>
+                    <span class="h5 fw-bold mb-0" th:text="${nombreRepartidor}">Repartidor</span>
+                </div>
+            </div>
+
+            <div th:if="${#lists.isEmpty(pedidos)}" class="text-center py-5 mt-4 text-muted animate__animated animate__fadeIn">
+                <i class="bi bi-box2-heart text-jama-skin" style="font-size: 5rem; opacity: 0.8;"></i>
+                <h3 class="mt-3 fw-bold text-dark" style="font-family: 'Vollkorn';">¡Todo entregado!</h3>
+                <p class="fs-5 text-muted">No tienes pedidos pendientes por ahora. ¡Buen trabajo en ruta!</p>
+            </div>
+
+            <div class="row g-4">
+                <div th:each="pedido : ${pedidos}" class="col-12 col-md-6 col-lg-4">
+                    <div class="card card-tabla shadow-sm h-100 rounded-4 border-0">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge bg-dark text-white rounded-3 px-2 py-1 fw-bold small" style="letter-spacing: 0.5px;">#ORDEN [[${pedido.id}]]</span>
+                                <span class="badge bg-light text-dark border px-2 py-1" th:text="${pedido.estado}"></span>
+                            </div>
+
+                            <h5 class="cliente-nombre mb-1 fw-bold">[[${pedido.cliente}]]</h5>
+                            <p class="text-muted small mb-3 text-truncate"><i class="bi bi-geo-alt-fill text-danger"></i> [[${pedido.direccion}]]</p>
+
+                            <div class="h4 fw-bold mb-4 text-jama-skin">S/ [[${#numbers.formatDecimal(pedido.montoTotal, 1, 2)}]]</div>
+
+                            <div class="d-grid gap-2">
+                                <button th:if="${pedido.estado.name() == 'PREPARADO' or pedido.estado.name() == 'ASIGNADO'}"
+                                        th:onclick="'cambiarEstadoPedido(' + ${pedido.id} + ', \'iniciar\')'"
+                                        class="btn btn-success fw-bold py-2 rounded-pill">
+                                    <i class="bi bi-play-fill me-1"></i> INICIAR RUTA
+                                </button>
+
+                                <button th:if="${pedido.estado.name() == 'EN_CAMINO'}"
+                                        th:onclick="'cambiarEstadoPedido(' + ${pedido.id} + ', \'completar\')'"
+                                        class="btn btn-warning fw-bold py-2 text-dark rounded-pill">
+                                    <i class="bi bi-check-circle-fill me-1"></i> FINALIZAR ENTREGA
+                                </button>
+
+                                <a th:href="'https://www.google.com/maps/search/?api=1&query=' + ${pedido.latitud} + ',' + ${pedido.longitud}"
+                                   target="_blank" class="btn btn-link btn-sm text-decoration-none text-muted mt-2 fw-semibold">
+                                    <i class="bi bi-compass me-1"></i> Abrir en Google Maps GPS
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+<script th:src="@{/js/entregas.js}"></script>
+</body>
+</html>

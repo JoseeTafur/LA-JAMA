@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Empleados</title>
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <link th:href="@{/css/empleados.css}" rel="stylesheet" />
+</head>
+<body>
+<div class="wrapper">
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/empleados')}"></div>
+
+    <main id="main-content" class="main-content">
+
+        <div th:replace="~{sidebar :: logistica_header('Gestión de Empleados')}"></div>
+
+        <div class="container-fluid px-4 pt-4">
+            <div class="d-flex justify-content-end gap-2 mb-3">
+                <select id="filtroTurno" class="form-select filtro-jama" style="width:auto;">
+                    <option value="">Todos los turnos</option>
+                    <option value="DIA">Turno Día</option>
+                    <option value="NOCHE">Turno Noche</option>
+                </select>
+            </div>
+
+            <div class="card card-color1 shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <h1 class="card-title h5 mb-4 fw-bold text-jama-green">Lista de Empleados</h1>
+                    <table
+                            id="tabla"
+                            class="table table-hover align-middle w-100"
+                    >
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Apellidos y Nombres</th>
+                            <th>DNI</th>
+                            <th>Cargo</th>
+                            <th>Turno</th>
+                            <th>Contrato</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div class="modal fade" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true" id="modal">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white">
+                <h5 class="modal-title fw-bold" id="modalTitle">
+                    <i class="bi bi-person-plus-fill me-2"></i>Agregar Empleado
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="form" novalidate>
+                    <input type="hidden" id="id" name="id" />
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label for="id_usuario" class="form-label fw-bold">Cuenta de Usuario:</label>
+                            <select id="id_usuario" name="usuario" class="form-select">
+                                <option value="">-- Sin acceso al sistema --</option>
+                            </select>
+                            <div id="id_usuario-error" class="invalid-feedback d-block"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="nombre" class="form-label fw-bold">Nombre:</label>
+                            <input id="nombre" name="nombre" type="text" class="form-control" />
+                            <div id="nombre-error" class="invalid-feedback d-block"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="apellido" class="form-label fw-bold">Apellido:</label>
+                            <input id="apellido" name="apellido" type="text" class="form-control" />
+                            <div id="apellido-error" class="invalid-feedback d-block"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="dni" class="form-label fw-bold">DNI:</label>
+                            <input id="dni" name="dni" type="text" class="form-control"
+                                   maxlength="8" placeholder="12345678" />
+                            <div id="dni-error" class="invalid-feedback d-block"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="telefono" class="form-label fw-bold">Teléfono:</label>
+                            <input id="telefono" name="telefono" type="text" class="form-control"
+                                   maxlength="15" placeholder="999000111" />
+                            <div id="telefono-error" class="invalid-feedback d-block"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="id_cargo" class="form-label fw-bold">Cargo:</label>
+                            <select id="id_cargo" name="cargo" class="form-select">
+                                <option value="">Cargando cargos...</option>
+                            </select>
+                            <div id="id_cargo-error" class="invalid-feedback d-block"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="turno" class="form-label fw-bold">Turno:</label>
+                            <select id="turno" name="turno" class="form-select">
+                                <option value="DIA">Turno Día (08:00 - 18:00)</option>
+                                <option value="NOCHE">Turno Noche (18:00 - 22:00)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="tipoContrato" class="form-label fw-bold">Tipo de Contrato:</label>
+                            <select id="tipoContrato" name="tipoContrato" class="form-select">
+                                <option value="PLANILLA">Planilla</option>
+                                <option value="EVENTUAL">Eventual</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="fechaIngreso" class="form-label fw-bold">Fecha de Ingreso:</label>
+                            <input id="fechaIngreso" name="fechaIngreso" type="date" class="form-control" />
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-outline-jama rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" form="form" class="btn btn-jama-primary rounded-pill px-4">Guardar Empleado</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+<script th:src="@{/js/empleados.js}"></script>
+</body>
+</html>

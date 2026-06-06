@@ -1,0 +1,120 @@
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-peach: #fed7aa;
+    --lajama-skin: #FFB38A;
+    --lajama-cream: #FFF7ED;
+    --lajama-white: #FFFFFF;
+    /* Tonos acento para indicar Fresco/Frío (Ceviches, Bebidas) */
+    --lajama-cold: #3b82f6;
+    --lajama-cold-hover: #1d4ed8;
+}
+
+/* --- TARJETAS ESTILO TICKET PREMIUM --- */
+.card-pedido {
+    background: var(--lajama-white) !important;
+    border: 2px solid var(--lajama-peach) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 20px rgba(27, 58, 44, 0.04) !important;
+    transition: transform 0.25s ease, box-shadow 0.25s ease !important;
+}
+
+.card-pedido:hover {
+    transform: translateY(-5px) !important;
+    box-shadow: 0 12px 24px rgba(59, 130, 246, 0.08) !important;
+    border-color: var(--lajama-skin) !important;
+}
+
+/* Encabezado del ticket */
+.card-header {
+    border-bottom: 2px dashed var(--lajama-cream) !important;
+    padding-bottom: 12px !important;
+}
+
+.badge-id {
+    color: var(--lajama-green) !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 0.85rem !important;
+}
+
+/* Temporizador Reactivo Estación Fría */
+.timer-container {
+    color: var(--lajama-cold) !important;
+    font-family: 'Vollkorn', serif !important;
+    font-weight: 700 !important;
+    font-size: 1.2rem !important;
+}
+
+/* Cuerpo del ticket */
+.card-body h5 {
+    color: var(--lajama-green) !important;
+    font-family: 'Vollkorn', serif !important;
+    font-weight: 800 !important;
+    font-size: 1.3rem !important;
+    font-style: normal !important; /* Mantiene legibilidad */
+}
+
+.item-plato {
+    border-bottom: 1px dotted var(--lajama-peach) !important;
+    padding: 10px 0 !important;
+}
+
+.item-cantidad {
+    color: var(--lajama-cold) !important;
+    font-weight: 800 !important;
+    font-size: 1.1rem !important;
+    background-color: var(--lajama-cream);
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--lajama-peach);
+}
+
+.item-nombre {
+    color: #333333 !important;
+    font-weight: 600 !important;
+}
+
+/* --- BOTONES Y ACCIONES INTEGRADOS --- */
+.btn-printer {
+    background-color: var(--lajama-white) !important;
+    color: var(--lajama-green) !important;
+    border: none !important;
+    border-top: 1px solid var(--lajama-peach) !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    font-size: 1.2rem;
+    transition: all 0.2s ease !important;
+}
+
+.btn-printer:hover {
+    color: var(--lajama-cold) !important;
+    background-color: var(--lajama-cream) !important;
+}
+
+.btn-despachar {
+    background: var(--lajama-green) !important;
+    color: var(--lajama-white) !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 1px !important;
+    padding: 16px !important;
+    border-radius: 0 0 14px 0 !important; /* Ajuste exacto al borde curvo de la card */
+    transition: all 0.2s ease !important;
+    cursor: pointer;
+}
+
+.btn-despachar:hover {
+    background: var(--lajama-cold-hover) !important; /* Feedback visual en tono frío al pasar el mouse */
+    letter-spacing: 1.5px !important;
+}
+.status-badge-jama {
+    background-color: var(--lajama-cold);
+    color: white;
+    font-weight: 700;
+    font-size: 0.85rem;
+    border: 2px solid var(--lajama-peach);
+}
+

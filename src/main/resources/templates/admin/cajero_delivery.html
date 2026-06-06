@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Nueva Orden Delivery | La Jama</title>
+
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+
+    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link href="https://unpkg.com/leaflet-geosearch@3.11.0/dist/geosearch.css" rel="stylesheet"/>
+    <script src="https://unpkg.com/leaflet-geosearch@3.11.0/dist/bundle.min.js"></script>
+
+    <link rel="stylesheet" th:href="@{/css/delivery-cajero.css}">
+    <link rel="stylesheet" th:href="@{/css/cocina-core.css}">
+</head>
+<body class="cocina-body">
+<div class="wrapper">
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/caja/delivery/nuevo')}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{sidebar :: logistica_header('Terminal Pedidos')}"></div>
+
+        <div class="container-fluid px-4 mt-3">
+            <div class="row g-4">
+
+                <div class="col-lg-7">
+                    <div class="card border-0 shadow-sm p-4 mb-4 rounded-4 card-delivery">
+                        <div class="d-flex gap-2 mb-4">
+                            <button id="btnDelivery" onclick="seleccionarTipo('DELIVERY')"
+                                    class="btn fw-bold rounded-pill px-4"
+                                    style="background:var(--lajama-brown);color:white;border:none;">
+                                <i class="bi bi-bicycle me-1"></i> Delivery
+                            </button>
+                            <button id="btnParaLlevar" onclick="seleccionarTipo('PARA_LLEVAR')"
+                                    class="btn fw-bold rounded-pill px-4"
+                                    style="background:#e9ecef;color:#333;border:none;">
+                                <i class="bi bi-bag me-1"></i> Para Llevar
+                            </button>
+                        </div>
+
+                        <h5 class="fw-bold mb-3 title-jama" id="tituloEntrega">
+                            <i class="bi bi-geo-alt-fill me-2"></i> Datos de Entrega
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="small fw-bold label-jama">Nombre del Cliente</label>
+                                <input class="form-control input-jama" id="cliente_nombre"
+                                       placeholder="Ej. José Mario" type="text">
+                            </div>
+                            <div class="col-md-6 mb-3" id="bloqueDir">
+                                <label class="small fw-bold label-jama">Buscar Dirección en Chiclayo</label>
+                                <div class="mb-2" id="search-container"></div>
+                                <input class="form-control bg-light input-jama" id="inputDireccion"
+                                       placeholder="Dirección confirmada..." readonly type="text">
+                                <input id="lat" type="hidden">
+                                <input id="lng" type="hidden">
+                            </div>
+                        </div>
+                        <div class="shadow-sm rounded-4 border-jama" id="mapa-preview"></div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm p-4 rounded-4 card-delivery">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <h5 class="fw-bold m-0 title-jama">Carta La Jama</h5>
+                                <a href="/carta" target="_blank"
+                                   class="btn btn-sm btn-outline-dark rounded-pill px-3">
+                                    <i class="bi bi-journal-text me-1"></i> Ver Carta
+                                </a>
+                            </div>
+                            <input class="form-control search-box w-50 input-jama" id="busqueda"
+                                   placeholder="Buscar plato..." type="text">
+                        </div>
+
+                        <div class="row g-2 scroll-productos" id="contenedor-productos">
+                            <div class="col-md-4 item-producto"
+                                 th:data-nombre="${prod.nombre}"
+                                 th:each="prod : ${productos}">
+                                <div class="card product-card h-100 p-3 text-center shadow-sm"
+                                     th:onclick="agregarAlCarrito([[${prod.id}]], [[${prod.nombre}]], [[${prod.precio}]])">
+                                    <div class="fw-bold small mb-1 text-dark">[[${prod.nombre}]]</div>
+                                    <div class="text-ocre fw-bold">S/ [[${prod.precio}]]</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="cart-container shadow p-4 h-100 card-resumen">
+                        <h5 class="fw-bold mb-4 border-bottom pb-2 title-jama"
+                            style="color: var(--lajama-brown);">
+                            <i class="bi bi-receipt-cutoff me-2"></i> Detalle de Orden
+                        </h5>
+
+                        <div class="flex-grow-1 overflow-auto">
+                            <table class="table table-hover align-middle">
+                                <thead class="small text-muted text-uppercase">
+                                <tr>
+                                    <th>Cant.</th>
+                                    <th>Producto</th>
+                                    <th>Total</th>
+                                    <th></th>
+                                </tr>
+                                </thead>
+                                <tbody id="tabla-carrito"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-auto border-top pt-4">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <span class="h5 m-0 text-muted">TOTAL:</span>
+                                <span class="h2 fw-bold text-ocre">S/ <span id="label-total">0.00</span></span>
+                            </div>
+                            <button class="btn btn-jama-send w-100 py-3 fw-bold rounded-pill shadow-lg"
+                                    onclick="confirmarPedido()">
+                                <i class="bi bi-send-check-fill me-2"></i> ENVIAR A DESPACHO
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+</div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+<script th:src="@{/js/delivery-cajero.js}"></script>
+</body>
+</html>

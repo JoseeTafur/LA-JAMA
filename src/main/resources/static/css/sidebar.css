@@ -1,0 +1,192 @@
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-peach: #fed7aa;
+    --lajama-brown: #933D2D;
+    --sidebar-width: 280px;
+    --header-height: 85px;
+}
+
+/* --- DISEÑO BASE (WRAPPER) --- */
+body {
+    background-color: #f8f9fa;
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Contenedor horizontal que alinea Sidebar y Main Content */
+.wrapper {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+}
+
+/* Espacio dinámico para la derecha de la pantalla */
+.main-content {
+    flex-grow: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: calc(100% - var(--sidebar-width)); /* Evita desbordamiento horizontal */
+}
+
+
+/* --- 1. SIDEBAR ESTILIZADO --- */
+.sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    left: 0;
+    background-color: var(--lajama-green);
+    color: white;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    z-index: 1050;
+    transition: transform 0.3s ease;
+}
+
+/* Scrollbar estética e integrada para el sidebar si el menú es muy largo */
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+
+/* --- 2. ENLACES Y NAVEGACIÓN --- */
+.text-sidebar-color {
+    color: rgba(255, 255, 255, 0.75) !important;
+    font-weight: 500;
+    padding: 10px 16px;
+    border-radius: 8px;
+    transition: all 0.25s ease;
+}
+
+/* Hover general de los ítems */
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #ffffff !important;
+}
+
+/* Menú colapsable cuando está abierto (indica interactividad) */
+.sidebar .nav-link[aria-expanded="true"] {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Ítem Principal Activo (Redirecciona directo) */
+.sidebar .nav-link.active {
+    background-color: var(--lajama-peach) !important;
+    color: var(--lajama-green) !important;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Submenús activos dentro de un grupo colapsado */
+.active-submenu {
+    background-color: rgba(254, 215, 170, 0.15) !important;
+    color: var(--lajama-peach) !important;
+    font-weight: 600;
+    border-left: 4px solid var(--lajama-peach);
+    border-radius: 0 8px 8px 0 !important; /* Estiliza el borde izquierdo pegado */
+}
+
+
+/* --- 3. TOP HEADER BANNER (ANIMADO CON MOVIMIENTO INFINITO) --- */
+.main-header-banner {
+    height: var(--header-height);
+    width: 100%;
+    background-image: url('/img/banner.png'); /* Llamada exacta a banner.png */
+    background-repeat: repeat-x;
+    background-size: auto 100%;
+    background-position: 0 center; /* Posición inicial en el eje X */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+
+    /* --- NUESTRA ANIMACIÓN --- */
+    /* 'moverBanner' es el nombre, '20s' es el tiempo (a más segundos, más lento irá) */
+    animation: moverBanner 20s linear infinite;
+}
+
+/* Contenedor del título para asegurar contraste sobre banner.png */
+.header-title-container {
+    background: rgba(255, 255, 255, 0.92);
+    padding: 8px 20px;
+    border-radius: 10px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    z-index: 2; /* Asegura que el título quede siempre por encima del fondo en movimiento */
+}
+
+.header-title {
+    color: var(--lajama-green);
+    font-weight: 700;
+    text-transform: uppercase;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+/* --- REGLA DE ANIMACIÓN (KEYFRAMES) --- */
+@keyframes moverBanner {
+    from {
+        background-position: 0 center; /* Empieza en la posición original */
+    }
+    to {
+        background-position: 1000px center; /* Se desplaza horizontalmente. Al ser repeat-x, es infinito */
+    }
+}
+
+
+/* --- 4. RESPONSIVE Y MÓVILES (Media Queries) --- */
+@media (max-width: 767.98px) {
+    /* El contenido central pasa a ocupar el 100% real al ocultarse el menú lateral */
+    .main-content {
+        width: 100%;
+    }
+
+    /* Ocultamos el sidebar por defecto moviéndolo a la izquierda de la pantalla */
+    .sidebar {
+        position: fixed;
+        transform: translateX(-100%);
+        height: 100vh;
+    }
+
+    /* Clase activa para cuando abras el sidebar vía JS */
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    /* El banner ocupa todo el ancho adaptándose en móvil */
+    .main-header-banner {
+        padding: 0 16px;
+    }
+
+    /* Capa oscura translúcida de fondo para móviles */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+        backdrop-filter: blur(2px);
+    }
+
+    .sidebar-overlay.show {
+        display: block;
+    }
+}

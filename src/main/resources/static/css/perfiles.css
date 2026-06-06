@@ -1,0 +1,138 @@
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-peach: #fed7aa;
+    --lajama-skin: #FFB38A;
+    --lajama-cream: #FFF7ED;
+    --lajama-white: #FFFFFF;
+}
+
+/* --- CONTENEDOR PRINCIPAL --- */
+.main-content {
+    background-color: var(--lajama-cream);
+}
+
+/* --- TARJETA DE ROLES --- */
+.card-jama {
+    background: var(--lajama-white);
+    border: 2px solid var(--lajama-peach) !important;
+    border-radius: 25px !important;
+}
+
+.text-jama-green {
+    color: var(--lajama-green) !important;
+}
+
+.badge-jama-peach {
+    background-color: var(--lajama-peach);
+    color: var(--lajama-green);
+    font-weight: 600;
+}
+
+/* --- TABLA --- */
+#tabla {
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+
+#tabla thead th {
+    background-color: var(--lajama-green);
+    color: var(--lajama-white);
+    padding: 15px;
+    border: none;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+#tabla thead th:first-child { border-radius: 12px 0 0 12px; }
+#tabla thead th:last-child { border-radius: 0 12px 12px 0; }
+
+#tabla tbody td {
+    padding: 15px;
+    color: #444;
+    border-top: 1px solid var(--lajama-cream);
+    border-bottom: 1px solid var(--lajama-cream);
+}
+
+#tabla tbody tr:hover {
+    background-color: var(--lajama-cream) !important;
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+}
+
+/* --- MODALES --- */
+.modal-content {
+    border-radius: 30px !important;
+    background-color: var(--lajama-cream);
+}
+
+.modal-header {
+    background-color: var(--lajama-green);
+    border-radius: 30px 30px 0 0 !important;
+}
+
+.modal-header.bg-jama-skin {
+    background-color: var(--lajama-skin);
+}
+
+.modal-footer {
+    border-radius: 0 0 30px 30px !important;
+}
+
+/* --- FORMULARIOS --- */
+.form-control, .form-select, .input-group-text {
+    border: 2px solid var(--lajama-peach);
+    border-radius: 12px;
+    background-color: var(--lajama-white);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--lajama-skin);
+    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.2);
+    outline: none;
+}
+
+.bg-jama-cream {
+    background-color: var(--lajama-cream) !important;
+}
+
+.border-jama-peach {
+    border-color: var(--lajama-peach) !important;
+}
+
+/* --- ALERTAS --- */
+.alert-jama-skin {
+    background-color: var(--lajama-skin);
+    color: var(--lajama-green);
+    font-weight: 600;
+}
+
+/* --- BOTONES --- */
+.btn-jama-primary {
+    background-color: var(--lajama-green);
+    color: white;
+    border: none;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.btn-jama-primary:hover {
+    background-color: #0d231a;
+    transform: scale(1.05);
+    color: white;
+}
+
+.btn-outline-jama-green {
+    border: 2px solid var(--lajama-green);
+    color: var(--lajama-green);
+    font-weight: 700;
+}
+
+.btn-outline-jama-green:hover {
+    background-color: var(--lajama-green);
+    color: white;
+}
+
+/* Badges de estado dentro de la tabla */
+.badge.bg-success { background-color: #dcfce7 !important; color: #166534 !important; border-radius: 8px; }
+.badge.bg-danger { background-color: #fee2e2 !important; color: #991b1b !important; border-radius: 8px; }

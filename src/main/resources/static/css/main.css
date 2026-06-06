@@ -1,0 +1,154 @@
+:root {
+  --bg-body: #f4f6f9;
+  --white: #ffffff;
+
+  /* AdminLTE / Bootstrap core */
+  --primary: #0d6efd;
+  --primary-hover: #0b5ed7;
+  --primary-border: #0a58ca;
+
+  --danger: #dc3545;
+  --success: #198754;
+  --warning: #ffc107;
+  --info: #0dcaf0;
+
+  --border: #dee2e6;
+
+  /* Sidebar (AdminLTE style dark soft, no marrón) */
+  --sidebar-bg: #343a40;
+  --sidebar-item-bg: rgba(255, 255, 255, 0.08);
+
+  --sidebar-active: #0d6efd;
+
+  --text-sidebar: rgba(255, 255, 255, 0.75);
+  --text-sidebar-strong: #ffffff;
+
+  --scrollbar: rgba(255, 255, 255, 0.2);
+  --scrollbar-hover: rgba(255, 255, 255, 0.35);
+
+  --overlay: rgba(0, 0, 0, 0.5);
+}
+
+body {
+  background-color: var(--bg-body);
+  font-family: "Inter", sans-serif;
+}
+
+main.container-fluid.p-4,
+.card-color1 {
+  width: calc-size(auto, size - 30px);
+  background-color: var(--white) !important;
+  border-radius: 15px !important;
+}
+
+.card {
+  border-radius: 0.5rem;
+  border: none;
+  background-color: var(--white);
+}
+
+/* actions */
+.action-btn-edit {
+  color: var(--primary);
+}
+.action-btn-delete {
+  color: var(--danger);
+}
+.action-btn-status-activate {
+  color: var(--success);
+}
+.action-btn-status-deactivate {
+  color: var(--warning);
+}
+
+/* overlay */
+.loading-overlay {
+  background-color: var(--overlay);
+}
+
+.buttons-colvis span {
+  color: white;
+}
+
+.header-size {
+  width: calc-size(auto, size - 17px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background-color: #fff;
+  color: #121212;
+}
+
+tr {
+  border-color: var(--border) !important;
+}
+
+/* pagination */
+.paginate_button.page-item.active a {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: white !important;
+}
+
+/* inputs */
+input.form-control.form-control-sm {
+  border-radius: 15px;
+}
+
+/* images */
+.preview-gallery-img {
+  border: 2px dashed var(--primary);
+}
+
+.actual-gallery-img {
+  border: 1px solid var(--border);
+}
+
+.sidebar-preview-img {
+  border: 1px dashed var(--border);
+}
+
+.slider-preview-img {
+  border: 1px dashed var(--border);
+}
+
+/* delete buttons */
+.btn-delete-img-productos {
+  background-color: rgba(220, 53, 69, 0.8);
+}
+
+.btn-delete-img-productos:hover {
+  background-color: var(--danger);
+}
+
+.btn-delete-img-sidebar {
+  background-color: var(--danger);
+  color: white;
+}
+
+.btn-delete-img-slider {
+  background-color: var(--danger);
+  color: white;
+}
+
+/* links */
+.page-link {
+  color: var(--primary) !important;
+}
+
+/* buttons */
+.btn-primary {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover) !important;
+  border-color: var(--primary-border) !important;
+}
+
+.dataTables_length label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}

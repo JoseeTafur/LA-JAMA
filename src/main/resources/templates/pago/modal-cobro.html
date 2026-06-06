@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<body>
+<th:block th:fragment="modalCobro">
+
+    <div class="modal fade" id="modalFacturacion" data-bs-backdrop="static" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen modal-dialog-scrollabl    e">
+            <div class="modal-content jama-modal-core">
+
+                <!-- HEADER CORPORATIVO LA JAMA -->
+                <div class="modal-header jama-header">
+                    <h5 class="modal-title jama-title">
+                        <i class="bi bi-receipt-cutoff text-jama-gold"></i>
+                        Caja Centralizada — Mesa #<span id="cobroNumMesa"></span>
+                    </h5>
+                    <button type="button" class="jama-btn-close" data-bs-dismiss="modal" onclick="limpiarInstanciaCaja()">&times;</button>
+                </div>
+
+                <div class="modal-body jama-body-bg">
+                    <div class="jama-layout-grid">
+
+                        <!-- ==========================================
+                             PANEL IZQUIERDO: SELECCIÓN Y COMANDAS
+                             ========================================== -->
+                        <div class="jama-panel-lateral">
+                            <div class="jama-section-top">
+                                <div class="jama-meta-row">
+                                    <span class="jama-label-sm">TOTAL DE LA MESA</span>
+                                    <span class="jama-badge-total">S/. <span id="cobroTotalBase">0.00</span></span>
+                                </div>
+
+                                <!-- Contenedor de Platos -->
+                                <div class="jama-card-container">
+                                    <div class="jama-card-header-sm">Consumos Disponibles</div>
+                                    <div id="lista-items-repartir" class="jama-scroll-panel">
+                                        <!-- Inyectado dinámicamente -->
+                                    </div>
+                                </div>
+
+                                <!-- Configurador de Divisiones -->
+                                <div class="jama-card-container accent-border">
+                                    <div class="card-body p-3">
+                                        <label class="jama-control-label">Cantidad de Comprobantes</label>
+                                        <select id="selectNumTickets" class="jama-select" onchange="reconstruirCanastas()">
+                                            <!-- Opciones dinámicas -->
+                                        </select>
+
+                                        <!-- Herramientas de Balanceo Proporcional -->
+                                        <div class="jama-btn-group-row">
+                                            <button id="btnDivEquitativa" class="jama-btn-secondary" onclick="distribuirSaldos('EQUITATIVO')" disabled>
+                                                <i class="bi bi-pie-chart-fill"></i> Partes Iguales
+                                            </button>
+                                            <button id="btnDivPorcentual" class="jama-btn-secondary" onclick="distribuirSaldos('PORCENTUAL')" disabled>
+                                                <i class="bi bi-percent"></i> Porcentajes
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bloque de Liquidación Final -->
+                            <div class="jama-footer-action-box">
+                                <div class="jama-meta-row mb-3">
+                                    <span class="jama-label-muted">POR ASIGNAR / CUADRAR:</span>
+                                    <span id="txtMontoPorAsignar" class="jama-txt-status status-danger">S/. 0.00</span>
+                                </div>
+                                <button id="btnLiquidarMesaGlobal" class="jama-btn-primary w-100 py-3 text-uppercase" disabled onclick="procesarLiquidacion()">
+                                    <i class="bi bi-shield-check me-2"></i> Procesar Cierre Masivo
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ==========================================
+                             PANEL DERECHO: COLUMNAS MULTITICKET
+                             ========================================== -->
+                        <div class="jama-panel-contenido">
+                            <div id="contenedor-tickets-dinamicos" class="jama-horizontal-carousel">
+                                <!-- JS inyectará las tarjetas elegantes aquí -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</th:block>
+</body>
+</html>

@@ -1,0 +1,138 @@
+/* --- PALETA DE COLORES LA JAMA --- */
+:root {
+    --lajama-green: #1B3A2C;       /* Verde profundo de la imagen */
+    --lajama-peach: #fed7aa;      /* Tono durazno suave */
+    --lajama-skin: #FFB38A;       /* Tono piel/naranja cálido */
+    --lajama-cream: #FFF7ED;      /* Crema de fondo */
+    --lajama-white: #FFFFFF;
+    --text-dark: #2D2D2D;
+}
+
+/* --- CONTENEDOR Y FONDO --- */
+.container-fluid {
+    background-color: var(--lajama-cream);
+    min-height: calc(100vh - 85px); /* Ajuste según altura del banner */
+}
+
+/* --- TARJETA PRINCIPAL --- */
+.card-color1 {
+    background: var(--lajama-white);
+    border: 2px solid var(--lajama-peach);
+    border-radius: 25px !important;
+    box-shadow: 0 12px 24px rgba(27, 58, 44, 0.05);
+    margin-top: 1rem;
+}
+
+.card-title {
+    color: var(--lajama-green) !important;
+    font-size: 1.6rem !important;
+    border-bottom: 3px solid var(--lajama-skin);
+    display: inline-block;
+    padding-bottom: 5px;
+}
+
+/* --- TABLA ARTESANAL --- */
+#tabla {
+    border-collapse: separate;
+    border-spacing: 0 10px;
+}
+
+#tabla thead th {
+    background-color: var(--lajama-green);
+    color: var(--lajama-white);
+    padding: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    border: none;
+}
+
+#tabla thead th:first-child { border-radius: 15px 0 0 15px; }
+#tabla thead th:last-child { border-radius: 0 15px 15px 0; }
+
+#tabla tbody tr {
+    background-color: var(--lajama-white);
+    transition: all 0.3s ease;
+}
+
+#tabla tbody td {
+    padding: 15px !important;
+    border-top: 1px solid var(--lajama-cream);
+    border-bottom: 1px solid var(--lajama-cream);
+    color: var(--text-dark);
+}
+
+#tabla tbody tr:hover {
+    background-color: var(--lajama-cream) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(254, 215, 170, 0.4);
+}
+
+/* --- MODAL Y FORMULARIOS --- */
+.modal-content {
+    background: var(--lajama-cream);
+    border-radius: 30px;
+    border: 4px solid var(--lajama-green);
+}
+
+.modal-header {
+    background: var(--lajama-green);
+    color: var(--lajama-white);
+    border-bottom: none;
+}
+
+.modal-title {
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.form-label {
+    color: var(--lajama-green);
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.form-control, .form-select {
+    border: 2px solid var(--lajama-peach);
+    border-radius: 12px;
+    padding: 12px;
+    background-color: var(--lajama-white);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--lajama-skin);
+    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.2);
+    outline: none;
+}
+
+/* --- BOTONES --- */
+.btn-primary {
+    background-color: var(--lajama-green) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 12px 25px !important;
+    font-weight: 700 !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn-primary:hover {
+    background-color: #27523f !important;
+    transform: scale(1.05);
+}
+
+.btn-secondary {
+    background-color: transparent !important;
+    color: var(--lajama-green) !important;
+    border: 2px solid var(--lajama-green) !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+}
+
+/* Estilo para los inputs de error (invalid-feedback ya lo tienes en HTML) */
+.invalid-feedback {
+    color: #b91c1c;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 4px;
+}

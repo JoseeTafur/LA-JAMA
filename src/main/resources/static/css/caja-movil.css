@@ -1,0 +1,523 @@
+/* =====================================================================
+   LA JAMA - ESTILOS DE CAJA MÓVIL Y MULTITICKET (TEMA CORPORATIVO FIJO)
+   ===================================================================== */
+
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-peach: #fed7aa;
+    --lajama-skin: #FFB38A;
+    --lajama-cream: #FFF7ED;
+    --lajama-white: #FFFFFF;
+    --shadow-sm: 0 2px 4px rgba(27, 58, 44, 0.05);
+    --shadow-md: 0 4px 12px rgba(27, 58, 44, 0.1);
+    --shadow-lg: 0 12px 24px rgba(27, 58, 44, 0.15);
+
+    /* Variables de texto para legibilidad en fondo claro */
+    --jama-text-main: #1f2937;
+    --jama-text-muted: #6b7280;
+    --jama-danger: #dc2626;
+    --jama-success: #166534;
+}
+
+/* Modales y Contenedores Base */
+.jama-modal-core {
+    background-color: var(--lajama-cream) !important;
+    color: var(--jama-text-main) !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+.jama-header {
+    background-color: var(--lajama-green) !important;
+    border-bottom: 4px solid var(--lajama-peach) !important;
+    padding: 1rem 1.5rem !important;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.jama-title {
+    font-weight: 800 !important;
+    letter-spacing: 0.5px;
+    margin: 0;
+    color: var(--lajama-white) !important;
+}
+
+.text-jama-gold {
+    color: var(--lajama-peach) !important;
+}
+
+.jama-btn-close {
+    background: transparent;
+    border: none;
+    color: var(--lajama-peach);
+    font-size: 1.8rem;
+    line-height: 1;
+    transition: color 0.2s, transform 0.2s;
+    cursor: pointer;
+}
+.jama-btn-close:hover {
+    color: var(--lajama-white);
+    transform: scale(1.1);
+}
+
+.jama-body-bg {
+    padding: 0 !important;
+    background-color: var(--lajama-cream) !important;
+}
+
+/* Layout Principal Grid */
+.jama-layout-grid {
+    display: flex;
+    height: calc(100vh - 70px);
+    width: 100%;
+    overflow: hidden;
+}
+
+/* =====================================================================
+   PANEL LATERAL (IZQUIERDA) — CONTROL DE COMANDAS
+   ===================================================================== */
+.jama-panel-lateral {
+    width: 380px;
+    min-width: 380px;
+    background-color: var(--lajama-white);
+    border-right: 2px solid rgba(254, 215, 170, 0.5);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: var(--shadow-sm);
+    z-index: 10;
+}
+
+.jama-section-top {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.jama-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.jama-label-sm {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--jama-text-muted);
+    letter-spacing: 1px;
+}
+
+.jama-badge-total {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--lajama-green);
+}
+
+/* Tarjetas Internas del Panel Lateral */
+.jama-card-container {
+    background-color: var(--lajama-white);
+    border: 1px solid var(--lajama-peach);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.jama-card-container.accent-border {
+    border-left: 4px solid var(--lajama-skin);
+}
+
+.jama-card-header-sm {
+    background-color: var(--lajama-cream);
+    padding: 0.75rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--lajama-green);
+    border-bottom: 1px solid var(--lajama-peach);
+    text-transform: uppercase;
+}
+
+/* Forzar scroll vertical en la lista de platos si colapsa la pantalla */
+.jama-scroll-panel {
+    max-height: 30vh !important;
+    overflow-y: auto !important;
+    padding: 0.5rem;
+}
+
+/* Botones de Platos Interactivos */
+.jama-item-row-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    background-color: var(--lajama-white);
+    border: 1px solid transparent;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--jama-text-main);
+    width: 100%;
+}
+
+.jama-item-row-btn:hover {
+    background-color: var(--lajama-cream);
+    transform: translateX(4px);
+}
+
+.jama-item-row-btn.assigned {
+    border-color: var(--lajama-peach) !important;
+    background-color: #f9fafb !important;
+    color: var(--lajama-green) !important;
+}
+
+/* Inputs, Selects y Control Labels */
+.jama-control-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--lajama-green);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.jama-select, .jama-input-text {
+    width: 100%;
+    background-color: var(--lajama-white) !important;
+    border: 2px solid var(--lajama-cream) !important;
+    color: var(--jama-text-main) !important;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.jama-select:focus, .jama-input-text:focus {
+    border-color: var(--lajama-peach) !important;
+    box-shadow: 0 0 0 3px rgba(254, 215, 170, 0.4) !important;
+}
+
+.jama-select:disabled {
+    background-color: #f3f4f6 !important;
+    color: #9ca3af !important;
+    cursor: not-allowed;
+    border-color: #e5e7eb !important;
+}
+
+/* Grupos de Botones Intermedios (Evitando estilos Bootstrap) */
+.jama-btn-group-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.jama-btn-secondary {
+    flex: 1;
+    background-color: var(--lajama-white);
+    border: 2px solid var(--lajama-peach);
+    color: var(--lajama-green);
+    padding: 0.6rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.jama-btn-secondary:hover:not(:disabled) {
+    background-color: var(--lajama-cream);
+    transform: translateY(-2px);
+}
+
+.jama-btn-secondary:disabled {
+    border-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Botón de Cierre de Caja Principal */
+.jama-btn-primary {
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-white) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 800 !important;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.jama-btn-primary:hover:not(:disabled) {
+    background-color: #0d231a !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.jama-btn-primary:disabled {
+    background-color: #d1d5db !important;
+    color: #6b7280 !important;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Footer del Panel Izquierdo */
+.jama-footer-action-box {
+    padding: 1.5rem;
+    background-color: var(--lajama-cream);
+    border-top: 2px dashed var(--lajama-peach);
+}
+
+.jama-label-muted {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--jama-text-muted);
+}
+
+.jama-txt-status {
+    font-weight: 900;
+    font-size: 1.2rem;
+}
+
+.status-danger { color: var(--jama-danger); }
+.status-success { color: var(--jama-success); }
+
+
+/* =====================================================================
+   PANEL DE CONTENIDO (DERECHA - CAROUSEL DE TICKETS HORIZONTAL)
+   ===================================================================== */
+.jama-panel-contenido {
+    flex: 1;
+    padding: 2rem;
+    overflow-x: auto !important; /* Forza scroll horizontal */
+    overflow-y: hidden !important;
+    background-color: var(--lajama-cream);
+    height: 100%;
+}
+
+.jama-horizontal-carousel {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    padding-bottom: 1rem;
+}
+
+/* Estilos de la Tarjeta del Ticket */
+.jama-ticket-card {
+    background-color: var(--lajama-white) !important;
+    border: 2px solid rgba(254, 215, 170, 0.8) !important;
+    border-radius: 18px !important;
+    width: 320px;
+    min-width: 320px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.jama-ticket-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.jama-ticket-header-badge {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-peach) !important;
+    font-weight: 900;
+    font-size: 0.75rem;
+    padding: 6px 18px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    box-shadow: var(--shadow-sm);
+    text-transform: uppercase;
+}
+
+/* Caja Financiera (Subtotal, IGV, Total) */
+.jama-finance-box {
+    background-color: #fdfbf7 !important;
+    border: 1px solid var(--lajama-cream) !important;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.jama-finance-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--jama-text-main);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.jama-finance-line span:first-child {
+    color: var(--jama-text-muted);
+}
+
+.jama-finance-line.total {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 2px dashed var(--lajama-peach) !important;
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: var(--lajama-green);
+}
+
+/* Segmented Control (Alternador Boleta / Factura) */
+.jama-toggle-row {
+    display: flex;
+    background-color: var(--lajama-cream) !important;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(254, 215, 170, 0.4);
+}
+
+.jama-toggle-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--jama-text-muted);
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.jama-toggle-btn.active {
+    background-color: var(--lajama-white) !important;
+    color: var(--lajama-green) !important;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--lajama-peach) !important;
+}
+
+/* Alerta POS Final */
+.jama-pos-alert {
+    background-color: var(--lajama-cream) !important;
+    border: 1px solid var(--lajama-peach) !important;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    margin-top: auto;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+/* =====================================================================
+   💥 PROTECCIÓN TOTAL CONTRA LAS VISTAS OSCURAS INYECTADAS POR JS
+   ===================================================================== */
+.jama-ticket-card input.bg-dark,
+.jama-ticket-card input.jama-input-text,
+.jama-ticket-card .form-control {
+    background-color: var(--lajama-white) !important;
+    color: var(--lajama-green) !important;
+    border: 2px solid var(--lajama-cream) !important;
+    font-weight: 700 !important;
+}
+
+.jama-ticket-card input.bg-dark:focus,
+.jama-ticket-card input.jama-input-text:focus,
+.jama-ticket-card .form-control:focus {
+    border-color: var(--lajama-peach) !important;
+    box-shadow: 0 0 0 3px rgba(254, 215, 170, 0.3) !important;
+    outline: none !important;
+}
+
+/* Corregir los labels invisibles como "Consumo (SUNAT)" o "Propina" */
+.jama-ticket-card .text-muted,
+.jama-ticket-card .small.fw-bold.text-muted,
+.jama-ticket-card span.text-muted {
+    color: var(--jama-text-main) !important;
+    font-weight: 700 !important;
+}
+
+.jama-ticket-card .text-info,
+.jama-ticket-card .small.fw-bold.text-info {
+    color: var(--lajama-green) !important;
+    font-weight: 700 !important;
+}
+
+/* Corregir el selector desplegable dentro del ticket */
+.jama-ticket-card select.jama-select,
+.jama-ticket-card select.form-select {
+    background-color: var(--lajama-white) !important;
+    color: var(--jama-text-main) !important;
+    border: 2px solid var(--lajama-cream) !important;
+}
+
+/* Sombreado de la alerta POS */
+.jama-ticket-card .jama-pos-alert .text-muted {
+    color: var(--jama-text-muted) !important;
+    font-weight: 600 !important;
+}
+
+.jama-ticket-card .text-jama-gold {
+    color: var(--lajama-green) !important;
+    font-weight: 900 !important;
+}
+
+/* =====================================================================
+   ESTILOS DE LÉXICO PARA SWEETALERT EN MODO CORPORATIVO CLARO
+   ===================================================================== */
+.jama-swal-input {
+    flex: 1;
+    background: var(--lajama-white) !important;
+    border: 2px solid var(--lajama-cream) !important;
+    color: var(--jama-text-main) !important;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    text-align: right !important;
+    outline: none !important;
+}
+.jama-swal-input:focus {
+    border-color: var(--lajama-peach) !important;
+}
+
+/* =====================================================================
+   SCROLLBARS LIMPIOS (Mismo estilo global del sitio)
+   ===================================================================== */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--lajama-cream);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--lajama-peach);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #fdb971;
+}
+
+.jama-btn-del-owner {
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 800;
+    padding: 0 4px;
+    line-height: 1;
+    border-radius: 4px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.jama-btn-del-owner:hover {
+    background: #dc3545; /* Rojo opcional de alerta al borrar */
+    color: #ffffff !important;
+}

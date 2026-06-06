@@ -1,0 +1,279 @@
+/* ═══════════════════════════════════════════════════════════
+   VARIABLES — hereda paleta del sistema La Jama
+═══════════════════════════════════════════════════════════ */
+:root {
+    --lajama-green:  #1B3A2C;
+    --lajama-peach:  #fed7aa;
+    --lajama-skin:   #FFB38A;
+    --lajama-cream:  #FFF7ED;
+    --lajama-white:  #FFFFFF;
+    --shadow-sm: 0 2px 4px rgba(27,58,44,0.05);
+    --shadow-md: 0 4px 12px rgba(27,58,44,0.10);
+    --shadow-lg: 0 12px 24px rgba(27,58,44,0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════════════════════ */
+.card-jama {
+    background: var(--lajama-white);
+    border: none;
+    border-radius: 1rem;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.card-jama-header {
+    background: var(--lajama-white);
+    border-bottom: 2px solid var(--lajama-peach);
+    padding: 1.25rem 1.5rem 1rem;
+}
+
+.card-jama-green {
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-white);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════════════════════ */
+.nav-tabs-jama {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 2px solid var(--lajama-peach);
+    padding: 0;
+    list-style: none;
+    margin: 0;
+}
+
+.nav-tabs-jama .nav-item { margin: 0; }
+
+.nav-link-jama {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.6rem 1.2rem;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    border-radius: 0.5rem 0.5rem 0 0;
+    transition: all 0.2s;
+    margin-bottom: -2px;
+}
+
+.nav-link-jama:hover {
+    color: var(--lajama-green);
+    background-color: var(--lajama-cream);
+}
+
+.nav-link-jama.active {
+    color: var(--lajama-green);
+    border-bottom-color: var(--lajama-green);
+    background-color: var(--lajama-cream);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TABLAS
+═══════════════════════════════════════════════════════════ */
+.thead-jama th {
+    background-color: var(--lajama-green);
+    color: var(--lajama-peach);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+    border: none;
+    padding: 0.85rem 0.75rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BADGE PORCIONES
+═══════════════════════════════════════════════════════════ */
+.badge-porciones {
+    background-color: var(--lajama-green);
+    color: var(--lajama-peach);
+    border-radius: 999px;
+    padding: 0.3rem 0.9rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.3px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BOTONES
+═══════════════════════════════════════════════════════════ */
+.btn-jama {
+    background-color: var(--lajama-green);
+    color: var(--lajama-peach);
+    border: none;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.btn-jama:hover {
+    background-color: #0d231a;
+    color: var(--lajama-white);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-jama-success {
+    background-color: #166534;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.btn-jama-success:hover {
+    background-color: #14532d;
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-jama-warning {
+    background-color: #d97706;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.btn-jama-warning:hover {
+    background-color: #b45309;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.btn-jama-secondary {
+    background-color: #4b5563;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.btn-jama-secondary:hover {
+    background-color: #374151;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.btn-jama-outline {
+    background-color: transparent;
+    color: var(--lajama-green);
+    border: 2px solid var(--lajama-green);
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.btn-jama-outline:hover {
+    background-color: var(--lajama-green);
+    color: var(--lajama-peach);
+    transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INPUTS
+═══════════════════════════════════════════════════════════ */
+.input-jama {
+    background-color: var(--lajama-cream);
+    border: 1px solid transparent;
+    transition: border-color 0.2s;
+}
+.input-jama:focus {
+    border-color: var(--lajama-skin);
+    background-color: var(--lajama-white);
+    box-shadow: 0 0 0 3px rgba(255,179,138,0.2);
+}
+.input-danger { color: #dc2626; }
+
+/* ═══════════════════════════════════════════════════════════
+   MODALES
+═══════════════════════════════════════════════════════════ */
+.modal-jama {
+    border: none;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-header-jama {
+    background-color: var(--lajama-green);
+    border-bottom: 4px solid var(--lajama-peach);
+    padding: 1rem 1.25rem;
+}
+
+.modal-header-success {
+    background-color: #166534;
+    border-bottom: 4px solid #bbf7d0;
+    padding: 1rem 1.25rem;
+}
+
+.modal-header-warning {
+    background-color: #fef3c7;
+    border-bottom: 4px solid #d97706;
+    padding: 1rem 1.25rem;
+}
+
+.modal-header-secondary {
+    background-color: #374151;
+    border-bottom: 4px solid #9ca3af;
+    padding: 1rem 1.25rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ALERTA MERMA
+═══════════════════════════════════════════════════════════ */
+.alert-merma {
+    background-color: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-left: 4px solid #d97706;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+}
+.alert-merma.positivo {
+    background-color: #f0fdf4;
+    border-color: #86efac;
+    border-left-color: #166534;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FILTROS KARDEX
+═══════════════════════════════════════════════════════════ */
+.btn-filtro {
+    background: rgba(255,255,255,0.15);
+    color: var(--lajama-peach);
+    border: 1px solid rgba(254,215,170,0.3);
+    border-radius: 999px;
+    padding: 0.2rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-filtro:hover {
+    background: rgba(255,255,255,0.25);
+    color: var(--lajama-white);
+}
+.btn-filtro.active {
+    background: var(--lajama-peach);
+    color: var(--lajama-green);
+    border-color: var(--lajama-peach);
+}
+
+.filtro-lote.active   { background: #bbf7d0; color: #166534; border-color: #86efac; }
+.filtro-prod.active   { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.filtro-ajuste.active { background: #e5e7eb; color: #374151; border-color: #9ca3af; }
+.filtro-venta.active  { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+
+/* ═══════════════════════════════════════════════════════════
+   BADGES KARDEX
+═══════════════════════════════════════════════════════════ */
+.badge-kardex {
+    border-radius: 999px;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.badge-lote     { background: #dcfce7; color: #166534; }
+.badge-prod     { background: #fef3c7; color: #92400e; }
+.badge-ajuste   { background: #e5e7eb; color: #374151; }
+.badge-venta    { background: #fee2e2; color: #991b1b; }

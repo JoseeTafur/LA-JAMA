@@ -1,0 +1,83 @@
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-peach: #fed7aa;
+    --lajama-skin: #FFB38A;
+    --lajama-cream: #FFF7ED;
+}
+
+/* Fondo general del Dashboard */
+.main-content {
+    background-color: var(--lajama-cream);
+}
+
+/* Sección de Bienvenida */
+.welcome-section {
+    background-color: var(--lajama-green);
+    color: white;
+    border-left: 8px solid var(--lajama-skin);
+}
+
+.text-jama {
+    color: white !important;
+}
+
+.date-badge-jama {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(5px);
+    color: var(--lajama-peach);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Tarjetas KPI Normales */
+.card-jama-kpi {
+    background-color: white;
+    border: 2px solid var(--lajama-peach) !important;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-jama-kpi:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(27, 58, 44, 0.1) !important;
+}
+
+.card-jama-kpi p {
+    color: var(--lajama-green);
+}
+
+.icon-box-kpi {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 1.5rem;
+}
+
+.bg-jama-light {
+    background-color: var(--lajama-cream);
+    color: var(--lajama-green);
+    border: 1px solid var(--lajama-peach);
+}
+
+/* Tarjeta KPI Destacada (Ingresos) */
+.card-jama-kpi-highlight {
+    background-color: var(--lajama-skin);
+    color: var(--lajama-green);
+    transition: transform 0.3s ease;
+}
+
+.card-jama-kpi-highlight:hover {
+    transform: translateY(-5px);
+    background-color: #fca876;
+}
+
+.bg-white-translucent {
+    background-color: rgba(255, 255, 255, 0.4);
+    color: var(--lajama-green);
+}
+
+/* Ajustes de tipografía */
+h3 {
+    letter-spacing: -1px;
+}

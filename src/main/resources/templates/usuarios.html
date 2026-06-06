@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Usuarios</title>
+
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <link th:href="@{/css/usuarios.css}" rel="stylesheet" />
+</head>
+<body>
+<div class="wrapper">
+    <!-- 1. Cargamos el Sidebar independiente a la izquierda -->
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/usuarios')}"></div>
+
+    <!-- 2. Contenedor del contenido a la derecha -->
+    <main id="main-content" class="main-content">
+
+        <!-- 3. Inyectamos la plantilla de cabecera con el banner.png arriba del contenedor -->
+        <div th:replace="~{sidebar :: logistica_header('Gestión de Usuarios')}"></div>
+
+        <!-- Contenido propio de la página (La Tabla de Datos) -->
+        <div class="container-fluid p-4">
+            <div class="card rounded-lg card-color1">
+                <div class="card-body">
+                    <h1 class="card-title h5 mb-4 fw-bold">Lista de Usuarios</h1>
+                    <table
+                            id="tabla"
+                            class="table table-hover responsive"
+                            style="width: 100%"
+                    >
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuario</th>
+                            <th>Perfil</th>
+                            <th>Correo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- El bloque de tu Modal permanece completamente intacto -->
+<div class="modal fade" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true" id="modal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">
+                    Agregar Usuario
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form" novalidate>
+                    <input type="hidden" id="id" name="id" />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="usuario" class="form-label">Usuario (Login):</label>
+                            <input
+                                    id="usuario" name="usuario"
+                                    type="text" class="form-control"
+                                    placeholder="Ej: esteban"
+                            />
+                            <div id="usuario-error" class="invalid-feedback d-block"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="correo" class="form-label">Correo Electrónico:</label>
+                            <input
+                                    id="correo" name="correo"
+                                    type="email" class="form-control" autocomplete="email"
+                                    placeholder="ejemplo@gmail.com"
+                            />
+                            <div id="correo-error" class="invalid-feedback d-block"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="id_perfil" class="form-label">Perfil:</label>
+                            <select
+                                    id="id_perfil" name="perfil"
+                                    class="form-select"
+                            ></select>
+                            <div
+                                    id="id_perfil-error"
+                                    class="invalid-feedback d-block"
+                            ></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="clave" class="form-label">Clave:</label>
+                            <input
+                                    id="clave" name="clave"
+                                    type="password" placeholder="Clave" class="form-control"
+                            />
+                            <div id="clave-error" class="invalid-feedback d-block"></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="submit" form="form" class="btn btn-primary">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+
+<script th:src="@{/js/usuarios.js}"></script>
+</body>
+</html>

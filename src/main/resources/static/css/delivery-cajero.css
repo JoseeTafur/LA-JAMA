@@ -1,0 +1,114 @@
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-peach: #fed7aa;
+    --lajama-skin: #FFB38A;
+    --lajama-cream: #FFF7ED;
+    --lajama-brown: #933D2D;
+    --lajama-white: #FFFFFF;
+}
+
+/* --- ESTRUCTURA --- */
+.main-content {
+    background-color: var(--lajama-cream);
+}
+
+.card-delivery, .card-resumen {
+    background-color: var(--lajama-white);
+    border: 2px solid var(--lajama-peach) !important;
+}
+
+.card-resumen {
+    background-color: #ffffff;
+    border-radius: 25px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- TÍTULOS Y TEXTOS --- */
+.title-jama {
+    color: var(--lajama-green);
+    font-family: 'Vollkorn', serif;
+}
+
+.label-jama {
+    color: var(--lajama-green);
+    opacity: 0.8;
+}
+
+.text-ocre {
+    color: var(--lajama-brown) !important;
+}
+
+/* --- INPUTS --- */
+.input-jama {
+    border: 2px solid var(--lajama-peach) !important;
+    border-radius: 12px !important;
+}
+
+.input-jama:focus {
+    border-color: var(--lajama-skin) !important;
+    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.2);
+}
+
+.border-jama {
+    border: 3px solid var(--lajama-green);
+}
+
+/* --- CARTA DE PRODUCTOS --- */
+.scroll-productos {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.scroll-productos::-webkit-scrollbar { width: 5px; }
+.scroll-productos::-webkit-scrollbar-thumb { background: var(--lajama-peach); border-radius: 10px; }
+
+.product-card {
+    cursor: pointer;
+    border: 1px solid var(--lajama-cream);
+    border-radius: 15px;
+    transition: all 0.2s ease;
+    background-color: var(--lajama-cream);
+}
+
+.product-card:hover {
+    border-color: var(--lajama-skin);
+    background-color: #ffffff;
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(147, 61, 45, 0.1) !important;
+}
+
+/* --- CARRITO / DETALLE --- */
+#tabla-carrito tr {
+    border-bottom: 1px solid var(--lajama-cream);
+}
+
+#tabla-carrito td {
+    padding: 12px 5px;
+}
+
+/* --- BOTONES --- */
+.btn-jama-send {
+    background-color: var(--lajama-green);
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-jama-send:hover {
+    background-color: #0d231a;
+    transform: scale(1.02);
+    color: white;
+}
+
+/* Ajustes Leaflet Geosearch para que combine con el diseño */
+.leaflet-geosearch-bar form input {
+    border-radius: 10px !important;
+    border: 2px solid var(--lajama-peach) !important;
+}
+
+#mapa-preview {
+    height: 400px; /* O el tamaño en píxeles que mejor se adapte a tu diseño */
+    width: 100%;
+}

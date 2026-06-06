@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Vollkorn:ital,wght@0,600;0,700;0,800;1,600&display=swap');
+
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-peach: #FCE8D5;
+    --lajama-skin: #FFB38A;
+    --lajama-cream: #FFF7ED;
+    --lajama-hot: #933D2D;
+    --lajama-white: #FFFFFF;
+
+    --font-serif: 'Vollkorn', serif;
+    --font-sans: 'Plus Jakarta Sans', sans-serif;
+}
+
+body, html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--lajama-cream);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+.wrapper {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    align-items: stretch;
+    background-color: var(--lajama-cream);
+}
+
+.main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-bottom: 40px;
+}
+
+#sidebar {
+    width: 260px;
+    min-height: 100vh;
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(27, 58, 44, 0.08);
+    transition: width 0.3s ease;
+}
+
+.estacion-header {
+    background-color: var(--lajama-green);
+    padding: 1.2rem 2rem;
+    border-bottom: 4px solid var(--lajama-hot);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='12' viewBox='0 0 100 12'%3E%3Cpath d='M0,5 C25,-2 75,12 100,5 L100,12 L0,12 Z' fill='%23142d22'/%3E%3C/svg%3E");
+    background-position: bottom;
+    background-repeat: repeat-x;
+}
+
+.estacion-header h2 {
+    font-family: var(--font-serif);
+    color: var(--lajama-peach);
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+/* GRID DINÁMICO AUTO-AJUSTABLE */
+.pedidos-grid {
+    display: grid;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+}
+
+/* Soporte para Tablets y pantallas compactas de cocina */
+@media (max-width: 992px) {
+    #sidebar { width: 70px; }
+    .pedidos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+        gap: 1rem;
+        padding: 1rem;
+    }
+}
+
+@media (min-width: 1600px) {
+    .pedidos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    }
+}
