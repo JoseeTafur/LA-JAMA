@@ -23,6 +23,11 @@ public class LoginController {
     private final UsuarioService usuarioService;
     private final EmpleadoService empleadoService;
 
+    @GetMapping("/")
+    public String raiz() {
+        return "redirect:/login";
+    }
+
     @GetMapping("/logout")
     public String logout(HttpSession session, RedirectAttributes redirectAttributes) {
         session.invalidate();

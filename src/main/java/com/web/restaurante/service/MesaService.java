@@ -231,4 +231,43 @@ public class MesaService {
         }
         pedidoRepository.save(pedido);
     }
+
+    /**
+     * Libera la mesa sin verificar si los platos fueron entregados físicamente.
+     * Usado en el cierre masivo desde caja, donde el cobro ya fue procesado.
+     */
+    public void liberarMesaForzado(Long idMesa) {
+        Mesa mesaClickeada = mesaRepository.findById(idMesa)
+                .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
+
+        Mesa mesaPrincipal = (mesaClickeada.getMesaPadre() != null) ? mesaClickeada.getMesaPadre() : mesaClickeada;
+
+        // Marcar todos los pedidos activos como PAGADO
+        List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesa(mesaPrincipal.getNumero()).stream()
+                .filter(p -> p.getEstado() != EstadoPedido.PAGADO && p.getEstado() != EstadoPedido.CANCELADO)
+                .toList();
+
+        for (Pedido p : pedidosActivos) {
+            p.setEstado(EstadoPedido.PAGADO);
+            p.setNumeroMesa(null);
+            p.setFechaEntrega(LocalDateTime.now());
+            pedidoRepository.save(p);
+        }
+
+        // Liberar mesa principal
+        mesaPrincipal.setEstado("DISPONIBLE");
+        mesaRepository.save(mesaPrincipal);
+
+        // Liberar hijas
+        if (mesaPrincipal.getMesasHijas() != null && !mesaPrincipal.getMesasHijas().isEmpty()) {
+            for (Mesa hija : mesaPrincipal.getMesasHijas()) {
+                hija.setMesaPadre(null);
+                hija.setEstado("DISPONIBLE");
+                mesaRepository.save(hija);
+            }
+            mesaPrincipal.getMesasHijas().clear();
+            mesaRepository.save(mesaPrincipal);
+        }
+    }
+
 }

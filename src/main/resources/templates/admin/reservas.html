@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>La Jama - Reservas</title>
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <style>
+        :root {
+            --reserva-green: #2ecc71;
+            --reserva-orange: #f39c12;
+            --reserva-red: #e74c3c;
+            --reserva-blue: #3498db;
+            --reserva-dark: #1a1a2e;
+        }
+
+        .reserva-badge-PENDIENTE  { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+        .reserva-badge-CONFIRMADA { background: #d1e7dd; color: #0a3622; border: 1px solid #2ecc71; }
+        .reserva-badge-EXPIRADA   { background: #f8d7da; color: #58151c; border: 1px solid #e74c3c; }
+        .reserva-badge-LIBERADA   { background: #e2e3e5; color: #41464b; border: 1px solid #adb5bd; }
+        .reserva-badge-CANCELADA  { background: #f8d7da; color: #58151c; border: 1px solid #e74c3c; }
+
+        .countdown-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 20px;
+            background: var(--reserva-red);
+            color: white;
+            font-variant-numeric: tabular-nums;
+        }
+        .countdown-badge.safe    { background: var(--reserva-green); }
+        .countdown-badge.warning { background: var(--reserva-orange); }
+        .countdown-badge.danger  { background: var(--reserva-red);    animation: pulse-badge 1s infinite; }
+
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.6; }
+        }
+
+        .card-reserva {
+            border-radius: 12px;
+            border: 1px solid rgba(0,0,0,0.08);
+            transition: box-shadow .2s;
+        }
+        .card-reserva:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+
+        .card-reserva.estado-CONFIRMADA { border-left: 4px solid var(--reserva-green); }
+        .card-reserva.estado-PENDIENTE  { border-left: 4px solid var(--reserva-orange); }
+        .card-reserva.estado-EXPIRADA   { border-left: 4px solid var(--reserva-red); opacity: 0.7; }
+
+        .mesa-numero {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 1.1rem;
+            background: #f0f0f0; color: #333;
+            flex-shrink: 0;
+        }
+        .mesa-numero.ocupada   { background: #fde8d8; color: #d35400; }
+        .mesa-numero.pendiente { background: #fef9e7; color: #d68910; }
+
+        .recaudacion-banner {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        .timeline-hora {
+            font-size: 0.78rem;
+            color: #888;
+        }
+        .timeline-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: #e9ecef;
+            overflow: hidden;
+        }
+        .timeline-progress {
+            height: 100%;
+            border-radius: 3px;
+            background: var(--reserva-green);
+            transition: width 1s linear;
+        }
+        .timeline-progress.warning { background: var(--reserva-orange); }
+        .timeline-progress.danger  { background: var(--reserva-red); }
+    </style>
+</head>
+<body class="mesas-body">
+<div class="wrapper d-flex">
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/reservas')}"></div>
+
+    <main id="main-content" class="main-content flex-grow-1">
+        <div th:replace="~{sidebar :: logistica_header('Gestión de Reservas')}"></div>
+
+        <div class="container-fluid p-4">
+
+            <!-- Banner Header -->
+            <div class="recaudacion-banner d-flex justify-content-between align-items-center p-4 mb-4 rounded-4 shadow-sm">
+                <div>
+                    <h5 class="mb-0 fw-bold text-white"><i class="bi bi-calendar-check me-2"></i>Control de Reservas</h5>
+                    <p class="mb-0 text-white-50 small">Las mesas se liberan automáticamente al vencer el tiempo</p>
+                </div>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <span class="badge rounded-pill px-3 py-2 reserva-badge-PENDIENTE"><i class="bi bi-clock me-1"></i>Pendiente</span>
+                    <span class="badge rounded-pill px-3 py-2 reserva-badge-CONFIRMADA"><i class="bi bi-person-check me-1"></i>Confirmada</span>
+                    <span class="badge rounded-pill px-3 py-2 reserva-badge-EXPIRADA"><i class="bi bi-x-circle me-1"></i>Expirada</span>
+                    <button class="btn btn-warning fw-bold rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaReserva">
+                        <i class="bi bi-plus-circle me-1"></i> Nueva Reserva
+                    </button>
+                </div>
+            </div>
+
+            <!-- Alertas Flash -->
+            <div th:if="${mensajeExito}" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i><span th:text="${mensajeExito}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${mensajeError}" class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${mensajeError}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Tarjetas de Reservas Activas -->
+            <div th:if="${#lists.isEmpty(reservas)}" class="text-center py-5 text-muted">
+                <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+                <p class="mt-3 fw-bold fs-5">No hay reservas activas</p>
+                <p class="small">Crea una nueva reserva con el botón de arriba</p>
+            </div>
+
+            <div class="row g-3" th:unless="${#lists.isEmpty(reservas)}">
+                <div class="col-12 col-md-6 col-xl-4" th:each="r : ${reservas}">
+                    <div th:class="'card card-reserva shadow-sm estado-' + ${r.estado}">
+                        <div class="card-body p-3">
+                            <!-- Header -->
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <div th:class="'mesa-numero ' + (${r.estado.name() == 'CONFIRMADA'} ? 'ocupada' : 'pendiente')"
+                                     th:text="${r.numeroMesa}">1</div>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="fw-bold text-truncate" th:text="${r.nombreCliente}">Cliente</div>
+                                    <div class="small text-muted">
+                                        <i class="bi bi-people me-1"></i><span th:text="${r.cantidadPersonas}">2</span> personas
+                                        <span th:if="${r.telefono}" class="ms-2">
+                                            <i class="bi bi-telephone me-1"></i><span th:text="${r.telefono}"></span>
+                                        </span>
+                                    </div>
+                                </div>
+                                <span th:class="'badge rounded-pill reserva-badge-' + ${r.estado}"
+                                      th:text="${r.estado.descripcion}">Estado</span>
+                            </div>
+
+                            <!-- Timeline de hora -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between timeline-hora mb-1">
+                                    <span><i class="bi bi-clock-history me-1"></i>
+                                        Reserva: <strong th:text="${#temporals.format(r.fechaHoraReserva, 'dd/MM HH:mm')}"></strong>
+                                    </span>
+                                    <span>Libera: <strong th:text="${#temporals.format(r.fechaHoraLiberacion, 'HH:mm')}"></strong></span>
+                                </div>
+                                <div class="timeline-bar">
+                                    <div class="timeline-progress"
+                                         th:data-inicio="${#temporals.format(r.fechaHoraReserva, 'yyyy-MM-dd HH:mm:ss')}"
+                                         th:data-fin="${#temporals.format(r.fechaHoraLiberacion, 'yyyy-MM-dd HH:mm:ss')}"
+                                         th:data-estado="${r.estado}"
+                                         style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Countdown (para confirmadas) -->
+                            <div th:if="${r.estado.name() == 'CONFIRMADA'}" class="mb-3 d-flex align-items-center gap-2">
+                                <small class="text-muted">Tiempo restante:</small>
+                                <span class="countdown-badge"
+                                      th:data-liberacion="${#temporals.format(r.fechaHoraLiberacion, 'yyyy-MM-dd HH:mm:ss')}">
+                                    --:--
+                                </span>
+                            </div>
+
+                            <!-- Gracia (para pendientes) -->
+                            <div th:if="${r.estado.name() == 'PENDIENTE'}" class="mb-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-hourglass-split me-1"></i>
+                                    Gracia: <strong th:text="${r.minutosGracia}"></strong> min desde
+                                    <strong th:text="${#temporals.format(r.fechaHoraReserva, 'HH:mm')}"></strong>
+                                </small>
+                            </div>
+
+                            <!-- Notas -->
+                            <div th:if="${r.notas}" class="mb-3">
+                                <small class="text-muted"><i class="bi bi-chat-text me-1"></i><em th:text="${r.notas}"></em></small>
+                            </div>
+
+                            <!-- Acciones -->
+                            <div class="d-flex gap-2 flex-wrap">
+                                <!-- Confirmar llegada (solo pendientes) -->
+                                <button th:if="${r.estado.name() == 'PENDIENTE'}"
+                                        class="btn btn-sm btn-success rounded-pill fw-bold flex-grow-1"
+                                        th:onclick="'confirmarLlegada(' + ${r.id} + ', ' + ${r.numeroMesa} + ')'"
+                                        title="Marcar mesa como OCUPADA">
+                                    <i class="bi bi-person-check-fill me-1"></i> Llegó el Cliente
+                                </button>
+
+                                <!-- Extender tiempo (solo confirmadas) -->
+                                <button th:if="${r.estado.name() == 'CONFIRMADA'}"
+                                        class="btn btn-sm btn-outline-warning rounded-pill"
+                                        th:onclick="'abrirExtender(' + ${r.id} + ')'"
+                                        title="Dar más tiempo">
+                                    <i class="bi bi-alarm me-1"></i> +Tiempo
+                                </button>
+
+                                <!-- Cancelar -->
+                                <button th:unless="${r.estado.name() == 'EXPIRADA' || r.estado.name() == 'LIBERADA' || r.estado.name() == 'CANCELADA'}"
+                                        class="btn btn-sm btn-outline-danger rounded-pill"
+                                        th:onclick="'cancelarReserva(' + ${r.id} + ', \'' + ${r.nombreCliente} + '\')'">
+                                    <i class="bi bi-x-circle me-1"></i> Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /container -->
+    </main>
+</div>
+
+<!-- ══════════════ MODAL: NUEVA RESERVA ══════════════ -->
+<div class="modal fade" id="modalNuevaReserva" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus me-2 text-warning"></i>Nueva Reserva</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/admin/reservas/crear}" th:object="${reservaForm}" method="post">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <!-- Nombre -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Nombre del Cliente *</label>
+                            <input type="text" class="form-control rounded-3" th:field="*{nombreCliente}"
+                                   placeholder="Ej: María García" required maxlength="100">
+                            <div class="text-danger small" th:errors="*{nombreCliente}"></div>
+                        </div>
+
+                        <!-- Teléfono -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Teléfono</label>
+                            <input type="tel" class="form-control rounded-3" th:field="*{telefono}"
+                                   placeholder="Ej: 999 123 456" maxlength="20">
+                        </div>
+
+                        <!-- Personas -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">N° de Personas *</label>
+                            <input type="number" class="form-control rounded-3" th:field="*{cantidadPersonas}"
+                                   min="1" max="20" value="2" required>
+                            <div class="text-danger small" th:errors="*{cantidadPersonas}"></div>
+                        </div>
+
+                        <!-- Mesa -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Mesa *</label>
+                            <select class="form-select rounded-3" th:field="*{numeroMesa}" required>
+                                <option value="">-- Seleccionar --</option>
+                                <option th:each="m : ${mesas}"
+                                        th:value="${m.numero}"
+                                        th:text="'Mesa N° ' + ${m.numero} + ' (' + ${m.estado} + ')'">
+                                </option>
+                            </select>
+                            <div class="text-danger small" th:errors="*{numeroMesa}"></div>
+                        </div>
+
+                        <!-- Fecha y Hora -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Fecha y Hora *</label>
+                            <input type="datetime-local" class="form-control rounded-3" th:field="*{fechaHoraReserva}" required>
+                            <div class="text-danger small" th:errors="*{fechaHoraReserva}"></div>
+                        </div>
+
+                        <!-- Duración -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">
+                                Duración estimada
+                                <span class="text-muted fw-normal">(minutos)</span>
+                            </label>
+                            <select class="form-select rounded-3" th:field="*{duracionEstimadaMinutos}">
+                                <option value="60">1 hora</option>
+                                <option value="90" selected>1 hora 30 min</option>
+                                <option value="120">2 horas</option>
+                                <option value="150">2 horas 30 min</option>
+                                <option value="180">3 horas</option>
+                            </select>
+                        </div>
+
+                        <!-- Gracia -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">
+                                Tiempo de gracia
+                                <span class="text-muted fw-normal">(si no llega, expira)</span>
+                            </label>
+                            <select class="form-select rounded-3" th:field="*{minutosGracia}">
+                                <option value="10">10 minutos</option>
+                                <option value="15" selected>15 minutos</option>
+                                <option value="20">20 minutos</option>
+                                <option value="30">30 minutos</option>
+                            </select>
+                        </div>
+
+                        <!-- Notas -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Notas (opcional)</label>
+                            <textarea class="form-control rounded-3" th:field="*{notas}" rows="2"
+                                      placeholder="Ej: cumpleaños, alergias, silla de bebé..."></textarea>
+                        </div>
+
+                        <!-- Aviso de regla estricta -->
+                        <div class="col-12">
+                            <div class="alert alert-warning rounded-3 py-2 mb-0 small">
+                                <i class="bi bi-shield-exclamation me-1"></i>
+                                <strong>Regla de mesa:</strong> Si otra reserva se solapa en ese horario ±tiempo estimado, el sistema lo rechazará automáticamente.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning fw-bold rounded-pill px-4">
+                        <i class="bi bi-calendar-check me-1"></i> Registrar Reserva
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ MODAL: EXTENDER TIEMPO ══════════════ -->
+<div class="modal fade" id="modalExtender" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-4 shadow">
+            <div class="modal-header border-0">
+                <h6 class="modal-title fw-bold"><i class="bi bi-alarm me-2 text-warning"></i>Extender Tiempo de Mesa</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="text-muted small mb-3">¿Cuántos minutos adicionales?</p>
+                <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <button class="btn btn-outline-primary rounded-pill" onclick="ejecutarExtender(15)">+15 min</button>
+                    <button class="btn btn-outline-primary rounded-pill" onclick="ejecutarExtender(30)">+30 min</button>
+                    <button class="btn btn-outline-primary rounded-pill" onclick="ejecutarExtender(60)">+1 hora</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    let reservaIdExtender = null;
+
+    // ── Confirmar llegada del cliente ────────────────────────────────────────
+    async function confirmarLlegada(id, mesa) {
+        if (!confirm(`¿Confirmar llegada del cliente? La Mesa N° ${mesa} se marcará como OCUPADA.`)) return;
+        try {
+            const res = await fetch(`/admin/reservas/${id}/confirmar`, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) { mostrarToast('success', data.mensaje); setTimeout(() => location.reload(), 1500); }
+            else         mostrarToast('danger', data.error);
+        } catch (e) { mostrarToast('danger', 'Error de conexión'); }
+    }
+
+    // ── Cancelar reserva ──────────────────────────────────────────────────────
+    async function cancelarReserva(id, nombre) {
+        if (!confirm(`¿Cancelar la reserva de "${nombre}"? La mesa volverá a estar disponible.`)) return;
+        try {
+            const res = await fetch(`/admin/reservas/${id}/cancelar`, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) { mostrarToast('success', data.mensaje); setTimeout(() => location.reload(), 1500); }
+            else         mostrarToast('danger', data.error);
+        } catch (e) { mostrarToast('danger', 'Error de conexión'); }
+    }
+
+    // ── Extender tiempo ────────────────────────────────────────────────────────
+    function abrirExtender(id) {
+        reservaIdExtender = id;
+        new bootstrap.Modal(document.getElementById('modalExtender')).show();
+    }
+    async function ejecutarExtender(minutos) {
+        if (!reservaIdExtender) return;
+        try {
+            const res = await fetch(`/admin/reservas/${reservaIdExtender}/extender?minutos=${minutos}`, { method: 'POST' });
+            const data = await res.json();
+            bootstrap.Modal.getInstance(document.getElementById('modalExtender'))?.hide();
+            if (res.ok) { mostrarToast('success', data.mensaje); setTimeout(() => location.reload(), 1500); }
+            else         mostrarToast('danger', data.error);
+        } catch (e) { mostrarToast('danger', 'Error de conexión'); }
+    }
+
+    // ── Toast de notificación ─────────────────────────────────────────────────
+    function mostrarToast(tipo, mensaje) {
+        const id = 'toast-' + Date.now();
+        const html = `
+            <div id="${id}" class="toast align-items-center text-bg-${tipo} border-0 show" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body fw-semibold">${mensaje}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>`;
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+        }
+        container.insertAdjacentHTML('beforeend', html);
+        setTimeout(() => document.getElementById(id)?.remove(), 4000);
+    }
+
+    // ── Countdowns y barras de progreso ────────────────────────────────────────
+    function actualizarContadores() {
+        const ahora = new Date();
+
+        // Countdowns para reservas CONFIRMADAS
+        document.querySelectorAll('.countdown-badge[data-liberacion]').forEach(el => {
+            const fin = new Date(el.dataset.liberacion.replace(' ', 'T'));
+            const diff = fin - ahora;
+            if (diff <= 0) {
+                el.textContent = '¡Tiempo!';
+                el.className = 'countdown-badge danger';
+                return;
+            }
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            el.textContent = h > 0
+                ? `${h}h ${String(m).padStart(2,'0')}m`
+                : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+            el.className = 'countdown-badge ' +
+                (diff < 5 * 60000 ? 'danger' : diff < 15 * 60000 ? 'warning' : 'safe');
+        });
+
+        // Barras de progreso
+        document.querySelectorAll('.timeline-progress[data-inicio]').forEach(bar => {
+            if (bar.dataset.estado !== 'CONFIRMADA') { bar.style.width = '0%'; return; }
+            const inicio = new Date(bar.dataset.inicio.replace(' ', 'T'));
+            const fin    = new Date(bar.dataset.fin.replace(' ', 'T'));
+            const total  = fin - inicio;
+            const elapsed = Math.max(0, ahora - inicio);
+            const pct = Math.min(100, (elapsed / total) * 100);
+            bar.style.width = pct + '%';
+            bar.className = 'timeline-progress' +
+                (pct > 85 ? ' danger' : pct > 65 ? ' warning' : '');
+        });
+    }
+
+    actualizarContadores();
+    setInterval(actualizarContadores, 1000);
+
+    // Auto-refresh cada 60s para recoger cambios del servidor
+    setInterval(() => location.reload(), 60000);
+</script>
+</body>
+</html>

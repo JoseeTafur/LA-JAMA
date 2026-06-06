@@ -8,6 +8,7 @@ import com.web.restaurante.model.enums.TipoPedido;
 import com.web.restaurante.repository.EmpleadoRepository;
 import com.web.restaurante.repository.InsumoProductoRepository;
 import com.web.restaurante.repository.PedidoRepository;
+import com.web.restaurante.service.TurnoCajaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
+    private final TurnoCajaService turnoCajaService;
     private final EmpleadoRepository empleadoRepository;
     private final ProteinaService proteinaService;
     private final InsumoService insumoService;
@@ -266,7 +268,18 @@ public class PedidoService {
     public List<Pedido> listarPedidosPorCobrar() { return pedidoRepository.listarPedidosPorCobrar(); }
 
     @Transactional
-    public void cobrarPedido(Long id) { pedidoRepository.actualizarEstadoJPQL(id, EstadoPedido.PAGADO); }
+    public void cobrarPedido(Long id) {
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+        pedidoRepository.actualizarEstadoJPQL(id, EstadoPedido.PAGADO);
+
+        // Registrar en caja si hay turno activo
+        String concepto = pedido.getNumeroMesa() != null
+                ? "Mesa " + pedido.getNumeroMesa()
+                : (pedido.getCliente() != null ? "Delivery - " + pedido.getCliente() : "Pedido #" + id);
+        if (pedido.getMontoTotal() != null) {
+            turnoCajaService.registrarVenta(concepto, pedido.getMontoTotal());
+        }
+    }
 
     @Transactional
     public void asignarRepartidor(Long pedidoId, Empleado repartidor) {

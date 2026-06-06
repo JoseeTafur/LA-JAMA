@@ -89,4 +89,67 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // --- 6. AUTO-CÁLCULO DE MONTO ESPERADO EN CIERRE ---
+    const modalCierre = document.getElementById('modalCierreCaja');
+    if (modalCierre) {
+        modalCierre.addEventListener('show.bs.modal', function () {
+            const banner = document.getElementById('banner-turno');
+            if (!banner) return;
+
+            const montoApertura = parseFloat(banner.dataset.montoApertura || 0);
+
+            // Calcular ventas cobradas: solo filas con data-tipo="VENTA"
+            let totalVendido = 0;
+            document.querySelectorAll('#historial-movimientos tr[data-tipo="VENTA"]').forEach(row => {
+                const montoCell = row.querySelector('.monto-movimiento');
+                if (montoCell) {
+                    totalVendido += parseFloat(montoCell.dataset.monto || 0);
+                }
+            });
+
+            // Restar egresos del total esperado
+            let totalEgresos = 0;
+            document.querySelectorAll('#historial-movimientos tr[data-tipo="EGRESO"]').forEach(row => {
+                const montoCell = row.querySelector('.monto-movimiento');
+                if (montoCell) {
+                    totalEgresos += parseFloat(montoCell.dataset.monto || 0); // ya es negativo
+                }
+            });
+
+            const totalEsperado = montoApertura + totalVendido + totalEgresos;
+
+            const fmt = (n) => n.toFixed(2);
+            const elFondo    = document.getElementById('cierre-fondo');
+            const elVentas   = document.getElementById('cierre-ventas');
+            const elEgresos  = document.getElementById('cierre-egresos');
+            const filaEgresos = document.getElementById('fila-egresos');
+            const elTotal    = document.getElementById('cierre-total');
+            const inputMonto = document.getElementById('inputMontoCierre');
+
+            if (elFondo)  elFondo.textContent  = fmt(montoApertura);
+            if (elVentas) elVentas.textContent  = fmt(totalVendido);
+            if (elEgresos) {
+                elEgresos.textContent = fmt(totalEgresos); // ya negativo, ej: -200.00
+                if (filaEgresos) filaEgresos.style.display = totalEgresos < 0 ? 'flex' : 'none';
+            }
+            if (elTotal)  elTotal.textContent   = fmt(totalEsperado);
+            if (inputMonto && !inputMonto.value) {
+                inputMonto.value = fmt(totalEsperado);
+            }
+        });
+
+        // Botón "Usar monto esperado"
+        const btnUsarEsperado = document.getElementById('btnUsarEsperado');
+        if (btnUsarEsperado) {
+            btnUsarEsperado.addEventListener('click', function () {
+                const totalText = document.getElementById('cierre-total');
+                const inputMonto = document.getElementById('inputMontoCierre');
+                if (totalText && inputMonto) {
+                    inputMonto.value = totalText.textContent;
+                    inputMonto.focus();
+                }
+            });
+        }
+    }
+
 });

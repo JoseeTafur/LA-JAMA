@@ -96,6 +96,10 @@ const AppUtils = (function () {
         Swal.fire(config).then((result) => {
             if (result.isConfirmed && typeof onConfirm === 'function') {
                 onConfirm();
+            } else {
+                // ✅ FIX: Si el usuario cancela o cierra el diálogo,
+                // eliminar el overlay para que no bloquee la pantalla
+                showLoading(false);
             }
         });
     }
