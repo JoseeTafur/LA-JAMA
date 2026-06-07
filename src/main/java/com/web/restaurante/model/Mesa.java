@@ -19,7 +19,7 @@ public class Mesa {
     @Column(length = 20)
     private String estado;
 
-    // --- NUEVOS CAMPOS PARA UNIFICACIÓN ---
+    // --- CAMPOS PARA UNIFICACIÓN ---
 
     // Si esta mesa fue unida a otra, aquí se guarda quién es la mesa principal
     @ManyToOne(fetch = FetchType.LAZY)

@@ -4,6 +4,9 @@ import com.web.restaurante.dto.mesas.MesaDTO;
 import com.web.restaurante.model.Pedido;
 import com.web.restaurante.service.MesaService;
 import com.web.restaurante.service.PedidoService;
+import com.web.restaurante.repository.ReservaRepository;
+import com.web.restaurante.model.enums.EstadoReserva;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -19,15 +22,36 @@ import java.util.Map;
 public class MesaController {
 
     private final MesaService mesaService;
-    private final PedidoService pedidoService; // Inyectado para gestionar el estado de los platos
+    private final PedidoService pedidoService;
+    private final ReservaRepository reservaRepository;
 
     @GetMapping
     public String verPlanoMesas(Model model) {
         List<MesaDTO> mesasDTO = mesaService.obtenerMesasParaSalon();
         List<Pedido> pedidosActivos = mesaService.obtenerPedidosActivos();
 
+        // Mapa: numeroMesa -> lista de otras mesas del mismo grupo de reserva
+        java.util.Map<Integer, java.util.List<Integer>> gruposReserva = new java.util.HashMap<>();
+        java.util.List<com.web.restaurante.model.Reserva> reservasActivas = reservaRepository
+                .findByEstadoIn(java.util.List.of(EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA));
+        // Agrupar por cliente+hora
+        java.util.Map<String, java.util.List<com.web.restaurante.model.Reserva>> grupos = reservasActivas.stream()
+                .collect(Collectors.groupingBy(r -> r.getNombreCliente() + "|" + r.getFechaHoraReserva()));
+        for (java.util.List<com.web.restaurante.model.Reserva> grupo : grupos.values()) {
+            if (grupo.size() > 1) {
+                for (com.web.restaurante.model.Reserva r : grupo) {
+                    java.util.List<Integer> otras = grupo.stream()
+                            .filter(x -> !x.getNumeroMesa().equals(r.getNumeroMesa()))
+                            .map(com.web.restaurante.model.Reserva::getNumeroMesa)
+                            .collect(Collectors.toList());
+                    gruposReserva.put(r.getNumeroMesa(), otras);
+                }
+            }
+        }
+
         model.addAttribute("mesas", mesasDTO);
         model.addAttribute("pedidos", pedidosActivos);
+        model.addAttribute("gruposReserva", gruposReserva);
         return "admin/mesas";
     }
 

@@ -449,17 +449,22 @@
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small">N° de Personas *</label>
                                     <input type="number" class="form-control rounded-3" th:field="*{cantidadPersonas}"
-                                           min="1" max="20" value="2" required>
+                                           id="cajaInputPersonas" min="1" max="60" value="2" required
+                                           oninput="cajaAsignarMesas()">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold small">Mesa *</label>
-                                    <select class="form-select rounded-3" th:field="*{numeroMesa}" required>
-                                        <option value="">-- Seleccionar --</option>
-                                        <option th:each="m : ${todasLasMesas}"
-                                                th:value="${m.numero}"
-                                                th:text="'Mesa N° ' + ${m.numero} + ' (' + ${m.estado} + ')'">
-                                        </option>
-                                    </select>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold small">Mesas (asignadas automáticamente)</label>
+                                    <div id="cajaPanelAsignacion" class="border rounded-3 p-3 bg-light">
+                                        <div class="text-muted small text-center py-1">
+                                            <i class="bi bi-arrow-up-circle me-1"></i>
+                                            Ingresa el N° de personas para asignar mesas
+                                        </div>
+                                    </div>
+                                    <!-- Inyectar datos de mesas desde Thymeleaf -->
+                                    <script th:inline="javascript">
+                                        const CAJA_MESAS = /*[[${todasLasMesas}]]*/ [];
+                                    </script>
+                                    <input type="hidden" name="numerosMesas" id="cajaInputNumerosMesas" value="">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small">Fecha y Hora *</label>
@@ -621,6 +626,70 @@
     actualizarContadores();
     setInterval(actualizarContadores, 1000);
     setInterval(() => location.reload(), 60000);
+
+    // ── Asignación automática de mesas (Caja) ────────────────────────────────
+    const CAJA_CAP = 4;
+
+    function cajaAsignarMesas() {
+        const personas = parseInt(document.getElementById('cajaInputPersonas')?.value) || 0;
+        const panel    = document.getElementById('cajaPanelAsignacion');
+        const inputHid = document.getElementById('cajaInputNumerosMesas');
+        if (!panel || !inputHid) return;
+
+        if (!personas || personas < 1) {
+            panel.innerHTML = `<div class="text-muted small text-center py-1">
+                <i class="bi bi-arrow-up-circle me-1"></i> Ingresa el N° de personas para asignar mesas</div>`;
+            inputHid.value = '';
+            return;
+        }
+
+        const mesasLibres = (typeof CAJA_MESAS !== 'undefined' ? CAJA_MESAS : [])
+            .filter(m => m.estado === 'LIBRE' || m.estado === 'DISPONIBLE')
+            .map(m => {
+                const hijasCount = (m.mesasHijas && Array.isArray(m.mesasHijas)) ? m.mesasHijas.length : 0;
+                return { numero: m.numero, sillas: (1 + hijasCount) * CAJA_CAP };
+            })
+            .sort((a, b) => a.numero - b.numero);
+
+        const asignadas = [];
+        let capacidad = 0;
+        for (const mesa of mesasLibres) {
+            if (capacidad >= personas) break;
+            asignadas.push(mesa);
+            capacidad += mesa.sillas;
+        }
+
+        const capTotal = mesasLibres.reduce((s, m) => s + m.sillas, 0);
+
+        if (capTotal < personas) {
+            panel.innerHTML = `<div class="alert alert-danger mb-0 py-2 px-3 d-flex align-items-center gap-2" style="font-size:0.87rem">
+                <i class="bi bi-x-circle-fill fs-5"></i>
+                <div>No hay mesas disponibles para <strong>${personas} persona(s)</strong>. Capacidad libre: <strong>${capTotal} sillas</strong>.</div>
+            </div>`;
+            inputHid.value = '';
+            return;
+        }
+
+        inputHid.value = asignadas.map(m => m.numero).join(',');
+        const mesasHtml = asignadas.map(m => `
+            <span class="badge bg-warning text-dark me-1 px-2 py-1" style="font-size:0.82rem;border-radius:7px">
+                <i class="bi bi-grid-3x3-gap-fill me-1"></i>Mesa ${m.numero} (${m.sillas} sillas)
+            </span>`).join('');
+
+        panel.innerHTML = `
+            <div class="fw-semibold small text-success mb-1">
+                <i class="bi bi-check-circle-fill me-1"></i>
+                ${asignadas.length} mesa(s) asignada(s) — ${capacidad} sillas
+            </div>
+            <div class="d-flex flex-wrap gap-1 mt-1">${mesasHtml}</div>`;
+    }
+
+    // Ejecutar al abrir el modal
+    document.getElementById('modalNuevaReserva')?.addEventListener('show.bs.modal', () => {
+        const inp = document.getElementById('cajaInputPersonas');
+        if (inp) inp.value = 2;
+        cajaAsignarMesas();
+    });
 </script>
 </body>
 </html>

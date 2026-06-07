@@ -7,6 +7,9 @@ import com.web.restaurante.model.Producto;
 import com.web.restaurante.model.enums.EstadoPedido;
 import com.web.restaurante.repository.MesaRepository;
 import com.web.restaurante.repository.PedidoRepository;
+import com.web.restaurante.repository.ReservaRepository;
+import com.web.restaurante.model.Reserva;
+import com.web.restaurante.model.enums.EstadoReserva;
 import com.web.restaurante.repository.ProductoRepository;
 import com.web.restaurante.service.PedidoService;
 import jakarta.servlet.http.HttpSession;
@@ -27,6 +30,7 @@ public class MeseroController {
     private final PedidoService pedidoService;
     private final MesaRepository mesaRepository;
     private final PedidoRepository pedidoRepository;
+    private final ReservaRepository reservaRepository;
 
     @GetMapping("/nuevo")
     public String nuevoPedido(Model model, HttpSession session,
@@ -116,10 +120,50 @@ public class MeseroController {
             if (mesaId != null) {
                 // Caso A: Si llega mesaId explícito por la URL, asignamos y ocupamos la mesa
                 Mesa mesa = mesaRepository.findById(mesaId).orElseThrow();
-                pedidoFinal.setNumeroMesa(mesa.getNumero());
-                mesa.setEstado("OCUPADA");
-                mesaRepository.save(mesa);
+
+                // ★ FIX MESAS AGRUPADAS: Si la mesa clickeada es una hija, usar la mesa padre
+                Mesa mesaPrincipal = (mesa.getMesaPadre() != null) ? mesa.getMesaPadre() : mesa;
+
+                pedidoFinal.setNumeroMesa(mesaPrincipal.getNumero());
+                mesaPrincipal.setEstado("OCUPADA");
+                mesaRepository.save(mesaPrincipal);
+                // También marcamos la hija como ocupada si corresponde
+                if (mesa.getMesaPadre() != null) {
+                    mesa.setEstado("OCUPADA");
+                    mesaRepository.save(mesa);
+                }
+                System.out.println("DEBUG MESA -> Mesa real asignada: N° " + mesaPrincipal.getNumero()
+                        + (mesa.getMesaPadre() != null ? " (redirigido desde hija N° " + mesa.getNumero() + ")" : ""));
+                // Reemplazamos 'mesa' por 'mesaPrincipal' para el bloque de reservas de grupo
+                mesa = mesaPrincipal;
                 System.out.println("DEBUG MESA -> Asignada explícitamente: Mesa N° " + mesa.getNumero());
+
+                // Si la mesa estaba RESERVADA, buscar otras mesas de la misma reserva y ocuparlas también
+                final Integer numeroMesaPrincipalFinal = mesaPrincipal.getNumero();
+                java.util.List<Reserva> reservasGrupo = reservaRepository
+                        .findByNumeroMesaAndEstadoIn(numeroMesaPrincipalFinal,
+                                java.util.List.of(EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA));
+                if (!reservasGrupo.isEmpty()) {
+                    Reserva reservaRef = reservasGrupo.get(0);
+                    // Buscar otras reservas del mismo cliente y hora (mismo grupo)
+                    java.util.List<Reserva> todasReservasGrupo = reservaRepository
+                            .findByEstadoIn(java.util.List.of(EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA))
+                            .stream()
+                            .filter(r -> r.getNombreCliente().equals(reservaRef.getNombreCliente())
+                                    && r.getFechaHoraReserva().equals(reservaRef.getFechaHoraReserva())
+                                    && !r.getNumeroMesa().equals(numeroMesaPrincipalFinal))
+                            .toList();
+                    for (Reserva otraReserva : todasReservasGrupo) {
+                        mesaRepository.findAll().stream()
+                                .filter(m -> m.getNumero().equals(otraReserva.getNumeroMesa()))
+                                .findFirst()
+                                .ifPresent(otraMesa -> {
+                                    otraMesa.setEstado("OCUPADA");
+                                    mesaRepository.save(otraMesa);
+                                    System.out.println("DEBUG RESERVA GRUPO -> Mesa vinculada también ocupada: N° " + otraMesa.getNumero());
+                                });
+                    }
+                }
             } else if (pedidoDeFrontend.getId() != null) {
                 // Caso B: Es una adición y no viajó mesaId en la URL. Conservamos la mesa que ya tenía la BD
                 System.out.println("DEBUG MESA -> Manteniendo Mesa N° " + pedidoFinal.getNumeroMesa() + " heredada de la BD.");
@@ -223,6 +267,28 @@ public class MeseroController {
                 Mesa mesa = mesaRepository.findById(mesaId).orElseThrow();
                 mesa.setEstado("LIBRE");
                 mesaRepository.save(mesa);
+
+                // Liberar también mesas vinculadas por reserva de grupo
+                final Integer numeroMesaPrincipal = mesa.getNumero();
+                java.util.List<Reserva> reservasGrupo = reservaRepository
+                        .findByNumeroMesaAndEstadoIn(numeroMesaPrincipal,
+                                java.util.List.of(EstadoReserva.CONFIRMADA, EstadoReserva.PENDIENTE));
+                if (!reservasGrupo.isEmpty()) {
+                    Reserva reservaRef = reservasGrupo.get(0);
+                    reservaRepository.findByEstadoIn(java.util.List.of(EstadoReserva.CONFIRMADA, EstadoReserva.PENDIENTE))
+                            .stream()
+                            .filter(r -> r.getNombreCliente().equals(reservaRef.getNombreCliente())
+                                    && r.getFechaHoraReserva().equals(reservaRef.getFechaHoraReserva())
+                                    && !r.getNumeroMesa().equals(numeroMesaPrincipal))
+                            .forEach(otraReserva -> mesaRepository.findAll().stream()
+                                    .filter(m -> m.getNumero().equals(otraReserva.getNumeroMesa()))
+                                    .findFirst()
+                                    .ifPresent(otraMesa -> {
+                                        otraMesa.setEstado("LIBRE");
+                                        mesaRepository.save(otraMesa);
+                                        System.out.println("DEBUG RESERVA GRUPO -> Mesa vinculada liberada: N° " + otraMesa.getNumero());
+                                    }));
+                }
             }
 
             return ResponseEntity.ok("OK");

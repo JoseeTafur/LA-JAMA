@@ -28,6 +28,7 @@
                     <span class="badge badge-legend bg-recoger"><i class="bi bi-bell-fill me-1"></i> Para Recoger</span>
                     <span class="badge badge-legend bg-pagar"><i class="bi bi-person-check-fill me-1"></i> Listo para Pagar</span>
                     <span class="badge badge-legend bg-unificada"><i class="bi bi-link-45deg me-1"></i> Unificada</span>
+                    <span class="badge badge-legend" style="background:#eff6ff;color:#1e40af;border:1px solid #93c5fd"><i class="bi bi-calendar-check-fill me-1"></i> Reservada</span>
                 </div>
             </div>
 
@@ -74,16 +75,18 @@
 
                                      th:class="'mesa-box shadow-sm ' +
                                       (${m.estado == 'UNIFICADA' || (m.numerosMesasHijas != null && !m.numerosMesasHijas.isEmpty())} ? 'unificada' :
+                                      (${m.estado == 'RESERVADA'} ? 'reservada' :
                                       (${m.estado == 'OCUPADA' and pedidoMesa == null} ? 'reservada' :
                                       (${pedidoMesa == null} ? 'disponible' :
                                         (${pedidoMesa.tienePlatosMicroParaRecoger()} ? 'lista-para-recoger' :
-                                        (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar')))))"
+                                        (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar'))))))"
 
                                      th:data-id="${m.id}"
                                      th:data-numero="${m.numero}"
                                      th:data-pedido-id="${pedidoMesa != null ? pedidoMesa.id : ''}"
                                      th:data-pedido-estado="${pedidoMesa != null ? pedidoMesa.estado.name() : 'NINGUNO'}"
                                      th:data-es-padre="${m.numerosMesasHijas != null && !m.numerosMesasHijas.isEmpty() ? 'SI' : 'NO'}"
+                                     th:data-id-padre="${m.idMesaPadre != null ? m.idMesaPadre : ''}"
                                      th:id="'mesa-card-' + ${m.id}"
                                      onclick="gestionarClickMesa(this)">
 
@@ -93,11 +96,19 @@
 
                                     <div class="mesa-icon-wrapper">
                                         <i th:class="${m.estado == 'UNIFICADA' || (m.numerosMesasHijas != null && !m.numerosMesasHijas.isEmpty())} ? 'bi bi-link-45deg' :
+                                                     (${m.estado == 'RESERVADA'} ? 'bi bi-calendar-check-fill' :
                                                      (${pedidoMesa != null && pedidoMesa.tienePlatosMicroParaRecoger()} ? 'bi bi-bell-fill' :
                                                      (${pedidoMesa != null && pedidoMesa.tienePlatosMicroEnCocina()} ? 'bi bi-cup-hot-fill' :
-                                                     (${pedidoMesa != null} ? 'bi bi-person-check-fill' : 'bi bi-cup-hot-fill')))"></i>
+                                                     (${pedidoMesa != null} ? 'bi bi-person-check-fill' : 'bi bi-cup-hot-fill'))))"></i>
                                     </div>
                                     <span class="mesa-numero">Mesa #[[${m.numero}]]</span>
+                                    <!-- Badge de grupo reserva -->
+                                    <span th:if="${m.estado == 'RESERVADA' and gruposReserva != null and gruposReserva[m.numero] != null}"
+                                          class="badge mt-1"
+                                          style="font-size:0.65rem;background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;border-radius:6px;padding:2px 6px;">
+                                        <i class="bi bi-link-45deg"></i>
+                                        +<span th:text="${#lists.size(gruposReserva[m.numero])}"></span> mesa(s)
+                                    </span>
                                 </div>
                             </div>
                         </div>

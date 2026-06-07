@@ -1,4 +1,5 @@
 let currentMesaId = null;
+let currentMesaIdReal = null; // ★ Mesa padre si aplica, misma si no hay agrupación
 let currentMesaNumero = null;
 let currentPedidoId = null;
 let mesaModal = null;
@@ -77,6 +78,10 @@ function prepararGestion(elemento) {
 
     currentPedidoId = elemento.getAttribute('data-pedido-id');
     currentMesaId = id;
+
+    // ★ FIX: Si esta mesa es una hija (tiene padre), usar el id del padre para ir al menú
+    const idPadre = elemento.getAttribute('data-id-padre');
+    currentMesaIdReal = (idPadre && idPadre !== '') ? idPadre : id;
 
     const esUnificada = elemento.classList.contains('unificada');
     const esTarjetaEstirada = elemento.classList.contains('tarjeta-unificada');
@@ -335,8 +340,9 @@ function eliminarItemComanda(pedidoId, detalleId, nombreProducto, esMerma) {
 }
 
 function irAMenu() {
-    if (currentMesaId) {
-        let url = '/admin/mesero/nuevo?mesaId=' + currentMesaId;
+    if (currentMesaIdReal) {
+        // ★ FIX: Usamos currentMesaIdReal (mesa padre si la actual es hija)
+        let url = '/admin/mesero/nuevo?mesaId=' + currentMesaIdReal;
         if (currentPedidoId) {
             url += '&pedidoId=' + currentPedidoId;
         }

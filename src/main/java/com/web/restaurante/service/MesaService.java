@@ -126,7 +126,14 @@ public class MesaService {
         }
     }
     public Map<String, Object> generarPrecuenta(Integer numeroMesa) {
-        List<Pedido> pedidos = pedidoRepository.findByNumeroMesa(numeroMesa).stream()
+        // ★ FIX: Si este número de mesa es una hija unificada, buscar por el número del padre
+        Integer numeroBusqueda = mesaRepository.findAll().stream()
+                .filter(m -> m.getNumero().equals(numeroMesa) && m.getMesaPadre() != null)
+                .findFirst()
+                .map(m -> m.getMesaPadre().getNumero())
+                .orElse(numeroMesa);
+
+        List<Pedido> pedidos = pedidoRepository.findByNumeroMesa(numeroBusqueda).stream()
                 .filter(p -> p.getEstado() != EstadoPedido.PAGADO && p.getEstado() != EstadoPedido.CANCELADO).toList();
 
         if (pedidos.isEmpty()) return null;
