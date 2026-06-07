@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apertura de Caja | La Jama</title>
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/caja.css}">
+</head>
+<body class="caja-body">
+
+<div class="wrapper">
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/caja')}"></div>
+
+    <main id="main-content" class="main-content">
+        <div th:replace="~{sidebar :: logistica_header('Módulo de Caja')}"></div>
+
+        <div class="container-fluid px-4 mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-6 col-lg-5">
+
+                    <!-- Alerta de error si existe -->
+                    <div th:if="${mensajeError}" class="alert alert-danger rounded-4 shadow-sm mb-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <span th:text="${mensajeError}"></span>
+                    </div>
+
+                    <div class="card border-0 shadow rounded-4 p-4">
+                        <div class="text-center mb-4">
+                            <div class="mb-3">
+                                <i class="bi bi-cash-coin text-success" style="font-size: 3.5rem;"></i>
+                            </div>
+                            <h4 class="fw-bold text-jama-green">Apertura de Caja</h4>
+                            <p class="text-muted small">
+                                No hay ningún turno activo. Ingresa el monto inicial para comenzar el día.
+                            </p>
+                        </div>
+
+                        <!-- Monto sugerido del día anterior -->
+                        <div th:if="${montoSugerido > 0}"
+                             class="alert alert-info rounded-3 d-flex align-items-center gap-2 mb-4">
+                            <i class="bi bi-info-circle-fill"></i>
+                            <span>
+                                El cierre del día anterior fue
+                                <strong>S/ <span th:text="${#numbers.formatDecimal(montoSugerido, 1, 2)}"></span></strong>.
+                                Se usará como fondo inicial.
+                            </span>
+                        </div>
+
+                        <form th:action="@{/admin/caja/apertura}" method="post">
+                            <div class="mb-4">
+                                <label for="montoApertura" class="form-label fw-bold">
+                                    <i class="bi bi-wallet2 me-1"></i> Monto inicial en caja (S/)
+                                </label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text bg-light border-0 fw-bold">S/</span>
+                                    <input type="number"
+                                           id="montoApertura"
+                                           name="montoApertura"
+                                           class="form-control form-control-lg border-0 bg-light"
+                                           step="0.01"
+                                           min="0"
+                                           th:value="${montoSugerido > 0 ? montoSugerido : 200}"
+                                           placeholder="0.00"
+                                           required>
+                                </div>
+                                <div class="form-text text-muted">
+                                    Este es el efectivo físico con el que inicia la caja hoy.
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-success btn-lg w-100 rounded-pill py-3 fw-bold shadow-sm">
+                                <i class="bi bi-unlock-fill me-2"></i> Abrir Caja
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+</body>
+</html>

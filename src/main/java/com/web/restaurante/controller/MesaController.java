@@ -112,4 +112,28 @@ public class MesaController {
             return ResponseEntity.badRequest().body("Error al unificar: " + e.getMessage());
         }
     }
+
+    /**
+     * CIERRE MASIVO MULTITICKET — llamado desde caja-movil.js al presionar "PROCESAR CIERRE MASIVO"
+     * Cobra el pedido, libera la mesa y sus hijas.
+     */
+    @PostMapping("/comanda/liquidar-bloque-multiticket/{pedidoId}")
+    @ResponseBody
+    public ResponseEntity<String> liquidarBloqueMultiticket(
+            @PathVariable Long pedidoId,
+            @RequestParam Long mesaId,
+            @RequestParam String matrizTickets) {
+        try {
+            // 1. Marcar pedido como PAGADO
+            pedidoService.cobrarPedido(pedidoId);
+
+            // 2. Liberar la mesa y sus hijas
+            mesaService.liberarMesaForzado(mesaId);
+
+            return ResponseEntity.ok("Mesa cobrada y liberada");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+
 }

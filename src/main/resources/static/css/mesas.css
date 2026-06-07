@@ -107,6 +107,10 @@
 /* --- ESTADOS CROMÁTICOS DE MESAS EN PLANO --- */
 .mesa-box.disponible { background-color: #f0fdf4; border-color: #86efac; color: #166534; }
 .mesa-box.disponible:hover { box-shadow: 0 10px 20px rgba(34, 197, 94, 0.15) !important; }
+/* ── MESA RESERVADA (cliente confirmado, aún sin pedido activo) ── */
+.mesa-box.reservada { background-color: #eff6ff; border-color: #93c5fd; color: #1e40af; animation: pulsoReservada 2s infinite ease-in-out; }
+.mesa-box.reservada:hover { box-shadow: 0 10px 20px rgba(59, 130, 246, 0.2) !important; }
+@keyframes pulsoReservada { 0%, 100% { border-color: #93c5fd; } 50% { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(59,130,246,0.15); } }
 
 .mesa-box.ocupada { background-color: #fef2f2; border-color: #fca5a5; color: #991b1b; }
 .mesa-box.ocupada:hover { box-shadow: 0 10px 20px rgba(239, 68, 68, 0.15) !important; }
