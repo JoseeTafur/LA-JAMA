@@ -29,7 +29,7 @@ public class CartaController {
 
     @PostMapping("/carta/pedido")
     public ResponseEntity<?> recibirPedidoCarta(@RequestBody Pedido pedido) {
-        pedidoService.guardarPedido(pedido);
-        return ResponseEntity.ok().build();
+        Long id = pedidoService.guardarPedidoCarta(pedido);
+        return ResponseEntity.ok(id);
     }
 }

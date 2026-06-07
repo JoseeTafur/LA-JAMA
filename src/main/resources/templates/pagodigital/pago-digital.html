@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<th:block th:fragment="content">
+
+    <div class="container-fluid p-4">
+        <div class="card rounded-lg card-color1">
+            <div class="card-body">
+
+                <h1 class="card-title h5 mb-4 fw-bold">
+                    Lista de Pagos en Línea
+                </h1>
+
+                <table id="tabla" class="table table-hover responsive" style="width: 100%">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Fecha Pago</th>
+                        <th>Situación</th>
+                        <th>Observación</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+<th:block th:fragment="modals">
+    <div class="modal fade" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true" id="modal">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header text-white">
+                    <h5 class="modal-title fw-bold" id="modalTitle">
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="form" novalidate>
+                        <input type="hidden" id="id" name="id" />
+                        <div class="row g-3">
+
+                            <div class="col-md-12">
+                                <label for="observacion" class="form-label fw-bold">Observacion:</label>
+                                <textarea
+                                        name="observacion"
+                                        id="observacion"
+                                        cols="30" rows="10"
+                                        class="form-control no-resize"
+                                ></textarea>
+                                <div id="observacion-error" class="invalid-feedback d-block"></div>
+                            </div>
+
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-jama rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="form" class="btn btn-jama-primary rounded-pill px-4" data-accion="anular">Anular</button>
+                    <button type="submit" form="form" class="btn btn-jama-primary rounded-pill px-4" data-accion="aprobar">Aprobar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" tabindex="-1" aria-labelledby="modalImgTitle" aria-hidden="true" id="modalImg">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header text-white">
+                    <h5 class="modal-title fw-bold" id="modalImgTitle">
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 d-flex flex-column align-items-center">
+                    <div class="col-9">
+                        <img id="pagoImg" class="img-fluid w-100" src="" alt="">
+                    </div>
+                    <div id="imagen-error"></div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-jama rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</th:block>
+
+</html>

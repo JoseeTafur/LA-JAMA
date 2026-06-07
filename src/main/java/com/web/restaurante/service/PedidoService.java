@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -93,6 +94,30 @@ public class PedidoService {
             }
         }
         pedidoRepository.save(pedido);
+    }
+
+    @Transactional
+    public Long guardarPedidoCarta(Pedido pedido) {
+        if (pedido.getId() == null) {
+            pedido.setEstado(EstadoPedido.EN_REVISION);
+            pedido.setFechaCreacion(LocalDateTime.now());
+
+            if (pedido.getListaDetalles() != null) {
+                for (DetallePedido d : pedido.getListaDetalles()) {
+                    d.setCocinado(false);
+                    // Si agregas el campo boolean entregado en el modelo, inicialízalo aquí:
+                    // d.setEntregado(false);
+                }
+            }
+        }
+
+        if (pedido.getListaDetalles() != null) {
+            for (DetallePedido detalle : pedido.getListaDetalles()) {
+                detalle.setPedido(pedido);
+            }
+        }
+        pedidoRepository.save(pedido);
+        return pedido.getId();
     }
 
     // =========================================================================
@@ -363,5 +388,19 @@ public class PedidoService {
 
         // Seteamos el valor usando tu atributo real mapeado en la entidad
         pedido.setMontoTotal(nuevoTotal);
+    }
+
+    @Transactional
+    public void cambiarEstadoA(EstadoPedido estado, Long id) {
+        Pedido pedido = requerirPedidoPorId(id);
+        pedido.setEstado(estado);
+        pedidoRepository.save(pedido);
+    }
+
+    @Transactional(readOnly = true)
+    public Pedido requerirPedidoPorId(Long id) {
+        return pedidoRepository.findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("No se encontró pedido con esa ID"));
     }
 }

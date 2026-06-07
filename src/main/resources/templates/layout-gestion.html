@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+
+    <title th:text="${title}">Cargando...</title>
+
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <link th:if="${css != null}" rel="stylesheet" th:href="@{${css}}">
+</head>
+<body>
+<div class="wrapper">
+    <!-- 1. Cargamos el Sidebar independiente a la izquierda -->
+    <div th:replace="~{sidebar :: sidebar(activeUri=${activeUri})}"></div>
+
+    <!-- 2. Contenedor del contenido a la derecha -->
+    <main id="main-content" class="main-content">
+
+        <!-- 3. Inyectamos la plantilla de cabecera con el banner.png arriba del contenedor -->
+        <div th:replace="~{sidebar :: logistica_header(${titleHeader})}"></div>
+
+        <div th:if="${view != null}" th:replace="${view} :: content"></div>
+    </main>
+</div>
+
+
+<div th:if="${view != null}" th:replace="${view} :: modals"></div>
+
+<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+
+<script th:if="${js != null}" th:src="@{${js}}"></script>
+
+</body>
+</html>

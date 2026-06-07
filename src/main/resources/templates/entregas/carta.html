@@ -154,7 +154,7 @@
                     </div>
 
                     <!-- Sección dirección: solo visible si elige Delivery -->
-                    <div id="seccionDireccion" class="mb-1">
+                    <div id="seccionDireccion" class="mb-3">
                         <label><i class="bi bi-geo-alt-fill me-1"></i>¿Dónde te entregamos?</label>
                         <div class="direccion-wrap">
                             <div class="dir-input-group">
@@ -172,7 +172,7 @@
                     </div>
 
                     <label><i class="bi bi-credit-card-fill me-1"></i>Método de pago</label>
-                    <div class="d-flex gap-2 mb-3">
+                    <div class="d-flex gap-2 mb-1">
                         <button class="btn-tipo" id="btnYape" onclick="seleccionarPago('YAPE')">
                             Yape
                         </button>
@@ -183,27 +183,34 @@
 
                     <!-- QR YAPE -->
                     <div id="seccionYape" style="display:none;">
-                        <div class="text-center">
+                        <div class="qr-img-wrap">
                             <img
                                     src="http://localhost:3000/uploads/qr/qr-yape.jpeg"
-                                    alt="QR Yape" class="img-fluid rounded mb-2" style="max-width:250px;"
+                                    alt="QR Yape"
+                                    class="img-fluid rounded mb-2 w-full"
                             >
-                            <p class="mb-0">Escanea el QR y realiza el pago por Yape. O yapea directamente al:
-                                <span class="fw-bold">971566216</span>
-                            </p>
                         </div>
+                        <p class="mb-3">Escanea el QR y realiza el pago por Yape. O yapea directamente al:
+                            <span class="fw-bold">971566216</span>
+                        </p>
+                        <label><i class="bi bi-send me-1 mb-1"></i>Enviar captura del pago</label>
+                        <input type="file" id="yapeImgInput" accept="image/*">
                     </div>
 
                     <!-- QR PLIN -->
                     <div id="seccionPlin" style="display:none;">
-                        <div class="text-center">
+                        <div class="qr-img-wrap">
                             <img src="http://localhost:3000/uploads/qr/qr-yape.jpeg"
                                  alt="QR Plin"
-                                 class="img-fluid rounded mb-2"
-                                 style="max-width:250px;"
+                                 class="img-fluid rounded mb-2 w-100"
                             >
-                            <p class="mb-0">Escanea el QR y realiza el pago por Plin.</p>
                         </div>
+                        <p class="mb-3">Escanea el QR y realiza el pago por Plin. O plinea directamente al:
+                            <span class="fw-bold">999888777</span>
+                        </p>
+
+                        <label><i class="bi bi-send me-1 mb-1"></i>Enviar captura del pago</label>
+                        <input type="file" id="plinImgInput" accept="image/*">
                     </div>
 
                 </div>

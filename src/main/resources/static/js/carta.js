@@ -5,6 +5,8 @@ let modalCarrito = null;
 let tipoEntrega = 'DELIVERY'; // por defecto
 let metodoPago = 'YAPE';
 
+const BASE_IMG_URL = 'http://localhost:3000'
+
 /* ── TIPO ENTREGA ── */
 function seleccionarTipo(tipo) {
     tipoEntrega = tipo;
@@ -157,6 +159,19 @@ function fijarPunto(lat, lng) {
     marcador = L.marker([lat, lng]).addTo(mapa).bindPopup('<b>Tu ubicación</b>').openPopup();
 }
 
+async function subirImagen(tipo, id, file) {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const res = await fetch(`${BASE_IMG_URL}/upload/${tipo}/${id}`, {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+    return data.uploaded?.[0];
+}
+
 /* ── ENVIAR PEDIDO ── */
 async function enviarPedido() {
     const nombre    = document.getElementById('nombreCliente').value.trim();
@@ -187,8 +202,9 @@ ${detalle}
 
 💰 TOTAL: S/ ${total.toFixed(2)}`;
 
+    console.log("Ahoa")
     try {
-        await fetch('/carta/pedido', {
+        const resPedido = await fetch('/carta/pedido', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -206,7 +222,53 @@ ${detalle}
                 }))
             })
         });
-    } catch(e) { console.warn('No se pudo registrar en sistema:', e); }
+
+        console.log('Status pedido:', resPedido.status);
+
+        const dataPedido = await resPedido.json();
+        console.log(dataPedido);
+        const id = dataPedido;
+
+        const resGuardar = await fetch('/admin/pagos-digitales/api/guardar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                idPedido:    id,
+                observacion: null,
+                imgUrl:      null,
+            })
+        });
+
+        const pagoData = await resGuardar.json();
+        console.log(pagoData);
+        const idPago = pagoData.data.id;
+
+        let file;
+        switch (metodoPago) {
+            case 'YAPE': file = document.getElementById('yapeImgInput').files[0]; break;
+            case 'PLIN':  file = document.getElementById('plinImgInput').files[0]; break;
+            default:      file = null;
+        }
+
+        let imgUrl = null;
+        if (file) {
+            const resImage = await subirImagen("pagodigital", idPago, file);
+            console.log(resImage);
+            console.log("A");
+            imgUrl = resImage.url;
+            console.log(imgUrl);
+        }
+
+
+        await fetch(`/admin/pagos-digitales/api/actualizar-imagen/${idPago}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imgUrl })
+        });
+
+    } catch (e) {
+        console.warn('No se pudo registrar en sistema:', e);
+    }
 
     window.open('https://wa.me/51955563199?text=' + encodeURIComponent(mensaje), '_blank');
 }

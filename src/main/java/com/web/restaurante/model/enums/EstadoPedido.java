@@ -11,6 +11,7 @@ public enum EstadoPedido {
     PENDIENTE("Pendiente"),
     EN_COCINA("En Cocina"),
     CANCELADO("Cancelado"),
+    EN_REVISION("En revisión"),
     PAGADO("Pagado");
 
     private final String descripcion;
