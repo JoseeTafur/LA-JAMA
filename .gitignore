@@ -36,4 +36,4 @@ src/main/resources/application.properties
 
 node_modules/
 
-uploads/
+server/uploads/
