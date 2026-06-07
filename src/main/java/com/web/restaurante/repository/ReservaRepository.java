@@ -52,4 +52,26 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     List<Reserva> findConfirmadasParaLiberar(@Param("ahora") LocalDateTime ahora);
 
     List<Reserva> findByNumeroMesaAndEstadoIn(Integer numeroMesa, List<EstadoReserva> estados);
+
+    /**
+     * Busca reservas activas donde la mesa indicada aparece en mesasAsignadas
+     * (puede ser la mesa principal o cualquier otra del grupo familiar).
+     * Ejemplo: si mesasAsignadas = "1,2", busca tanto para mesa 1 como para mesa 2.
+     */
+    @Query("""
+        SELECT r FROM Reserva r
+        WHERE r.estado IN :estados
+          AND (
+            r.numeroMesa = :numeroMesa
+            OR r.mesasAsignadas = CAST(:numeroMesaStr AS string)
+            OR r.mesasAsignadas LIKE CONCAT(:numeroMesaStr, ',%')
+            OR r.mesasAsignadas LIKE CONCAT('%,', :numeroMesaStr, ',%')
+            OR r.mesasAsignadas LIKE CONCAT('%,', :numeroMesaStr)
+          )
+    """)
+    List<Reserva> findByMesaEnGrupoAndEstadoIn(
+            @Param("numeroMesa") Integer numeroMesa,
+            @Param("numeroMesaStr") String numeroMesaStr,
+            @Param("estados") List<EstadoReserva> estados
+    );
 }

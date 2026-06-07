@@ -25,15 +25,14 @@ public class ReservaService {
     private final MesaRepository mesaRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    // Minutos antes de la reserva desde los cuales se permite confirmar llegada
     private static final int MINUTOS_VENTANA_CONFIRMACION = 30;
-    // Minutos antes de la reserva en que la mesa se marca como RESERVADA (bloqueada)
     private static final int MINUTOS_PREVIOS_BLOQUEO = 120;
+    private static final int CAPACIDAD_POR_MESA = 4;
 
     // ── CREAR RESERVA ──────────────────────────────────────────────────────────
 
     @Transactional
-    public List<Reserva> crearReserva(ReservaSaveDTO dto) {
+    public Reserva crearReserva(ReservaSaveDTO dto) {
 
         if (dto.getFechaHoraReserva() == null) {
             throw new IllegalStateException("La fecha y hora de la reserva es obligatoria.");
@@ -79,8 +78,6 @@ public class ReservaService {
             throw new IllegalStateException("El listado de mesas contiene valores inválidos.");
         }
 
-        final int CAPACIDAD_POR_MESA = 4;
-
         // Calcular capacidad total del grupo seleccionado
         int capacidadTotal = 0;
         for (Integer numMesa : numerosMesas) {
@@ -89,7 +86,6 @@ public class ReservaService {
                     .findFirst()
                     .orElseThrow(() -> new IllegalStateException("La Mesa N° " + numMesa + " no existe."));
 
-            // Si la mesa tiene hijas unificadas, contar su capacidad total
             int hijasCount = mesa.getMesasHijas() != null ? mesa.getMesasHijas().size() : 0;
             capacidadTotal += (1 + hijasCount) * CAPACIDAD_POR_MESA;
         }
@@ -109,23 +105,21 @@ public class ReservaService {
             validarDisponibilidad(numMesa, dto.getFechaHoraReserva(), fin, null);
         }
 
-        // Crear una reserva por cada mesa seleccionada
-        List<Reserva> reservasCreadas = new java.util.ArrayList<>();
-        for (Integer numMesa : numerosMesas) {
-            Reserva reserva = new Reserva();
-            reserva.setNombreCliente(dto.getNombreCliente().trim());
-            reserva.setTelefono(dto.getTelefono());
-            reserva.setNumeroMesa(numMesa);
-            reserva.setCantidadPersonas(dto.getCantidadPersonas());
-            reserva.setFechaHoraReserva(dto.getFechaHoraReserva());
-            reserva.setDuracionEstimadaMinutos(dto.getDuracionEstimadaMinutos());
-            reserva.setMinutosGracia(dto.getMinutosGracia());
-            reserva.setNotas(dto.getNotas());
-            reserva.setEstado(EstadoReserva.PENDIENTE);
-            reservasCreadas.add(reservaRepository.save(reserva));
-        }
+        // ✅ CREAR UNA SOLA RESERVA con todas las mesas en el campo mesasAsignadas
+        Reserva reserva = new Reserva();
+        reserva.setNombreCliente(dto.getNombreCliente().trim());
+        reserva.setTelefono(dto.getTelefono());
+        reserva.setNumeroMesa(numerosMesas.get(0)); // mesa principal = la primera
+        reserva.setMesasAsignadas(String.join(",", numerosMesas.stream()
+                .map(String::valueOf).toList())); // "1" o "1,2"
+        reserva.setCantidadPersonas(dto.getCantidadPersonas());
+        reserva.setFechaHoraReserva(dto.getFechaHoraReserva());
+        reserva.setDuracionEstimadaMinutos(dto.getDuracionEstimadaMinutos());
+        reserva.setMinutosGracia(dto.getMinutosGracia());
+        reserva.setNotas(dto.getNotas());
+        reserva.setEstado(EstadoReserva.PENDIENTE);
 
-        return reservasCreadas;
+        return reservaRepository.save(reserva);
     }
 
     // ── CONFIRMAR LLEGADA DEL CLIENTE ─────────────────────────────────────────
@@ -138,7 +132,6 @@ public class ReservaService {
             throw new IllegalStateException("Solo se pueden confirmar reservas en estado PENDIENTE.");
         }
 
-        // ✅ FIX Bug 1: Solo permitir confirmar dentro de la ventana de tiempo permitida.
         LocalDateTime ahora = LocalDateTime.now();
         LocalDateTime ventanaPermitida = reserva.getFechaHoraReserva().minusMinutes(MINUTOS_VENTANA_CONFIRMACION);
         LocalDateTime limiteGracia = reserva.getFechaHoraReserva().plusMinutes(reserva.getMinutosGracia());
@@ -158,7 +151,6 @@ public class ReservaService {
                     + limiteGracia.toLocalTime() + ". Use 'Cancelar' si el cliente no llegó.");
         }
 
-        // Si el cliente llegó después de la hora exacta, recalcular liberación desde ahora
         if (ahora.isAfter(reserva.getFechaHoraReserva())) {
             reserva.setFechaHoraLiberacion(ahora.plusMinutes(reserva.getDuracionEstimadaMinutos()));
         }
@@ -166,15 +158,47 @@ public class ReservaService {
         reserva.setEstado(EstadoReserva.CONFIRMADA);
         reservaRepository.save(reserva);
 
-        marcarMesa(reserva.getNumeroMesa(), "OCUPADA");
+        // Marcar y unificar TODAS las mesas de esta reserva
+        List<Integer> listaMesas = reserva.getListaMesas();
+        if (listaMesas.size() > 1) {
+            // Unificar automáticamente: la primera mesa es la principal, las demás son hijas
+            Integer numeroPrincipal = listaMesas.get(0);
+            Mesa mesaPrincipal = mesaRepository.findAll().stream()
+                    .filter(m -> m.getNumero().equals(numeroPrincipal))
+                    .findFirst().orElse(null);
 
+            if (mesaPrincipal != null) {
+                mesaPrincipal.setEstado("OCUPADA");
+                mesaRepository.save(mesaPrincipal);
+
+                for (int i = 1; i < listaMesas.size(); i++) {
+                    Integer numHija = listaMesas.get(i);
+                    mesaRepository.findAll().stream()
+                            .filter(m -> m.getNumero().equals(numHija))
+                            .findFirst()
+                            .ifPresent(mesaHija -> {
+                                mesaHija.setMesaPadre(mesaPrincipal);
+                                mesaHija.setEstado("UNIFICADA");
+                                mesaRepository.save(mesaHija);
+                                log.info("Reserva #{} → Mesa {} unificada como hija de Mesa {}", idReserva, numHija, numeroPrincipal);
+                            });
+                }
+            }
+        } else {
+            // Mesa única: solo marcar ocupada
+            for (Integer numMesa : listaMesas) {
+                marcarMesa(numMesa, "OCUPADA");
+            }
+        }
+
+        String mesasTxt = reserva.getMesasAsignadas() != null ? reserva.getMesasAsignadas() : reserva.getNumeroMesa().toString();
         String msg = "✅ Cliente '" + reserva.getNombreCliente()
-                + "' confirmado en Mesa N° " + reserva.getNumeroMesa()
+                + "' confirmado en Mesa(s) N° " + mesasTxt
                 + ". Liberación estimada: " + reserva.getFechaHoraLiberacion().toLocalTime();
         messagingTemplate.convertAndSend("/topic/notificaciones", msg);
 
-        log.info("Reserva #{} confirmada → Mesa {} OCUPADA hasta {}", idReserva,
-                reserva.getNumeroMesa(), reserva.getFechaHoraLiberacion());
+        log.info("Reserva #{} confirmada → Mesa(s) {} OCUPADA(s) hasta {}", idReserva,
+                mesasTxt, reserva.getFechaHoraLiberacion());
     }
 
     // ── CANCELAR MANUALMENTE ──────────────────────────────────────────────────
@@ -191,30 +215,44 @@ public class ReservaService {
         reserva.setEstado(EstadoReserva.CANCELADA);
         reservaRepository.save(reserva);
 
-        // Liberar mesa si estaba CONFIRMADA y no hay otras activas
+        // Liberar y desunificar todas las mesas de esta reserva si estaba CONFIRMADA
         if (estadoAnterior == EstadoReserva.CONFIRMADA) {
-            List<Reserva> otrasActivas = reservaRepository.findByNumeroMesaAndEstadoIn(
-                    reserva.getNumeroMesa(), List.of(EstadoReserva.CONFIRMADA));
-            if (otrasActivas.isEmpty()) {
-                marcarMesa(reserva.getNumeroMesa(), "LIBRE");
+            List<Integer> listaMesas = reserva.getListaMesas();
+            if (listaMesas.size() > 1) {
+                // Desunificar: quitar padre de las mesas hijas y liberarlas todas
+                for (int i = 1; i < listaMesas.size(); i++) {
+                    Integer numHija = listaMesas.get(i);
+                    mesaRepository.findAll().stream()
+                            .filter(m -> m.getNumero().equals(numHija))
+                            .findFirst()
+                            .ifPresent(mesaHija -> {
+                                mesaHija.setMesaPadre(null);
+                                mesaHija.setEstado("LIBRE");
+                                mesaRepository.save(mesaHija);
+                            });
+                }
+            }
+            for (Integer numMesa : listaMesas) {
+                marcarMesa(numMesa, "LIBRE");
             }
         }
-        // Si la mesa estaba RESERVADA por esta reserva (bloqueo previo), devolverla a LIBRE
+        // Si estaba PENDIENTE y las mesas fueron bloqueadas, devolverlas a LIBRE
         if (estadoAnterior == EstadoReserva.PENDIENTE) {
-            mesaRepository.findAll().stream()
-                    .filter(m -> m.getNumero().equals(reserva.getNumeroMesa()))
-                    .findFirst()
-                    .ifPresent(mesa -> {
-                        if ("RESERVADA".equals(mesa.getEstado())) {
-                            // Verificar que no haya otra reserva pendiente para esa mesa
-                            List<Reserva> otrasPendientes = reservaRepository.findByNumeroMesaAndEstadoIn(
-                                    reserva.getNumeroMesa(), List.of(EstadoReserva.PENDIENTE));
-                            if (otrasPendientes.isEmpty()) {
-                                mesa.setEstado("LIBRE");
-                                mesaRepository.save(mesa);
+            for (Integer numMesa : reserva.getListaMesas()) {
+                mesaRepository.findAll().stream()
+                        .filter(m -> m.getNumero().equals(numMesa))
+                        .findFirst()
+                        .ifPresent(mesa -> {
+                            if ("RESERVADA".equals(mesa.getEstado())) {
+                                List<Reserva> otrasPendientes = reservaRepository.findByNumeroMesaAndEstadoIn(
+                                        numMesa, List.of(EstadoReserva.PENDIENTE));
+                                if (otrasPendientes.isEmpty()) {
+                                    mesa.setEstado("LIBRE");
+                                    mesaRepository.save(mesa);
+                                }
                             }
-                        }
-                    });
+                        });
+            }
         }
         log.info("Reserva #{} cancelada manualmente.", idReserva);
     }
@@ -243,7 +281,7 @@ public class ReservaService {
         return reservaRepository.findAll();
     }
 
-    // ── SCHEDULER: Cada 60 segundos revisa estados ───────────────────────────
+    // ── SCHEDULER ─────────────────────────────────────────────────────────────
 
     @Scheduled(fixedDelay = 60_000)
     @Transactional
@@ -262,7 +300,8 @@ public class ReservaService {
         for (Reserva r : paraExpirar) {
             r.setEstado(EstadoReserva.EXPIRADA);
             reservaRepository.save(r);
-            String msg = "⏰ Reserva de '" + r.getNombreCliente() + "' (Mesa " + r.getNumeroMesa()
+            String mesasTxt = r.getMesasAsignadas() != null ? r.getMesasAsignadas() : r.getNumeroMesa().toString();
+            String msg = "⏰ Reserva de '" + r.getNombreCliente() + "' (Mesa(s) " + mesasTxt
                     + ") expiró. El cliente no llegó en " + r.getMinutosGracia() + " min de gracia.";
             messagingTemplate.convertAndSend("/topic/notificaciones", msg);
             log.warn("Reserva #{} expirada → cliente no llegó.", r.getId());
@@ -274,36 +313,39 @@ public class ReservaService {
         for (Reserva r : paraLiberar) {
             r.setEstado(EstadoReserva.LIBERADA);
             reservaRepository.save(r);
-            marcarMesa(r.getNumeroMesa(), "LIBRE");
-            String msg = "🟢 Mesa N° " + r.getNumeroMesa() + " liberada automáticamente. "
-                    + "Cliente: " + r.getNombreCliente();
+            for (Integer numMesa : r.getListaMesas()) {
+                marcarMesa(numMesa, "LIBRE");
+            }
+            String mesasTxt = r.getMesasAsignadas() != null ? r.getMesasAsignadas() : r.getNumeroMesa().toString();
+            String msg = "🟢 Mesa(s) N° " + mesasTxt + " liberada(s) automáticamente. Cliente: " + r.getNombreCliente();
             messagingTemplate.convertAndSend("/topic/notificaciones", msg);
-            log.info("Mesa {} liberada automáticamente (Reserva #{})", r.getNumeroMesa(), r.getId());
+            log.info("Mesa(s) {} liberada(s) automáticamente (Reserva #{})", mesasTxt, r.getId());
         }
 
-        // 3. Bloquear mesas con reserva próxima (dentro de MINUTOS_PREVIOS_BLOQUEO minutos)
+        // 3. Bloquear mesas con reserva próxima
         List<Reserva> paraBloquear = reservaRepository.findByEstadoIn(List.of(EstadoReserva.PENDIENTE))
                 .stream()
                 .filter(r -> {
                     LocalDateTime inicioBloqueo = r.getFechaHoraReserva().minusMinutes(MINUTOS_PREVIOS_BLOQUEO);
-                    return !ahora.isBefore(inicioBloqueo); // ahora >= inicioBloqueo
+                    return !ahora.isBefore(inicioBloqueo);
                 })
                 .toList();
 
         for (Reserva r : paraBloquear) {
-            mesaRepository.findAll().stream()
-                    .filter(m -> m.getNumero().equals(r.getNumeroMesa()))
-                    .findFirst()
-                    .ifPresent(mesa -> {
-                        // Solo cambiar si la mesa aún está libre (no ocupada por otro pedido)
-                        if ("LIBRE".equals(mesa.getEstado()) || "DISPONIBLE".equals(mesa.getEstado())) {
-                            mesa.setEstado("RESERVADA");
-                            mesaRepository.save(mesa);
-                            log.info("Mesa {} marcada como RESERVADA — reserva de '{}' en {} min",
-                                    r.getNumeroMesa(), r.getNombreCliente(),
-                                    java.time.temporal.ChronoUnit.MINUTES.between(ahora, r.getFechaHoraReserva()));
-                        }
-                    });
+            for (Integer numMesa : r.getListaMesas()) {
+                mesaRepository.findAll().stream()
+                        .filter(m -> m.getNumero().equals(numMesa))
+                        .findFirst()
+                        .ifPresent(mesa -> {
+                            if ("LIBRE".equals(mesa.getEstado()) || "DISPONIBLE".equals(mesa.getEstado())) {
+                                mesa.setEstado("RESERVADA");
+                                mesaRepository.save(mesa);
+                                log.info("Mesa {} marcada como RESERVADA — reserva de '{}' en {} min",
+                                        numMesa, r.getNombreCliente(),
+                                        java.time.temporal.ChronoUnit.MINUTES.between(ahora, r.getFechaHoraReserva()));
+                            }
+                        });
+            }
         }
     }
 

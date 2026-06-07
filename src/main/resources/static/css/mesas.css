@@ -177,3 +177,14 @@
 #lista-platos-previsualizar::-webkit-scrollbar-track { background: var(--lajama-cream); border-radius: 10px; }
 #lista-platos-previsualizar::-webkit-scrollbar-thumb { background: var(--lajama-peach); border-radius: 10px; }
 #lista-platos-previsualizar::-webkit-scrollbar-thumb:hover { background: #fdb971; }
+/* Resaltado de mesas vinculadas por reserva grupal */
+.mesa-box.reserva-vinculada {
+    outline: 3px solid #f59e0b !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.25) !important;
+    animation: pulsoGrupo 1.2s infinite ease-in-out;
+}
+@keyframes pulsoGrupo {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2) !important; }
+    50%       { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.35) !important; }
+}

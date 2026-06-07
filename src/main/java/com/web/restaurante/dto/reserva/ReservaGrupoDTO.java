@@ -6,17 +6,16 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- * Agrupa todas las reservas del mismo cliente + misma hora en una sola tarjeta.
+ * DTO para mostrar una reserva en la vista.
+ * Ahora cada reserva ya es una sola fila en BD con múltiples mesas en mesasAsignadas.
  */
 @Getter
 public class ReservaGrupoDTO {
 
     private final Long idPrincipal;
     private final List<Long> todosLosIds;
-    // String "13,14" — seguro para usar en data-* de HTML sin problemas de serialización
     private final String todosLosIdsStr;
     private final String nombreCliente;
     private final String telefono;
@@ -30,17 +29,18 @@ public class ReservaGrupoDTO {
 
     public ReservaGrupoDTO(List<Reserva> grupo) {
         Reserva principal = grupo.get(0);
-        this.idPrincipal        = principal.getId();
-        this.todosLosIds        = grupo.stream().map(Reserva::getId).toList();
-        this.todosLosIdsStr     = grupo.stream().map(r -> r.getId().toString()).collect(Collectors.joining(","));
-        this.nombreCliente      = principal.getNombreCliente();
-        this.telefono           = principal.getTelefono();
-        this.cantidadPersonas   = principal.getCantidadPersonas();
-        this.fechaHoraReserva   = principal.getFechaHoraReserva();
-        this.fechaHoraLiberacion= principal.getFechaHoraLiberacion();
-        this.minutosGracia      = principal.getMinutosGracia();
-        this.notas              = principal.getNotas();
-        this.estado             = principal.getEstado();
-        this.mesas              = grupo.stream().map(Reserva::getNumeroMesa).sorted().toList();
+        this.idPrincipal         = principal.getId();
+        this.todosLosIds         = List.of(principal.getId());
+        this.todosLosIdsStr      = principal.getId().toString();
+        this.nombreCliente       = principal.getNombreCliente();
+        this.telefono            = principal.getTelefono();
+        this.cantidadPersonas    = principal.getCantidadPersonas();
+        this.fechaHoraReserva    = principal.getFechaHoraReserva();
+        this.fechaHoraLiberacion = principal.getFechaHoraLiberacion();
+        this.minutosGracia       = principal.getMinutosGracia();
+        this.notas               = principal.getNotas();
+        this.estado              = principal.getEstado();
+        // Leer las mesas desde el campo mesasAsignadas
+        this.mesas               = principal.getListaMesas();
     }
 }

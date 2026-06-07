@@ -33,19 +33,10 @@ public class ReservaController {
                 .sorted((a, b) -> a.getNumero().compareTo(b.getNumero()))
                 .toList();
 
-        // Agrupar: mismo cliente + misma fecha+hora truncada al minuto = una sola tarjeta
+        // Cada reserva ya es individual — se envuelve en lista de 1 para ReservaGrupoDTO
         List<Reserva> reservasActivas = reservaService.listarActivas();
-        Map<String, List<Reserva>> grupos = new LinkedHashMap<>();
-        for (Reserva r : reservasActivas) {
-            // Truncar al minuto para que "20:00:00" y "20:00:01" sean el mismo grupo
-            String fechaTruncada = r.getFechaHoraReserva()
-                    .truncatedTo(java.time.temporal.ChronoUnit.MINUTES)
-                    .toString();
-            String clave = r.getNombreCliente().trim().toLowerCase() + "|" + fechaTruncada;
-            grupos.computeIfAbsent(clave, k -> new ArrayList<>()).add(r);
-        }
-        List<ReservaGrupoDTO> reservasAgrupadas = grupos.values().stream()
-                .map(ReservaGrupoDTO::new)
+        List<ReservaGrupoDTO> reservasAgrupadas = reservasActivas.stream()
+                .map(r -> new ReservaGrupoDTO(List.of(r)))
                 .toList();
 
         model.addAttribute("reservas", reservasAgrupadas);
@@ -58,50 +49,34 @@ public class ReservaController {
     public String crearReserva(@ModelAttribute("reservaForm") ReservaSaveDTO dto,
                                 RedirectAttributes ra) {
         try {
-            List<Reserva> creadas = reservaService.crearReserva(dto);
-            String mesasTxt = creadas.stream()
-                    .map(r -> "N° " + r.getNumeroMesa())
-                    .collect(java.util.stream.Collectors.joining(" y "));
+            Reserva creada = reservaService.crearReserva(dto);
+            String mesasTxt = creada.getMesasAsignadas() != null
+                    ? creada.getMesasAsignadas().replace(",", " y N° ")
+                    : creada.getNumeroMesa().toString();
             ra.addFlashAttribute("mensajeExito",
-                    "Reserva de " + dto.getNombreCliente() + " registrada para Mesa(s) " + mesasTxt);
+                    "Reserva de " + dto.getNombreCliente() + " registrada para Mesa(s) N° " + mesasTxt);
         } catch (Exception e) {
             ra.addFlashAttribute("mensajeError", e.getMessage());
         }
         return "redirect:/admin/reservas";
     }
 
-    // Confirmar llegada: confirma TODAS las reservas del grupo de una vez
     @PostMapping("/{id}/confirmar")
     public ResponseEntity<?> confirmarLlegada(@PathVariable Long id,
                                                @RequestParam(required = false) List<Long> otrosIds) {
         try {
             reservaService.confirmarLlegada(id);
-            if (otrosIds != null) {
-                for (Long otroId : otrosIds) {
-                    if (!otroId.equals(id)) {
-                        try { reservaService.confirmarLlegada(otroId); } catch (Exception ignored) {}
-                    }
-                }
-            }
             return ResponseEntity.ok(Map.of("mensaje", "Cliente registrado. Mesas marcadas como OCUPADAS."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    // Cancelar: cancela TODAS las reservas del grupo de una vez
     @PostMapping("/{id}/cancelar")
     public ResponseEntity<?> cancelarReserva(@PathVariable Long id,
                                               @RequestParam(required = false) List<Long> otrosIds) {
         try {
             reservaService.cancelarReserva(id);
-            if (otrosIds != null) {
-                for (Long otroId : otrosIds) {
-                    if (!otroId.equals(id)) {
-                        try { reservaService.cancelarReserva(otroId); } catch (Exception ignored) {}
-                    }
-                }
-            }
             return ResponseEntity.ok(Map.of("mensaje", "Reserva cancelada correctamente."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

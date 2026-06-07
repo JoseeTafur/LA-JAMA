@@ -4,12 +4,12 @@ import com.web.restaurante.model.DetallePedido;
 import com.web.restaurante.model.Mesa;
 import com.web.restaurante.model.Pedido;
 import com.web.restaurante.model.Producto;
+import com.web.restaurante.model.Reserva;
 import com.web.restaurante.model.enums.EstadoPedido;
+import com.web.restaurante.model.enums.EstadoReserva;
 import com.web.restaurante.repository.MesaRepository;
 import com.web.restaurante.repository.PedidoRepository;
 import com.web.restaurante.repository.ReservaRepository;
-import com.web.restaurante.model.Reserva;
-import com.web.restaurante.model.enums.EstadoReserva;
 import com.web.restaurante.repository.ProductoRepository;
 import com.web.restaurante.service.PedidoService;
 import jakarta.servlet.http.HttpSession;
@@ -20,6 +20,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Controller
 @RequestMapping("/admin/mesero")
@@ -37,17 +38,11 @@ public class MeseroController {
                               @RequestParam(required = false) Long mesaId,
                               @RequestParam(required = false) Long pedidoId) {
         if (session.getAttribute("usuarioLogueado") == null) return "redirect:/login";
-
-        if (mesaId == null) {
-            return "redirect:/admin/mesas";
-        }
+        if (mesaId == null) return "redirect:/admin/mesas";
 
         model.addAttribute("productos", productoRepository.findAll());
         model.addAttribute("mesaId", mesaId);
-
-        if (pedidoId != null) {
-            model.addAttribute("pedidoId", pedidoId);
-        }
+        if (pedidoId != null) model.addAttribute("pedidoId", pedidoId);
 
         return "admin/mesero_pedido";
     }
@@ -59,48 +54,30 @@ public class MeseroController {
                                 HttpSession session) {
         try {
             System.out.println("\n===== [DEBUG RESTAURANTE: INICIO GUARDAR COMANDA] =====");
-            System.out.println("DEBUG FRONTEND -> ID Recibido en JSON: " + pedidoDeFrontend.getId());
-            System.out.println("DEBUG FRONTEND -> Cantidad de detalles en JSON: " +
-                    (pedidoDeFrontend.getListaDetalles() != null ? pedidoDeFrontend.getListaDetalles().size() : 0));
 
             Pedido pedidoFinal;
 
             if (pedidoDeFrontend.getId() != null) {
-                System.out.println("DEBUG BACKEND -> Es una ADICIÓN. Buscando ID original en BD: " + pedidoDeFrontend.getId());
-
                 pedidoFinal = pedidoRepository.findById(pedidoDeFrontend.getId())
                         .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-
-                System.out.println("DEBUG BD -> Historial recuperado. Ítems guardados antes de fusionar: " + pedidoFinal.getListaDetalles().size());
-
                 pedidoFinal.setEstado(EstadoPedido.EN_COCINA);
                 pedidoFinal.setCliente(pedidoDeFrontend.getCliente());
                 pedidoFinal.setDireccion(pedidoDeFrontend.getDireccion());
 
-                // Se mantiene intacta la fechaCreacion original para proteger el inicio real del servicio
-
                 if (pedidoDeFrontend.getListaDetalles() != null) {
                     for (DetallePedido nuevoDetalle : pedidoDeFrontend.getListaDetalles()) {
                         Producto productoCompleto = productoRepository.findById(nuevoDetalle.getProducto().getId())
-                                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + nuevoDetalle.getProducto().getId()));
-
+                                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
                         nuevoDetalle.setProducto(productoCompleto);
                         nuevoDetalle.setPedido(pedidoFinal);
                         nuevoDetalle.setCocinado(false);
-
                         pedidoFinal.getListaDetalles().add(nuevoDetalle);
-                        System.out.println("DEBUG ADICIÓN -> Fila insertada con producto hydratado: " +
-                                productoCompleto.getNombre() + " | Categoría: " + productoCompleto.getCategoria().getNombre());
                     }
                 }
-
             } else {
-                System.out.println("DEBUG BACKEND -> ID es NULL. Creando un pedido completamente NUEVO desde cero.");
                 pedidoFinal = pedidoDeFrontend;
                 pedidoFinal.setEstado(EstadoPedido.EN_COCINA);
                 pedidoFinal.setFechaCreacion(LocalDateTime.now());
-
-                // Inicialización limpia de marcas temporales logísticas
                 pedidoFinal.setFechaSalida(null);
                 pedidoFinal.setFechaEntrega(null);
 
@@ -114,64 +91,29 @@ public class MeseroController {
                 }
             }
 
-            // =========================================================================
-            // CONTROL LOGÍSTICO DE MESA: Evita pérdidas de datos o estados en local
-            // =========================================================================
+            // ── ASIGNAR MESA Y OCUPAR TODAS LAS MESAS DE LA RESERVA ──────────────
             if (mesaId != null) {
-                // Caso A: Si llega mesaId explícito por la URL, asignamos y ocupamos la mesa
                 Mesa mesa = mesaRepository.findById(mesaId).orElseThrow();
-
-                // ★ FIX MESAS AGRUPADAS: Si la mesa clickeada es una hija, usar la mesa padre
                 Mesa mesaPrincipal = (mesa.getMesaPadre() != null) ? mesa.getMesaPadre() : mesa;
 
                 pedidoFinal.setNumeroMesa(mesaPrincipal.getNumero());
                 mesaPrincipal.setEstado("OCUPADA");
                 mesaRepository.save(mesaPrincipal);
-                // También marcamos la hija como ocupada si corresponde
+
                 if (mesa.getMesaPadre() != null) {
                     mesa.setEstado("OCUPADA");
                     mesaRepository.save(mesa);
                 }
-                System.out.println("DEBUG MESA -> Mesa real asignada: N° " + mesaPrincipal.getNumero()
-                        + (mesa.getMesaPadre() != null ? " (redirigido desde hija N° " + mesa.getNumero() + ")" : ""));
-                // Reemplazamos 'mesa' por 'mesaPrincipal' para el bloque de reservas de grupo
-                mesa = mesaPrincipal;
-                System.out.println("DEBUG MESA -> Asignada explícitamente: Mesa N° " + mesa.getNumero());
 
-                // Si la mesa estaba RESERVADA, buscar otras mesas de la misma reserva y ocuparlas también
-                final Integer numeroMesaPrincipalFinal = mesaPrincipal.getNumero();
-                java.util.List<Reserva> reservasGrupo = reservaRepository
-                        .findByNumeroMesaAndEstadoIn(numeroMesaPrincipalFinal,
-                                java.util.List.of(EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA));
-                if (!reservasGrupo.isEmpty()) {
-                    Reserva reservaRef = reservasGrupo.get(0);
-                    // Buscar otras reservas del mismo cliente y hora (mismo grupo)
-                    java.util.List<Reserva> todasReservasGrupo = reservaRepository
-                            .findByEstadoIn(java.util.List.of(EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA))
-                            .stream()
-                            .filter(r -> r.getNombreCliente().equals(reservaRef.getNombreCliente())
-                                    && r.getFechaHoraReserva().equals(reservaRef.getFechaHoraReserva())
-                                    && !r.getNumeroMesa().equals(numeroMesaPrincipalFinal))
-                            .toList();
-                    for (Reserva otraReserva : todasReservasGrupo) {
-                        mesaRepository.findAll().stream()
-                                .filter(m -> m.getNumero().equals(otraReserva.getNumeroMesa()))
-                                .findFirst()
-                                .ifPresent(otraMesa -> {
-                                    otraMesa.setEstado("OCUPADA");
-                                    mesaRepository.save(otraMesa);
-                                    System.out.println("DEBUG RESERVA GRUPO -> Mesa vinculada también ocupada: N° " + otraMesa.getNumero());
-                                });
-                    }
-                }
-            } else if (pedidoDeFrontend.getId() != null) {
-                // Caso B: Es una adición y no viajó mesaId en la URL. Conservamos la mesa que ya tenía la BD
-                System.out.println("DEBUG MESA -> Manteniendo Mesa N° " + pedidoFinal.getNumeroMesa() + " heredada de la BD.");
-            } else {
-                // Caso C: Alerta de consistencia en el flujo
-                System.out.println("DEBUG MESA -> ALERTA: No se recibió mesaId ni ID de comanda existente.");
+                // Buscar reserva activa para esta mesa (puede ser la principal o cualquiera del grupo)
+                // y ocupar TODAS sus mesas vinculadas
+                ocuparMesasDeReserva(mesaPrincipal.getNumero());
+
+            } else if (pedidoDeFrontend.getId() == null) {
+                System.out.println("DEBUG MESA -> ALERTA: No se recibió mesaId.");
             }
 
+            // ── KPI COCINA ────────────────────────────────────────────────────────
             boolean hayFrioPendiente = false;
             boolean hayCalientePendiente = false;
 
@@ -179,13 +121,8 @@ public class MeseroController {
                 for (DetallePedido d : pedidoFinal.getListaDetalles()) {
                     if (d.getProducto() != null && d.getProducto().getCategoria() != null) {
                         String cat = d.getProducto().getCategoria().getNombre().toUpperCase();
-
-                        if ((cat.contains("FRI") || cat.contains("FRÍ")) && !d.isCocinado()) {
-                            hayFrioPendiente = true;
-                        }
-                        if (cat.contains("CALIENTE") && !d.isCocinado()) {
-                            hayCalientePendiente = true;
-                        }
+                        if ((cat.contains("FRI") || cat.contains("FRÍ")) && !d.isCocinado()) hayFrioPendiente = true;
+                        if (cat.contains("CALIENTE") && !d.isCocinado()) hayCalientePendiente = true;
                     }
                 }
             }
@@ -193,15 +130,9 @@ public class MeseroController {
             pedidoFinal.setFrioListo(!hayFrioPendiente);
             pedidoFinal.setCalienteListo(!hayCalientePendiente);
 
-            // CONTROL DE KPI DE DESPACHO EN COCINA:
-            // Si el lote de platos frío y caliente está listo, se marca la fechaSalida de cocina
             if (!hayFrioPendiente && !hayCalientePendiente) {
-                if (pedidoFinal.getFechaSalida() == null) {
-                    pedidoFinal.setFechaSalida(LocalDateTime.now());
-                    System.out.println("DEBUG LOGÍSTICA -> Cocina completada. Registrando fechaSalida automáticamente.");
-                }
+                if (pedidoFinal.getFechaSalida() == null) pedidoFinal.setFechaSalida(LocalDateTime.now());
             } else {
-                // Si entra una adición pendiente de preparación, se resetea hasta que todo vuelva a terminarse
                 pedidoFinal.setFechaSalida(null);
             }
 
@@ -216,15 +147,11 @@ public class MeseroController {
 
             pedidoService.guardarPedido(pedidoFinal);
 
-            // Forzar EN_COCINA directamente en BD por si @PrePersist pisó el estado
             if (pedidoFinal.getId() != null) {
-                pedidoRepository.actualizarEstadoJPQL(pedidoFinal.getId(),
-                        com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
+                pedidoRepository.actualizarEstadoJPQL(pedidoFinal.getId(), EstadoPedido.EN_COCINA);
             }
 
-            System.out.println("DEBUG COMPLETO -> Pedido guardado con KPI actualizado. Total final en BD: S/. " + totalAcumulado + " | Ítems totales: " + pedidoFinal.getListaDetalles().size());
             System.out.println("===== [DEBUG RESTAURANTE: FIN GUARDAR COMANDA] =====\n");
-
             return "OK";
         } catch (Exception e) {
             e.printStackTrace();
@@ -232,17 +159,14 @@ public class MeseroController {
         }
     }
 
-    // === KPI SALA: REGISTRO DE TRASLADO DE BANDEJA ===
     @PostMapping("/marcar-en-mesa/{id}")
     @ResponseBody
     public ResponseEntity<String> marcarPedidoEnMesa(@PathVariable Long id) {
         try {
             Pedido pedido = pedidoRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-
             pedido.setFechaSalida(LocalDateTime.now());
             pedido.setEstado(EstadoPedido.ASIGNADO);
-
             pedidoRepository.save(pedido);
             return ResponseEntity.ok("OK");
         } catch (Exception e) {
@@ -250,45 +174,27 @@ public class MeseroController {
         }
     }
 
-    // === KPI ATENCIÓN: CIERRE DE COMANDA Y LIBERACIÓN OPERATIVA DE MESA ===
     @PostMapping("/finalizar-atencion/{id}")
     @ResponseBody
-    public ResponseEntity<String> finalizarPedidoLocal(@PathVariable Long id, @RequestParam(required = false) Long mesaId) {
+    public ResponseEntity<String> finalizarPedidoLocal(@PathVariable Long id,
+                                                        @RequestParam(required = false) Long mesaId) {
         try {
             Pedido pedido = pedidoRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-
             pedido.setFechaEntrega(LocalDateTime.now());
             pedido.setEstado(EstadoPedido.PAGADO);
-
             pedidoRepository.save(pedido);
 
             if (mesaId != null) {
                 Mesa mesa = mesaRepository.findById(mesaId).orElseThrow();
-                mesa.setEstado("LIBRE");
-                mesaRepository.save(mesa);
+                Mesa mesaPrincipal = (mesa.getMesaPadre() != null) ? mesa.getMesaPadre() : mesa;
 
-                // Liberar también mesas vinculadas por reserva de grupo
-                final Integer numeroMesaPrincipal = mesa.getNumero();
-                java.util.List<Reserva> reservasGrupo = reservaRepository
-                        .findByNumeroMesaAndEstadoIn(numeroMesaPrincipal,
-                                java.util.List.of(EstadoReserva.CONFIRMADA, EstadoReserva.PENDIENTE));
-                if (!reservasGrupo.isEmpty()) {
-                    Reserva reservaRef = reservasGrupo.get(0);
-                    reservaRepository.findByEstadoIn(java.util.List.of(EstadoReserva.CONFIRMADA, EstadoReserva.PENDIENTE))
-                            .stream()
-                            .filter(r -> r.getNombreCliente().equals(reservaRef.getNombreCliente())
-                                    && r.getFechaHoraReserva().equals(reservaRef.getFechaHoraReserva())
-                                    && !r.getNumeroMesa().equals(numeroMesaPrincipal))
-                            .forEach(otraReserva -> mesaRepository.findAll().stream()
-                                    .filter(m -> m.getNumero().equals(otraReserva.getNumeroMesa()))
-                                    .findFirst()
-                                    .ifPresent(otraMesa -> {
-                                        otraMesa.setEstado("LIBRE");
-                                        mesaRepository.save(otraMesa);
-                                        System.out.println("DEBUG RESERVA GRUPO -> Mesa vinculada liberada: N° " + otraMesa.getNumero());
-                                    }));
-                }
+                // Liberar TODAS las mesas de la reserva vinculada (busca por cualquier mesa del grupo)
+                liberarMesasDeReserva(mesaPrincipal.getNumero());
+
+                // Liberar la mesa principal siempre
+                mesaPrincipal.setEstado("LIBRE");
+                mesaRepository.save(mesaPrincipal);
             }
 
             return ResponseEntity.ok("OK");
@@ -304,11 +210,65 @@ public class MeseroController {
             Pedido pedido = pedidoRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
             pedido.setEstado(EstadoPedido.PREPARADO);
-
             pedidoRepository.save(pedido);
             return ResponseEntity.ok("OK");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
+    }
+
+    // ── HELPERS: ocupar/liberar todas las mesas de una reserva ───────────────
+
+    /**
+     * Busca la reserva activa donde la mesa indicada participa (como mesa principal
+     * o como cualquier otra mesa del grupo en mesasAsignadas) y ocupa TODAS las mesas
+     * del grupo. Así si la familia está en Mesa 1 y Mesa 2, al pedir desde cualquiera
+     * de las dos se ocupan ambas.
+     */
+    private void ocuparMesasDeReserva(Integer numeroMesa) {
+        reservaRepository
+                .findByMesaEnGrupoAndEstadoIn(
+                        numeroMesa,
+                        String.valueOf(numeroMesa),
+                        List.of(EstadoReserva.PENDIENTE, EstadoReserva.CONFIRMADA))
+                .stream().findFirst()
+                .ifPresent(reserva -> {
+                    for (Integer numMesa : reserva.getListaMesas()) {
+                        mesaRepository.findAll().stream()
+                                .filter(m -> m.getNumero().equals(numMesa))
+                                .findFirst()
+                                .ifPresent(m -> {
+                                    m.setEstado("OCUPADA");
+                                    mesaRepository.save(m);
+                                    System.out.println("DEBUG RESERVA -> Mesa N° " + numMesa + " marcada OCUPADA");
+                                });
+                    }
+                });
+    }
+
+    /**
+     * Busca la reserva activa donde la mesa indicada participa (como mesa principal
+     * o como cualquier otra mesa del grupo en mesasAsignadas) y libera TODAS las mesas
+     * del grupo. Así si la familia pagó desde cualquiera de las dos mesas, ambas se liberan.
+     */
+    private void liberarMesasDeReserva(Integer numeroMesa) {
+        reservaRepository
+                .findByMesaEnGrupoAndEstadoIn(
+                        numeroMesa,
+                        String.valueOf(numeroMesa),
+                        List.of(EstadoReserva.CONFIRMADA, EstadoReserva.PENDIENTE))
+                .stream().findFirst()
+                .ifPresent(reserva -> {
+                    for (Integer numMesa : reserva.getListaMesas()) {
+                        mesaRepository.findAll().stream()
+                                .filter(m -> m.getNumero().equals(numMesa))
+                                .findFirst()
+                                .ifPresent(m -> {
+                                    m.setEstado("LIBRE");
+                                    mesaRepository.save(m);
+                                    System.out.println("DEBUG RESERVA -> Mesa N° " + numMesa + " liberada");
+                                });
+                    }
+                });
     }
 }

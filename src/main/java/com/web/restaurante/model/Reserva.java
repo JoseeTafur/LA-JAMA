@@ -22,7 +22,14 @@ public class Reserva {
     private String telefono;
 
     @Column(nullable = false)
-    private Integer numeroMesa;
+    private Integer numeroMesa; // mesa principal (la primera asignada)
+
+    /**
+     * Todas las mesas de esta reserva como "1,2" o "5".
+     * Si es una sola mesa, coincide con numeroMesa.toString().
+     */
+    @Column(length = 100)
+    private String mesasAsignadas;
 
     @Column(nullable = false)
     private Integer cantidadPersonas;
@@ -48,14 +55,23 @@ public class Reserva {
     @Column(nullable = false, updatable = false)
     private LocalDateTime fechaCreacion = LocalDateTime.now();
 
-    /**
-     * ✅ FIX: Solo calcula la liberación en @PrePersist (creación).
-     * En @PreUpdate NO recalculamos para no pisar extensiones manuales de tiempo.
-     */
     @PrePersist
     public void calcularLiberacionAlCrear() {
         if (fechaHoraReserva != null && duracionEstimadaMinutos != null) {
             this.fechaHoraLiberacion = fechaHoraReserva.plusMinutes(duracionEstimadaMinutos);
         }
+    }
+
+    /** Devuelve la lista de números de mesa a partir del campo mesasAsignadas. */
+    @Transient
+    public java.util.List<Integer> getListaMesas() {
+        if (mesasAsignadas == null || mesasAsignadas.isBlank()) {
+            return java.util.List.of(numeroMesa);
+        }
+        return java.util.Arrays.stream(mesasAsignadas.split(","))
+                .map(String::trim)
+                .map(Integer::parseInt)
+                .sorted()
+                .toList();
     }
 }

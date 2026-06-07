@@ -17,6 +17,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -48,10 +49,13 @@ public class CajaController {
         // ── RESERVAS ──
         model.addAttribute("reservas", reservaService.listarActivas());
         model.addAttribute("reservaForm", new ReservaSaveDTO());
-        model.addAttribute("todasLasMesas", mesaRepository.findAll().stream()
+        // Solo numero y estado — evita referencia circular al serializar a JSON en Thymeleaf
+        List<Map<String, Object>> mesasSimples = mesaRepository.findAll().stream()
                 .filter(m -> m.getMesaPadre() == null)
                 .sorted((a, b) -> a.getNumero().compareTo(b.getNumero()))
-                .toList());
+                .map(m -> Map.<String, Object>of("numero", m.getNumero(), "estado", m.getEstado()))
+                .toList();
+        model.addAttribute("todasLasMesas", mesasSimples);
         return "admin/caja";
     }
 
