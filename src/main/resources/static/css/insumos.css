@@ -1,279 +1,411 @@
-/* ═══════════════════════════════════════════════════════════
-   VARIABLES — hereda paleta del sistema La Jama
-═══════════════════════════════════════════════════════════ */
+/* Estados dinámicos de los botones de origen fijados */
+.btn-filtro.active[data-filtro="TODOS"] { background-color: #212529 !important; color: #fff !important; }
+.btn-filtro.active[data-filtro="LOTE"] { background-color: #198754 !important; color: #fff !important; }
+.btn-filtro.active[data-filtro="PRODUCCION"] { background-color: #ffc107 !important; color: #000 !important; }
+.btn-filtro.active[data-filtro="AJUSTE"] { background-color: #6c757d !important; color: #fff !important; }
+.btn-filtro.active[data-filtro="VENTA"] { background-color: #dc3545 !important; color: #fff !important; }
+
+/* ==========================================================================
+   LA JAMA - ECO-SISTEMA VISUAL UNIFICADO DE INVENTARIOS Y MODALES (2026)
+   Paleta Orgánica:
+   - Primario Verde Profundo: #1B3A2C    - Fondo Crema Suave: #FBF9F4
+   - Base Durazno Cálido:     #EAD9C9    - Acento Trigo/Oro:   #D4A373
+   ========================================================================== */
+
 :root {
-    --lajama-green:  #1B3A2C;
-    --lajama-peach:  #fed7aa;
-    --lajama-skin:   #FFB38A;
-    --lajama-cream:  #FFF7ED;
-    --lajama-white:  #FFFFFF;
-    --shadow-sm: 0 2px 4px rgba(27,58,44,0.05);
-    --shadow-md: 0 4px 12px rgba(27,58,44,0.10);
-    --shadow-lg: 0 12px 24px rgba(27,58,44,0.15);
+    --lajama-green: #1B3A2C;
+    --lajama-green-hover: #11251C;
+    --lajama-cream: #FBF9F4;
+    --lajama-peach: #EAD9C9;
+    --lajama-skin: #F4EBE1;
+    --lajama-gold: #D4A373;
+    --lajama-white: #FFFFFF;
+
+    --lajama-success: #2A7B4C;
+    --lajama-success-bg: rgba(42, 123, 76, 0.08);
+    --lajama-danger: #B83A3A;
+    --lajama-danger-bg: rgba(184, 58, 58, 0.08);
+    --lajama-warning: #DE9E36;
+    --lajama-warning-bg: rgba(222, 158, 54, 0.12);
+    --lajama-secondary: #5C677D;
+
+    --shadow-sm: 0 2px 8px rgba(27, 58, 44, 0.04);
+    --shadow-md: 0 6px 18px rgba(27, 58, 44, 0.08);
+    --shadow-lg: 0 12px 36px rgba(27, 58, 44, 0.15);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   CARDS
-═══════════════════════════════════════════════════════════ */
-.card-jama {
-    background: var(--lajama-white);
-    border: none;
-    border-radius: 1rem;
-    box-shadow: var(--shadow-md);
-    overflow: hidden;
+body {
+    background-color: #F5F2EA !important;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #2D312E;
 }
 
-.card-jama-header {
-    background: var(--lajama-white);
-    border-bottom: 2px solid var(--lajama-peach);
-    padding: 1.25rem 1.5rem 1rem;
-}
-
-.card-jama-green {
-    background-color: var(--lajama-green) !important;
-    color: var(--lajama-white);
-}
-
-/* ═══════════════════════════════════════════════════════════
-   TABS
-═══════════════════════════════════════════════════════════ */
+/* ─── TABS IDENTITARIOS LA JAMA ──────────────────────────────────── */
 .nav-tabs-jama {
-    display: flex;
-    gap: 0.5rem;
     border-bottom: 2px solid var(--lajama-peach);
-    padding: 0;
-    list-style: none;
-    margin: 0;
+    gap: 0.35rem;
 }
-
-.nav-tabs-jama .nav-item { margin: 0; }
-
 .nav-link-jama {
     background: none;
     border: none;
-    border-bottom: 3px solid transparent;
-    padding: 0.6rem 1.2rem;
+    color: var(--lajama-secondary);
     font-weight: 600;
-    color: #6b7280;
-    cursor: pointer;
-    border-radius: 0.5rem 0.5rem 0 0;
-    transition: all 0.2s;
-    margin-bottom: -2px;
+    font-size: 0.9rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.75rem 0.75rem 0 0;
+    transition: all 0.2s ease;
+    border-bottom: 3px solid transparent;
 }
-
 .nav-link-jama:hover {
     color: var(--lajama-green);
-    background-color: var(--lajama-cream);
+    background-color: var(--lajama-skin);
 }
-
 .nav-link-jama.active {
-    color: var(--lajama-green);
-    border-bottom-color: var(--lajama-green);
-    background-color: var(--lajama-cream);
+    color: var(--lajama-green) !important;
+    background-color: var(--lajama-white) !important;
+    border-bottom: 3px solid var(--lajama-green) !important;
+    box-shadow: 0 -4px 10px rgba(27, 58, 44, 0.02);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   TABLAS
-═══════════════════════════════════════════════════════════ */
-.thead-jama th {
-    background-color: var(--lajama-green);
-    color: var(--lajama-peach);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    font-weight: 600;
+/* ─── TARJETAS DE MÓDULO (CARD JAMA) ─────────────────────────────── */
+.card-jama {
+    background-color: var(--lajama-white);
+    border-radius: 1.25rem;
+    border: 1px solid var(--lajama-peach);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+.card-jama-green {
+    background: linear-gradient(135deg, var(--lajama-green) 0%, #254F3C 100%);
     border: none;
-    padding: 0.85rem 0.75rem;
+    color: var(--lajama-white);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   BADGE PORCIONES
-═══════════════════════════════════════════════════════════ */
-.badge-porciones {
-    background-color: var(--lajama-green);
-    color: var(--lajama-peach);
-    border-radius: 999px;
-    padding: 0.3rem 0.9rem;
+/* ─── COMPORTAMIENTO DE TABLAS GENERALES ──────────────────────────── */
+.table-responsive {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(234, 217, 201, 0.7);
+    background-color: var(--lajama-white);
+}
+.thead-jama tr th {
+    background-color: var(--lajama-skin) !important;
+    color: var(--lajama-green) !important;
     font-weight: 700;
-    font-size: 0.95rem;
-    letter-spacing: 0.3px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 1rem 0.75rem;
+    border-bottom: 2px solid var(--lajama-peach) !important;
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(251, 249, 244, 0.85) !important;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   BOTONES
-═══════════════════════════════════════════════════════════ */
+/* ─── BOTONERÍA PRINCIPAL Y ACCIONES COMPACTAS ───────────────────── */
 .btn-jama {
     background-color: var(--lajama-green);
     color: var(--lajama-peach);
-    border: none;
     font-weight: 600;
-    transition: all 0.2s;
+    border: 1px solid var(--lajama-green);
+    transition: all 0.2s ease;
 }
 .btn-jama:hover {
-    background-color: #0d231a;
+    background-color: var(--lajama-green-hover);
     color: var(--lajama-white);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
 }
-
 .btn-jama-success {
-    background-color: #166534;
-    color: #fff;
-    border: none;
-    font-weight: 600;
-    transition: all 0.2s;
+    background-color: var(--lajama-success-bg);
+    color: var(--lajama-success);
+    border: 1px solid rgba(42, 123, 76, 0.15);
 }
-.btn-jama-success:hover {
-    background-color: #14532d;
-    color: #fff;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
-}
+.btn-jama-success:hover:not(:disabled) { background-color: var(--lajama-success); color: white; }
 
 .btn-jama-warning {
-    background-color: #d97706;
-    color: #fff;
-    border: none;
-    font-weight: 600;
-    transition: all 0.2s;
+    background-color: var(--lajama-warning-bg);
+    color: #94600E;
+    border: 1px solid rgba(222, 158, 54, 0.2);
 }
-.btn-jama-warning:hover {
-    background-color: #b45309;
-    color: #fff;
-    transform: translateY(-1px);
-}
+.btn-jama-warning:hover:not(:disabled) { background-color: var(--lajama-warning); color: white; }
 
 .btn-jama-secondary {
-    background-color: #4b5563;
-    color: #fff;
-    border: none;
-    font-weight: 600;
-    transition: all 0.2s;
+    background-color: #ECEAE4;
+    color: #4A5157;
+    border: 1px solid rgba(0,0,0,0.05);
 }
-.btn-jama-secondary:hover {
-    background-color: #374151;
-    color: #fff;
-    transform: translateY(-1px);
-}
+.btn-jama-secondary:hover:not(:disabled) { background-color: var(--lajama-secondary); color: white; }
 
 .btn-jama-outline {
     background-color: transparent;
     color: var(--lajama-green);
-    border: 2px solid var(--lajama-green);
-    font-weight: 600;
-    transition: all 0.2s;
+    border: 1px solid var(--lajama-green);
 }
-.btn-jama-outline:hover {
+.btn-jama-outline:hover { background-color: var(--lajama-green); color: var(--lajama-skin); }
+
+/* Botonera de Catálogo General */
+.btn-action-edit { background-color: white; color: var(--lajama-green); border: 1px solid var(--lajama-peach); }
+.btn-action-edit:hover { background-color: var(--lajama-skin); }
+.btn-action-delete { background-color: white; color: var(--lajama-danger); border: 1px solid var(--lajama-peach); }
+.btn-action-delete:hover { background-color: var(--lajama-danger-bg); }
+.btn-action-reactivate { background-color: white; color: var(--lajama-success); border: 1px solid var(--lajama-peach); }
+.btn-action-reactivate:hover { background-color: var(--lajama-success-bg); }
+
+/* Badges */
+.badge-porciones {
     background-color: var(--lajama-green);
-    color: var(--lajama-peach);
-    transform: translateY(-1px);
-}
-
-/* ═══════════════════════════════════════════════════════════
-   INPUTS
-═══════════════════════════════════════════════════════════ */
-.input-jama {
-    background-color: var(--lajama-cream);
-    border: 1px solid transparent;
-    transition: border-color 0.2s;
-}
-.input-jama:focus {
-    border-color: var(--lajama-skin);
-    background-color: var(--lajama-white);
-    box-shadow: 0 0 0 3px rgba(255,179,138,0.2);
-}
-.input-danger { color: #dc2626; }
-
-/* ═══════════════════════════════════════════════════════════
-   MODALES
-═══════════════════════════════════════════════════════════ */
-.modal-jama {
-    border: none;
-    border-radius: 1rem;
-    overflow: hidden;
-    box-shadow: var(--shadow-lg);
-}
-
-.modal-header-jama {
-    background-color: var(--lajama-green);
-    border-bottom: 4px solid var(--lajama-peach);
-    padding: 1rem 1.25rem;
-}
-
-.modal-header-success {
-    background-color: #166534;
-    border-bottom: 4px solid #bbf7d0;
-    padding: 1rem 1.25rem;
-}
-
-.modal-header-warning {
-    background-color: #fef3c7;
-    border-bottom: 4px solid #d97706;
-    padding: 1rem 1.25rem;
-}
-
-.modal-header-secondary {
-    background-color: #374151;
-    border-bottom: 4px solid #9ca3af;
-    padding: 1rem 1.25rem;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   ALERTA MERMA
-═══════════════════════════════════════════════════════════ */
-.alert-merma {
-    background-color: #fffbeb;
-    border: 1px solid #fcd34d;
-    border-left: 4px solid #d97706;
-    border-radius: 0.5rem;
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-}
-.alert-merma.positivo {
-    background-color: #f0fdf4;
-    border-color: #86efac;
-    border-left-color: #166534;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   FILTROS KARDEX
-═══════════════════════════════════════════════════════════ */
-.btn-filtro {
-    background: rgba(255,255,255,0.15);
-    color: var(--lajama-peach);
-    border: 1px solid rgba(254,215,170,0.3);
-    border-radius: 999px;
-    padding: 0.2rem 0.85rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.btn-filtro:hover {
-    background: rgba(255,255,255,0.25);
     color: var(--lajama-white);
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 0.3rem 0.65rem;
+    border-radius: 2rem;
+    border: 1px solid var(--lajama-gold);
 }
-.btn-filtro.active {
-    background: var(--lajama-peach);
+.listado-recetario-item {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.listado-recetario-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md) !important;
+}
+
+/* ─── ARQUITECTURA CRÍTICA SANEADA: MODALES LA JAMA ──────────────── */
+.modal-content {
+    border-radius: 1.25rem;
+    border: none;
+    box-shadow: var(--shadow-lg);
+    background-color: var(--lajama-white);
+    overflow: hidden;
+}
+.modal-header {
+    background-color: var(--lajama-cream);
+    border-bottom: 1px solid var(--lajama-peach);
     color: var(--lajama-green);
-    border-color: var(--lajama-peach);
+    padding: 1.25rem 1.5rem;
+}
+.header-jama-dark {
+    background-color: var(--lajama-green);
+    color: var(--lajama-peach) !important;
+    border-bottom: 3px solid var(--lajama-gold);
+}
+.header-jama-dark .btn-close {
+    filter: invert(1) grayscale(1) brightness(2);
+}
+.header-jama-colored {
+    background-color: #254F3C;
+    border-bottom: 2px solid var(--lajama-gold);
 }
 
-.filtro-lote.active   { background: #bbf7d0; color: #166534; border-color: #86efac; }
-.filtro-prod.active   { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-.filtro-ajuste.active { background: #e5e7eb; color: #374151; border-color: #9ca3af; }
-.filtro-venta.active  { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+/* ─── MODAL KARDEX: ALTURA Y RESPONSIVIDAD INDEPENDIENTE ─────────── */
+.modal-content-kardex {
+    height: 80vh; /* Forzamos un marco vertical contenedor estricto */
+    display: flex;
+    flex-direction: column;
+}
+.body-jama-kardex {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Encapsula el scroll dentro del cuerpo */
+    padding: 1.25rem !important;
+    background-color: var(--lajama-cream);
+}
+.table-kardex-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto !important; /* Capa interna con scroll real */
+    background-color: var(--lajama-white);
+    border: 1px solid var(--lajama-peach);
+    border-radius: 0.5rem;
+}
+.thead-jama-sticky th {
+    position: sticky;
+    top: 0;
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-skin) !important;
+    z-index: 10;
+    box-shadow: inset 0 -2px 0 var(--lajama-gold);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+}
+.internal-block-header {
+    background-color: #E6DFD5 !important;
+    color: var(--lajama-green) !important;
+    font-size: 0.8rem !important;
+    border-top: 2px solid var(--lajama-peach) !important;
+    border-bottom: 2px solid var(--lajama-peach) !important;
+}
 
-/* ═══════════════════════════════════════════════════════════
-   BADGES KARDEX
-═══════════════════════════════════════════════════════════ */
-.badge-kardex {
-    border-radius: 999px;
-    padding: 0.25rem 0.7rem;
+/* 🚨 EL FOOTER DE CONTROL YA NO COLAPSA (EESTÁTICO FIJO ABAJO) 🚨 */
+.footer-jama-fixed {
+    background-color: var(--lajama-skin);
+    border-top: 3px solid var(--lajama-peach) !important;
+    padding: 0.9rem 1.5rem !important;
+    flex-shrink: 0; /* Prohíbe totalmente que la tabla lo empuje o aplaste */
+    z-index: 20;
+    box-shadow: 0 -4px 15px rgba(27, 58, 44, 0.05);
+}
+
+/* ─── ESTILIZACIÓN DE FORMULARIOS INTERNOS DE MODALES ────────────── */
+.form-label-jama {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--lajama-green);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.4rem;
+    display: block;
+}
+.form-control-jama, .form-select-jama {
+    width: 100%;
+    border: 1px solid var(--lajama-peach);
+    border-radius: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    background-color: var(--lajama-cream);
+    color: #2D312E;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+.form-control-jama:focus, .form-select-jama:focus {
+    background-color: var(--lajama-white);
+    border-color: var(--lajama-green);
+    box-shadow: 0 0 0 0.25rem rgba(27, 58, 44, 0.1);
+    outline: none;
+}
+
+/* Badges Dinámicos de Origen del Kardex */
+.bg-light-success { background-color: var(--lajama-success-bg) !important; color: var(--lajama-success) !important; }
+.bg-light-warning { background-color: var(--lajama-warning-bg) !important; color: #94600E !important; }
+.bg-light-secondary { background-color: #EAECEE !important; color: var(--lajama-secondary) !important; }
+.bg-light-danger { background-color: var(--lajama-danger-bg) !important; color: var(--lajama-danger) !important; }
+.text-warning-dark { color: #94600E !important; }
+
+/* Bloques de paginación interna */
+.page-link-jama-block {
+    border: none;
+    padding: 0.4rem 1rem;
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
-.badge-lote     { background: #dcfce7; color: #166534; }
-.badge-prod     { background: #fef3c7; color: #92400e; }
-.badge-ajuste   { background: #e5e7eb; color: #374151; }
-.badge-venta    { background: #fee2e2; color: #991b1b; }
+.btn-pag-jama-inactive {
+    background-color: var(--lajama-white);
+    color: var(--lajama-green);
+    border: 1px solid var(--lajama-peach);
+}
+.btn-pag-jama-inactive:hover { background-color: var(--lajama-skin); }
+.btn-pag-jama-active {
+    background-color: var(--lajama-green);
+    color: var(--lajama-peach);
+    border: 1px solid var(--lajama-green);
+    box-shadow: var(--shadow-sm);
+}
+
+.animate-pulse {
+    animation: pulseAlert 2s infinite;
+}
+@keyframes pulseAlert {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(184, 58, 58, 0.4); }
+    70% { transform: scale(1.02); box-shadow: 0 0 0 5px rgba(184, 58, 58, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(184, 58, 58, 0); }
+}
+
+/* Candado estructural para fijar la cabecera y controlar el scroll */
+.table-kardex-scroll {
+    max-height: 500px; /* Determina la altura máxima antes de activar el scroll */
+    overflow-y: auto !important;
+    position: relative;
+}
+
+/* Forzar a los th de la cabecera a quedarse estáticos en el eje Y */
+.thead-jama-sticky th {
+    position: sticky !important;
+    top: 0 !important;
+    background-color: #212529 !important; /* Color oscuro que combina con La Jama */
+    color: #ffffff !important;
+    z-index: 100;
+    box-shadow: inset 0 -2px 0 #dee2e6; /* Evita que la línea de división se borre */
+}
+
+/* Estilo para que la fila divisoria de cada bloque también tenga un relieve elegante */
+.table-sticky-divider td {
+    background-color: #f8f9fa !important;
+    color: #1b3a2c !important;
+    font-size: 0.85rem;
+    border-bottom: 2px solid #dee2e6 !important;
+}
+
+/* Evitar desbordamiento horizontal de las pestañas en pantallas compactas */
+.pagination-sm {
+    max-width: 60%;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 3px;
+}
+
+/* 🚨 MAXIMIZACIÓN DE ESPACIO PARA EL MODAL KÁRDEX */
+#modalKardexPorciones .modal-dialog {
+    max-width: 95vw !important; /* Expande el modal al 95% del ancho de la pantalla */
+    margin: 1.5rem auto;
+}
+
+#modalKardexPorciones .modal-content-kardex {
+    height: 85vh; /* Eleva la altura al 85% de la pantalla vertical */
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Contenedor interno con Scroll Fijo */
+#modalKardexPorciones .table-kardex-scroll {
+    flex: 1;
+    overflow-y: auto !important;
+    position: relative;
+    padding: 0 10px;
+}
+
+/* 📌 CABECERA STICKY FIJA CON HEADERS INTERACTIVOS */
+#modalKardexPorciones .thead-jama-sticky th {
+    position: sticky !important;
+    top: 0 !important;
+    background-color: #212529 !important;
+    color: #ffffff !important;
+    z-index: 100;
+    padding: 14px 10px; /* Celdas más altas y cómodas */
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+    cursor: pointer; /* Cambia el mouse a mano para indicar que es clickeable */
+    user-select: none; /* Evita que el texto se sombree de azul al hacer doble click */
+    transition: background-color 0.2s ease;
+}
+
+/* Efecto Hover para los encabezados */
+#modalKardexPorciones .thead-jama-sticky th:hover {
+    background-color: #343a40 !important;
+    text-decoration: underline;
+}
+
+/* Estilizado de las filas internas para mayor holgura visual */
+#modalKardexPorciones #cuerpoKardexPorciones tr:not(.table-sticky-divider) td {
+    padding: 12px 10px !important;
+    font-size: 0.88rem;
+}
+
+/* Fila divisoria fija de bloques */
+.table-sticky-divider td {
+    background-color: #f1f3f5 !important;
+    color: #1b3a2c !important;
+    font-weight: bold;
+    padding: 10px 12px !important;
+    border-bottom: 2px solid #dee2e6 !important;
+}
+
+/* Footer fijo del modal */
+.footer-jama-fixed {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    padding: 12px 24px !important;
+}

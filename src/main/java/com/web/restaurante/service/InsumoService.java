@@ -39,11 +39,27 @@ public class InsumoService {
     public InsumoDTO guardarInsumo(InsumoDTO dto) {
         Insumo insumo = insumoMapper.toEntity(dto);
         insumo.setCategoria(dto.getCategoria());
+        if (insumo.getEstado() == null) {
+            insumo.setEstado(1);
+        }
         return insumoMapper.toDTO(insumoRepository.save(insumo));
     }
 
+    // REEMPLAZAR ESTE MÉTODO COMPLETO:
     public void eliminarInsumo(Long id) {
-        insumoRepository.deleteById(id);
+        Insumo insumo = insumoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Insumo no encontrado"));
+        // Borrado lógico: Cambiamos el estado a 0 (Inactivo) en lugar de hacer deleteById
+        insumo.setEstado(0);
+        insumoRepository.save(insumo);
+    }
+
+    public void reactivarInsumo(Long id) {
+        Insumo insumo = insumoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Insumo no encontrado"));
+        // Borrado lógico inverso: Volvemos al estado 1 (Activo)
+        insumo.setEstado(1);
+        insumoRepository.save(insumo);
     }
 
     public List<InsumoProductoDTO> listarInsumosPorProducto(Long idProducto) {
@@ -98,28 +114,27 @@ public class InsumoService {
 
     @Transactional
     public void registrarMovimiento(Insumo insumo, Double cantidad, String tipo, String motivo) {
-        // Blindaje: Si el stock actual es null, asumimos 0.0 para que no explote Java
+        // 1. Blindaje: Si el stock actual es null, asumimos 0.0
         double stockActual = (insumo.getStockActual() != null) ? insumo.getStockActual() : 0.0;
 
-        // Calcular nuevo stock
+        // 2. Calcular nuevo stock
         double nuevoStock = tipo.equals("INGRESO") ? stockActual + cantidad : stockActual - cantidad;
 
-        // Actualizar insumo
+        // 3. Actualizar y guardar el insumo
         insumo.setStockActual(nuevoStock);
-        insumoRepository.save(insumo);
+        insumoRepository.saveAndFlush(insumo); // 🔥 Forzamos la actualización del stock primero
 
-        // Registrar el evento en el Kardex (MovimientoInsumo)
+        // 4. Registrar el evento en el Kardex (MovimientoInsumo)
         MovimientoInsumo mov = new MovimientoInsumo();
         mov.setInsumo(insumo);
         mov.setCantidad(cantidad);
         mov.setTipo(tipo);
         mov.setMotivo(motivo);
         mov.setStockResultante(nuevoStock);
-
-        // Asignar fecha manualmente por si no tienes @CreationTimestamp en la entidad
         mov.setFecha(java.time.LocalDateTime.now());
 
-        movimientoRepository.save(mov);
+        // 🔥 LA CLAVE AQUÍ: Usamos saveAndFlush para obligar a insertar la fila en el Kardex AHORA MISMO
+        movimientoRepository.saveAndFlush(mov);
     }
 
 
@@ -131,11 +146,15 @@ public class InsumoService {
                 .map(m -> {
                     MovimientoInsumoDTO dto = new MovimientoInsumoDTO();
                     dto.setId(m.getId());
+                    // Pasamos la fecha formateada de forma segura
                     dto.setFecha(m.getFecha() != null ? m.getFecha().format(formatter) : "Sin Fecha");
                     dto.setTipo(m.getTipo());
                     dto.setCantidad(m.getCantidad());
                     dto.setMotivo(m.getMotivo());
-                    dto.setStockResultante(m.getStockResultante());
+
+                    // 🔥 CRUCIAL: Asegurar que se asigne el stock resultante tal cual viene de la BD
+                    dto.setStockResultante(m.getStockResultante() != null ? m.getStockResultante() : 0.0);
+
                     return dto;
                 })
                 .collect(Collectors.toList());
