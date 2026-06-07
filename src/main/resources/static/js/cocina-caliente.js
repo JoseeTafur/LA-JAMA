@@ -134,7 +134,7 @@ function despacharItemCocina(pedidoId, detalleId, nombrePlato) {
             }
         } catch (error) {
             AppUtils.showLoading(false);
-            console.error(error);
+              console.error(error);
         }
     });
 }
