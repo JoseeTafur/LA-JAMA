@@ -8,6 +8,7 @@ import com.web.restaurante.model.enums.TipoPedido;
 import com.web.restaurante.repository.EmpleadoRepository;
 import com.web.restaurante.repository.InsumoProductoRepository;
 import com.web.restaurante.repository.PedidoRepository;
+import com.web.restaurante.service.TurnoCajaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +17,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
+    private final TurnoCajaService turnoCajaService;
     private final EmpleadoRepository empleadoRepository;
     private final ProteinaService proteinaService;
     private final InsumoService insumoService;
@@ -96,30 +97,6 @@ public class PedidoService {
         pedidoRepository.save(pedido);
     }
 
-    @Transactional
-    public Long guardarPedidoCarta(Pedido pedido) {
-        if (pedido.getId() == null) {
-            pedido.setEstado(EstadoPedido.EN_REVISION);
-            pedido.setFechaCreacion(LocalDateTime.now());
-
-            if (pedido.getListaDetalles() != null) {
-                for (DetallePedido d : pedido.getListaDetalles()) {
-                    d.setCocinado(false);
-                    // Si agregas el campo boolean entregado en el modelo, inicialízalo aquí:
-                    // d.setEntregado(false);
-                }
-            }
-        }
-
-        if (pedido.getListaDetalles() != null) {
-            for (DetallePedido detalle : pedido.getListaDetalles()) {
-                detalle.setPedido(pedido);
-            }
-        }
-        pedidoRepository.save(pedido);
-        return pedido.getId();
-    }
-
     // =========================================================================
     // 🔥 CONTROL MICROSCOPIO: DESPACHAR PLATO INDIVIDUAL EN COCINA
     // =========================================================================
@@ -130,13 +107,11 @@ public class PedidoService {
 
         if (p.getListaDetalles() == null) return;
 
-        // 🔥 BÚSQUEDA EXACTA: Apuntamos directo al ID de la fila (El Mondonguito específico)
         DetallePedido detalleTarget = p.getListaDetalles().stream()
                 .filter(d -> d.getId().equals(detalleId))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Fila de detalle no encontrada"));
 
-        // 🚨 CANDADO OPERATIVO INDESTRUCTIBLE: Aborta si el plato no se ha mandado a la tiquetera física
         if (!detalleTarget.isImpresoEnCocina()) {
             throw new IllegalStateException("¡Bloqueado! No puedes despachar '"
                     + detalleTarget.getProducto().getNombre() + "' porque aún no ha sido impreso en el ticket.");
@@ -144,8 +119,9 @@ public class PedidoService {
 
         if (!detalleTarget.isCocinado()) {
             detalleTarget.setCocinado(true);
-            insumoService.descontarInsumosPorPedido(detalleTarget.getProducto().getId(), detalleTarget.getCantidad());
 
+            // 🔥 REGLA DE NEGOCIO: Solo las proteínas generan Kardex al momento de la venta.
+            // Las verduras se manejan por lote y no intervienen aquí.
             insumoProductoRepository.findByProductoId(detalleTarget.getProducto().getId()).stream()
                     .filter(ip -> ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria()))
                     .findFirst()
@@ -169,7 +145,6 @@ public class PedidoService {
 
         pedidoRepository.save(p);
     }
-
     // =========================================================================
     // 🔥 CONTROL MICROSCOPIO: ENTREGAR PLATO INDIVIDUAL EN MESA
     // =========================================================================
@@ -253,19 +228,21 @@ public class PedidoService {
             for (DetallePedido d : p.getListaDetalles()) {
                 if (d.getProducto() != null && d.getProducto().getCategoria() != null) {
                     String catNombre = d.getProducto().getCategoria().getNombre().toUpperCase();
+
                     if ("fria".equalsIgnoreCase(tipoEstacion) && (catNombre.contains("FRI") || catNombre.contains("FRÍ"))) {
                         d.setCocinado(true);
-                        insumoService.descontarInsumosPorPedido(d.getProducto().getId(), d.getCantidad());
 
+                        // 🔥 REGLA DE NEGOCIO: Kardex exclusivo de Proteínas
                         insumoProductoRepository.findByProductoId(d.getProducto().getId()).stream()
                                 .filter(ip -> ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria()))
                                 .findFirst()
                                 .ifPresent(ip -> proteinaService.descontarPorcionesPorVenta(ip.getInsumo().getId(), d.getCantidad()));
                     }
+
                     if ("caliente".equalsIgnoreCase(tipoEstacion) && catNombre.contains("CALIENTE")) {
                         d.setCocinado(true);
-                        insumoService.descontarInsumosPorPedido(d.getProducto().getId(), d.getCantidad());
 
+                        // 🔥 REGLA DE NEGOCIO: Kardex exclusivo de Proteínas
                         insumoProductoRepository.findByProductoId(d.getProducto().getId()).stream()
                                 .filter(ip -> ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria()))
                                 .findFirst()
@@ -291,7 +268,18 @@ public class PedidoService {
     public List<Pedido> listarPedidosPorCobrar() { return pedidoRepository.listarPedidosPorCobrar(); }
 
     @Transactional
-    public void cobrarPedido(Long id) { pedidoRepository.actualizarEstadoJPQL(id, EstadoPedido.PAGADO); }
+    public void cobrarPedido(Long id) {
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
+        pedidoRepository.actualizarEstadoJPQL(id, EstadoPedido.PAGADO);
+
+        // Registrar en caja si hay turno activo
+        String concepto = pedido.getNumeroMesa() != null
+                ? "Mesa " + pedido.getNumeroMesa()
+                : (pedido.getCliente() != null ? "Delivery - " + pedido.getCliente() : "Pedido #" + id);
+        if (pedido.getMontoTotal() != null) {
+            turnoCajaService.registrarVenta(concepto, pedido.getMontoTotal());
+        }
+    }
 
     @Transactional
     public void asignarRepartidor(Long pedidoId, Empleado repartidor) {
@@ -388,19 +376,5 @@ public class PedidoService {
 
         // Seteamos el valor usando tu atributo real mapeado en la entidad
         pedido.setMontoTotal(nuevoTotal);
-    }
-
-    @Transactional
-    public void cambiarEstadoA(EstadoPedido estado, Long id) {
-        Pedido pedido = requerirPedidoPorId(id);
-        pedido.setEstado(estado);
-        pedidoRepository.save(pedido);
-    }
-
-    @Transactional(readOnly = true)
-    public Pedido requerirPedidoPorId(Long id) {
-        return pedidoRepository.findById(id)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("No se encontró pedido con esa ID"));
     }
 }

@@ -26,13 +26,26 @@ async function abrirModalInsumos(elemento) {
         const res = await fetch('/insumos/producto/' + id);
         insumosProductoActual = await res.json();
 
-        if (insumosProductoActual.length === 0) {
-            // Si no tiene insumos modificables, entra directo al carrito sin hacer perder tiempo al mesero
+        // 🔥 PALABRAS CLAVE DE PROTEÍNAS EN LA JAMA:
+        // Agrega aquí las palabras que identifiquen a tus proteínas en el Kardex (en mayúsculas)
+        const palabrasClaveProteina = ["PESCADO", "CARNE", "POLLO", "LOMO", "CHANCHO", "MARISCO", "RES", "PATO"];
+
+        // Filtramos los insumos: Si el nombre contiene alguna de las palabras clave, se oculta del modal
+        const insumosModificables = insumosProductoActual.filter(ins => {
+            if (!ins.nombreInsumo) return true;
+            const nombreInsumoUpper = ins.nombreInsumo.toUpperCase();
+
+            // Si el nombre del insumo contiene alguna palabra clave de proteína, devuelve false (lo saca del modal)
+            return !palabrasClaveProteina.some(palabra => nombreInsumoUpper.includes(palabra));
+        });
+
+        if (insumosModificables.length === 0) {
+            // Si solo tiene la proteína (como el Ceviche que solo registra el Pescado en su receta), va directo al carrito
             if (bsModalInsumos) bsModalInsumos.hide();
             agregarAlCarrito(id, nombre, precio, [], []);
         } else {
             let html = '';
-            insumosProductoActual.forEach(ins => {
+            insumosModificables.forEach(ins => {
                 html += `
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox"
@@ -84,26 +97,18 @@ function confirmarAgregarAlCarrito() {
 }
 
 function agregarAlCarrito(id, nombre, precio, idsSin, nombresSin) {
-    // CORRECCIÓN: Para agrupar, ahora evaluamos que el producto coincida Y QUE TENGA LOS MISMOS INSUMOS RETIRADOS
-    const existe = carrito.find(item =>
-        item.productoId === id &&
-        JSON.stringify(item.insumosSinDescontar.sort()) === JSON.stringify(idsSin.sort())
-    );
+    // 🔥 REGLA DE NEGOCIO: Eliminamos la agrupación masiva (x2, x3).
+    // Cada plato ingresa al carrito de manera individual.
+    carrito.push({
+        productoId: id,
+        nombre,
+        precio,
+        cantidad: 1, // Siempre será 1 por fila individual
+        subtotal: precio,
+        insumosSinDescontar: idsSin,
+        nombresSinDescontar: nombresSin
+    });
 
-    if (existe) {
-        existe.cantidad++;
-        existe.subtotal = existe.cantidad * precio;
-    } else {
-        carrito.push({
-            productoId: id,
-            nombre,
-            precio,
-            cantidad: 1,
-            subtotal: precio,
-            insumosSinDescontar: idsSin,
-            nombresSinDescontar: nombresSin // Guardamos los nombres para renderizar en el carrito
-        });
-    }
     renderizarCarrito();
 }
 
@@ -125,7 +130,6 @@ function renderizarCarrito() {
     carrito.forEach((item, index) => {
         total += item.subtotal;
 
-        // CORRECCIÓN VISUAL: Ahora pinta los nombres de los ingredientes ("Sin: Cebolla") en vez de IDs numéricos
         const sinEsto = item.nombresSinDescontar && item.nombresSinDescontar.length > 0
             ? `<small class="text-danger d-block fw-bold" style="font-size:0.75rem;"><i class="bi bi-dash-circle-fill me-1"></i>Sin: ${item.nombresSinDescontar.join(', ')}</small>`
             : '';
@@ -135,7 +139,7 @@ function renderizarCarrito() {
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <span class="d-block fw-bold text-dark">${item.nombre}</span>
-                        <small class="text-muted">${item.cantidad} x S/ ${item.precio.toFixed(2)}</small>
+                        <small class="text-muted">1 unidad x S/ ${item.precio.toFixed(2)}</small>
                         ${sinEsto}
                     </div>
                     <div class="text-end">

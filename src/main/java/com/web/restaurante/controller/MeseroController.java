@@ -4,10 +4,12 @@ import com.web.restaurante.model.DetallePedido;
 import com.web.restaurante.model.Mesa;
 import com.web.restaurante.model.Pedido;
 import com.web.restaurante.model.Producto;
+import com.web.restaurante.model.InsumoProducto;
 import com.web.restaurante.model.enums.EstadoPedido;
 import com.web.restaurante.repository.MesaRepository;
 import com.web.restaurante.repository.PedidoRepository;
 import com.web.restaurante.repository.ProductoRepository;
+import com.web.restaurante.repository.InsumoProductoRepository;
 import com.web.restaurante.service.PedidoService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/admin/mesero")
@@ -28,6 +33,9 @@ public class MeseroController {
     private final MesaRepository mesaRepository;
     private final PedidoRepository pedidoRepository;
 
+    // 🔥 Inyectamos el repositorio para leer las recetas y el stock
+    private final InsumoProductoRepository insumoProductoRepository;
+
     @GetMapping("/nuevo")
     public String nuevoPedido(Model model, HttpSession session,
                               @RequestParam(required = false) Long mesaId,
@@ -38,7 +46,34 @@ public class MeseroController {
             return "redirect:/admin/mesas";
         }
 
-        model.addAttribute("productos", productoRepository.findAll());
+        List<Producto> listaProductos = productoRepository.findAll();
+
+        // 🔥 MAPA DE STOCK: Almacenará qué productos están agotados
+        Map<Long, Boolean> productosAgotados = new HashMap<>();
+
+        for (Producto p : listaProductos) {
+            boolean agotado = false;
+            // Buscamos los ingredientes de este plato
+            List<InsumoProducto> receta = insumoProductoRepository.findByProductoId(p.getId());
+
+            for (InsumoProducto ip : receta) {
+                // Solo nos importa bloquear si la PROTEÍNA se acabó
+                if (ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria())) {
+                    double stockActual = ip.getInsumo().getStockActual() != null ? ip.getInsumo().getStockActual() : 0.0;
+                    double cantidadRequerida = ip.getCantidadUsada() != null ? ip.getCantidadUsada() : 0.0;
+
+                    // Si el stock actual no alcanza ni para 1 porción, marcamos el plato como agotado
+                    if (stockActual < cantidadRequerida) {
+                        agotado = true;
+                        break;
+                    }
+                }
+            }
+            productosAgotados.put(p.getId(), agotado);
+        }
+
+        model.addAttribute("productos", listaProductos);
+        model.addAttribute("productosAgotados", productosAgotados); // Enviamos el mapa al frontend
         model.addAttribute("mesaId", mesaId);
 
         if (pedidoId != null) {
