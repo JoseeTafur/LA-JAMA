@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apertura de Caja | La Jama</title>
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/caja.css}">
+    <style>
+        .apertura-container {
+            max-width: 500px;
+            margin: 8% auto;
+        }
+        .bg-jama-dark {
+            background-color: #1e1e24;
+            color: #ffffff;
+        }
+        .btn-jama-green {
+            background-color: #2b7a4a;
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .btn-jama-green:hover {
+            background-color: #1f5935;
+            color: white;
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="wrapper d-flex">
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/caja')}"></div>
+
+    <main id="main-content" class="main-content flex-grow-1">
+        <div th:replace="~{sidebar :: logistica_header('Módulo de Caja')}"></div>
+
+        <div class="container-fluid px-4">
+            <div class="card apertura-container border-0 shadow-lg rounded-4 animate__animated animate__fadeInUp">
+                <div class="card-header bg-jama-dark p-4 rounded-top-4 text-center">
+                    <div class="icon-circle bg-white text-dark d-inline-flex p-3 rounded-circle mb-3 shadow-sm">
+                        <i class="bi bi-key-fill fs-3 text-success"></i>
+                    </div>
+                    <h4 class="mb-1 fw-bold">Apertura de Turno</h4>
+                    <p class="mb-0 text-white-50 small">Inicia las operaciones financieras del día</p>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="alert alert-info border-0 rounded-3 d-flex align-items-center gap-3 mb-4" style="background-color: #e6f4ea; color: #1e4620;">
+                        <i class="bi bi-info-circle-fill fs-4 text-success"></i>
+                        <div>
+                            <span class="d-block small fw-bold opacity-75 text-uppercase">Monto de Cierre Anterior:</span>
+                            <span class="h5 fw-extrabold mb-0" th:text="${'S/ ' + #numbers.formatDecimal(montoSugerido, 1, 2)}">S/ 0.00</span>
+                        </div>
+                    </div>
+
+                    <form th:action="@{/admin/caja/abrir}" method="post" id="formAperturaCaja">
+                        <div class="mb-4">
+                            <label for="montoApertura" class="form-label fw-bold text-secondary small text-uppercase">Fondo Inicial de Caja (S/.)</label>
+                            <div class="input-group input-group-lg shadow-sm rounded-3">
+                                <span class="input-group-text bg-white border-end-0 text-muted fw-bold">S/</span>
+                                <input type="number" step="0.10" id="montoApertura" name="montoApertura"
+                                       class="form-control border-start-0 fw-bold text-success"
+                                       th:value="${montoSugerido}" placeholder="0.00" required min="0">
+                            </div>
+                            <div class="form-text text-muted small mt-2">
+                                * Este efectivo se utilizará exclusivamente para el fondo de vuelto del salón.
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-lg btn-jama-green rounded-pill fw-bold py-2 shadow-sm">
+                                <i class="bi bi-unlock-fill me-2"></i> Confirmar y Abrir Caja
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+<script>
+    document.getElementById('formAperturaCaja')?.addEventListener('submit', function() {
+        AppUtils.showLoading(true);
+    });
+</script>
+</body>
+</html>

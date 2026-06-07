@@ -27,6 +27,7 @@ public class MesaService {
     private final PedidoRepository pedidoRepository;
     private final MesaMapper mesaMapper;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TurnoCajaService turnoCajaService;
 
     public List<MesaDTO> obtenerMesasParaSalon() {
         List<Mesa> mesasEntidad = mesaRepository.findAll();
@@ -173,11 +174,19 @@ public class MesaService {
             pedido.setFechaEntrega(LocalDateTime.now());
             pedidoRepository.save(pedido);
 
-            Mesa mesaPrincipal = mesaRepository.findById(mesaId).orElseThrow();
+            // 🛠️ REPARADO: Recuperamos la entidad física de la mesa principal antes de usarla
+            Mesa mesaPrincipal = mesaRepository.findById(mesaId)
+                    .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
+
             if (mesaPrincipal.getMesaPadre() != null) {
                 mesaPrincipal = mesaPrincipal.getMesaPadre();
             }
 
+            // 🌟 ENLACE DE AUDITORÍA CONTABLE: Ahora sí, registramos el ingreso real de forma segura
+            String conceptoCobro = "Liquidación Comanda #" + pedidoId + " - Mesa N° " + mesaPrincipal.getNumero();
+            turnoCajaService.registrarVenta(conceptoCobro, pedido.getMontoTotal());
+
+            // Tu lógica de liberación de salón se mantiene intacta abajo
             mesaPrincipal.setEstado("DISPONIBLE");
 
             if (mesaPrincipal.getMesasHijas() != null) {

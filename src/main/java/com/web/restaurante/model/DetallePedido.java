@@ -40,4 +40,13 @@ public class DetallePedido {
     private Double precioUnitario;
     private Double subtotal;
 
+    public Double getSubtotal() {
+        if (this.subtotal == null) {
+            if (this.cantidad != null && this.precioUnitario != null) {
+                return this.cantidad * this.precioUnitario;
+            }
+            return 0.0;
+        }
+        return this.subtotal;
+    }
 }

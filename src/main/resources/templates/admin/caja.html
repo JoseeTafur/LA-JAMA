@@ -4,163 +4,207 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Caja | La Jama</title>
-
     <th:block th:replace="~{links :: headLinks}"></th:block>
     <link rel="stylesheet" th:href="@{/css/caja.css}">
 </head>
 <body class="caja-body">
 
-<div class="wrapper">
+<div class="wrapper d-flex">
     <div th:replace="~{sidebar :: sidebar(activeUri='/admin/caja')}"></div>
 
-    <main id="main-content" class="main-content">
+    <main id="main-content" class="main-content flex-grow-1">
         <div th:replace="~{sidebar :: logistica_header('Módulo de Caja')}"></div>
 
         <div class="container-fluid px-4 mt-4">
 
-            <div class="recaudacion-banner d-flex justify-content-between align-items-center p-4 mb-4 rounded-4 shadow-sm">
-                <div>
-                    <h5 class="mb-0 fw-bold text-white">Liquidación de Pedidos</h5>
-                    <p class="mb-0 text-white-50 small">Control de ingresos y facturación diaria</p>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card card-kpi-jama bg-dark text-white p-3 border-0 shadow-sm">
+                        <small class="text-white-50 fw-bold text-uppercase label-kpi">Fondo de Apertura</small>
+                        <h3 class="fw-bold mb-0 mt-1" th:text="${'S/ ' + #numbers.formatDecimal(turno.montoApertura, 1, 2)}">S/ 0.00</h3>
+                    </div>
                 </div>
-                <div class="card-stat-jama p-3 px-4 rounded-4 shadow-sm">
-                    <small class="d-block fw-bold text-uppercase opacity-75" style="font-size: 0.7rem;">Total por Recaudar</small>
-                    <span class="h3 fw-bold mb-0" th:text="${'S/ ' + (#aggregates.sum(pedidos.![montoTotal]) ?: '0.00')}">S/ 0.00</span>
+                <div class="col-md-3">
+                    <div class="card card-kpi-jama bg-success text-white p-3 border-0 shadow-sm">
+                        <small class="text-white-50 fw-bold text-uppercase label-kpi">Ventas del Turno</small>
+                        <h3 class="fw-bold mb-0 mt-1" th:text="${'S/ ' + #numbers.formatDecimal(saldoTeorico - turno.montoApertura, 1, 2)}">S/ 0.00</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card card-kpi-jama bg-white text-dark p-3 border shadow-sm">
+                        <small class="text-muted fw-bold text-uppercase label-kpi">Saldo Esperado en Caja</small>
+                        <h3 class="fw-bold mb-0 mt-1 text-success" th:text="${'S/ ' + #numbers.formatDecimal(saldoTeorico, 1, 2)}">S/ 0.00</h3>
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-action-caja btn-outline-danger flex-grow-1 fw-bold" data-bs-toggle="modal" data-bs-target="#modalMovimiento">
+                        <i class="bi bi-arrow-left-right d-block fs-4 mb-1"></i> Movimiento
+                    </button>
+                    <button class="btn btn-action-caja btn-dark flex-grow-1 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPlanoMesasCaja">
+                        <i class="bi bi-grid-3x3-gap-fill d-block fs-4 mb-1"></i> Ver Salón
+                    </button>
+                    <button class="btn btn-action-caja btn-danger flex-grow-1 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCierre">
+                        <i class="bi bi-lock-fill d-block fs-4 mb-1"></i> Cerrar Caja
+                    </button>
                 </div>
             </div>
 
-            <div id="param-aprobado" th:if="${param.aprobado}" style="display: none;"></div>
-            <div id="param-success" th:if="${param.success}" style="display: none;"></div>
-
-            <div th:if="${not #lists.isEmpty(pedidosPendientes)}" class="card border-0 shadow-sm rounded-4 mb-4">
-                <div class="card-header border-0 py-3 d-flex align-items-center gap-2"
-                     style="background:#fff8e8;">
-                    <i class="bi bi-whatsapp text-success fs-5"></i>
-                    <h5 class="mb-0 fw-bold" style="color:#7a5c1e;">
-                        Pedidos de Carta — Pendientes de Aprobación
-                    </h5>
-                    <span class="badge bg-warning text-dark ms-2"
-                          th:text="${#lists.size(pedidosPendientes)} + ' nuevo(s)'"></span>
+            <div th:if="${not #lists.isEmpty(pedidosPendientes)}" class="card card-alert-jama border-0 shadow-sm mb-4">
+                <div class="card-header card-header-alert border-0 py-3 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-whatsapp text-success fs-4"></i>
+                        <h5 class="mb-0 fw-bold text-alert-title">Pedidos de Carta — Pendientes de Aprobación</h5>
+                        <span class="badge bg-warning text-dark ms-2 fw-bold" th:text="${#lists.size(pedidosPendientes)} + ' nuevo(s)'"></span>
+                    </div>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead style="background:#fdf6e3;">
-                        <tr>
-                            <th class="ps-4">ID</th>
-                            <th>Cliente</th>
-                            <th>Dirección</th>
-                            <th>Total</th>
-                            <th>Hora</th>
-                            <th class="text-end pe-4">Acción</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr th:each="p : ${pedidosPendientes}" style="border-left: 4px solid #d6b656;">
-                            <td class="ps-4">
-                                <span class="fw-bold" style="color:#7a5c1e;">#[[${p.id}]]</span>
-                            </td>
-                            <td>
-                                <div class="fw-bold">[[${p.cliente}]]</div>
-                                <small class="text-muted"><i class="bi bi-whatsapp me-1 text-success"></i>Carta digital</small>
-                            </td>
-                            <td>
-                                <small class="text-muted" th:text="${p.direccion}"></small>
-                            </td>
-                            <td>
-                                    <span class="fw-bold" style="color:#933D2D;">
-                                        S/ [[${#numbers.formatDecimal(p.montoTotal, 1, 2)}]]
-                                    </span>
-                            </td>
-                            <td>
-                                    <span class="badge bg-light text-dark border">
-                                        <i class="bi bi-clock me-1"></i>
-                                        [[${#temporals.format(p.fechaCreacion, 'HH:mm')}]]
-                                    </span>
-                            </td>
-                            <td class="text-end pe-4">
-                                <div class="d-flex gap-2 justify-content-end">
-                                    <form th:action="@{/admin/caja/aprobar/{id}(id=${p.id})}" method="post" class="form-aprobar m-0">
-                                        <button type="submit" class="btn btn-success btn-sm rounded-pill px-3">
-                                            <i class="bi bi-check-lg me-1"></i> Enviar a Cocina
-                                        </button>
-                                    </form>
-                                    <form th:action="@{/admin/caja/rechazar/{id}(id=${p.id})}" method="post" class="form-rechazar m-0">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">
-                                            <i class="bi bi-x-lg me-1"></i> Rechazar
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive border-0 rounded-0">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="thead-alert">
+                            <tr>
+                                <th class="ps-4">ID</th>
+                                <th>Cliente</th>
+                                <th>Dirección / Entrega</th>
+                                <th>Total</th>
+                                <th>Hora</th>
+                                <th class="text-end pe-4">Acción</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="p : ${pedidosPendientes}" class="fila-pendiente">
+                                <td class="ps-4"><span class="fw-bold id-alert">#[[${p.id}]]</span></td>
+                                <td>
+                                    <div class="fw-bold text-dark">[[${p.cliente}]]</div>
+                                    <small class="text-success fw-semibold"><i class="bi bi-phone me-1"></i>Carta digital</small>
+                                </td>
+                                <td><small class="text-muted" th:text="${p.direccion != null ? p.direccion : 'Retiro en Local'}"></small></td>
+                                <td><span class="fw-bold text-danger fs-6">S/ [[${#numbers.formatDecimal(p.montoTotal, 1, 2)}]]</span></td>
+                                <td><span class="badge bg-white text-dark border p-2"><i class="bi bi-clock text-muted me-1"></i>[[${#temporals.format(p.fechaCreacion, 'HH:mm')}]]</span></td>
+                                <td class="text-end pe-4">
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <form th:action="@{/admin/caja/aprobar/{id}(id=${p.id})}" method="post" class="m-0">
+                                            <button type="submit" class="btn btn-success btn-sm rounded-pill px-3 fw-bold"><i class="bi bi-check-lg me-1"></i> Aprobar</button>
+                                        </form>
+                                        <form th:action="@{/admin/caja/rechazar/{id}(id=${p.id})}" method="post" class="m-0">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3"><i class="bi bi-x-lg me-1"></i> Rechazar</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <div class="card card-tabla border-0 shadow-sm rounded-4">
-                <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold text-jama-green">Pedidos por Liquidar</h5>
-                    <div class="input-group w-25 search-container">
-                        <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                        <input type="text" id="buscadorPedido" class="form-control bg-light border-0" placeholder="Buscar orden o cliente...">
+            <div class="card card-main-caja border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <h5 class="mb-0 fw-bold text-jama-green"><i class="bi bi-receipt-cutoff me-2"></i>Comandas Listas para Facturar</h5>
+                    <div class="input-group search-container-jama" style="max-width: 320px;">
+                        <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="buscadorPedido" class="form-control bg-light border-0" placeholder="Buscar orden, cliente o mesa...">
                     </div>
                 </div>
 
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0" id="tablaCaja">
-                            <thead>
+                            <thead class="thead-jama-caja">
                             <tr>
                                 <th class="ps-4">ID Orden</th>
-                                <th>Servicio / Repartidor</th>
+                                <th>Tipo Servicio</th>
                                 <th>Cliente / Mesa</th>
-                                <th>Hora Entrega / Pedido</th>
-                                <th>Total</th>
-                                <th class="text-end pe-4">Acción</th>
+                                <th>Registro</th>
+                                <th>Total Bruto</th>
+                                <th class="text-center">Detalles</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-end pe-4">Comprobante</th>
                             </tr>
                             </thead>
                             <tbody>
-                            <tr th:each="p : ${pedidos}">
-                                <td class="ps-4">
-                                    <span class="fw-bold text-jama-green">#[[${p.id}]]</span>
-                                </td>
+                            <tr th:each="p : ${pedidos}"
+                                th:data-cliente="${p.cliente}"
+                                class="fila-pedido-caja"
+                                th:style="${p.comprobanteNumero != null ? 'border-left: 5px solid var(--bs-success);' : ''}">
+                                <td class="ps-4"><span class="fw-bold id-comanda-text">#[[${p.id}]]</span></td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="icon-circle-jama me-2">
-                                            <i th:class="${p.repartidor != null} ? 'bi bi-bicycle' : 'bi bi-shop-window'"></i>
+                                        <div th:class="${p.tipoPedido != null and p.tipoPedido.name() == 'DELIVERY'} ? 'icon-service-jama bg-delivery' : 'icon-service-jama bg-local'">
+                                            <i th:class="${p.tipoPedido != null and p.tipoPedido.name() == 'DELIVERY'} ? 'bi bi-bicycle' : 'bi bi-shop-window'"></i>
                                         </div>
-                                        <span class="small fw-bold" th:text="${p.repartidor != null ? p.repartidor.nombre : 'Atención en Local'}"></span>
+                                        <span class="small fw-bold text-secondary" th:text="${p.tipoPedido != null and p.tipoPedido.name() == 'DELIVERY' ? 'Delivery' : 'Mesa / Salón'}"></span>
                                     </div>
                                 </td>
                                 <td>
                                     <div class="fw-bold text-dark">[[${p.cliente}]]</div>
-                                    <div class="small text-muted text-truncate" style="max-width: 150px;">[[${p.direccion}]]</div>
+                                    <small class="text-muted d-block" th:if="${p.numeroMesa != null and p.numeroMesa != ''}">Mesa N° [[${p.numeroMesa}]]</small>
+                                    <small class="text-muted d-block text-truncate" style="max-width: 200px;" th:if="${p.numeroMesa == null or p.numeroMesa == ''}" th:text="${p.direccion != null ? p.direccion : 'Consumo en Sala'}"></small>
                                 </td>
                                 <td>
                                     <span class="badge badge-time-jama">
-                                        <i class="bi bi-clock me-1"></i>
-                                        [[${#temporals.format(p.fechaEntrega != null ? p.fechaEntrega : p.fechaCreacion, 'HH:mm')}]]
+                                        <i class="bi bi-clock me-1"></i>[[${#temporals.format(p.fechaCreacion, 'HH:mm')}]]
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="h6 fw-bold mb-0 text-jama-skin">S/ [[${#numbers.formatDecimal(p.montoTotal, 1, 2)}]]</span>
+                                    <span class="fs-6 fw-bold mb-0 text-jama-green">
+                                        S/ [[${#numbers.formatDecimal(p.montoTotal, 1, 2)}]]
+                                    </span>
                                 </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-dark rounded-circle"
+                                            th:data-id="${p.id}" onclick="verDetallesComandaAuditoria(this)"
+                                            title="Ver Detalles de la Orden">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </button>
+                                </td>
+                                <td class="text-center">
+                                    <span th:if="${p.estado.name() == 'EN_COCINA' || p.estado.name() == 'PREPARADO'}" class="badge bg-warning text-dark rounded-pill px-3 py-2 fw-bold shadow-sm">
+                                        <i class="bi bi-clock-history me-1"></i> Consumiendo
+                                    </span>
+                                    <span th:if="${p.estado.name() == 'ENTREGADO'}" class="badge bg-info text-dark rounded-pill px-3 py-2 fw-bold shadow-sm">
+                                        <i class="bi bi-receipt me-1"></i> Cuenta Pedida
+                                    </span>
+                                    <span th:if="${p.estado.name() == 'PAGADO'}" class="badge bg-success text-white rounded-pill px-3 py-2 fw-bold shadow-sm">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Cobrado
+                                    </span>
+                                </td>
+
                                 <td class="text-end pe-4">
-                                    <form th:action="@{/admin/caja/liquidar}" method="post" class="form-liquidar m-0">
-                                        <input type="hidden" name="pedidoId" th:value="${p.id}">
-                                        <button type="submit" class="btn btn-jama-cobrar rounded-pill shadow-sm px-4">
-                                            <i class="bi bi-cash-stack me-1"></i> Cobrar
+                                    <div th:if="${p.estado.name() != 'PAGADO'}" class="text-muted small">
+                                        <span class="badge bg-light text-muted border">Esperando Pago</span>
+                                    </div>
+
+                                    <div th:if="${p.estado.name() == 'PAGADO' and p.comprobanteNumero == null}" class="d-flex gap-1 justify-content-end">
+                                        <button type="button" class="btn btn-xs btn-primary fw-bold rounded-pill px-2"
+                                                th:onclick="'abrirModalFacturacion(' + ${p.id} + ', \'BOLETA\')'" style="font-size: 0.75rem;">
+                                            <i class="bi bi-file-earmark-text-fill text-white"></i> Boleta
                                         </button>
-                                    </form>
+                                        <button type="button" class="btn btn-xs btn-dark fw-bold rounded-pill px-2"
+                                                th:onclick="'abrirModalFacturacion(' + ${p.id} + ', \'FACTURA\')'" style="font-size: 0.75rem;">
+                                            <i class="bi bi-building"></i> Factura
+                                        </button>
+                                    </div>
+
+                                    <div th:if="${p.estado.name() == 'PAGADO' and p.comprobanteNumero != null}" class="d-flex align-items-center justify-content-end gap-2">
+                                        <div class="text-end">
+                                            <span class="badge bg-light text-dark border fw-bold d-block" style="font-size: 0.75rem;">
+                                                [[${p.comprobanteTipo}]] [[${p.comprobanteNumero}]]
+                                            </span>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-circle"
+                                                th:onclick="'anularComprobante(' + ${p.id} + ')'" title="Anular Comprobante (Nota de Crédito)">
+                                            <i class="bi bi-trash3-fill"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
 
                             <tr th:if="${#lists.isEmpty(pedidos)}">
-                                <td colspan="6" class="text-center py-5">
-                                    <div class="empty-state-jama">
-                                        <i class="bi bi-emoji-smile-fill text-jama-skin" style="font-size: 4rem;"></i>
-                                        <h4 class="mt-3 fw-bold text-jama-green">¡Todo cuadrado!</h4>
-                                        <p class="text-muted">No hay facturas pendientes por cobrar en este momento.</p>
+                                <td colspan="8" class="text-center py-5">
+                                    <div class="empty-state-jama py-4">
+                                        <i class="bi bi-emoji-smile-fill text-jama-gold mb-3 d-block" style="font-size: 3.5rem;"></i>
+                                        <h4 class="fw-bold text-jama-green">¡Todo cuadrado en Caja!</h4>
+                                        <p class="text-muted mb-0">No hay facturas ni comandas pendientes por cobrar en este momento.</p>
                                     </div>
                                 </td>
                             </tr>
@@ -173,7 +217,179 @@
     </main>
 </div>
 
+<div class="modal fade" id="modalMovimiento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form th:action="@{/admin/caja/movimiento}" method="post" class="modal-content border-0 shadow-lg">
+            <div class="modal-header header-jama-caja-dark text-white">
+                <h5 class="modal-title fw-bold text-white"><i class="bi bi-arrow-left-right me-2 text-warning"></i>Movimiento Manual de Caja</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label-jama">Tipo de Operación *</label>
+                    <select name="tipo" class="form-select-jama" required>
+                        <option value="INGRESO">🔼 INGRESO (Inyección de sencillo / vuelto)</option>
+                        <option value="EGRESO">🔽 EGRESO (Gasto de pánico / Proveedor / Servicios)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-jama">Monto Operación (S/.) *</label>
+                    <input type="number" step="0.10" name="monto" class="form-control-jama text-success fw-bold fs-5" placeholder="0.00" required>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label-jama">Concepto / Justificación Comercial *</label>
+                    <input type="text" name="concepto" class="form-control-jama" placeholder="Ej: Pago de delivery de verdulería o sencillo de 2 soles" required>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm">Registrar en Libro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCierre" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form th:action="@{/admin/caja/cerrar}" method="post" class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title fw-bold text-white"><i class="bi bi-lock-fill me-2"></i>Arqueo Estricto y Cierre de Turno</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-danger border-0 rounded-3 small d-flex gap-2 align-items-center" style="background-color: rgba(184, 58, 58, 0.08); color: var(--lajama-danger);">
+                    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                    <span>Al cerrar se contrastará tu arqueo físico contra el <strong>Saldo Esperado (S/. <span th:text="${#numbers.formatDecimal(saldoTeorico, 1, 2)}"></span>)</strong> para auditar faltantes o sobrantes.</span>
+                </div>
+                <div class="mb-3 mt-2">
+                    <label class="form-label-jama">Monto Total Contado Físicamente (Efectivo + Vouchers) *</label>
+                    <input type="number" step="0.10" name="montoCierre" class="form-control form-control-lg rounded-3 fw-bold text-danger border-2 text-center fs-3" placeholder="0.00" required style="border-color: var(--lajama-danger) !important;">
+                </div>
+                <div class="mb-0">
+                    <label class="form-label-jama">Observaciones de Entrega de Turno</label>
+                    <textarea name="observaciones" class="form-control-jama" rows="3" placeholder="Ej: Caja cuadra perfectamente. Queda un fajo de monedas de 50 céntimos para sencillo."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">Confirmar Arqueo y Cerrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPlanoMesasCaja" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 95vw; width: 95%;">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" style="height: 88vh;">
+
+            <div class="modal-header border-0 pt-4 pb-2 px-4 bg-white flex-shrink-0">
+                <div class="d-flex align-items-center gap-3 w-100 justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="p-2 bg-success bg-opacity-10 text-success rounded-3">
+                            <i class="bi bi-display fs-3"></i>
+                        </div>
+                        <div>
+                            <h4 class="fw-black text-jama-green mb-0" style="font-size: 1.5rem; letter-spacing: -0.5px;">Monitor de Salón en Tiempo Real</h4>
+                            <p class="text-muted mb-0 small fw-medium">Vista espejo literal del estado actual de tus mesas.</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+
+            <div class="modal-body p-0 overflow-hidden" style="height: calc(100% - 80px);">
+                <iframe src="/admin/mesas"
+                        id="iframeMonitorSalon"
+                        style="width: 100%; height: 100%; border: none;">
+                </iframe>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDetalleAuditoria" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-search me-2 text-warning"></i> Auditoría de Orden #<span id="auditoriaIdPedido">0</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex justify-content-between mb-2 small text-muted">
+                    <span><strong>Servicio:</strong> <span id="auditoriaTipo"></span></span>
+                    <span><strong>Mesa:</strong> <span id="auditoriaMesa"></span></span>
+                </div>
+                <div id="auditoriaListaPlatos" class="list-group mb-3">
+                </div>
+                <div class="border-top pt-2 text-end">
+                    <div class="text-muted small mb-1">Propina (Móvil/POS): S/. <span id="auditoriaPropina">0.00</span></div>
+                    <h5 class="fw-bold text-jama-green">Total Consumo: S/. <span id="auditoriaTotal">0.00</span></h5>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEmisionFiscal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form th:action="@{/admin/caja/emitir-comprobante}" method="post" class="modal-content border-0 shadow-lg">
+            <input type="hidden" name="pedidoId" id="fiscalPedidoId">
+            <input type="hidden" name="tipo" id="fiscalTipoDoc">
+
+            <div class="modal-header bg-dark text-white border-0">
+                <h5 class="modal-title fw-bold text-white">
+                    <i class="bi bi-receipt me-2 text-warning"></i> Emitir <span id="fiscalTituloTipo"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info border-0 rounded-3 small d-flex gap-2 align-items-center mb-3" style="background-color: rgba(13, 110, 253, 0.08); color: #0d6efd;">
+                    <i class="bi bi-info-circle-fill fs-5"></i>
+                    <span>Este documento se registrará de manera inmutable. Si requieres cambiarlo luego, tendrás que anularlo.</span>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label-jama" id="labelDocumentoFiscal">Número de Documento (DNI/RUC)</label>
+                    <input type="text" name="documento" id="fiscalInputDoc" class="form-control-jama fw-bold text-dark fs-5" placeholder="Opcional para Boletas menores a S/. 700">
+                    <div class="form-text text-muted small mt-1" id="ayudaDocumentoFiscal">Para boletas puede quedar en blanco (Clientes Varios). Para facturas es obligatorio ingresar el RUC.</div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" id="btnConfirmarFiscal">Generar Comprobante</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
 <script th:src="@{/js/caja.js}"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        function generarColorPastelPorTexto(texto) {
+            if (!texto) return 'transparent';
+
+            let hash = 0;
+            for (let i = 0; i < texto.length; i++) {
+                hash = texto.charCodeAt(i) + ((hash << 5) - hash);
+            }
+
+            const r = Math.abs((hash & 0xFF) % 55) + 200;
+            const g = Math.abs(((hash >> 8) & 0xFF) % 55) + 200;
+            const b = Math.abs(((hash >> 16) & 0xFF) % 55) + 200;
+
+            return `rgba(${r}, ${g}, ${b}, 0.4)`;
+        }
+
+        document.querySelectorAll('.fila-pedido-caja').forEach(function(fila) {
+            const nombreCliente = fila.getAttribute('data-cliente');
+            if (nombreCliente) {
+                const colorPastel = generarColorPastelPorTexto(nombreCliente);
+                fila.style.backgroundColor = colorPastel;
+            }
+        });
+    });
+</script>
 </body>
 </html>

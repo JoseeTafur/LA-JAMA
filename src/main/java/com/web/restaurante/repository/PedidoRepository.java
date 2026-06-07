@@ -38,14 +38,11 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             "AND ((:categoria = 'FRI' AND p.frioListo = false) OR (:categoria = 'CALIENTE' AND p.calienteListo = false))")
     List<Pedido> buscarPedidosPorCocina(@Param("categoria") String categoria);
 
-    @Query("SELECT p FROM Pedido p WHERE p.estado IN (" +
-        "com.web.restaurante.model.enums.EstadoPedido.ENTREGADO, " +
-        "com.web.restaurante.model.enums.EstadoPedido.PREPARADO) " +
-        "AND p.tipoPedido = com.web.restaurante.model.enums.TipoPedido.LOCAL " +
-        "OR p.estado = com.web.restaurante.model.enums.EstadoPedido.ENTREGADO " +
-        "AND p.tipoPedido = com.web.restaurante.model.enums.TipoPedido.DELIVERY " +
-        "ORDER BY p.fechaCreacion ASC")
-List<Pedido> listarPedidosPorCobrar();
+    @Query("SELECT p FROM Pedido p WHERE " +
+            // 🏠 MODAL DE COBRO EXITOSO: Filtra y muestra solo lo que ya pasó por caja-movil.js y se compró con éxito
+            "p.estado = com.web.restaurante.model.enums.EstadoPedido.PAGADO " +
+            "ORDER BY p.fechaCreacion ASC")
+    List<Pedido> listarPedidosPorCobrar();
 
     @Query("SELECT p FROM Pedido p WHERE p.estado = com.web.restaurante.model.enums.EstadoPedido.ENTREGADO " +
             "AND CAST(p.fechaEntrega AS date) = CURRENT_DATE")

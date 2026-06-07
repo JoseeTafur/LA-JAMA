@@ -200,6 +200,15 @@ public class MeseroController {
             if (pedidoFinal.getListaDetalles() != null) {
                 for (DetallePedido detalle : pedidoFinal.getListaDetalles()) {
                     detalle.setPedido(pedidoFinal);
+
+                    // Forzamos el seteo del precio unitario desde el producto hydratado si vino nulo
+                    if (detalle.getPrecioUnitario() == null && detalle.getProducto() != null) {
+                        detalle.setPrecioUnitario(detalle.getProducto().getPrecio());
+                    }
+
+                    // Seteamos explícitamente el subtotal llamando a nuestro método seguro
+                    detalle.setSubtotal(detalle.getSubtotal());
+
                     totalAcumulado += detalle.getSubtotal();
                 }
             }
@@ -220,6 +229,17 @@ public class MeseroController {
         } catch (Exception e) {
             e.printStackTrace();
             return "Error: " + e.getMessage();
+        }
+    }
+
+    @PostMapping("/comanda/eliminar-item")
+    @ResponseBody
+    public ResponseEntity<String> eliminarItemDesdeSalon(@RequestParam Long pedidoId, @RequestParam Long detalleId) {
+        try {
+            pedidoService.eliminarItemComanda(pedidoId, detalleId);
+            return ResponseEntity.ok("OK");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
 

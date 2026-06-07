@@ -337,6 +337,7 @@ function entregarPlatoUnitario(pedidoId, detalleId, nombreProducto) {
         params.append("detalleId", detalleId);
 
         try {
+            // 🌟 REGRESA A TU RUTA ORIGINAL DE MESAS
             const res = await fetch('/admin/mesas/comanda/entregar-item', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -417,7 +418,8 @@ function marcarComoEntregado() {
         if (mesaModal) mesaModal.hide();
         AppUtils.showLoading(true);
         try {
-            const res = await fetch('/admin/mesero/marcar-en-mesa/' + currentPedidoId, { method: 'POST' });
+            // 🌟 REGRESA A TU RUTA ORIGINAL DE MESAS
+            const res = await fetch('/admin/mesas/marcar-en-mesa/' + currentPedidoId, { method: 'POST' });
             AppUtils.showLoading(false);
             if (res.ok) {
                 AppUtils.showNotification("Servicio marcado en mesa", "success");
