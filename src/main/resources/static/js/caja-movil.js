@@ -1,13 +1,13 @@
-// =====================================================================
-// ESTADO GLOBAL - NÚCLEO DE CAJA MULTITICKET (VERSIÓN BLINDADA SUNAT)
-// =====================================================================
+let platosSeleccionadosParaCobro = [];
 let totalConsumoMesa = 0;
 let platosDisponibles = [];
 let ticketsDeCobro = [];
 const TASA_IGV = 0.18;
 
 function inicializarFlujoCaja(montoTotal, numeroMesa) {
-    totalConsumoMesa = montoTotal;
+    currentMesaNumero = numeroMesa;
+    platosSeleccionadosParaCobro = [];
+    totalConsumoMesa = 0;
     document.getElementById('cobroNumMesa').innerText = numeroMesa;
     document.getElementById('cobroTotalBase').innerText = totalConsumoMesa.toFixed(2);
 
@@ -16,19 +16,77 @@ function inicializarFlujoCaja(montoTotal, numeroMesa) {
     reconstruirCanastas();
 }
 
+// =======================================================
+// EXTRAER PLATOS DEL MODAL (CORREGIDO Y BLINDADO)
+// =======================================================
 function extraerPlatosDelModal() {
     platosDisponibles = [];
-    document.querySelectorAll('#lista-platos-previsualizar > div').forEach((row, idx) => {
+    platosSeleccionadosParaCobro = [];
+    let sumaSeleccionados = 0;
+    let indexCobro = 0;
+
+    // Buscamos todas las filas de platos en el modal de gestión operativa
+    document.querySelectorAll('#lista-platos-previsualizar > div').forEach((row) => {
+        // 1. Ignoramos mermas / anulados
         if(row.style.backgroundColor.includes('rgb(255, 229, 229)')) return;
 
+        // 2. FILTRO LOGÍSTICO EXTREMO: Si el plato NO está "Entregado", la caja lo ignora por completo
+        const estadoPlato = row.getAttribute('data-estado');
+        if (estadoPlato !== 'Entregado') return;
+
+        // 3. Buscamos el checkbox específico
+        const checkbox = row.querySelector('.chk-mesa-confirmar');
+        if (!checkbox || !checkbox.checked) return;
+
+        // Extraemos la cantidad buscando el badge oscuro (ej: "1x", "2x")
+        const badgeCantidad = row.querySelector('.badge.bg-dark');
+        let cantidad = 1;
+        if (badgeCantidad) {
+            cantidad = parseInt(badgeCantidad.innerText.replace('x', '')) || 1;
+        }
+
+        // Extraemos el nombre del plato limpiando cualquier prefijo residual
+        const elementoNombre = row.querySelector('.fw-semibold');
+        let nombrePlato = elementoNombre ? elementoNombre.innerText : 'Producto';
+        nombrePlato = nombrePlato.replace(/^\d+x\s*/, '');
+
+        // Extraemos el subtotal buscando el texto que tiene el formato "S/. 00.00"
+        const elementoPrecio = row.querySelector('.text-muted.small.fw-bold') || row.querySelector('span.small.fw-bold');
+        let subtotalPlato = 0;
+        if (elementoPrecio) {
+            subtotalPlato = parseFloat(elementoPrecio.innerText.replace('S/. ', '')) || 0;
+        } else {
+            const todosLosSpans = row.querySelectorAll('.d-flex.align-items-center.gap-2 span');
+            for (let span of todosLosSpans) {
+                if (span.innerText.includes('S/.')) {
+                    subtotalPlato = parseFloat(span.innerText.replace('S/. ', '')) || 0;
+                    break;
+                }
+            }
+        }
+
+        // Estructuramos el objeto para la división de tickets
         platosDisponibles.push({
-            id: idx,
-            nombre: row.querySelector('.fw-semibold').innerText,
-            cantidad: parseInt(row.querySelector('.badge').innerText),
-            subtotal: parseFloat(row.querySelector('.small.fw-bold').innerText.replace('S/. ', '')),
-            idTicketAsignado: -1
+            id: indexCobro,
+            nombre: nombrePlato,
+            cantidad: cantidad,
+            subtotal: subtotalPlato,
+            idTicketAsignado: -1,
+            permitidoCobrar: true
         });
+
+        platosSeleccionadosParaCobro.push(indexCobro);
+        sumaSeleccionados += subtotalPlato;
+        indexCobro++;
     });
+
+    // Seteamos los totales globales del sistema de caja móvil
+    totalConsumoMesa = Math.round(sumaSeleccionados * 100) / 100;
+
+    const txtTotalBase = document.getElementById('cobroTotalBase');
+    if (txtTotalBase) {
+        txtTotalBase.innerText = totalConsumoMesa.toFixed(2);
+    }
 }
 
 function configurarSelectorPersonas() {
@@ -68,12 +126,9 @@ function reconstruirCanastas() {
     actualizarVista();
 }
 
-// =====================================================================
-// HERRAMIENTAS DE DIVISIÓN DE SALDO (CÉNTIMOS INDESTRUCTIBLES)
-// =====================================================================
 async function distribuirSaldos(metodo) {
     const totalPlatosAsignados = platosDisponibles
-        .filter(p => p.idTicketAsignado !== -1)
+        .filter(p => p.idTicketAsignado !== -1 && platosSeleccionadosParaCobro.includes(p.id))
         .reduce((sum, p) => sum + p.subtotal, 0);
 
     const saldoSobrante = Math.round((totalConsumoMesa - totalPlatosAsignados) * 100) / 100;
@@ -83,7 +138,7 @@ async function distribuirSaldos(metodo) {
 
         let tIndex = 0;
         platosDisponibles.forEach(p => {
-            if (p.idTicketAsignado === -1) {
+            if (p.idTicketAsignado === -1 && platosSeleccionadosParaCobro.includes(p.id)) {
                 p.idTicketAsignado = tIndex % ticketsDeCobro.length;
                 tIndex++;
             }
@@ -165,7 +220,7 @@ async function distribuirSaldos(metodo) {
         if (formValues) {
             let tIndex = 0;
             platosDisponibles.forEach(p => {
-                if (p.idTicketAsignado === -1) {
+                if (p.idTicketAsignado === -1 && platosSeleccionadosParaCobro.includes(p.id)) {
                     p.idTicketAsignado = tIndex % ticketsDeCobro.length;
                     tIndex++;
                 }
@@ -192,10 +247,8 @@ async function distribuirSaldos(metodo) {
     }
 }
 
-// =====================================================================
-// ASIGNACIÓN FÍSICA Y VISUALIZACIÓN
-// =====================================================================
 async function preguntarDestinoPlato(platoId) {
+    if (!platosSeleccionadosParaCobro.includes(platoId)) return;
     if (ticketsDeCobro.length === 1) return;
 
     let opciones = { "-1": "Liberar a la mesa" };
@@ -221,10 +274,53 @@ async function preguntarDestinoPlato(platoId) {
     }
 }
 
+function alternarSeleccionPlatoCobro(event, platoId) {
+    event.stopPropagation();
+
+    const index = platosSeleccionadosParaCobro.indexOf(platoId);
+    if (index === -1) {
+        platosSeleccionadosParaCobro.push(platoId);
+    } else {
+        platosSeleccionadosParaCobro.splice(index, 1);
+        const plato = platosDisponibles.find(p => p.id === platoId);
+        if (plato) plato.idTicketAsignado = -1;
+    }
+
+    recalcularTotalesPorSeleccion();
+}
+
+function recalcularTotalesPorSeleccion() {
+    let sumaSubtotalesSeleccionados = 0;
+
+    platosDisponibles.forEach(p => {
+        if (!platosSeleccionadosParaCobro.includes(p.id)) {
+            p.idTicketAsignado = -1;
+        } else {
+            sumaSubtotalesSeleccionados += p.subtotal;
+        }
+    });
+
+    totalConsumoMesa = Math.round(sumaSubtotalesSeleccionados * 100) / 100;
+    document.getElementById('cobroTotalBase').innerText = totalConsumoMesa.toFixed(2);
+
+    ticketsDeCobro.forEach(t => {
+        t.montoPlatos = 0;
+        t.montoLibre = ticketsDeCobro.length === 1 ? totalConsumoMesa : 0;
+    });
+
+    platosDisponibles.forEach(p => {
+        if (p.idTicketAsignado !== -1 && platosSeleccionadosParaCobro.includes(p.id)) {
+            ticketsDeCobro[p.idTicketAsignado].montoPlatos += p.subtotal;
+        }
+    });
+
+    actualizarVista();
+}
+
 function recalcularMatriz() {
     ticketsDeCobro.forEach(t => t.montoPlatos = 0);
     platosDisponibles.forEach(p => {
-        if (p.idTicketAsignado !== -1) {
+        if (p.idTicketAsignado !== -1 && platosSeleccionadosParaCobro.includes(p.id)) {
             ticketsDeCobro[p.idTicketAsignado].montoPlatos += p.subtotal;
         }
     });
@@ -260,12 +356,35 @@ function renderizarPlatos() {
             colorBadge = 'bg-warning text-dark d-inline-flex align-items-center gap-1';
         }
 
+        let checkboxHTML = '';
+        let estiloFila = '';
+
+        if (p.permitidoCobrar) {
+            const checkedAttr = platosSeleccionadosParaCobro.includes(p.id) ? 'checked' : '';
+            checkboxHTML = `
+                <input type="checkbox" class="form-check-input chk-cobro-parcial"
+                       style="width: 18px; height: 18px; cursor: pointer; border: 2px solid #1B3A2C; margin-right: 8px;"
+                       value="${p.id}" ${checkedAttr}
+                       onclick="alternarSeleccionPlatoCobro(event, ${p.id})">
+            `;
+        } else {
+            checkboxHTML = `
+                <input type="checkbox" class="form-check-input text-muted opacity-50" style="margin-right: 8px;" disabled title="Aún en cocina">
+            `;
+            estiloFila = 'opacity: 0.5; background-color: #f3f4f6; cursor: not-allowed;';
+        }
+
         contenedor.innerHTML += `
-            <div class="jama-item-row-btn ${clAsignado}" onclick="preguntarDestinoPlato(${p.id})">
-                <span class="small fw-semibold text-truncate" style="max-width: 65%;">${p.cantidad}x ${p.nombre}</span>
-                <div class="d-flex gap-2 align-items-center">
-                    <span class="small fw-bold">S/. ${p.subtotal.toFixed(2)}</span>
-                    <span class="badge ${colorBadge}">${txtBadge}</span>
+            <div class="jama-item-row-btn ${clAsignado} d-flex align-items-center" style="${estiloFila}" onclick="preguntarDestinoPlato(${p.id})">
+                <div class="d-flex align-items-center" onclick="event.stopPropagation();">
+                    ${checkboxHTML}
+                </div>
+                <div class="d-flex justify-content-between align-items-center flex-grow-1">
+                    <span class="small fw-semibold text-truncate" style="max-width: 60%;">${p.cantidad}x ${p.nombre}</span>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span class="small fw-bold">S/. ${p.subtotal.toFixed(2)}</span>
+                        <span class="badge ${colorBadge}">${txtBadge}</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -286,12 +405,12 @@ function renderizarTickets() {
         const totalPOS = Math.round((consumoTotal + propinaNum) * 100) / 100;
         const requiereDNI = t.tipoDoc === 'BOLETA' && consumoTotal >= 700;
 
-        const platosDelTicket = platosDisponibles.filter(p => p.idTicketAsignado === t.id);
+        const platosDelTicket = platosDisponibles.filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id));
         let htmlPlatosAsignados = '';
 
         if (t.montoLibre > 0) {
             const totalTickets = ticketsDeCobro.length;
-            const porcentajeParticipacion = Math.round((consumoTotal / totalConsumoMesa) * 100);
+            const porcentajeParticipacion = totalConsumoMesa > 0 ? Math.round((consumoTotal / totalConsumoMesa) * 100) : 0;
 
             const esEquitativo = ticketsDeCobro.every(tick =>
                 Math.abs((tick.montoPlatos + tick.montoLibre) - consumoTotal) < 0.05
@@ -307,7 +426,7 @@ function renderizarTickets() {
                         🔄 Cuenta Compartida
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-muted); margin-bottom: 4px;">
-                        <span>Total Mesa:</span>
+                        <span>Total Parcial:</span>
                         <span style="font-weight: 600;">S/. ${totalConsumoMesa.toFixed(2)}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-muted); margin-bottom: 4px;">
@@ -425,7 +544,11 @@ function actualizarVista() {
         return totalTicket <= 0;
     });
 
-    if (desfase === 0 && !tieneTicketsVacios) {
+    if (platosSeleccionadosParaCobro.length === 0) {
+        labelPorAsignar.innerText = "Marque los platos a cobrar";
+        labelPorAsignar.className = "jama-txt-status status-danger";
+        btnCierre.disabled = true;
+    } else if (desfase === 0 && !tieneTicketsVacios) {
         labelPorAsignar.innerText = "S/. 0.00 (Cuadrado)";
         labelPorAsignar.className = "jama-txt-status status-success";
         btnCierre.disabled = false;
@@ -442,6 +565,7 @@ function actualizarVista() {
 }
 
 function limpiarInstanciaCaja() {
+    platosSeleccionadosParaCobro = [];
     totalConsumoMesa = 0;
     platosDisponibles = [];
     ticketsDeCobro = [];
@@ -449,7 +573,7 @@ function limpiarInstanciaCaja() {
 
 function procesarLiquidacion() {
     AppUtils.showConfirmationDialog({
-        title: '¿Confirmar Cierre de Mesa?',
+        title: '¿Confirmar Pago de Consumos?',
         text: `Procesando ${ticketsDeCobro.length} tickets tributarios con IGV.`,
         icon: 'warning',
         confirmButtonColor: '#ffc107',
@@ -467,21 +591,33 @@ function procesarLiquidacion() {
         }));
         urlParams.append("matrizTickets", JSON.stringify(payloadTickets));
 
+        // 🌟 NUEVO: Recolectar los IDs reales de los platos marcados en el modal principal y enviarlos al Java
+        const idsPagados = Array.from(document.querySelectorAll('.chk-mesa-confirmar:checked')).map(cb => cb.value);
+        urlParams.append("idsDetallesPagados", idsPagados.join(','));
+
         try {
             const res = await fetch(`/admin/mesas/comanda/liquidar-bloque-multiticket/${currentPedidoId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: urlParams
             });
+
             AppUtils.showLoading(false);
+
             if (res.ok) {
                 limpiarInstanciaCaja();
                 Swal.fire({
-                    icon: 'success', title: '¡Mesa Cobrada!', confirmButtonColor: '#1B3A2C'
+                    icon: 'success',
+                    title: '¡Cobro Procesado!',
+                    confirmButtonColor: '#1B3A2C'
                 }).then(() => window.location.reload());
+            } else {
+                const txtError = await res.text();
+                AppUtils.showNotification(txtError || "Error en la liquidación", "error");
             }
         } catch (error) {
             AppUtils.showLoading(false);
+            console.error("Error en liquidación:", error);
             window.location.reload();
         }
     });
@@ -519,7 +655,11 @@ function manoFijarMontoTicket(idTicketEditado, valorIngresado) {
             }
         });
 
-        platosDisponibles.forEach((p, idx) => p.idTicketAsignado = idx % ticketsDeCobro.length);
+        platosDisponibles.forEach((p, idx) => {
+            if (platosSeleccionadosParaCobro.includes(p.id)) {
+                p.idTicketAsignado = idx % ticketsDeCobro.length;
+            }
+        });
     }
 
     document.getElementById('selectNumTickets').disabled = true;
@@ -533,9 +673,91 @@ function removerClienteDePlato(event, platoId) {
     if (plato) {
         plato.idTicketAsignado = -1;
 
-        const hayAsignados = platosDisponibles.some(p => p.idTicketAsignado !== -1);
+        const hayAsignados = platosDisponibles.some(p => p.idTicketAsignado !== -1 && platosSeleccionadosParaCobro.includes(p.id));
         document.getElementById('selectNumTickets').disabled = hayAsignados;
 
         recalcularMatriz();
     }
+}
+
+// =================================================================
+// EVALUACIÓN DINÁMICA DE CONFIRMACIÓN DE PAGO (EXCLUSIVIDAD TOTAL)
+// =================================================================
+function evaluarBotonConfirmarPago() {
+    const btnDesocupar = document.getElementById('btnDesocupar');
+    if (!btnDesocupar) return;
+
+    // 1. Capturamos todos los checkboxes seleccionados por el mesero en el modal
+    const checksMarcados = document.querySelectorAll('.chk-mesa-confirmar:checked');
+
+    // Si no hay nada seleccionado, el botón de pago se apaga por defecto
+    if (checksMarcados.length === 0) {
+        btnDesocupar.classList.add('disabled');
+        btnDesocupar.disabled = true;
+        btnDesocupar.style.opacity = "0.5";
+        if (typeof recalcularSubtotalElegido === 'function') recalcularSubtotalElegido();
+        return;
+    }
+
+    let conteoEntregadosMarcados = 0;
+    let tienePlatosIncompletosMarcados = false; // 🚨 NUEVA BANDERA DE CONTROL
+
+    // 2. Analizamos rigurosamente cada uno de los elementos marcados
+    checksMarcados.forEach(checkbox => {
+        const estadoLogistico = checkbox.getAttribute('data-estado-plato');
+
+        if (estadoLogistico === 'Entregado') {
+            conteoEntregadosMarcados++;
+        } else if (estadoLogistico === 'En cocina' || estadoLogistico === 'Listo') {
+            // 🚨 SI ENCUENTRA ENTRUSOS: Encendemos la alarma de bloqueo inmediatamente
+            tienePlatosIncompletosMarcados = true;
+        }
+    });
+
+    // 3. REGLA DE EXCLUSIVIDAD DE NUESTRA APP:
+    // El botón SOLO se prende si hay mínimo un entregado Y CERO platos incompletos en la selección.
+    const sePermiteProcederAlCobro = (conteoEntregadosMarcados > 0 && !tienePlatosIncompletosMarcados);
+
+    if (sePermiteProcederAlCobro) {
+        btnDesocupar.classList.remove('disabled');
+        btnDesocupar.disabled = false;
+        btnDesocupar.style.opacity = "1";
+    } else {
+        // Bloquea si solo hay cocina, o si hay una mezcla de entregado + cocina
+        btnDesocupar.classList.add('disabled');
+        btnDesocupar.disabled = true;
+        btnDesocupar.style.opacity = "0.5";
+    }
+
+    // 4. Actualizamos el subtotal reflejado en la interfaz de usuario
+    if (typeof recalcularSubtotalElegido === 'function') {
+        recalcularSubtotalElegido();
+    }
+}
+
+// =======================================================
+// RECALCULAR EL MONTO CONSOLIDADO (UNIFICADO EN CAJA-MOVIL)
+// =======================================================
+function recalcularSubtotalElegido() {
+    const txtElegido = document.getElementById('txt-subtotal-elegido');
+    if (!txtElegido) return;
+
+    let sumaAcumulada = 0;
+
+    // Buscamos todos los checkboxes seleccionados en el modal principal
+    document.querySelectorAll('.chk-mesa-confirmar:checked').forEach(checkbox => {
+        // 🚨 REGLA LOGÍSTICA: Solo sumamos al dinero de la precuenta si el plato ya fue servido.
+        // Si el plato está "En cocina" o "Listo", el checkbox se mantiene seleccionado para mudanzas,
+        // pero su precio NO suma a la precuenta del cobro actual.
+        if (checkbox.getAttribute('data-estado-plato') === 'Entregado') {
+            const filaPlato = checkbox.closest('.item-plato-comanda');
+            if (filaPlato) {
+                const precioCrudo = filaPlato.getAttribute('data-precio');
+                sumaAcumulada += parseFloat(precioCrudo) || 0;
+            }
+        }
+    });
+
+    // Inyectamos el total formateado de manera limpia con dos decimales
+    txtElegido.innerText = sumaAcumulada.toFixed(2);
 }

@@ -34,6 +34,7 @@ public class DetallePedido {
     private boolean entregado = false; // Indica si el mozo ya lo dejó en la mesa del cliente
     private boolean canceladoPorCliente = false;
     private boolean impresoEnCocina = false;
+    private boolean pagado = false;
 
     private Integer cantidad;
     private Double precioUnitario;
