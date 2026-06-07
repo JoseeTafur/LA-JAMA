@@ -17,6 +17,7 @@
         <div th:replace="~{sidebar :: logistica_header('Plano de Mesas')}"></div>
 
         <div class="container-fluid p-4">
+
             <div class="recaudacion-banner d-flex justify-content-between align-items-center p-4 mb-4 rounded-4 shadow-sm">
                 <div>
                     <h5 class="mb-0 fw-bold text-white">Distribución de Comensales</h5>
@@ -31,16 +32,25 @@
                 </div>
             </div>
 
-            <ul class="nav nav-pills gap-2 mb-4 p-2 bg-white rounded-4 shadow-sm border" id="pills-tab" role="tablist" style="border-color: var(--lajama-peach) !important;">
+            <ul class="nav nav-pills gap-2 mb-4 p-2 bg-white rounded-4 shadow-sm border"
+                id="pills-tab" role="tablist"
+                style="border-color: var(--lajama-peach) !important;">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active px-4 py-2 fw-bold text-uppercase rounded-pill" id="pills-salon-tab" data-bs-toggle="pill" data-bs-target="#pills-salon" type="button" role="tab" aria-controls="pills-salon" aria-selected="true" style="transition: all 0.2s;">
+                    <button class="nav-link active px-4 py-2 fw-bold text-uppercase rounded-pill"
+                            id="pills-salon-tab" data-bs-toggle="pill" data-bs-target="#pills-salon"
+                            type="button" role="tab" aria-controls="pills-salon" aria-selected="true">
                         <i class="bi bi-grid-3x3-gap-fill me-2"></i>Vista Salón
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link px-4 py-2 fw-bold text-uppercase rounded-pill" id="pills-grupos-tab" data-bs-toggle="pill" data-bs-target="#pills-grupos" type="button" role="tab" aria-controls="pills-grupos" aria-selected="false" style="transition: all 0.2s;">
+                    <button class="nav-link px-4 py-2 fw-bold text-uppercase rounded-pill"
+                            id="pills-grupos-tab" data-bs-toggle="pill" data-bs-target="#pills-grupos"
+                            type="button" role="tab" aria-controls="pills-grupos" aria-selected="false">
                         <i class="bi bi-people-fill me-2"></i>Mesas Unificadas
-                        <span class="badge bg-danger ms-2 rounded-circle align-middle" th:with="totalGrupos=${#lists.size(mesas.?[numerosMesasHijas != null && !numerosMesasHijas.isEmpty()])}" th:if="${totalGrupos > 0}" th:text="${totalGrupos}">0</span>
+                        <span class="badge bg-danger ms-2 rounded-circle align-middle"
+                              th:with="totalGrupos=${#lists.size(mesas.?[numerosMesasHijas != null && !numerosMesasHijas.isEmpty()])}"
+                              th:if="${totalGrupos > 0}"
+                              th:text="${totalGrupos}">0</span>
                     </button>
                 </li>
             </ul>
@@ -49,18 +59,26 @@
 
                 <div class="tab-pane fade show active" id="pills-salon" role="tabpanel" aria-labelledby="pills-salon-tab">
 
-                    <div id="barre-unificacion" class="alert alert-dark d-none justify-content-between align-items-center p-3 mb-4 rounded-4 shadow border-0 text-white animate__animated animate__fadeIn" style="background-color: var(--lajama-green);">
+                    <div id="barre-unificacion"
+                         class="alert alert-dark d-none justify-content-between align-items-center p-3 mb-4 rounded-4 shadow border-0 text-white animate__animated animate__fadeIn"
+                         style="background-color: var(--lajama-green);">
                         <div class="d-flex align-items-center gap-3">
                             <i class="bi bi-info-circle-fill text-warning fs-4"></i>
                             <div>
                                 <h6 class="mb-0 fw-bold">Modo Agrupamiento Activo</h6>
-                                <p class="mb-0 small text-white-50">Selecciona las mesas en el plano que deseas unir a la Mesa #<span id="txtMesaPadreHerramienta" class="fw-bold text-warning"></span></p>
+                                <p class="mb-0 small text-white-50">
+                                    Selecciona las mesas en el plano que deseas unir a la Mesa
+                                    #<span id="txtMesaPadreHerramienta" class="fw-bold text-warning"></span>
+                                </p>
                             </div>
                         </div>
                         <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold" onclick="cancelarModoUnificacion()">Cancelar</button>
-                            <button class="btn btn-sm btn-warning text-dark rounded-pill px-4 fw-bold shadow-sm" onclick="procesarUnificacionDirecta()">
-                                <i class="bi bi-link-45deg me-1"></i>Unificar Seleccionadas (<span id="count-seleccionadas">0</span>)
+                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold"
+                                    onclick="cancelarModoUnificacion()">Cancelar</button>
+                            <button class="btn btn-sm btn-warning text-dark rounded-pill px-4 fw-bold shadow-sm"
+                                    onclick="procesarUnificacionDirecta()">
+                                <i class="bi bi-link-45deg me-1"></i>Unificar Seleccionadas
+                                (<span id="count-seleccionadas">0</span>)
                             </button>
                         </div>
                     </div>
@@ -74,9 +92,10 @@
 
                                      th:class="'mesa-box shadow-sm ' +
                                       (${m.estado == 'UNIFICADA' || (m.numerosMesasHijas != null && !m.numerosMesasHijas.isEmpty())} ? 'unificada' :
+                                      (${m.estado == 'OCUPADA' and pedidoMesa == null} ? 'reservada' :
                                       (${pedidoMesa == null} ? 'disponible' :
                                         (${pedidoMesa.tienePlatosMicroParaRecoger()} ? 'lista-para-recoger' :
-                                        (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar'))))"
+                                        (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar')))))"
 
                                      th:data-id="${m.id}"
                                      th:data-numero="${m.numero}"
@@ -87,7 +106,9 @@
                                      onclick="gestionarClickMesa(this)">
 
                                     <div class="checkbox-seleccion-unificacion d-none">
-                                        <input type="checkbox" class="check-salon-unir" th:value="${m.id}" onclick="event.stopPropagation(); actualizarContadorUnificacion();">
+                                        <input type="checkbox" class="check-salon-unir"
+                                               th:value="${m.id}"
+                                               onclick="event.stopPropagation(); actualizarContadorUnificacion();">
                                     </div>
 
                                     <div class="mesa-icon-wrapper">
@@ -105,14 +126,19 @@
 
                 <div class="tab-pane fade" id="pills-grupos" role="tabpanel" aria-labelledby="pills-grupos-tab">
                     <div class="card card-tabla border-0 shadow-sm rounded-4 p-4">
-                        <div th:if="${#lists.size(mesas.?[numerosMesasHijas != null && !numerosMesasHijas.isEmpty()]) == 0}" class="text-center py-5">
+
+                        <div th:if="${#lists.size(mesas.?[numerosMesasHijas != null && !numerosMesasHijas.isEmpty()]) == 0}"
+                             class="text-center py-5">
                             <i class="bi bi-diagram-3 text-muted" style="font-size: 4rem;"></i>
                             <h5 class="fw-bold text-muted mt-3">No hay grupos unificados activos</h5>
                             <p class="text-muted small">Agrupa mesas desde la pestaña "Vista Salón" para gestionarlas colectivamente.</p>
                         </div>
 
-                        <div class="d-flex flex-column gap-3" th:if="${#lists.size(mesas.?[numerosMesasHijas != null && !numerosMesasHijas.isEmpty()]) > 0}">
-                            <div th:each="mPadre : ${mesas}" th:if="${mPadre.numerosMesasHijas != null && !mPadre.numerosMesasHijas.isEmpty()}"
+                        <div class="d-flex flex-column gap-3"
+                             th:if="${#lists.size(mesas.?[numerosMesasHijas != null && !numerosMesasHijas.isEmpty()]) > 0}">
+
+                            <div th:each="mPadre : ${mesas}"
+                                 th:if="${mPadre.numerosMesasHijas != null && !mPadre.numerosMesasHijas.isEmpty()}"
                                  th:with="pedidosPadre=${pedidos != null ? pedidos.?[numeroMesa == __${mPadre.numero}__ && estado != T(com.web.restaurante.model.enums.EstadoPedido).PAGADO && estado != T(com.web.restaurante.model.enums.EstadoPedido).CANCELADO] : null},
                                           pedidoPadreActivo=${pedidosPadre != null && !#lists.isEmpty(pedidosPadre) ? pedidosPadre[#lists.size(pedidosPadre) - 1] : null}"
 
@@ -126,16 +152,21 @@
                                  th:data-pedido-id="${pedidoPadreActivo != null ? pedidoPadreActivo.id : ''}"
                                  th:data-pedido-estado="${pedidoPadreActivo != null ? pedidoPadreActivo.estado.name() : 'NINGUNO'}"
                                  onclick="prepararGestion(this)">
+
                                 <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
                                     <div class="d-flex align-items-center gap-3">
-                                        <div class="text-white rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 55px; height: 55px; background-color: var(--lajama-green);">
+                                        <div class="text-white rounded-circle d-flex justify-content-center align-items-center shadow-sm"
+                                             style="width:55px; height:55px; background-color: var(--lajama-green);">
                                             <i th:class="${pedidoPadreActivo != null && pedidoPadreActivo.tienePlatosMicroParaRecoger()} ? 'bi bi-bell-fill fs-4' :
                                                          (${pedidoPadreActivo != null && pedidoPadreActivo.tienePlatosMicroEnCocina()} ? 'bi bi-cup-hot-fill fs-4' : 'bi bi-person-check-fill fs-4')"></i>
                                         </div>
                                         <div>
                                             <h5 class="fw-bold mb-1">Mesa Controladora #[[${mPadre.numero}]]</h5>
-                                            <p class="mb-0 small opacity-75">Mesas acopladas físicamente en salón:
-                                                <span class="badge bg-dark bg-opacity-25 text-dark rounded-pill px-2 py-1 fs-6 ms-1" th:each="num : ${mPadre.numerosMesasHijas}" th:text="'#' + ${num}"></span>
+                                            <p class="mb-0 small opacity-75">
+                                                Mesas acopladas físicamente en salón:
+                                                <span class="badge bg-dark bg-opacity-25 text-dark rounded-pill px-2 py-1 fs-6 ms-1"
+                                                      th:each="num : ${mPadre.numerosMesasHijas}"
+                                                      th:text="'#' + ${num}"></span>
                                             </p>
                                         </div>
                                     </div>
@@ -148,90 +179,204 @@
                     </div>
                 </div>
 
-            </div>
-        </div>
-    </main>
-</div>
-
-<div class="modal fade" id="modalMesa" tabindex="-1" aria-hidden="true">
+            </div></div></main>
+</div><div class="modal fade" id="modalMesa" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
+
             <div class="modal-header text-white">
                 <h5 class="modal-title fw-bold">
                     <i class="bi bi-gear-fill me-2"></i>Gestión Operativa — Mesa #<span id="lblNumero"></span>
-                    <span id="badge-ticket" class="badge bg-warning text-dark ms-3 d-none border border-dark"><i class="bi bi-printer-fill me-1"></i>En Producción</span>
+                    <span id="badge-ticket" class="badge bg-warning text-dark ms-3 d-none border border-dark">
+                        <i class="bi bi-printer-fill me-1"></i>En Producción
+                    </span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+
             <div class="modal-body p-4">
-                <p id="textoConfirmacion" class="fw-bold text-dark d-none mb-3 p-2 rounded alert alert-warning border-0">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>¿La orden está lista en barra para la mesa #<span id="numMesaTexto"></span>?
+                <p id="textoConfirmacion"
+                   class="fw-bold text-dark d-none mb-3 p-2 rounded alert alert-warning border-0">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    ¿La orden está lista en barra para la mesa #<span id="numMesaTexto"></span>?
                 </p>
 
                 <div class="row g-4">
+
                     <div class="col-md-5 border-end pe-md-4">
-                        <h6 class="fw-bold text-secondary mb-3 text-uppercase small tracking-wider">Acciones Disponibles</h6>
+                        <h6 class="fw-bold text-secondary mb-3 text-uppercase small">Acciones Disponibles</h6>
+
                         <div class="d-flex flex-column gap-2">
-                            <button id="btnAgregarPedido" class="btn btn-primary btn-action-jama w-100 rounded-pill py-2" onclick="irAMenu()">
+
+                            <button id="btnAgregarPedido"
+                                    class="btn btn-primary btn-action-jama w-100 rounded-pill py-2"
+                                    onclick="irAMenu()">
                                 <i class="bi bi-plus-lg me-2"></i>Añadir Producto
                             </button>
 
-                            <button id="btnUnificarMesas" class="btn btn-outline-secondary w-100 rounded-pill py-2 fw-bold" onclick="activarModoSeleccionUnificacion()">
+                            <button id="btnCambiarMesa"
+                                    class="btn btn-outline-warning text-dark w-100 rounded-pill py-2 fw-bold"
+                                    onclick="abrirModalAccionUnificado('CAMBIAR_TODO')">
+                                <i class="bi bi-arrow-left-right me-2"></i>Cambiar de Mesa
+                            </button>
+
+                            <button id="btnUnificarMesas"
+                                    class="btn btn-outline-secondary w-100 rounded-pill py-2 fw-bold"
+                                    onclick="activarModoSeleccionUnificacion()">
                                 <i class="bi bi-link-45deg me-2"></i>Agrupar Mesas
                             </button>
 
-                            <button id="btnDesvincularMesa" class="btn btn-outline-danger w-100 rounded-pill py-2 fw-bold d-none" onclick="procesarDesvinculacion()">
+                            <button id="btnDesvincularMesa"
+                                    class="btn btn-outline-danger w-100 rounded-pill py-2 fw-bold d-none"
+                                    onclick="procesarDesvinculacion()">
                                 <i class="bi bi-scissors me-2"></i>Desunificar Mesa
                             </button>
 
-                            <button id="btnEntregarPlato" class="btn btn-warning btn-action-jama w-100 text-dark d-none rounded-pill py-2" onclick="marcarComoEntregado()">
-                                <i class="bi bi-check-circle me-2"></i>Todo Conforme
+                            <button id="btnSeleccionarTodo"
+                                    class="btn btn-secondary fw-bold text-white w-100 rounded-pill py-2 shadow-sm"
+                                    onclick="toggleSeleccionarTodosLosPlatos()">
+                                <i class="bi bi-check-all me-1"></i> Seleccionar todo
                             </button>
 
-                            <button id="btnDesagruparGrupo" class="btn btn-outline-dark w-100 rounded-pill py-2 fw-bold d-none" onclick="procesarDesfragmentacionGrupo()" style="border-color: var(--lajama-green); color: var(--lajama-green);">
+                            <button id="btnDesagruparGrupo"
+                                    class="btn btn-outline-dark w-100 rounded-pill py-2 fw-bold d-none"
+                                    onclick="procesarDesfragmentacionGrupo()"
+                                    style="border-color: var(--lajama-green); color: var(--lajama-green);">
                                 <i class="bi bi-diagram-3 me-2"></i>Desagrupar Grupo
                             </button>
 
-                            <button id="btnDesocupar" class="btn btn-outline-danger w-100 rounded-pill py-2 fw-bold" onclick="validarDesocupar()">
+                            <button id="btnDividirComanda"
+                                    class="btn btn-outline-primary w-100 rounded-pill py-2 fw-bold shadow-sm d-none"
+                                    onclick="abrirModalAccionUnificado('DIVIDIR_PARCIAL')">
+                                <i class="bi bi-bezier2 me-2"></i>Dividir Comanda / Mover Platos
+                            </button>
+
+                            <button id="btnDesocupar"
+                                    class="btn btn-outline-danger w-100 rounded-pill py-2 fw-bold disabled"
+                                    onclick="validarDesocupar()"
+                                    disabled>
                                 <i class="bi bi-cash-coin me-2"></i>Confirmar Pago
                             </button>
+
+                            <button id="btnEntregarPlato"
+                                    class="btn btn-warning text-dark w-100 rounded-pill py-2 fw-bold d-none"
+                                    onclick="marcarComoEntregado()">
+                                <i class="bi bi-check2-all me-2"></i>Marcar Todo Entregado
+                            </button>
+
                         </div>
                     </div>
 
                     <div class="col-md-7 ps-md-4 d-flex flex-column justify-content-between">
                         <div>
-                            <h6 class="fw-bold text-dark mb-3"><i class="bi bi-receipt-cutoff me-2" style="color: var(--lajama-green);"></i>Detalle de Comanda Activa</h6>
+                            <h6 class="fw-bold text-dark mb-3">
+                                <i class="bi bi-receipt-cutoff me-2" style="color: var(--lajama-green);"></i>
+                                Detalle de Comanda Activa
+                            </h6>
 
                             <div id="contenedor-previsualizacion-comanda" class="d-none">
-                                <div id="lista-platos-previsualizar" class="d-flex flex-column gap-2 mb-2" style="max-height: 280px; overflow-y: auto; padding-right: 5px;">
+                                <div id="lista-platos-previsualizar"
+                                     class="d-flex flex-column gap-2 mb-2"
+                                     style="max-height:280px; overflow-y:auto; padding-right:5px;">
                                 </div>
                             </div>
 
-                            <div id="comanda-vacia-aviso" class="text-muted text-center py-4 my-auto d-none">
+                            <div id="comanda-vacia-aviso" class="text-muted text-center py-4 d-none">
                                 <i class="bi bi-info-circle fs-3 d-block mb-2" style="color: var(--lajama-skin);"></i>
                                 <span class="small">Esta mesa no registra consumos activos todavía.</span>
                             </div>
                         </div>
 
                         <div id="panel-subtotal-modal" class="d-none border-top border-dashed pt-3 mt-2">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="small fw-bold text-muted">SUBTOTAL CONSOLIDADO:</span>
-                                <span class="fw-bold text-success fs-4">S/. <span id="txt-subtotal-previsualizar">0.00</span></span>
+                            <div class="d-flex flex-column gap-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="small fw-bold text-muted text-uppercase">Subtotal General:</span>
+                                    <span class="fw-bold text-dark fs-5">
+                S/. <span id="txt-subtotal-previsualizar">0.00</span>
+            </span>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center bg-light p-2 rounded border-start border-3 border-warning">
+            <span class="small fw-bold text-warning-emphasis text-uppercase">
+                <i class="bi bi-check-square-fill me-1"></i> Subtotal Elegido:
+            </span>
+                                    <span class="fw-extrabold text-success fs-4">
+                S/. <span id="txt-subtotal-elegido">0.00</span>
+            </span>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                </div></div></div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="modalAccionMesa" tabindex="-1"
+     aria-labelledby="modalAccionMesaLabel" aria-hidden="true"
+     style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+
+            <div class="modal-header text-white rounded-top-4 p-3"
+                 style="background-color: var(--lajama-green);">
+                <h5 class="modal-title fw-bold" id="modalAccionMesaLabel">
+                    <span id="txtTituloAccionMesa">Operación de Mesa</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-3">
+                <div class="alert alert-light border mb-3 rounded-3 small text-muted py-2 px-3">
+                    <i class="bi bi-info-circle-fill text-primary me-1"></i>
+                    <span id="txtDescripcionAccionMesa">Selecciona la mesa destino del traslado.</span>
+                    (Origen: <span class="fw-bold text-dark">Mesa #<span id="lblMesaOrigenAccion">—</span></span>)
                 </div>
 
+                <div class="input-group mb-3 shadow-sm rounded-3">
+                    <span class="input-group-text bg-white border-end-0 text-muted">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" id="buscarMesaAccion"
+                           class="form-control border-start-0 ps-0 text-dark"
+                           placeholder="Buscar mesa por número...">
+                </div>
+
+                <div id="lista-mesas-destino-accion"
+                     class="list-group rounded-3 overflow-auto"
+                     style="max-height:280px; border:1px solid #dee2e6;">
+                    <div class="p-3 text-center text-muted small">Cargando mesas disponibles...</div>
+                </div>
+            </div>
+
+            <div class="modal-footer border-top-0 p-3 bg-light rounded-bottom-4 justify-content-between">
+                <button type="button"
+                        class="btn btn-light rounded-pill px-3 fw-semibold text-muted border"
+                        data-bs-dismiss="modal">Cancelar</button>
+                <button type="button"
+                        id="btnProcesarAccionMesa"
+                        class="btn btn-warning text-dark rounded-pill px-4 fw-bold shadow-sm"
+                        onclick="procesarAccionMesaFinal()"
+                        disabled>
+                    <i class="bi bi-check-circle-fill me-1"></i> Confirmar Transferencia
+                </button>
             </div>
         </div>
     </div>
 </div>
 
+<select id="selectMesaDestino" class="d-none">
+    <option value="">-- Seleccionar --</option>
+    <option th:each="m : ${mesas}" th:value="${m.id}" th:text="${m.numero}"></option>
+</select>
+
+
 <th:block th:replace="~{pago/modal-cobro :: modalCobro}"></th:block>
 <th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-
 <script th:src="@{/js/mesas.js}"></script>
 <script th:src="@{/js/caja-movil.js}"></script>
 </body>
