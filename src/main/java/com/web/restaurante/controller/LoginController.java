@@ -94,14 +94,16 @@ public class LoginController {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") || op.getRuta().contains("/entregas"))
                         .collect(Collectors.toList());
-            } else if ("CAJERO".equals(rolParaSesion)) {
-                opcionesMenu = opcionesMenu.stream()
-                        .filter(op -> op.getRuta().equals("/dashboard") ||
-                                op.getRuta().contains("/caja") ||
-                                op.getRuta().contains("/delivery") ||
-                                op.getRuta().contains("/despacho"))
-                        .collect(Collectors.toList());
-            } else if ("MESERO".equals(rolParaSesion)) {
+                                } else if ("CAJERO".equals(rolParaSesion)) {
+                        opcionesMenu = opcionesMenu.stream()
+                                .filter(op -> op.getRuta().equals("/dashboard") ||
+                                        op.getRuta().contains("/caja") ||
+                                        op.getRuta().contains("/delivery") ||
+                                        op.getRuta().contains("/despacho") ||
+                                        op.getRuta().contains("/productos") ||
+                                        op.getRuta().contains("/pagos-digitales"))
+                                .collect(Collectors.toList());
+                    } else if ("MESERO".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") ||
                                 op.getRuta().equals("/admin/mesas") ||
