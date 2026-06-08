@@ -1,5 +1,4 @@
-let carrito = JSON.parse(localStorage.getItem("carrito") || "{}");
-actualizarUI();
+let carrito = {};
 let mapa = null;
 let marcador = null;
 let modalCarrito = null;
@@ -43,7 +42,6 @@ function agregarProducto(id, nombre, precio) {
     } else {
         carrito[id] = { id, nombre, precio, cantidad: 1 };
     }
-    localStorage.setItem("carrito", JSON.stringify(carrito));
     actualizarUI();
 }
 
@@ -51,7 +49,6 @@ function cambiarCantidad(id, delta) {
     if (!carrito[id]) return;
     carrito[id].cantidad += delta;
     if (carrito[id].cantidad <= 0) delete carrito[id];
-    localStorage.setItem("carrito", JSON.stringify(carrito));
     actualizarUI();
     renderCarrito();
 }
@@ -185,29 +182,10 @@ async function enviarPedido() {
     const lng       = document.getElementById('lngCliente').value;
     const items     = Object.values(carrito);
 
-
-    let file;
-    switch (metodoPago) {
-        case 'YAPE': file = document.getElementById('yapeImgInput').files[0]; break;
-        case 'PLIN':  file = document.getElementById('plinImgInput').files[0]; break;
-        default:      file = null;
-    }
-
-    if (!nombre) {
-        Swal.fire({icon: 'error',title: 'Error',text: 'Por favor, ingrese su nombre'});
-        return;
-    }
-    if (!items.length) {
-        Swal.fire({icon: 'error',title: 'Error',text: 'No hay artículos en su pedido'});
-        return;
-    }
+    if (!nombre)       { alert('Por favor ingresa tu nombre');    return; }
+    if (!items.length) { alert('Tu carrito está vacío');          return; }
     if (tipoEntrega === 'DELIVERY' && !direccion) {
-        Swal.fire({icon: 'error',title: 'Error',text: 'Por favor, ingrese su dirección'});
-        return;
-    }
-    if ( (metodoPago === 'YAPE' || metodoPago === 'PLIN') && !file) {
-        Swal.fire({icon: 'error',title: 'Error',text: 'Por favor, añada la imagen del pago realizado'});
-        return;
+        alert('Por favor escribe tu dirección'); return;
     }
 
     const total   = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
@@ -224,6 +202,7 @@ ${detalle}
 
 💰 TOTAL: S/ ${total.toFixed(2)}`;
 
+    console.log("Ahoa")
     try {
         const resPedido = await fetch('/carta/pedido', {
             method: 'POST',
@@ -244,7 +223,10 @@ ${detalle}
             })
         });
 
+        console.log('Status pedido:', resPedido.status);
+
         const dataPedido = await resPedido.json();
+        console.log(dataPedido);
         const id = dataPedido;
 
         const resGuardar = await fetch('/admin/pagos-digitales/api/guardar', {
@@ -258,13 +240,25 @@ ${detalle}
         });
 
         const pagoData = await resGuardar.json();
+        console.log(pagoData);
         const idPago = pagoData.data.id;
+
+        let file;
+        switch (metodoPago) {
+            case 'YAPE': file = document.getElementById('yapeImgInput').files[0]; break;
+            case 'PLIN':  file = document.getElementById('plinImgInput').files[0]; break;
+            default:      file = null;
+        }
 
         let imgUrl = null;
         if (file) {
             const resImage = await subirImagen("pagodigital", idPago, file);
+            console.log(resImage);
+            console.log("A");
             imgUrl = resImage.url;
+            console.log(imgUrl);
         }
+
 
         await fetch(`/admin/pagos-digitales/api/actualizar-imagen/${idPago}`, {
             method: 'PATCH',
@@ -272,11 +266,6 @@ ${detalle}
             body: JSON.stringify({ imgUrl })
         });
 
-        modalCarrito = null;
-        carrito = {};
-        localStorage.setItem("carrito", JSON.stringify(carrito));
-        actualizarUI();
-        renderCarrito();
     } catch (e) {
         console.warn('No se pudo registrar en sistema:', e);
     }

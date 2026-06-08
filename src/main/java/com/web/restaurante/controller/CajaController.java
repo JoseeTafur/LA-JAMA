@@ -3,7 +3,6 @@ package com.web.restaurante.controller;
 import com.web.restaurante.model.MovimientoCaja;
 import com.web.restaurante.model.Pedido;
 import com.web.restaurante.model.TurnoCaja;
-import com.web.restaurante.repository.MovimientoCajaRepository;
 import com.web.restaurante.repository.PedidoRepository;
 import com.web.restaurante.service.MesaService;
 import com.web.restaurante.service.PedidoService;
@@ -29,7 +28,6 @@ public class CajaController {
     private final MesaService mesaService; // 🌟 Inyectamos tu ingeniería de mesas
     private final TurnoCajaService turnoCajaService;
     private final PedidoRepository pedidoRepository;
-    private final MovimientoCajaRepository movimientoCajaRepository;
 
     @GetMapping
     public String verCaja(Model model) {
@@ -59,7 +57,7 @@ public class CajaController {
         model.addAttribute("pedidosPendientes", pedidoService.listarPendientesDeCarta());
 
         // 🌟 LA LÍNEA QUE FALTABA: Enviamos las mesas al ecosistema visual de Thymeleaf
-        model.addAttribute("mesas", mesaService.obtenerMesasParaSalon());
+        model.addAttribute("mesas", mesaService.obtenerMesasParaSalon()); // o el método que uses para traer tu lista de mesas
 
         return "admin/caja";
     }
@@ -75,7 +73,8 @@ public class CajaController {
                                             @RequestParam String concepto,
                                             @RequestParam Double monto) {
         if ("INGRESO".equalsIgnoreCase(tipo)) {
-            turnoCajaService.registrarEgreso(concepto, -Math.abs(monto));
+            // Reutiliza el helper transaccional mapeando la inyección manual
+            turnoCajaService.registrarEgreso(concepto, -Math.abs(monto)); // Los egresos van en negativo
         } else {
             turnoCajaService.registrarEgreso(concepto, monto);
         }
@@ -106,15 +105,21 @@ public class CajaController {
                                            @RequestParam(required = false) List<Long> idsDetallesPagados,
                                            @RequestParam Double montoAPagar) {
 
+        // 1. Ejecutamos tu lógica multiticket premium en MesaService
+        // Esto cambia los estados de los platos a PAGADO y libera la mesa si ya no quedan consumos
         mesaService.procesarCobro(pedidoId, mesaId, idsDetallesPagados);
 
+        // 2. Recuperamos el pedido para armar un concepto de auditoría limpio
+        // (Asegúrate de tener este método en tu pedidoService o usa tu repositorio)
         com.web.restaurante.model.Pedido pedido = pedidoService.obtenerPorId(pedidoId);
 
         String nroMesaStr = (pedido.getNumeroMesa() != null) ? String.valueOf(pedido.getNumeroMesa()) : "N/A";
         String concepto = "Cobro Orden #" + pedidoId + " - Mesa N° " + nroMesaStr;
 
+        // 3. Impactamos el libro contable de la caja registradora en vivo
         turnoCajaService.registrarVenta(concepto, montoAPagar);
 
+        // Redirigimos al dashboard con el parámetro de éxito para activar la notificación de AppUtils
         return "redirect:/admin/caja?success";
     }
 
@@ -125,10 +130,13 @@ public class CajaController {
         System.out.println("Buscando comanda activa para la Mesa N°: " + numeroMesa);
 
         try {
+            // Buscamos el pedido activo de la mesa usando tu repositorio nativo
+            // (Ajusta la llamada según la firma exacta de tu service/repository)
             List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesaAndEstado(
                     numeroMesa, com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
 
             if (pedidosActivos.isEmpty()) {
+                // Intento B: Si ya cambió de estado, buscar el primero que no esté pagado
                 pedidosActivos = pedidoRepository.findByNumeroMesa(numeroMesa).stream()
                         .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.PAGADO)
                         .collect(java.util.stream.Collectors.toList());
@@ -144,12 +152,14 @@ public class CajaController {
             System.out.println("📊 Cantidad de platos en la comanda: " +
                     (pedidoTarget.getListaDetalles() != null ? pedidoTarget.getListaDetalles().size() : 0));
 
+            // 🌟 INGENIERÍA DE BLINDAJE CONSOLIDADORA CONTRA NULOS
             if (pedidoTarget.getListaDetalles() != null) {
                 for (com.web.restaurante.model.DetallePedido d : pedidoTarget.getListaDetalles()) {
                     System.out.print(" -> Plato: " + (d.getProducto() != null ? d.getProducto().getNombre() : "Desconocido"));
                     System.out.print(" | Cantidad: " + d.getCantidad());
                     System.out.print(" | Precio U.: S/. " + d.getPrecioUnitario());
 
+                    // Si el subtotal de la base de datos es NULL, el debugger lo repara al vuelo aquí mismo
                     if (d.getSubtotal() == null || d.getSubtotal() == 0) {
                         double subtotalCalculado = d.getCantidad() * (d.getPrecioUnitario() != null ? d.getPrecioUnitario() : 0.0);
                         d.setSubtotal(subtotalCalculado);
@@ -170,7 +180,6 @@ public class CajaController {
             return ResponseEntity.internalServerError().body("Error interno: " + e.getMessage());
         }
     }
-
     @GetMapping("/api/pedido/{id}")
     @ResponseBody
     public ResponseEntity<?> obtenerDetallesParaAuditoria(@PathVariable Long id) {
@@ -180,24 +189,34 @@ public class CajaController {
                 return ResponseEntity.notFound().build();
             }
 
+            // 🎯 CORREGIDO: Usamos .put() en lugar de .add()
             Map<String, Object> response = new HashMap<>();
             response.put("id", pedido.getId());
             response.put("tipoPedido", pedido.getTipoPedido() != null ? pedido.getTipoPedido().name() : "LOCAL");
             response.put("numeroMesa", pedido.getNumeroMesa());
             response.put("montoTotal", pedido.getMontoTotal() != null ? pedido.getMontoTotal() : 0.0);
 
+            // 💰 SOPORTE DE PROPINA AUTOMÁTICO:
+            // Si tu entidad 'Pedido' ya tiene un campo para propina, cámbialo aquí.
+            // Si aún no lo creas en tu entidad, el backend enviará 0.0 por defecto y no romperá tu JS.
             double propina = 0.0;
+            /* try { propina = pedido.getMontoPropina() != null ? pedido.getMontoPropina() : 0.0; }
+               catch(Exception e) {}
+            */
             response.put("montoPropina", propina);
 
+            // Estructura limpia para la lista de platos (Evita recursión infinita de JPA)
             List<Map<String, Object>> detallesDTO = pedido.getListaDetalles().stream()
                     .map(d -> {
                         Map<String, Object> item = new HashMap<>();
                         item.put("cantidad", d.getCantidad());
                         item.put("canceladoPorCliente", d.isCanceladoPorCliente());
 
+                        // Aseguramos que jale el nombre del producto de forma segura
                         String nombrePlato = (d.getProducto() != null) ? d.getProducto().getNombre() : "Plato Desconocido";
                         item.put("producto", Map.of("nombre", nombrePlato));
 
+                        // Calculamos el subtotal curado en memoria protegiendo nulos
                         double precio = d.getPrecioUnitario() != null ? d.getPrecioUnitario() : 0.0;
                         item.put("subtotal", precio * d.getCantidad());
 
@@ -219,23 +238,30 @@ public class CajaController {
                                     @RequestParam String tipo,
                                     @RequestParam(required = false) String documento) {
         try {
+            // 1. Recuperamos el pedido de la base de datos
             Pedido pedido = pedidoService.obtenerPorId(pedidoId);
             if (pedido == null) {
                 return "redirect:/admin/caja?error=PedidoNoEncontrado";
             }
 
+            // 2. Candado de seguridad: Evitar doble emisión si ya tiene número asignado
             if (pedido.getComprobanteNumero() != null) {
                 return "redirect:/admin/caja?error=YaFacturado";
             }
 
+            // 3. Simulación de Correlativo Oficial
+            // Generamos un número aleatorio simulando el formato de serie de la SUNAT
+            // Ej: B001-0001245 para Boletas o F001-0004512 para Facturas
             String prefijo = "BOLETA".equalsIgnoreCase(tipo) ? "B001-" : "F001-";
             int numeroAleatorio = (int) (Math.random() * 90000) + 10000;
             String correlativoSimulado = prefijo + numeroAleatorio;
 
+            // 4. Inyectamos los datos fiscales en la entidad
             pedido.setComprobanteTipo(tipo.toUpperCase());
             pedido.setComprobanteNumero(correlativoSimulado);
             pedido.setDocumentoCliente(documento != null && !documento.isBlank() ? documento : "CLIENTE VARIOS");
 
+            // 5. Guardamos los cambios usando tu repositorio inyectado
             pedidoRepository.save(pedido);
 
             return "redirect:/admin/caja?comprobanteOk";
@@ -254,8 +280,10 @@ public class CajaController {
                 return "redirect:/admin/caja?error=TicketNoEncontrado";
             }
 
+            // 1. Simulación o disparo de Nota de Crédito legal ante SUNAT
             System.out.println("⚠️ Anulando " + ticket.getComprobanteTipo() + " " + ticket.getComprobanteNumero());
 
+            // 2. Liberamos los campos fiscales para permitir la refacturación express
             ticket.setComprobanteTipo(null);
             ticket.setComprobanteNumero(null);
             ticket.setDocumentoCliente(null);
@@ -269,40 +297,5 @@ public class CajaController {
         }
     }
 
-    // ── HISTORIAL ─────────────────────────────────────────────────────────────
-
-    @GetMapping("/historial")
-    public String verHistorial(Model model) {
-        List<TurnoCaja> turnos = new java.util.ArrayList<>(turnoCajaService.obtenerTurnosCerrados());
-
-        // Agregar turno activo si existe
-        turnoCajaService.obtenerTurnoActivo().ifPresent(turnoActivo -> {
-            List<MovimientoCaja> movs = turnoCajaService.obtenerMovimientosPorTurno(turnoActivo.getId());
-            double totalVendidoActivo = movs.stream()
-                    .filter(m -> "VENTA".equals(m.getTipo()))
-                    .mapToDouble(MovimientoCaja::getMonto).sum();
-            turnoActivo.setTotalVendido(totalVendidoActivo);
-            turnos.add(0, turnoActivo);
-        });
-
-        double totalVendido = turnos.stream().mapToDouble(t -> t.getTotalVendido() != null ? t.getTotalVendido() : 0.0).sum();
-        double promedio = turnos.isEmpty() ? 0.0 : totalVendido / turnos.size();
-        model.addAttribute("turnos", turnos);
-        model.addAttribute("totalVendidoHistorico", totalVendido);
-        model.addAttribute("promedioPorTurno", promedio);
-        return "admin/caja_historial";
-    }
-
-    @GetMapping("/historial/{turnoId}/movimientos")
-    @ResponseBody
-    public ResponseEntity<List<MovimientoCaja>> movimientosPorTurno(@PathVariable Long turnoId) {
-        return ResponseEntity.ok(turnoCajaService.obtenerMovimientosPorTurno(turnoId));
-    }
-
-    @GetMapping("/historial/ventas")
-    @ResponseBody
-    public ResponseEntity<List<MovimientoCaja>> todasLasVentas() {
-        return ResponseEntity.ok(movimientoCajaRepository.findByTipoOrderByFechaDesc("VENTA"));
-    }
 
 }

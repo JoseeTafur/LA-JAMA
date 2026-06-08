@@ -18,7 +18,7 @@
         <div class="container-fluid px-4 mt-4">
 
             <div class="row g-3 mb-4">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="card card-kpi-jama bg-dark text-white p-3 border-0 shadow-sm">
                         <small class="text-white-50 fw-bold text-uppercase label-kpi">Fondo de Apertura</small>
                         <h3 class="fw-bold mb-0 mt-1" th:text="${'S/ ' + #numbers.formatDecimal(turno.montoApertura, 1, 2)}">S/ 0.00</h3>
@@ -36,19 +36,17 @@
                         <h3 class="fw-bold mb-0 mt-1 text-success" th:text="${'S/ ' + #numbers.formatDecimal(saldoTeorico, 1, 2)}">S/ 0.00</h3>
                     </div>
                 </div>
-                <div class="col-md-4 d-flex gap-2">
-                <button class="btn btn-action-caja btn-outline-danger flex-grow-1 fw-bold" data-bs-toggle="modal" data-bs-target="#modalMovimiento">
-                    <i class="bi bi-arrow-left-right d-block fs-4 mb-1"></i> Movimiento
-                </button>
-                <button class="btn btn-action-caja btn-dark flex-grow-1 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPlanoMesasCaja">
-                    <i class="bi bi-grid-3x3-gap-fill d-block fs-4 mb-1"></i> Ver Salón
-                </button>
-                <button class="btn btn-action-caja btn-danger flex-grow-1 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCierre">
-                    <i class="bi bi-lock-fill d-block fs-4 mb-1"></i> Cerrar Caja
-                </button>
-                <a th:href="@{/admin/caja/historial}" class="btn btn-action-caja btn-outline-secondary flex-grow-1 fw-bold shadow-sm">
-                    <i class="bi bi-clock-history d-block fs-4 mb-1"></i> Historial
-                </a>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-action-caja btn-outline-danger flex-grow-1 fw-bold" data-bs-toggle="modal" data-bs-target="#modalMovimiento">
+                        <i class="bi bi-arrow-left-right d-block fs-4 mb-1"></i> Movimiento
+                    </button>
+                    <button class="btn btn-action-caja btn-dark flex-grow-1 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPlanoMesasCaja">
+                        <i class="bi bi-grid-3x3-gap-fill d-block fs-4 mb-1"></i> Ver Salón
+                    </button>
+                    <button class="btn btn-action-caja btn-danger flex-grow-1 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCierre">
+                        <i class="bi bi-lock-fill d-block fs-4 mb-1"></i> Cerrar Caja
+                    </button>
+                </div>
             </div>
 
             <div th:if="${not #lists.isEmpty(pedidosPendientes)}" class="card card-alert-jama border-0 shadow-sm mb-4">
