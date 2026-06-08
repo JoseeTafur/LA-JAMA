@@ -45,21 +45,68 @@ public class InsumoService {
         return insumoMapper.toDTO(insumoRepository.save(insumo));
     }
 
-    // REEMPLAZAR ESTE MÉTODO COMPLETO:
     public void eliminarInsumo(Long id) {
         Insumo insumo = insumoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Insumo no encontrado"));
-        // Borrado lógico: Cambiamos el estado a 0 (Inactivo) en lugar de hacer deleteById
         insumo.setEstado(0);
         insumoRepository.save(insumo);
     }
 
+    @Transactional
     public void reactivarInsumo(Long id) {
         Insumo insumo = insumoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Insumo no encontrado"));
-        // Borrado lógico inverso: Volvemos al estado 1 (Activo)
         insumo.setEstado(1);
         insumoRepository.save(insumo);
+    }
+
+    // 🌟 NUEVO MÉTODO INTERACTIVO COMPLETO PARA CONTROL DE LOTES (PROT + ALMACÉN GENERAL)
+    @Transactional
+    public void registrarLote(java.util.Map<String, Object> payload) {
+        Long idInsumo = Long.valueOf(payload.get("idInsumo").toString());
+        Double kgComprados = Double.valueOf(payload.get("kgComprados").toString());
+        Double porcionesPorKg = Double.valueOf(payload.get("porcionesPorKg").toString());
+        Double costoTotal = Double.valueOf(payload.get("costoTotal").toString());
+        String observacion = payload.get("observacion") != null ? payload.get("observacion").toString() : "";
+
+        Insumo insumo = insumoRepository.findById(idInsumo)
+                .orElseThrow(() -> new RuntimeException("Insumo no encontrado con ID: " + idInsumo));
+
+        double stockAnterior = (insumo.getStockActual() != null) ? insumo.getStockActual() : 0.0;
+        double nuevoStock = 0.0;
+        double cantidadMovimientoKardex = 0.0;
+        String detalleKardex = "";
+
+        if (!"PROTEINA".equalsIgnoreCase(insumo.getCategoria())) {
+            // 🛒 CASO ABARROTES / SACOS: Acumulamos sumando la cantidad directamente al stock actual
+            nuevoStock = stockAnterior + kgComprados;
+            insumo.setStockActual(nuevoStock);
+            cantidadMovimientoKardex = kgComprados;
+            detalleKardex = "Ingreso Lote: " + (observacion.trim().isEmpty() ? "Compra regular" : observacion);
+        } else {
+            // 🥩 CASO PROTEÍNAS: Convertimos los kilogramos a porciones y acumulamos
+            double porcionesNuevas = Math.round(kgComprados * porcionesPorKg);
+            nuevoStock = stockAnterior + porcionesNuevas;
+            insumo.setStockActual(nuevoStock);
+            insumo.setPorcionesPorKg(porcionesPorKg); // Actualizamos rendimiento maestro
+
+            cantidadMovimientoKardex = porcionesNuevas;
+            detalleKardex = "Ingreso Lote: " + kgComprados + " Kg (Rendimiento: " + porcionesPorKg + " porc/Kg)";
+        }
+
+        // Guardamos el maestro actualizado
+        insumoRepository.saveAndFlush(insumo);
+
+        // Dejamos huella en el Kardex usando la misma estructura de tu entidad
+        MovimientoInsumo mov = new MovimientoInsumo();
+        mov.setInsumo(insumo);
+        mov.setCantidad(cantidadMovimientoKardex);
+        mov.setTipo("INGRESO");
+        mov.setMotivo(detalleKardex);
+        mov.setStockResultante(nuevoStock);
+        mov.setFecha(java.time.LocalDateTime.now());
+
+        movimientoRepository.saveAndFlush(mov);
     }
 
     public List<InsumoProductoDTO> listarInsumosPorProducto(Long idProducto) {
@@ -97,12 +144,9 @@ public class InsumoService {
         for (InsumoProducto ip : insumos) {
             Insumo insumo = ip.getInsumo();
 
-            // Blindaje anti-nulos
             double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
             double totalADescontar = cantidadUsada * cantidadPedida;
 
-            // En lugar de solo restar y guardar a escondidas, llamamos al Kardex
-            // Esto actualiza el stock Y DEJA HUELLA en la base de datos simultáneamente
             registrarMovimiento(
                     insumo,
                     totalADescontar,
@@ -114,17 +158,12 @@ public class InsumoService {
 
     @Transactional
     public void registrarMovimiento(Insumo insumo, Double cantidad, String tipo, String motivo) {
-        // 1. Blindaje: Si el stock actual es null, asumimos 0.0
         double stockActual = (insumo.getStockActual() != null) ? insumo.getStockActual() : 0.0;
-
-        // 2. Calcular nuevo stock
         double nuevoStock = tipo.equals("INGRESO") ? stockActual + cantidad : stockActual - cantidad;
 
-        // 3. Actualizar y guardar el insumo
         insumo.setStockActual(nuevoStock);
-        insumoRepository.saveAndFlush(insumo); // 🔥 Forzamos la actualización del stock primero
+        insumoRepository.saveAndFlush(insumo);
 
-        // 4. Registrar el evento en el Kardex (MovimientoInsumo)
         MovimientoInsumo mov = new MovimientoInsumo();
         mov.setInsumo(insumo);
         mov.setCantidad(cantidad);
@@ -133,10 +172,8 @@ public class InsumoService {
         mov.setStockResultante(nuevoStock);
         mov.setFecha(java.time.LocalDateTime.now());
 
-        // 🔥 LA CLAVE AQUÍ: Usamos saveAndFlush para obligar a insertar la fila en el Kardex AHORA MISMO
         movimientoRepository.saveAndFlush(mov);
     }
-
 
     public List<MovimientoInsumoDTO> obtenerKardexPorInsumo(Long insumoId) {
         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -146,15 +183,11 @@ public class InsumoService {
                 .map(m -> {
                     MovimientoInsumoDTO dto = new MovimientoInsumoDTO();
                     dto.setId(m.getId());
-                    // Pasamos la fecha formateada de forma segura
                     dto.setFecha(m.getFecha() != null ? m.getFecha().format(formatter) : "Sin Fecha");
                     dto.setTipo(m.getTipo());
                     dto.setCantidad(m.getCantidad());
                     dto.setMotivo(m.getMotivo());
-
-                    // 🔥 CRUCIAL: Asegurar que se asigne el stock resultante tal cual viene de la BD
                     dto.setStockResultante(m.getStockResultante() != null ? m.getStockResultante() : 0.0);
-
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -164,4 +197,10 @@ public class InsumoService {
     public void eliminarInsumoDeReceta(Long idInsumoProducto) {
         insumoProductoRepository.deleteById(idInsumoProducto);
     }
+
+    @Transactional
+    public void limpiarRecetaDeProducto(Long idProducto) {
+        insumoProductoRepository.deleteByProductoId(idProducto);
+    }
+
 }

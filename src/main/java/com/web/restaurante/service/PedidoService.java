@@ -125,29 +125,36 @@ public class PedidoService {
 
         if (p.getListaDetalles() == null) return;
 
-        // 🔥 BÚSQUEDA EXACTA: Apuntamos directo al ID de la fila (El Mondonguito específico)
         DetallePedido detalleTarget = p.getListaDetalles().stream()
                 .filter(d -> d.getId().equals(detalleId))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Fila de detalle no encontrada"));
 
-        // 🚨 CANDADO OPERATIVO INDESTRUCTIBLE: Aborta si el plato no se ha mandado a la tiquetera física
         if (!detalleTarget.isImpresoEnCocina()) {
             throw new IllegalStateException("¡Bloqueado! No puedes despachar '"
                     + detalleTarget.getProducto().getNombre() + "' porque aún no ha sido impreso en el ticket.");
         }
 
+        // EL CAMBIO ESTÁ AQUÍ: Solo ejecutamos el descuento general de la receta
         if (!detalleTarget.isCocinado()) {
             detalleTarget.setCocinado(true);
+
+            // 1. Descuenta el inventario físico (la receta)
             insumoService.descontarInsumosPorPedido(detalleTarget.getProducto().getId(), detalleTarget.getCantidad());
 
+            // 2. REGISTRO EN KARDEX: Buscamos si es una proteína para dejar la auditoría histórica
             insumoProductoRepository.findByProductoId(detalleTarget.getProducto().getId()).stream()
                     .filter(ip -> ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria()))
                     .findFirst()
-                    .ifPresent(ip -> proteinaService.descontarPorcionesPorVenta(ip.getInsumo().getId(), detalleTarget.getCantidad()));
+                    .ifPresent(ip -> {
+                        // Aquí llamamos a un método que SOLO guarde el registro en el Kardex.
+                        // Si tu proteinaService.descontarPorcionesPorVenta restaba stock además de grabar,
+                        // puedes crear un método alternativo como 'registrarKardexPorVenta' que solo haga el insert en la tabla de movimientos.
+                        proteinaService.registrarKardexPorVenta(ip.getInsumo().getId(), detalleTarget.getCantidad(), p.getId());
+                    });
         }
 
-        // LÓGICA DE SEMÁFORO GLOBAL RECALCULADA:
+        // LÓGICA DE SEMÁFORO GLOBAL RECALCULADA... (El resto queda exactamente igual)
         boolean tieneFrioPendiente = p.getListaDetalles().stream()
                 .anyMatch(d -> !d.isCocinado() && (d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRI")
                         || d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRÍ")));
@@ -252,19 +259,21 @@ public class PedidoService {
                         d.setCocinado(true);
                         insumoService.descontarInsumosPorPedido(d.getProducto().getId(), d.getCantidad());
 
+                        // Graba el movimiento en el Kardex de porciones
                         insumoProductoRepository.findByProductoId(d.getProducto().getId()).stream()
                                 .filter(ip -> ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria()))
                                 .findFirst()
-                                .ifPresent(ip -> proteinaService.descontarPorcionesPorVenta(ip.getInsumo().getId(), d.getCantidad()));
+                                .ifPresent(ip -> proteinaService.registrarKardexPorVenta(ip.getInsumo().getId(), d.getCantidad(), p.getId()));
                     }
                     if ("caliente".equalsIgnoreCase(tipoEstacion) && catNombre.contains("CALIENTE")) {
                         d.setCocinado(true);
                         insumoService.descontarInsumosPorPedido(d.getProducto().getId(), d.getCantidad());
 
+                        // Graba el movimiento en el Kardex de porciones
                         insumoProductoRepository.findByProductoId(d.getProducto().getId()).stream()
                                 .filter(ip -> ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria()))
                                 .findFirst()
-                                .ifPresent(ip -> proteinaService.descontarPorcionesPorVenta(ip.getInsumo().getId(), d.getCantidad()));
+                                .ifPresent(ip -> proteinaService.registrarKardexPorVenta(ip.getInsumo().getId(), d.getCantidad(), p.getId()));
                     }
                 }
             }

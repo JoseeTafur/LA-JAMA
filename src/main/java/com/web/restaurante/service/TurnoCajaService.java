@@ -37,14 +37,6 @@ public class TurnoCajaService {
                 .orElse(List.of());
     }
 
-    public List<TurnoCaja> obtenerTurnosCerrados() {
-        return turnoCajaRepository.findTurnosCerradosOrdenados();
-    }
-
-    public List<MovimientoCaja> obtenerMovimientosPorTurno(Long turnoId) {
-        return movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(turnoId);
-    }
-
     @Transactional
     public TurnoCaja abrirTurno(Double montoApertura) {
         if (turnoCajaRepository.findByActivoTrue().isPresent()) {

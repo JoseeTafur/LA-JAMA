@@ -31,13 +31,20 @@ public class InsumoController {
         model.addAttribute("insumosProductos", insumoService.listarTodosLosInsumosProducto());
         return "insumos";
     }
-    @PostMapping("/editar/{id}")
-    @ResponseBody
-    public ResponseEntity<Void> editarInsumo(@PathVariable Long id, @RequestBody InsumoDTO dto) {
-    dto.setId(id);
-    insumoService.guardarInsumo(dto);
-    return ResponseEntity.ok().build();
-}
+    @PostMapping("/editar")
+    public String editarInsumo(@ModelAttribute InsumoDTO dto) {
+
+        insumoService.guardarInsumo(dto);
+
+        return "redirect:/insumos";
+    }
+
+    @PostMapping("/reactivar/{id}")
+    public String reactivarInsumo(@PathVariable Long id) {
+        insumoService.reactivarInsumo(id);
+
+        return "redirect:/insumos";
+    }
 
     @PostMapping("/guardar")
     public String guardarInsumo(@ModelAttribute InsumoDTO dto) {
@@ -75,5 +82,30 @@ public class InsumoController {
     @ResponseBody
     public List<MovimientoInsumoDTO> obtenerKardex(@PathVariable Long id) {
         return insumoService.obtenerKardexPorInsumo(id);
+    }
+
+    @PostMapping("/producto/receta/guardar-matriz")
+    public String guardarMatrizReceta(@RequestParam Long idProductoSelect,
+                                      @RequestParam(required = false) List<Long> insumosSeleccionados,
+                                      jakarta.servlet.http.HttpServletRequest request) {
+
+        // 1. Limpiamos la receta actual del plato para evitar duplicados al reescribir
+        insumoService.limpiarRecetaDeProducto(idProductoSelect);
+
+        // 2. Si el usuario marcó al menos un insumo en los checkboxes, los procesamos
+        if (insumosSeleccionados != null && !insumosSeleccionados.isEmpty()) {
+            for (Long idInsumo : insumosSeleccionados) {
+                // Capturamos el valor dinámico del input de porciones usando su prefijo
+                String porcionesStr = request.getParameter("porciones-" + idInsumo);
+                Double cantidadPorciones = (porcionesStr != null && !porcionesStr.isEmpty())
+                        ? Double.valueOf(porcionesStr)
+                        : 1.0;
+
+                // Registramos la nueva relación
+                insumoService.agregarInsumoAProducto(idProductoSelect, idInsumo, cantidadPorciones);
+            }
+        }
+
+        return "redirect:/insumos";
     }
 }

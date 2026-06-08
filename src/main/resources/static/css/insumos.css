@@ -409,3 +409,156 @@ body {
     border-top: 1px solid #dee2e6;
     padding: 12px 24px !important;
 }
+
+/* ==========================================================================
+   LA JAMA - COMPONENTES ESPECÍFICOS PARA GESTIÓN DE RECETAS
+   ========================================================================== */
+
+/* Contenedor del Formulario de Receta */
+.recipe-form-container {
+    background-color: var(--lajama-green);
+    border-radius: 1.25rem;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(214, 163, 115, 0.2);
+}
+
+.recipe-form-container .form-label-jama {
+    color: var(--lajama-skin) !important;
+}
+
+/* Selector estilizado dentro del panel verde */
+.recipe-form-container .form-select-jama,
+.recipe-form-container .form-control-jama {
+    background-color: rgba(251, 249, 244, 0.95);
+    border: 2px solid var(--lajama-peach);
+    color: var(--lajama-green);
+    font-weight: 500;
+}
+
+.recipe-form-container .form-select-jama:focus,
+.recipe-form-container .form-control-jama:focus {
+    background-color: var(--lajama-white);
+    border-color: var(--lajama-gold);
+    box-shadow: 0 0 0 0.25rem rgba(212, 163, 115, 0.25);
+}
+
+/* Tarjetas de Recetarios Activos */
+.recipe-active-card {
+    background: var(--lajama-white);
+    border: 1px solid var(--lajama-peach);
+    border-radius: 1rem;
+    padding: 1.1rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-sm);
+}
+
+.recipe-active-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--lajama-gold);
+    box-shadow: var(--shadow-md);
+}
+
+/* Títulos de platos en los recetarios */
+.recipe-dish-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--lajama-green);
+}
+
+/* Iconos ilustrativos dentro del formulario */
+.recipe-step-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: var(--lajama-gold);
+    color: var(--lajama-green);
+    font-size: 0.75rem;
+    font-weight: 800;
+    margin-right: 0.5rem;
+}
+
+/* Encabezado de la sección de recetarios */
+.recipe-section-header {
+    border-bottom: 2px solid var(--lajama-peach);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* ==========================================================================
+   LA JAMA - MATRIZ DINÁMICA DE RECETAS (CHECKBOXES PERSISTENTES)
+   ========================================================================== */
+
+/* Buscador interno del recetario */
+.recipe-search-box {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(234, 217, 201, 0.3);
+    color: var(--lajama-white) !important;
+    border-radius: 2rem;
+}
+.recipe-search-box::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Contenedor scrolleable de la matriz de insumos */
+.recipe-matrix-container {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+/* Fila interactiva de insumo */
+.recipe-matrix-item {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(234, 217, 201, 0.15);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+/* Estado cuando el checkbox está activo (Insumo seleccionado) */
+.recipe-matrix-item.item-selected {
+    background-color: rgba(251, 249, 244, 0.15);
+    border-color: var(--lajama-gold);
+}
+
+/* Checkbox personalizado estilo La Jama */
+.form-check-jama .form-check-input {
+    background-color: var(--lajama-cream);
+    border-color: var(--lajama-peach);
+    cursor: pointer;
+    width: 1.2rem;
+    height: 1.2rem;
+}
+.form-check-jama .form-check-input:checked {
+    background-color: var(--lajama-gold);
+    border-color: var(--lajama-gold);
+}
+
+/* Entrada de porciones compacta al lado del checkbox */
+.portion-input-group {
+    max-width: 130px;
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
+}
+.recipe-matrix-item.item-selected .portion-input-group {
+    opacity: 1;
+}
+
+.input-portion-jama {
+    background-color: rgba(251, 249, 244, 0.9) !important;
+    border: 1px solid var(--lajama-peach) !important;
+    color: var(--lajama-green) !important;
+    font-weight: 700;
+    text-align: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    border-radius: 0.5rem;
+}
