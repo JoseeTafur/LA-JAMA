@@ -220,4 +220,30 @@ public class ProteinaService {
 
         return linea;
     }
+
+    @Transactional
+    public void registrarKardexPorVenta(Long insumoId, double cantidad, Long pedidoId) {
+        Insumo insumo = insumoRepository.findById(insumoId)
+                .orElseThrow(() -> new RuntimeException("Insumo no encontrado"));
+
+        // Creamos la entidad del movimiento para el Kardex adaptada a tus atributos reales
+        MovimientoPorciones mov = new MovimientoPorciones();
+        mov.setInsumo(insumo);
+
+// 1. Mapeado a 'cantidadPorciones' (Convertido a int si 'cantidad' viene como double)
+        mov.setCantidadPorciones((int) cantidad);
+
+// 2. Mapeado a 'tipo' (Mantenemos tu estándar)
+        mov.setTipo("EGRESO");
+
+// 3. Mapeado a 'motivo' (Unificamos origen y detalle aquí ya que tu entidad no tiene esos campos)
+        mov.setMotivo("VENTA_SALA - Despacho de comanda Pedido N° " + pedidoId);
+
+// 4. Mapeado a 'stockResultante' (Convertimos el stock actual del insumo a int)
+// Nota: Asegúrate de que insumo.getStockActual() devuelva el stock YA restado
+        mov.setStockResultante((int) Math.round(insumo.getStockActual()));
+
+// Guardamos en tu repositorio
+        movimientoPorcionesRepository.save(mov);
+    }
 }

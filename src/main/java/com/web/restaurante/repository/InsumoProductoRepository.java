@@ -8,7 +8,8 @@ import java.util.List;
 @Repository
 public interface InsumoProductoRepository extends JpaRepository<InsumoProducto, Long> {
 
-    List<InsumoProducto> findByProductoId(Long idProducto);
+    List<InsumoProducto> findByProductoId(Long productoId);
 
-    List<InsumoProducto> findByInsumoId(Long idInsumo);
+
+    void deleteByProductoId(Long productoId);
 }
