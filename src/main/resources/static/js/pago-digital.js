@@ -6,6 +6,8 @@ $(document).ready(function () {
 
     const formId = '#form';
 
+    const baseImgUrl = APP_CONFIG.imageBaseUrl;
+
     const API_BASE = '/admin/pagos-digitales/api';
     const ENDPOINTS = {
         list:         `${API_BASE}/listar`,
@@ -238,7 +240,8 @@ $(document).ready(function () {
                     return;
                 }
 
-                const imgUrl = res.data.imgUrl;
+                let imgUrl = res.data.imgUrl;
+                imgUrl = `${baseImgUrl}/${imgUrl}`
 
                 if (imgUrl) {
                     let settled = false;

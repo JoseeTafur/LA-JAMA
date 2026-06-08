@@ -32,6 +32,12 @@
 
 <th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
 
+<script th:inline="javascript">
+    window.APP_CONFIG = {
+        imageBaseUrl: [[${imageBaseUrl}]]
+    };
+</script>
+
 <script th:if="${js != null}" th:src="@{${js}}"></script>
 
 </body>

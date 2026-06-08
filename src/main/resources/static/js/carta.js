@@ -263,6 +263,7 @@ ${detalle}
         let imgUrl = null;
         if (file) {
             const resImage = await subirImagen("pagodigital", idPago, file);
+            console.log(resImage);
             imgUrl = resImage.url;
         }
 
