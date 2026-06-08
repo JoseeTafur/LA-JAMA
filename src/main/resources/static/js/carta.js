@@ -273,11 +273,11 @@ ${detalle}
             body: JSON.stringify({ imgUrl })
         });
 
-        modalCarrito = null;
-        carrito = {};
-        localStorage.setItem("carrito", JSON.stringify(carrito));
-        actualizarUI();
-        renderCarrito();
+//        modalCarrito = null;
+//        carrito = {};
+//        localStorage.setItem("carrito", JSON.stringify(carrito));
+//        actualizarUI();
+//        renderCarrito();
     } catch (e) {
         console.warn('No se pudo registrar en sistema:', e);
     }

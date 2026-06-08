@@ -7,7 +7,7 @@ const fs = require("fs-extra");
 const { UPLOADS_DIR, resolveDestDir, listImagePaths, saveFiles, clearImages } = require("./util");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const upload = multer({
   storage: multer.memoryStorage(),
