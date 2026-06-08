@@ -1,5 +1,6 @@
 package com.web.restaurante.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,6 +33,7 @@ public class MovimientoCaja {
     @Column(name = "fecha", nullable = false)
     private LocalDateTime fecha;
 
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "movimientos"})
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_turno")
     private TurnoCaja turno;
