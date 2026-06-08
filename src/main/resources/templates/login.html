@@ -74,6 +74,13 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script th:src="@{/js/login.js}"></script>
+    <script th:if="${error}">
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: '[[${error}]]'
+        });
+    </script>
     <script>
         const inputPassword = document.querySelector("#clave");
         document.querySelector("#togglePassword")
