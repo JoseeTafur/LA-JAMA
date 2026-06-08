@@ -1,5 +1,13 @@
 :root {
-  --bg-body: #f4f6f9;
+  --lajama-green: #1B3A2C;       /* Verde profundo de la imagen */
+  --lajama-peach: #fed7aa;      /* Tono durazno suave */
+  --lajama-skin: #FFB38A;       /* Tono piel/naranja cálido */
+  --lajama-cream: #FFF7ED;      /* Crema de fondo */
+  --lajama-white: #FFFFFF;
+
+
+  --text-dark: #2D2D2D;
+  --bg-body: var(--lajama-peach);
   --white: #ffffff;
 
   /* AdminLTE / Bootstrap core */
@@ -151,4 +159,125 @@ input.form-control.form-control-sm {
     align-items: center;
     gap: 6px;
     margin: 0;
+}
+
+.container-fluid {
+    background-color: var(--lajama-cream);
+    min-height: calc(100vh - 85px); /* Ajuste según altura del banner */
+}
+
+.card-color1 {
+    background: var(--lajama-white);
+    border: 2px solid var(--lajama-peach);
+    border-radius: 25px !important;
+    box-shadow: 0 12px 24px rgba(27, 58, 44, 0.05);
+    margin-top: 1rem;
+}
+
+.card-title {
+    color: var(--lajama-green) !important;
+    font-size: 1.6rem !important;
+    border-bottom: 3px solid var(--lajama-skin);
+    display: inline-block;
+    padding-bottom: 5px;
+}
+
+/* --- TABLA ARTESANAL --- */
+#tabla {
+    border-collapse: separate;
+    border-spacing: 0 10px;
+}
+
+#tabla thead th {
+    background-color: var(--lajama-green);
+    color: var(--lajama-white);
+    padding: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    border: none;
+}
+
+#tabla thead th:first-child { border-radius: 15px 0 0 15px; }
+#tabla thead th:last-child { border-radius: 0 15px 15px 0; }
+
+#tabla tbody tr {
+    background-color: var(--lajama-white);
+    transition: all 0.3s ease;
+}
+
+#tabla tbody td {
+    padding: 15px !important;
+    border-top: 1px solid var(--lajama-cream);
+    border-bottom: 1px solid var(--lajama-cream);
+    color: var(--text-dark);
+}
+
+#tabla tbody tr:hover {
+    background-color: var(--lajama-cream) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(254, 215, 170, 0.4);
+}
+
+/* --- FORMULARIOS --- */
+.filtro-jama {
+    border: 2px solid var(--lajama-peach);
+    background-color: var(--lajama-white);
+    border-radius: 10px;
+    color: var(--lajama-green);
+    font-weight: 600;
+}
+
+.form-label {
+    color: var(--lajama-green);
+}
+
+.form-control, .form-select {
+    border: 2px solid var(--lajama-peach);
+    border-radius: 12px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--lajama-skin);
+    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.2);
+}
+
+/* --- MODALES --- */
+.modal-content {
+    border-radius: 30px !important;
+    background-color: var(--lajama-cream);
+}
+
+.modal-header {
+    background-color: var(--lajama-green);
+    border-radius: 30px 30px 0 0 !important;
+}
+
+.modal-footer {
+    border-radius: 0 0 30px 30px !important;
+}
+
+/* --- BOTONES --- */
+.btn-jama-primary {
+    background-color: var(--lajama-green);
+    color: white;
+    border: none;
+    font-weight: 700;
+}
+
+.btn-jama-primary:hover {
+    background-color: #0d231a;
+    color: white;
+    transform: scale(1.05);
+}
+
+.btn-outline-jama {
+    border: 2px solid var(--lajama-green);
+    color: var(--lajama-green);
+    font-weight: 700;
+}
+
+.btn-outline-jama:hover {
+    background-color: var(--lajama-green);
+    color: white;
 }

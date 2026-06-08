@@ -1,125 +1,367 @@
+/* ==========================================================================
+   LA JAMA - ECO-SISTEMA VISUAL COMPLETO PARA MÓDULO DE CAJA (2026)
+   ========================================================================== */
+
 :root {
     --lajama-green: #1B3A2C;
-    --lajama-peach: #fed7aa;
-    --lajama-skin: #FFB38A;
-    --lajama-cream: #FFF7ED;
+    --lajama-green-hover: #11251C;
+    --lajama-cream: #FBF9F4;
+    --lajama-peach: #EAD9C9;
+    --lajama-skin: #F4EBE1;
+    --lajama-gold: #D4A373;
     --lajama-white: #FFFFFF;
+
+    --lajama-success: #2A7B4C;
+    --lajama-success-bg: rgba(42, 123, 76, 0.08);
+    --lajama-danger: #B83A3A;
+    --lajama-danger-bg: rgba(184, 58, 58, 0.08);
+    --lajama-warning: #DE9E36;
+    --lajama-secondary: #5C677D;
+
+    --shadow-sm: 0 2px 8px rgba(27, 58, 44, 0.04);
+    --shadow-md: 0 6px 18px rgba(27, 58, 44, 0.08);
+    --shadow-lg: 0 12px 36px rgba(27, 58, 44, 0.15);
 }
 
-/* --- ESTRUCTURA --- */
-.main-content {
-    background-color: var(--lajama-cream);
+.caja-body {
+    background-color: #F5F2EA !important;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* --- BANNER DE RECAUDACIÓN --- */
-.recaudacion-banner {
-    background-color: var(--lajama-green);
-    border-left: 10px solid var(--lajama-skin);
-    color: white;
+/* ─── CARDS KPI DE CONTROL SUPERIOR ──────────────────────────────── */
+.card-kpi-jama {
+    border-radius: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease;
 }
-
-.card-stat-jama {
-    background-color: var(--lajama-skin);
-    color: var(--lajama-green);
-    min-width: 180px;
-    text-align: right;
+.card-kpi-jama:hover {
+    transform: translateY(-2px);
 }
-
-
-
-/* --- TABLA DE CAJA --- */
-.card-tabla {
-    border: 2px solid var(--lajama-peach) !important;
-    background-color: var(--lajama-white);
+.label-kpi {
+    letter-spacing: 0.5px;
+    font-size: 0.65rem;
 }
-
-.text-jama-green {
-    color: var(--lajama-green) !important;
-}
-
-.search-container input {
-    border-radius: 12px;
-    border: 2px solid var(--lajama-cream) !important;
-}
-
-.search-container input:focus {
-    border-color: var(--lajama-peach) !important;
-    box-shadow: none;
-}
-
-/* Estilo de la Tabla */
-#tablaCaja thead th {
-    background-color: var(--lajama-green);
-    color: white;
-    text-transform: uppercase;
+.btn-action-caja {
+    border-radius: 1rem;
     font-size: 0.8rem;
-    letter-spacing: 1px;
-    padding: 18px;
-    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
 }
 
-#tablaCaja thead th:first-child { border-radius: 15px 0 0 15px; }
-#tablaCaja thead th:last-child { border-radius: 0 15px 15px 0; }
-
-#tablaCaja tbody tr {
-    transition: all 0.2s ease;
+/* ─── COMPONENTE ALERT PEDIDOS DELIVERY (WHATSAPP) ──────────────── */
+.card-alert-jama {
+    background-color: #FFF8E8;
+    border-radius: 1.25rem;
+    border: 1px solid #EAD29A;
+    overflow: hidden;
+}
+.card-header-alert {
+    background-color: #FDF1D3;
+    border-bottom: 1px solid #EAD29A;
+}
+.text-alert-title {
+    color: #7A5C1E;
+    font-size: 1rem;
+}
+.id-alert {
+    color: #7A5C1E;
+}
+.thead-alert tr th {
+    background-color: #F8ECD0 !important;
+    color: #7A5C1E !important;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.fila-pendiente {
+    border-left: 5px solid #DE9E36;
 }
 
-#tablaCaja tbody tr:hover {
-    background-color: var(--lajama-cream) !important;
+/* ─── TABLA PRINCIPAL DE COMANDAS ────────────────────────────────── */
+.card-main-caja {
+    background-color: var(--lajama-white);
+    border-radius: 1.25rem;
+    border: 1px solid var(--lajama-peach);
 }
-
-/* Elementos de Fila */
-.icon-circle-jama {
-    width: 35px;
-    height: 35px;
-    background-color: var(--lajama-peach);
+.search-container-jama input {
+    border-radius: 0 2rem 2rem 0 !important;
+    font-size: 0.85rem;
+}
+.search-container-jama span {
+    border-radius: 2rem 0 0 2rem !important;
+}
+.thead-jama-caja tr th {
+    background-color: var(--lajama-skin) !important;
+    color: var(--lajama-green) !important;
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    padding: 1rem 0.75rem;
+    border-bottom: 2px solid var(--lajama-peach) !important;
+}
+.id-comanda-text {
     color: var(--lajama-green);
+}
+
+/* Iconos de tipo de servicio */
+.icon-service-jama {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 1rem;
 }
+.bg-delivery { background-color: rgba(42, 123, 76, 0.12); color: var(--lajama-success); }
+.bg-local { background-color: rgba(212, 163, 115, 0.15); color: #A06D3B; }
 
 .badge-time-jama {
-    background-color: var(--lajama-cream);
-    color: var(--lajama-green);
-    border: 1px solid var(--lajama-peach);
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-weight: 700;
+    background-color: #EAECEE;
+    color: var(--lajama-secondary);
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
 }
-
-.text-jama-skin {
-    color: var(--lajama-skin) !important;
-}
-
-/* Botón Cobrar */
 .btn-jama-cobrar {
     background-color: var(--lajama-green);
+    color: var(--lajama-peach);
+    border: none;
+    transition: all 0.2s ease;
+}
+.btn-jama-cobrar:hover {
+    background-color: var(--lajama-green-hover);
+    color: var(--lajama-white);
+}
+
+/* ─── ARQUITECTURA CRÍTICA: MODAL FACTURACIÓN MULTI-TICKET ───────── */
+.modal-content-facturacion {
+    border-radius: 1.5rem !important;
+    overflow: hidden;
+}
+.header-jama-caja-dark {
+    background-color: var(--lajama-green);
+    border-bottom: 3px solid var(--lajama-gold);
+    padding: 1rem 1.5rem;
+}
+
+/* Filas de items/platos seleccionables (Táctil) */
+.jama-item-row-btn {
+    background-color: var(--lajama-white);
+    border: 1px solid var(--lajama-peach);
+    border-radius: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.jama-item-row-btn:hover {
+    background-color: var(--lajama-cream);
+    border-color: var(--lajama-gold);
+}
+.jama-item-row-btn.assigned {
+    background-color: rgba(212, 163, 115, 0.06);
+    border-color: var(--lajama-gold);
+}
+.jama-btn-del-owner {
+    background: rgba(0,0,0,0.1);
+    color: var(--lajama-danger);
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    margin-left: 2px;
+}
+
+/* Grid de canastas de cobro */
+.style-grid-tickets {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    align-content: start;
+}
+
+/* Tarjetas individuales de Tickets */
+.jama-ticket-card {
+    background-color: var(--lajama-white);
+    border: 2px solid var(--lajama-peach);
+    border-radius: 1rem;
+    padding: 1rem;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+.jama-ticket-header-badge {
+    background-color: var(--lajama-gold);
+    color: var(--lajama-green);
+    font-weight: 800;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.5rem;
+    align-self: start;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.5px;
+}
+.jama-finance-box {
+    background-color: var(--lajama-cream);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+}
+.jama-finance-line {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.2rem;
+    color: var(--lajama-secondary);
+}
+.jama-finance-line.total {
+    border-top: 1px dashed var(--lajama-peach);
+    margin-top: 0.3rem;
+    padding-top: 0.3rem;
+    font-weight: 700;
+    color: var(--lajama-green);
+}
+
+/* Switches de Tipo de Documento CPE */
+.jama-toggle-row {
+    display: flex;
+    background-color: #EAECEE;
+    padding: 0.2rem;
+    border-radius: 0.5rem;
+    gap: 0.2rem;
+}
+.jama-toggle-btn {
+    flex: 1;
+    border: none;
+    background: none;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.35rem;
+    border-radius: 0.35rem;
+    color: var(--lajama-secondary);
+    transition: all 0.15s ease;
+}
+.jama-toggle-btn.active {
+    background-color: var(--lajama-green);
+    color: var(--lajama-white);
+}
+
+.jama-input-text {
+    width: 100%;
+    border: 1px solid var(--lajama-peach);
+    border-radius: 0.5rem;
+    padding: 0.35rem;
+    font-size: 0.8rem;
+    background-color: var(--lajama-cream);
+}
+.jama-select {
+    width: 100%;
+    border: 1px solid var(--lajama-peach);
+    border-radius: 0.5rem;
+    padding: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background-color: var(--lajama-white);
+    color: var(--lajama-green);
+}
+.jama-pos-alert {
+    margin-top: auto;
+    border-top: 1px solid var(--lajama-skin);
+    padding-top: 0.4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Footer de Control Base */
+.footer-jama-caja {
+    background-color: var(--lajama-skin);
+    border-top: 2px solid var(--lajama-peach);
+    padding: 0.75rem 1.5rem;
+}
+.jama-txt-status {
+    font-weight: 700;
+    padding: 0.35rem 0.85rem;
+    border-radius: 2rem;
+    font-size: 0.85rem;
+}
+.status-success { background-color: var(--lajama-success-bg); color: var(--lajama-success); }
+.status-danger { background-color: var(--lajama-danger-bg); color: var(--lajama-danger); animation: pulseEffect 2s infinite; }
+
+@keyframes pulseEffect {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+.btn-jama-liquidar-final {
+    background-color: var(--lajama-success);
     color: white;
     border: none;
+}
+.btn-jama-liquidar-final:hover:not(:disabled) {
+    background-color: #215F3A;
+}
+
+/* Formularios Generales */
+.form-label-jama {
+    font-size: 0.75rem;
     font-weight: 700;
-    transition: transform 0.2s, background-color 0.2s;
+    color: var(--lajama-green);
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+}
+.form-control-jama, .form-select-jama {
+    width: 100%;
+    border: 1px solid var(--lajama-peach);
+    border-radius: 0.65rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--lajama-cream);
 }
 
-.btn-jama-cobrar:hover {
-    background-color: #0d231a;
-    color: white;
-    transform: scale(1.05);
+/* --- MONITOREO DE SALA TÁCTIL --- */
+
+.fw-black {
+    font-weight: 900 !important;
 }
 
-/* Alertas y Estados Vacíos */
-.alert-jama-success {
-    background-color: #dcfce7;
-    color: #166534;
-    border-left: 5px solid #22c55e;
+/* El botón base de la mesa */
+.btn-mesa-tactil {
+    background-color: #ffffff;
+    color: #1B3A2C;
+    border: 2px solid #e5e7eb !important;
 }
 
-.empty-state-jama {
-    padding: 40px;
+/* Efecto cuando pasas el dedo o haces clic (Feedback táctil) */
+.btn-mesa-tactil:active, .btn-mesa-tactil:focus {
+    transform: scale(0.96);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
 }
 
-.empty-state-jama i {
-    filter: drop-shadow(0 5px 10px rgba(255, 179, 138, 0.3));
+/* Variación: Mesa Ocupada / Por Cobrar (Tono claro pero llamativo) */
+.btn-mesa-tactil.estado-por-cobrar {
+    background-color: #FFF7ED !important; /* Melocotón muy suave */
+    border-color: #FED7AA !important;
+    color: #C2410C !important;
+}
+
+/* Variación: Mesa Libre (Verde claro relajante) */
+.btn-mesa-tactil.estado-libre {
+    background-color: #F0FDF4 !important;
+    border-color: #BBF7D0 !important;
+    color: #166534 !important;
+}
+
+/* Animación sutil al pasar el mouse si se usa computadora */
+@media (min-width: 992px) {
+    .btn-mesa-tactil:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+        border-color: #1B3A2C !important;
+    }
 }

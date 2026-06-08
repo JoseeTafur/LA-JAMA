@@ -6,75 +6,74 @@
     <title>Apertura de Caja | La Jama</title>
     <th:block th:replace="~{links :: headLinks}"></th:block>
     <link rel="stylesheet" th:href="@{/css/caja.css}">
+    <style>
+        .apertura-container {
+            max-width: 500px;
+            margin: 8% auto;
+        }
+        .bg-jama-dark {
+            background-color: #1e1e24;
+            color: #ffffff;
+        }
+        .btn-jama-green {
+            background-color: #2b7a4a;
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .btn-jama-green:hover {
+            background-color: #1f5935;
+            color: white;
+            transform: scale(1.02);
+        }
+    </style>
 </head>
-<body class="caja-body">
+<body class="bg-light">
 
-<div class="wrapper">
+<div class="wrapper d-flex">
     <div th:replace="~{sidebar :: sidebar(activeUri='/admin/caja')}"></div>
 
-    <main id="main-content" class="main-content">
+    <main id="main-content" class="main-content flex-grow-1">
         <div th:replace="~{sidebar :: logistica_header('Módulo de Caja')}"></div>
 
-        <div class="container-fluid px-4 mt-5">
-            <div class="row justify-content-center">
-                <div class="col-md-6 col-lg-5">
+        <div class="container-fluid px-4">
+            <div class="card apertura-container border-0 shadow-lg rounded-4 animate__animated animate__fadeInUp">
+                <div class="card-header bg-jama-dark p-4 rounded-top-4 text-center">
+                    <div class="icon-circle bg-white text-dark d-inline-flex p-3 rounded-circle mb-3 shadow-sm">
+                        <i class="bi bi-key-fill fs-3 text-success"></i>
+                    </div>
+                    <h4 class="mb-1 fw-bold">Apertura de Turno</h4>
+                    <p class="mb-0 text-white-50 small">Inicia las operaciones financieras del día</p>
+                </div>
 
-                    <!-- Alerta de error si existe -->
-                    <div th:if="${mensajeError}" class="alert alert-danger rounded-4 shadow-sm mb-4">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        <span th:text="${mensajeError}"></span>
+                <div class="card-body p-4">
+                    <div class="alert alert-info border-0 rounded-3 d-flex align-items-center gap-3 mb-4" style="background-color: #e6f4ea; color: #1e4620;">
+                        <i class="bi bi-info-circle-fill fs-4 text-success"></i>
+                        <div>
+                            <span class="d-block small fw-bold opacity-75 text-uppercase">Monto de Cierre Anterior:</span>
+                            <span class="h5 fw-extrabold mb-0" th:text="${'S/ ' + #numbers.formatDecimal(montoSugerido, 1, 2)}">S/ 0.00</span>
+                        </div>
                     </div>
 
-                    <div class="card border-0 shadow rounded-4 p-4">
-                        <div class="text-center mb-4">
-                            <div class="mb-3">
-                                <i class="bi bi-cash-coin text-success" style="font-size: 3.5rem;"></i>
+                    <form th:action="@{/admin/caja/abrir}" method="post" id="formAperturaCaja">
+                        <div class="mb-4">
+                            <label for="montoApertura" class="form-label fw-bold text-secondary small text-uppercase">Fondo Inicial de Caja (S/.)</label>
+                            <div class="input-group input-group-lg shadow-sm rounded-3">
+                                <span class="input-group-text bg-white border-end-0 text-muted fw-bold">S/</span>
+                                <input type="number" step="0.10" id="montoApertura" name="montoApertura"
+                                       class="form-control border-start-0 fw-bold text-success"
+                                       th:value="${montoSugerido}" placeholder="0.00" required min="0">
                             </div>
-                            <h4 class="fw-bold text-jama-green">Apertura de Caja</h4>
-                            <p class="text-muted small">
-                                No hay ningún turno activo. Ingresa el monto inicial para comenzar el día.
-                            </p>
+                            <div class="form-text text-muted small mt-2">
+                                * Este efectivo se utilizará exclusivamente para el fondo de vuelto del salón.
+                            </div>
                         </div>
 
-                        <!-- Monto sugerido del día anterior -->
-                        <div th:if="${montoSugerido > 0}"
-                             class="alert alert-info rounded-3 d-flex align-items-center gap-2 mb-4">
-                            <i class="bi bi-info-circle-fill"></i>
-                            <span>
-                                El cierre del día anterior fue
-                                <strong>S/ <span th:text="${#numbers.formatDecimal(montoSugerido, 1, 2)}"></span></strong>.
-                                Se usará como fondo inicial.
-                            </span>
-                        </div>
-
-                        <form th:action="@{/admin/caja/apertura}" method="post">
-                            <div class="mb-4">
-                                <label for="montoApertura" class="form-label fw-bold">
-                                    <i class="bi bi-wallet2 me-1"></i> Monto inicial en caja (S/)
-                                </label>
-                                <div class="input-group input-group-lg">
-                                    <span class="input-group-text bg-light border-0 fw-bold">S/</span>
-                                    <input type="number"
-                                           id="montoApertura"
-                                           name="montoApertura"
-                                           class="form-control form-control-lg border-0 bg-light"
-                                           step="0.01"
-                                           min="0"
-                                           th:value="${montoSugerido > 0 ? montoSugerido : 200}"
-                                           placeholder="0.00"
-                                           required>
-                                </div>
-                                <div class="form-text text-muted">
-                                    Este es el efectivo físico con el que inicia la caja hoy.
-                                </div>
-                            </div>
-
-                            <button type="submit" class="btn btn-success btn-lg w-100 rounded-pill py-3 fw-bold shadow-sm">
-                                <i class="bi bi-unlock-fill me-2"></i> Abrir Caja
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-lg btn-jama-green rounded-pill fw-bold py-2 shadow-sm">
+                                <i class="bi bi-unlock-fill me-2"></i> Confirmar y Abrir Caja
                             </button>
-                        </form>
-                    </div>
-
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -82,5 +81,10 @@
 </div>
 
 <th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+<script>
+    document.getElementById('formAperturaCaja')?.addEventListener('submit', function() {
+        AppUtils.showLoading(true);
+    });
+</script>
 </body>
 </html>

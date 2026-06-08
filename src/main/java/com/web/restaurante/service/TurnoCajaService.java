@@ -37,6 +37,14 @@ public class TurnoCajaService {
                 .orElse(List.of());
     }
 
+    public List<TurnoCaja> obtenerTurnosCerrados() {
+        return turnoCajaRepository.findTurnosCerradosOrdenados();
+    }
+
+    public List<MovimientoCaja> obtenerMovimientosPorTurno(Long turnoId) {
+        return movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(turnoId);
+    }
+
     @Transactional
     public TurnoCaja abrirTurno(Double montoApertura) {
         if (turnoCajaRepository.findByActivoTrue().isPresent()) {
@@ -93,7 +101,7 @@ public class TurnoCajaService {
 
     // ── Helper ────────────────────────────────────────────────────────────────
     private void registrarMovimiento(TurnoCaja turno, String tipo,
-                                      String concepto, Double monto, String comprobante) {
+                                     String concepto, Double monto, String comprobante) {
         MovimientoCaja mov = new MovimientoCaja();
         mov.setTurno(turno);
         mov.setTipo(tipo);

@@ -1,7 +1,10 @@
 package com.web.restaurante.controller;
 
 import com.web.restaurante.dto.mesas.MesaDTO;
+import com.web.restaurante.model.Mesa;
 import com.web.restaurante.model.Pedido;
+import com.web.restaurante.repository.MesaRepository;
+import com.web.restaurante.repository.PedidoRepository;
 import com.web.restaurante.service.MesaService;
 import com.web.restaurante.service.PedidoService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +22,9 @@ import java.util.Map;
 public class MesaController {
 
     private final MesaService mesaService;
-    private final PedidoService pedidoService; // Inyectado para gestionar el estado de los platos
+    private final PedidoService pedidoService;
+    private final MesaRepository mesaRepository;
+    private final PedidoRepository pedidoRepository;
 
     @GetMapping
     public String verPlanoMesas(Model model) {
@@ -66,14 +71,47 @@ public class MesaController {
         }
     }
 
-    // 🔥 CAMBIO: Ahora recibe detalleId en lugar de productoId
     @PostMapping("/comanda/eliminar-item")
     @ResponseBody
     public ResponseEntity<String> eliminarItemComanda(@RequestParam Long pedidoId, @RequestParam Long detalleId) {
         try {
+            // 1. Ejecuta la eliminación o conversión a merma original
             mesaService.eliminarDetallePedido(pedidoId, detalleId);
+
+            // 2. Recuperamos el estado actual del pedido inmediatamente después del cambio
+            Pedido pedidoActualizado = pedidoRepository.findById(pedidoId)
+                    .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
+            // 3. Contamos cuántos platos VÁLIDOS (no mermados) quedan en la comanda
+            long platosActivos = 0;
+            if (pedidoActualizado.getListaDetalles() != null) {
+                platosActivos = pedidoActualizado.getListaDetalles().stream()
+                        .filter(d -> !d.isCanceladoPorCliente())
+                        .count();
+            }
+
+            // 4. INGENIERÍA DE ESTADOS: Si ya no quedan platos reales en la mesa, la limpiamos por completo
+            if (platosActivos == 0) {
+                // Buscamos la mesa usando el número grabado en el pedido
+                Mesa mesaAsociada = mesaRepository.findByNumero(pedidoActualizado.getNumeroMesa())
+                        .orElse(null);
+
+                if (mesaAsociada != null) {
+                    // Cambiamos el estado de la mesa física a LIBRE para limpiar el plano
+                    mesaAsociada.setEstado("LIBRE");
+                    mesaRepository.save(mesaAsociada);
+                }
+
+                // Cambiamos el estado del pedido a CANCELADO para que no altere las estadísticas de sala
+                pedidoActualizado.setEstado(com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
+                pedidoRepository.save(pedidoActualizado);
+
+                return ResponseEntity.ok("Mesa liberada automáticamente por comanda vacía");
+            }
+
             return ResponseEntity.ok("Producto removido correctamente");
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
@@ -122,15 +160,42 @@ public class MesaController {
     public ResponseEntity<String> liquidarBloqueMultiticket(
             @PathVariable Long pedidoId,
             @RequestParam Long mesaId,
-            @RequestParam String matrizTickets) {
+            @RequestParam String matrizTickets,
+            @RequestParam(required = false) List<Long> idsDetallesPagados) { // 🌟 NUEVO PARAMETRO
         try {
-            // 1. Marcar pedido como PAGADO
-            pedidoService.cobrarPedido(pedidoId);
+            // Ya no llamamos a liberarMesaForzado, usamos el nuevo servicio inteligente
+            mesaService.procesarCobro(pedidoId, mesaId, idsDetallesPagados);
+            return ResponseEntity.ok("Cobro procesado correctamente");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+    @PostMapping("/trasladar")
+    @ResponseBody
+    public ResponseEntity<String> trasladarMesa(
+            @RequestParam Long idMesaOrigen,
+            @RequestParam Long idMesaDestino) {
+        try {
+            mesaService.trasladarComandaDeMesa(idMesaOrigen, idMesaDestino);
+            return ResponseEntity.ok("Comanda trasladada con éxito");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al trasladar mesa: " + e.getMessage());
+        }
+    }
 
-            // 2. Liberar la mesa y sus hijas
-            mesaService.liberarMesaForzado(mesaId);
+    @PostMapping("/comanda/dividir-platos-por-numero")
+    @ResponseBody
+    public ResponseEntity<String> dividirYTrasladarPlatosPorNumero(
+            @RequestParam Long idMesaOrigen,
+            @RequestParam Integer numeroMesaDestino, // 🌟 Recibe el número directo (Ej: 5)
+            @RequestParam List<Long> idsDetalles) {
+        try {
+            // Buscamos la mesa destino por su número en la base de datos antes de operar
+            Mesa mesaDestino = mesaRepository.findByNumero(numeroMesaDestino)
+                    .orElseThrow(() -> new RuntimeException("La mesa N° " + numeroMesaDestino + " no existe en el plano."));
 
-            return ResponseEntity.ok("Mesa cobrada y liberada");
+            mesaService.dividirYTrasladarPlatos(idMesaOrigen, mesaDestino.getId(), idsDetalles);
+            return ResponseEntity.ok("Platos divididos correctamente");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }

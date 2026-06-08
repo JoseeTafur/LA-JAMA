@@ -66,6 +66,15 @@ public class Pedido {
 
     private Double montoTotal;
 
+    @Column(name = "comprobante_tipo", length = 20)
+    private String comprobanteTipo; // Almacenará: "BOLETA" o "FACTURA"
+
+    @Column(name = "comprobante_numero", length = 30)
+    private String comprobanteNumero; // Almacenará el correlativo, ej: "B001-000045"
+
+    @Column(name = "documento_cliente", length = 15)
+    private String documentoCliente;
+
 
     // =========================================================================
     // ⚙️ LÓGICA ORIGINAL CONSERVADA (Módulos de Delivery, Despacho y Reparto)

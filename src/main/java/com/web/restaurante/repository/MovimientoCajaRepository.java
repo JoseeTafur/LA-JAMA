@@ -12,6 +12,14 @@ public interface MovimientoCajaRepository extends JpaRepository<MovimientoCaja, 
 
     List<MovimientoCaja> findByTurnoIdOrderByFechaAsc(Long turnoId);
 
+    List<MovimientoCaja> findByTipoOrderByFechaDesc(String tipo);
+
     @Query("SELECT m FROM MovimientoCaja m WHERE m.turno.id = :turnoId AND m.tipo = 'VENTA'")
     List<MovimientoCaja> findVentasByTurnoId(@Param("turnoId") Long turnoId);
+
+    @Query("SELECT COALESCE(SUM(m.monto), 0) FROM MovimientoCaja m WHERE m.tipo = 'VENTA' AND CAST(m.fecha AS date) = CURRENT_DATE")
+    Double sumVentasHoy();
+
+    @Query("SELECT COUNT(m) FROM MovimientoCaja m WHERE m.tipo = 'VENTA' AND CAST(m.fecha AS date) = CURRENT_DATE")
+    Long countVentasHoy();
 }

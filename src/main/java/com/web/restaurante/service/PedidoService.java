@@ -8,7 +8,6 @@ import com.web.restaurante.model.enums.TipoPedido;
 import com.web.restaurante.repository.EmpleadoRepository;
 import com.web.restaurante.repository.InsumoProductoRepository;
 import com.web.restaurante.repository.PedidoRepository;
-import com.web.restaurante.service.TurnoCajaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
-    private final TurnoCajaService turnoCajaService;
     private final EmpleadoRepository empleadoRepository;
     private final ProteinaService proteinaService;
     private final InsumoService insumoService;
@@ -77,24 +76,43 @@ public class PedidoService {
     @Transactional
     public void guardarPedido(Pedido pedido) {
         if (pedido.getId() == null) {
-            pedido.setEstado(EstadoPedido.PENDIENTE);
+            pedido.setEstado(EstadoPedido.EN_COCINA); // O el estado EN_COCINA / PENDIENTE que manejes al inicio
             pedido.setFechaCreacion(LocalDateTime.now());
-
-            if (pedido.getListaDetalles() != null) {
-                for (DetallePedido d : pedido.getListaDetalles()) {
-                    d.setCocinado(false);
-                    // Si agregas el campo boolean entregado en el modelo, inicialízalo aquí:
-                    // d.setEntregado(false);
-                }
-            }
         }
 
         if (pedido.getListaDetalles() != null) {
             for (DetallePedido detalle : pedido.getListaDetalles()) {
                 detalle.setPedido(pedido);
+
+                // 🌟 CORREGIDO: Usamos la sintaxis correcta de Lombok para tipos boolean primitivos
+                // Si por alguna razón necesitas forzar el reinicio al guardar:
+                detalle.setCocinado(detalle.isCocinado());
+                detalle.setEntregado(detalle.isEntregado());
+                detalle.setCanceladoPorCliente(detalle.isCanceladoPorCliente());
             }
         }
         pedidoRepository.save(pedido);
+    }
+
+    @Transactional
+    public Long guardarPedidoCarta(Pedido pedido) {
+        if (pedido.getId() == null) {
+            pedido.setEstado(EstadoPedido.EN_REVISION);
+            pedido.setFechaCreacion(LocalDateTime.now());
+        }
+
+        if (pedido.getListaDetalles() != null) {
+            for (DetallePedido detalle : pedido.getListaDetalles()) {
+                detalle.setPedido(pedido);
+
+                // Inicialización limpia usando los setters normales
+                detalle.setCocinado(false);
+                detalle.setEntregado(false);
+                detalle.setCanceladoPorCliente(false);
+            }
+        }
+        pedidoRepository.save(pedido);
+        return pedido.getId();
     }
 
     // =========================================================================
@@ -265,20 +283,13 @@ public class PedidoService {
     }
 
     @Transactional(readOnly = true)
-    public List<Pedido> listarPedidosPorCobrar() { return pedidoRepository.listarPedidosPorCobrar(); }
+    public List<Pedido> listarPedidosPorCobrar() {
+        return pedidoRepository.listarPedidosPorCobrar();
+    }
 
     @Transactional
     public void cobrarPedido(Long id) {
-        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
         pedidoRepository.actualizarEstadoJPQL(id, EstadoPedido.PAGADO);
-
-        // Registrar en caja si hay turno activo
-        String concepto = pedido.getNumeroMesa() != null
-                ? "Mesa " + pedido.getNumeroMesa()
-                : (pedido.getCliente() != null ? "Delivery - " + pedido.getCliente() : "Pedido #" + id);
-        if (pedido.getMontoTotal() != null) {
-            turnoCajaService.registrarVenta(concepto, pedido.getMontoTotal());
-        }
     }
 
     @Transactional
@@ -377,4 +388,25 @@ public class PedidoService {
         // Seteamos el valor usando tu atributo real mapeado en la entidad
         pedido.setMontoTotal(nuevoTotal);
     }
+
+    @Transactional
+    public void cambiarEstadoA(EstadoPedido estado, Long id) {
+        Pedido pedido = requerirPedidoPorId(id);
+        pedido.setEstado(estado);
+        pedidoRepository.save(pedido);
+    }
+
+    @Transactional(readOnly = true)
+    public Pedido requerirPedidoPorId(Long id) {
+        return pedidoRepository.findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("No se encontró pedido con esa ID"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Pedido> listarAbsolutamenteTodoParaDebug() {
+        return pedidoRepository.findAll(); // Trae todo sin filtros de estado ni tipo
+    }
+
+
 }

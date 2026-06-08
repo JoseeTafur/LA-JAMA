@@ -521,3 +521,17 @@
     background: #dc3545; /* Rojo opcional de alerta al borrar */
     color: #ffffff !important;
 }
+
+.chk-cobro-parcial:checked {
+    background-color: #1B3A2C !important;
+    border-color: #1B3A2C !important;
+}
+
+.chk-cobro-parcial:focus {
+    box-shadow: 0 0 0 0.25rem rgba(27, 58, 44, 0.25) !important;
+    border-color: #1B3A2C !important;
+}
+
+.jama-item-row-btn {
+    transition: background-color 0.15s ease-in-out, opacity 0.15s ease-in-out;
+}

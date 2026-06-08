@@ -18,7 +18,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h4 class="fw-bold text-dark mb-0">Control de Almacén</h4>
-                    <p class="text-muted mb-0">Gestiona tus proteínas controladas y tus insumos generales</p>
+                    <p class="text-muted mb-0">Gestiona tus proteínas, insumos generales y recetarios</p>
                 </div>
                 <button th:if="${session.rol == 'ADMIN'}" class="btn btn-jama rounded-pill px-4 shadow-sm" onclick="abrirModalNuevoInsumo()">
                     <i class="bi bi-plus-circle me-2"></i> Nuevo Insumo
@@ -33,7 +33,12 @@
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link-jama" id="almacen-tab" data-bs-toggle="tab" data-bs-target="#almacen" type="button" role="tab">
-                        <i class="bi bi-box-seam me-2"></i>Otros Insumos y Recetarios
+                        <i class="bi bi-box-seam me-2"></i>Catálogo de Insumos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation" th:if="${session.rol == 'ADMIN'}">
+                    <button class="nav-link-jama" id="recetas-tab" data-bs-toggle="tab" data-bs-target="#recetas" type="button" role="tab">
+                        <i class="bi bi-journal-check me-2"></i>Gestión de Recetas
                     </button>
                 </li>
             </ul>
@@ -41,19 +46,30 @@
             <div class="tab-content" id="inventoryTabsContent">
                 <div class="tab-pane fade show active" id="proteinas" role="tabpanel">
                     <div class="card-jama">
+                        <div class="card-jama-header d-flex justify-content-between align-items-center flex-wrap gap-3 border-bottom pb-3 mb-0">
+                            <h5 class="fw-bold mb-0 text-dark">Inventario General y Proteínas</h5>
+                            <div class="input-group shadow-sm" style="max-width: 300px;">
+                                <span class="input-group-text bg-white border-end-0 rounded-start-pill"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="buscadorPrincipal" class="form-control border-start-0 rounded-end-pill ps-0" placeholder="Buscar insumo..." onkeyup="filtrarTablaPrincipal()">
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="thead-jama">
                                 <tr>
-                                    <th class="ps-4">Proteína</th>
-                                    <th>Porciones Disponibles</th>
-                                    <th>Porc. Esperadas / Kg</th>
+                                    <th class="ps-4">Insumo</th>
+                                    <th>Stock / Porciones</th>
+                                    <th>Rendimiento</th>
                                     <th class="text-center pe-4">Acciones</th>
                                 </tr>
                                 </thead>
-                                <tbody>
-                                <tr th:each="insumo : ${insumos}" th:if="${insumo.categoria == 'PROTEINA'}">
-                                    <td class="ps-4 fw-bold" th:text="${insumo.nombre}"></td>
+                                <tbody id="cuerpoTablaPrincipal">
+                                <tr class="fila-insumo-principal" th:each="insumo : ${insumos}" th:if="${insumo.categoria == 'PROTEINA'}">
+                                    <td class="ps-4 fw-bold nombre-insumo-principal">
+                                        <span th:text="${insumo.nombre}" th:classappend="${insumo.estado == 0 ? 'text-muted text-decoration-line-through' : 'text-dark'}"></span>
+                                        <span class="badge bg-warning text-dark ms-2" style="font-size: 0.65rem;">PROTEÍNA</span>
+                                        <span th:if="${insumo.estado == 0}" class="badge bg-danger ms-1" style="font-size: 0.65rem;">INACTIVO</span>
+                                    </td>
                                     <td>
                                         <span class="badge-porciones" th:text="${insumo.stockActual != null ? insumo.stockActual.intValue() : 0}"></span>
                                         <span class="text-muted small ms-1">porciones</span>
@@ -64,113 +80,165 @@
                                     </td>
                                     <td class="text-center pe-4">
                                         <div class="d-flex gap-2 justify-content-center flex-wrap">
-                                            <button th:if="${session.rol == 'ADMIN'}" class="btn btn-jama-success btn-sm rounded-pill btn-accion-lote"
-                                                    th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" onclick="manejadorModalLote(this)">
+                                            <button th:if="${session.rol == 'ADMIN'}" th:disabled="${insumo.estado == 0}" class="btn btn-jama-success btn-sm rounded-pill"
+                                                    th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" th:data-categoria="${insumo.categoria}" onclick="manejadorModalLote(this)">
                                                 <i class="bi bi-box-arrow-in-down me-1"></i> Registrar Lote
                                             </button>
-                                            <button th:if="${session.rol == 'COCINA' or session.rol == 'ADMIN'}" class="btn btn-jama-warning btn-sm rounded-pill btn-accion-produccion"
+                                            <button th:if="${session.rol == 'COCINA' or session.rol == 'ADMIN'}" th:disabled="${insumo.estado == 0}" class="btn btn-jama-warning btn-sm rounded-pill"
                                                     th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" onclick="manejadorModalProduccion(this)">
-                                                <i class="bi bi-fire me-1"></i> Registrar Producción
+                                                <i class="bi bi-fire me-1"></i> Producción
                                             </button>
-                                            <button class="btn btn-jama-secondary btn-sm rounded-pill btn-accion-ajuste"
+                                            <button th:disabled="${insumo.estado == 0}" class="btn btn-jama-secondary btn-sm rounded-pill"
                                                     th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" onclick="manejadorModalAjuste(this)">
                                                 <i class="bi bi-sliders me-1"></i> Ajustar
                                             </button>
-                                            <button class="btn btn-jama-outline btn-sm rounded-pill btn-accion-kardex"
-                                                    th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" onclick="manejadorModalKardex(this)">
+                                            <button class="btn btn-jama-outline btn-sm rounded-pill"
+                                                    th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" th:data-categoria="${insumo.categoria}" onclick="manejadorModalKardex(this)">
                                                 <i class="bi bi-clock-history me-1"></i> Kardex
                                             </button>
                                         </div>
                                     </td>
-                                </tr> </tbody>
+                                </tr>
+                                <tr class="fila-insumo-principal" th:each="insumo : ${insumos}" th:if="${insumo.categoria != 'PROTEINA'}">
+                                    <td class="ps-4 fw-semibold nombre-insumo-principal">
+                                        <span th:text="${insumo.nombre}" th:classappend="${insumo.estado == 0 ? 'text-muted text-decoration-line-through' : 'text-secondary'}"></span>
+                                        <span class="badge bg-light text-secondary border ms-2" style="font-size: 0.65rem;" th:text="${insumo.categoria}"></span>
+                                        <span th:if="${insumo.estado == 0}" class="badge bg-danger ms-1" style="font-size: 0.65rem;">INACTIVO</span>
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold text-dark" th:text="${insumo.stockActual != null ? insumo.stockActual : 0}"></span>
+                                        <span class="text-muted small ms-1" th:text="${insumo.unidadMedida}"></span>
+                                    </td>
+                                    <td><span class="text-muted small">N/A</span></td>
+                                    <td class="text-center pe-4">
+                                        <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                            <button th:if="${session.rol == 'ADMIN'}" th:disabled="${insumo.estado == 0}" class="btn btn-jama-success btn-sm rounded-pill"
+                                                    th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" th:data-categoria="${insumo.categoria}" onclick="manejadorModalLote(this)">
+                                                <i class="bi bi-box-arrow-in-down me-1"></i> Lote
+                                            </button>
+                                            <button class="btn btn-jama-outline btn-sm rounded-pill"
+                                                    th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" th:data-categoria="${insumo.categoria}" onclick="manejadorModalKardex(this)">
+                                                <i class="bi bi-clock-history me-1"></i> Kardex
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
                 <div class="tab-pane fade" id="almacen" role="tabpanel">
-                    <div class="row">
-                        <div class="col-lg-8">
-                            <div class="card-jama mb-4">
-                                <div class="card-jama-header">
-                                    <h5 class="fw-bold mb-0">Catálogo de Insumos Generales</h5>
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle mb-0">
-                                        <thead class="thead-jama">
-                                        <tr>
-                                            <th class="ps-4">Insumo</th>
-                                            <th>Categoría</th>
-                                            <th>Und. Medida</th>
-                                            <th>Stock Actual</th>
-                                            <th>Stock Mínimo</th>
-                                            <th th:if="${session.rol == 'ADMIN'}" class="text-center pe-4">Acciones</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <tr th:each="insumo : ${insumos}" th:if="${insumo.categoria != 'PROTEINA'}">
-                                            <td class="ps-4 fw-semibold text-dark" th:text="${insumo.nombre}"></td>
-                                            <td><span class="badge bg-light text-secondary border px-2 py-1 rounded-pill small" th:text="${insumo.categoria}"></span></td>
-                                            <td class="text-muted" th:text="${insumo.unidadMedida}"></td>
-                                            <td>
-                                                <span th:class="${insumo.stockActual <= insumo.stockMinimo} ? 'fw-bold text-danger' : 'text-dark'" th:text="${insumo.stockActual}"></span>
-                                            </td>
-                                            <td class="text-muted" th:text="${insumo.stockMinimo}"></td>
-                                            <td th:if="${session.rol == 'ADMIN'}" class="text-center pe-4">
-                                                <div class="btn-group shadow-sm rounded-3">
-                                                    <button type="button" class="btn btn-sm btn-light text-primary border btn-accion-editar"
-                                                            th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" th:data-categoria="${insumo.categoria}"
-                                                            th:data-unidad="${insumo.unidadMedida}" th:data-actual="${insumo.stockActual}" th:data-minimo="${insumo.stockMinimo}"
-                                                            onclick="manejadorModalEditar(this)">
-                                                        <i class="bi bi-pencil"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-light text-danger border" th:data-id="${insumo.id}" onclick="confirmarEliminacion(this.getAttribute('data-id'))">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </div>
-                                                <form th:action="@{/insumos/eliminar/{id}(id=${insumo.id})}" method="post" th:id="'form-eliminar-' + ${insumo.id}" class="d-none"></form>
-                                            </td>
-                                        </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                    <div class="card-jama mb-4">
+                        <div class="card-jama-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+                            <h5 class="fw-bold mb-0">Catálogo General de Insumos</h5>
+                            <div class="input-group shadow-sm" style="max-width: 350px;">
+                                <span class="input-group-text bg-white border-end-0 rounded-start-pill"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="buscadorInsumos" class="form-control border-start-0 rounded-end-pill ps-0" placeholder="Buscar por nombre o categoría..." onkeyup="filtrarCatalogo()">
                             </div>
                         </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="tablaCatalogo">
+                                <thead class="thead-jama">
+                                <tr>
+                                    <th class="ps-4">Insumo</th>
+                                    <th>Categoría</th>
+                                    <th>Und. Medida</th>
+                                    <th>Stock Mínimo</th>
+                                    <th th:if="${session.rol == 'ADMIN'}" class="text-center pe-4">Acciones</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr class="fila-insumo" th:each="insumo : ${insumos}">
+                                    <td class="ps-4 fw-semibold text-dark nombre-insumo">
+                                        <span th:text="${insumo.nombre}" th:classappend="${insumo.estado == 0 ? 'text-muted text-decoration-line-through' : ''}"></span>
+                                        <span th:if="${insumo.estado == 0}" class="badge bg-danger ms-2" style="font-size: 0.65rem;">INACTIVO</span>
+                                    </td>
+                                    <td class="categoria-insumo"><span class="badge bg-light text-secondary border px-2 py-1 rounded-pill small" th:text="${insumo.categoria}"></span></td>
+                                    <td class="text-muted" th:text="${insumo.unidadMedida}"></td>
+                                    <td class="text-muted" th:text="${insumo.stockMinimo}"></td>
+                                    <td th:if="${session.rol == 'ADMIN'}" class="text-center pe-4">
+                                        <div class="btn-group shadow-sm rounded-3">
+                                            <button type="button" class="btn btn-sm btn-action-edit" th:disabled="${insumo.estado == 0}"
+                                                    th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" th:data-categoria="${insumo.categoria}"
+                                                    th:data-unidad="${insumo.unidadMedida}" th:data-actual="${insumo.stockActual}" th:data-minimo="${insumo.stockMinimo}"
+                                                    onclick="manejadorModalEditar(this)">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button" th:if="${insumo.estado != 0}" class="btn btn-sm btn-action-delete" th:data-id="${insumo.id}" onclick="confirmarEliminacion(this.getAttribute('data-id'))">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            <form th:if="${insumo.estado == 0}" th:action="@{/insumos/reactivar/{id}(id=${insumo.id})}" method="post" class="d-inline-block">
+                                                <button type="submit" class="btn btn-sm btn-action-reactivate" title="Reactivar Insumo">
+                                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                        <form th:action="@{/insumos/eliminar/{id}(id=${insumo.id})}" method="post" th:id="'form-eliminar-' + ${insumo.id}" class="d-none"></form>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
 
-                        <div class="col-lg-4" th:if="${session.rol == 'ADMIN'}">
-                            <div class="card-jama card-jama-green mb-4">
+                <div class="tab-pane fade" id="recetas" role="tabpanel" th:if="${session.rol == 'ADMIN'}">
+                    <div class="row">
+                        <div class="col-lg-5 mb-4">
+                            <div class="card-jama card-jama-green h-100">
                                 <div class="card-body p-4">
-                                    <h6 class="fw-bold mb-3 text-white"><i class="bi bi-link-45deg me-2"></i>Armar Receta</h6>
+                                    <h5 class="fw-bold mb-4 text-white"><i class="bi bi-link-45deg me-2"></i>Armar Nueva Receta</h5>
                                     <form method="post" id="formAsignar" th:action="@{/insumos/producto/0/agregar}">
-                                        <div class="mb-3">
-                                            <select name="idProductoSelect" class="form-select form-select-sm rounded-3" id="selectProducto" onchange="actualizarAccion(this.value)">
-                                                <option value="">Selecciona un plato...</option>
+                                        <div class="mb-4">
+                                            <label class="form-label text-white-50 small fw-bold">1. Selecciona el Plato</label>
+                                            <select name="idProductoSelect" class="form-select rounded-3" id="selectProducto" onchange="actualizarAccion(this.value)">
+                                                <option value="">Buscar plato...</option>
                                                 <option th:each="p : ${productos}" th:value="${p.id}" th:text="${p.nombre}"></option>
                                             </select>
                                         </div>
-                                        <div class="mb-3">
-                                            <select name="idInsumo" class="form-select form-select-sm rounded-3">
-                                                <option value="">Selecciona el insumo...</option>
-                                                <option th:each="ins : ${insumos}" th:if="${ins.categoria != 'PROTEINA'}" th:value="${ins.id}" th:text="${ins.nombre + ' (' + ins.unidadMedida + ')'}"></option>
+                                        <div class="mb-4">
+                                            <label class="form-label text-white-50 small fw-bold">2. Selecciona el Insumo</label>
+                                            <select name="idInsumo" class="form-select rounded-3" id="selectInsumoReceta" required onchange="actualizarPlaceholderReceta(this)">
+                                                <option value="" data-unidad="">Buscar insumo...</option>
+                                                <optgroup label="🥩 Proteínas">
+                                                    <option th:each="ins : ${insumos}" th:if="${ins.categoria == 'PROTEINA' and (ins.estado == null or ins.estado == 1)}" th:value="${ins.id}" th:data-unidad="${ins.unidadMedida}" th:data-categoria="${ins.categoria}" th:text="${ins.nombre + ' (' + ins.unidadMedida + ')'}"></option>
+                                                </optgroup>
+                                                <optgroup label="🥬 Verduras">
+                                                    <option th:each="ins : ${insumos}" th:if="${ins.categoria == 'VERDURA' and (ins.estado == null or ins.estado == 1)}" th:value="${ins.id}" th:data-unidad="${ins.unidadMedida}" th:data-categoria="${ins.categoria}" th:text="${ins.nombre + ' (' + ins.unidadMedida + ')'}"></option>
+                                                </optgroup>
+                                                <optgroup label="🧂 Condimentos">
+                                                    <option th:each="ins : ${insumos}" th:if="${ins.categoria == 'CONDIMENTO' and (ins.estado == null or ins.estado == 1)}" th:value="${ins.id}" th:data-unidad="${ins.unidadMedida}" th:data-categoria="${ins.categoria}" th:text="${ins.nombre + ' (' + ins.unidadMedida + ')'}"></option>
+                                                </optgroup>
+                                                <optgroup label="📦 Otros">
+                                                    <option th:each="ins : ${insumos}" th:if="${ins.categoria == 'OTRO' and (ins.estado == null or ins.estado == 1)}" th:value="${ins.id}" th:data-unidad="${ins.unidadMedida}" th:data-categoria="${ins.categoria}" th:text="${ins.nombre + ' (' + ins.unidadMedida + ')'}"></option>
+                                                </optgroup>
                                             </select>
                                         </div>
-                                        <div class="mb-3">
-                                            <input type="number" step="0.01" name="cantidad" class="form-control form-control-sm rounded-3" placeholder="Cantidad requerida (Ej: 0.2)"/>
+                                        <div class="mb-4">
+                                            <label class="form-label text-white-50 small fw-bold">3. Cantidad por Plato</label>
+                                            <input type="number" step="0.01" name="cantidad" id="inputCantidadReceta" class="form-control rounded-3" placeholder="Ej: 0.2"/>
                                         </div>
-                                        <button type="submit" class="btn btn-light btn-sm w-100 fw-bold text-dark rounded-pill">Asignar a Plato</button>
+                                        <button type="submit" class="btn btn-light w-100 fw-bold text-dark rounded-pill py-2 shadow-sm">Asignar Insumo al Plato</button>
                                     </form>
                                 </div>
                             </div>
-
-                            <div class="card-jama mb-4">
-                                <div class="card-body p-3">
-                                    <h6 class="fw-bold mb-3 text-dark border-bottom pb-2">Recetarios Activos</h6>
-                                    <ul class="list-group list-group-flush">
-                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0" th:each="p : ${productos}">
-                                            <span class="fw-semibold text-secondary small" th:text="${p.nombre}"></span>
-                                            <button type="button" class="btn btn-sm btn-jama-outline rounded-pill py-0 px-2 btn-ver-receta" th:data-id="${p.id}" th:data-nombre="${p.nombre}"><i class="bi bi-eye"></i> Ver</button>
-                                        </li>
-                                    </ul>
+                        </div>
+                        <div class="col-lg-7 mb-4">
+                            <div class="card-jama h-100">
+                                <div class="card-body p-4">
+                                    <h5 class="fw-bold mb-4 text-dark border-bottom pb-3"><i class="bi bi-journal-richtext me-2"></i>Recetarios Activos</h5>
+                                    <div class="row g-3">
+                                        <div class="col-md-6" th:each="p : ${productos}">
+                                            <div class="border rounded-3 p-3 d-flex justify-content-between align-items-center bg-white shadow-sm listado-recetario-item">
+                                                <span class="fw-semibold text-dark text-truncate me-2" th:text="${p.nombre}"></span>
+                                                <button type="button" class="btn btn-sm btn-jama-outline rounded-pill px-3 flex-shrink-0 btn-ver-receta" th:data-id="${p.id}" th:data-nombre="${p.nombre}">
+                                                    <i class="bi bi-eye me-1"></i> Ver
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -181,22 +249,336 @@
     </main>
 </div>
 
-<th:block th:replace="~{modales_insumos :: modales}"></th:block>
+<div class="modal fade" id="modalKardexPorciones" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content modal-content-kardex">
+            <div class="modal-header header-jama-dark">
+                <h5 class="modal-title fw-bold" id="tituloKardexPorciones">
+                    <i class="bi bi-clock-history me-2"></i>Kardex de Auditoría
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body body-jama-kardex">
+                <div class="d-flex flex-wrap gap-2 mb-3 align-items-center justify-content-start border-bottom pb-3">
+                    <button type="button" class="btn btn-sm btn-dark btn-filtro active rounded-pill px-3 shadow-sm" data-filtro="TODOS" onclick="filtrarKardex('TODOS')">
+                        📋 Ver Todos
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-filtro filtro-lote rounded-pill px-3 shadow-sm" data-filtro="LOTE" onclick="filtrarKardex('LOTE')">
+                        🛒 Lotes / Compras
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning text-warning-dark btn-filtro filtro-prod rounded-pill px-3 shadow-sm" data-filtro="PRODUCCION" onclick="filtrarKardex('PRODUCCION')">
+                        🔥 Producción Cocina
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-filtro filtro-ajuste rounded-pill px-3 shadow-sm" data-filtro="AJUSTE" onclick="filtrarKardex('AJUSTE')">
+                        ⚙️ Ajustes Manuales
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-filtro filtro-venta rounded-pill px-3 shadow-sm" data-filtro="VENTA" onclick="filtrarKardex('VENTA')">
+                        📦 Ventas Comandadas
+                    </button>
 
-<script>
-    function manejadorModalLote(btn) { abrirModalLote(btn.getAttribute('data-id'), btn.getAttribute('data-nombre')); }
-    function manejadorModalProduccion(btn) { abrirModalProduccion(btn.getAttribute('data-id'), btn.getAttribute('data-nombre')); }
-    function manejadorModalAjuste(btn) { abrirModalAjuste(btn.getAttribute('data-id'), btn.getAttribute('data-nombre')); }
-    function manejadorModalKardex(btn) { abrirKardexPorciones(btn.getAttribute('data-id'), btn.getAttribute('data-nombre')); }
-    function manejadorModalEditar(btn) {
-        prepararEdicionInsumo(
-            btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria'),
-            btn.getAttribute('data-unidad'), btn.getAttribute('data-actual'), btn.getAttribute('data-minimo')
-        );
-    }
-</script>
+                    <button type="button" id="btnInvertirFlujoKardex" class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3 shadow-sm" onclick="window.invertirFlujoActualKardex()">
+                        <i class="bi bi-arrow-down-up me-1"></i> Invertir Bloques
+                    </button>
 
-<th:block th:replace="~{receta_panel :: panel}"></th:block>
+                    <button type="button" id="btnInvertirContenidoBloque" class="btn btn-sm btn-jama fw-bold rounded-pill px-3 shadow-sm" onclick="window.invertirSoloContenidoBloque()">
+                        <i class="bi bi-arrow-repeat me-1"></i> Invertir Contenido
+                    </button>
+
+                </div>
+
+
+
+
+                <div class="row g-2 mb-3 p-2 rounded-3 border align-items-center" style="background-color: var(--lajama-cream); border-color: var(--lajama-peach);">
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm shadow-sm">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="searchKardexTexto" class="form-control border-start-0" placeholder="Buscar en el bloque actual..." onkeyup="ejecutarFiltroCombinadoKardex()">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm shadow-sm">
+                            <span class="input-group-text bg-white small fw-bold text-muted" style="font-size:0.65rem;">DESDE:</span>
+                            <input type="date" id="searchKardexFechaInicio" class="form-control" onchange="ejecutarFiltroCombinadoKardex()">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm shadow-sm">
+                            <span class="input-group-text bg-white small fw-bold text-muted" style="font-size:0.65rem;">HASTA:</span>
+                            <input type="date" id="searchKardexFechaFin" class="form-control" onchange="ejecutarFiltroCombinadoKardex()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive table-kardex-scroll">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="thead-jama-sticky">
+                        <tr>
+                            <th class="ps-3" style="width: 22%;" data-sort="fecha" onclick="window.ordenarKardexPorColumna('fecha')">Fecha / Hora</th>
+                            <th style="width: 15%;" data-sort="origen" onclick="window.ordenarKardexPorColumna('origen')">Origen</th>
+                            <th style="width: 33%;" data-sort="detalle" onclick="window.ordenarKardexPorColumna('detalle')">Detalle / Motivo</th>
+                            <th class="text-end col-merma-kardex" style="width: 10%;" data-sort="merma" onclick="window.ordenarKardexPorColumna('merma')">Merma (Kg)</th>
+                            <th class="text-end" style="width: 10%;" data-sort="cantidad" onclick="window.ordenarKardexPorColumna('cantidad')">Cantidad</th>
+                            <th class="text-end pe-3" style="width: 10%;" data-sort="saldo" onclick="window.ordenarKardexPorColumna('saldo')">Saldo</th>
+                        </tr>
+                        </thead>
+                        <tbody id="cuerpoKardexPorciones">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer footer-jama-fixed" id="nav-paginador-kardex">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNuevoInsumo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-jama-green"><i class="bi bi-plus-circle-fill me-2"></i>Registrar Nuevo Insumo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form th:action="@{/insumos/guardar}" method="post" id="formNuevoInsumo">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label-jama">Nombre del Insumo *</label>
+                        <input type="text" name="nombre" class="form-control-jama" placeholder="Ej: Pechuga de Pollo" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-jama">Categoría de Inventario *</label>
+                        <select name="categoria" id="selectCategoria" class="form-select-jama" required>
+                            <option value="">Selecciona una categoría...</option>
+                            <option value="PROTEINA">PROTEÍNA (Maneja Porciones)</option>
+                            <option value="VERDURA">VERDURA</option>
+                            <option value="CONDIMENTO">CONDIMENTO</option>
+                            <option value="OTRO">OTROS ALMACÉN</option>
+                        </select>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label-jama">Unidad de Medida *</label>
+                            <select name="unidadMedida" id="selectUnidad" class="form-select-jama" required>
+                                <option value="">Selecciona...</option>
+                                <option value="Kg">Kilogramos (Kg)</option>
+                                <option value="Gr">Gramos (Gr)</option>
+                                <option value="Und">Unidades (Und)</option>
+                                <option value="Litro">Litros (L)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-jama">Stock Mínimo Alerta *</label>
+                            <input type="number" step="0.01" name="stockMinimo" class="form-control-jama" placeholder="Ej: 5" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0 rounded-bottom-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-jama rounded-pill px-4 shadow-sm">Guardar Insumo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditarInsumo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-jama-green"><i class="bi bi-pencil-square me-2"></i>Modificar Insumo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form th:action="@{/insumos/editar}" method="post" id="formEditarInsumo">
+                <input type="hidden" name="id" id="editInsumoId" />
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label-jama">Nombre del Insumo</label>
+                        <input type="text" name="nombre" id="editInsumoNombre" class="form-control-jama" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-jama">Categoría</label>
+                        <select name="categoria" id="editInsumoCategoria" class="form-select-jama" required>
+                            <option value="PROTEINA">PROTEÍNA</option>
+                            <option value="VERDURA">VERDURA</option>
+                            <option value="CONDIMENTO">CONDIMENTO</option>
+                            <option value="OTRO">OTRO</option>
+                        </select>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label-jama">Unidad Medida</label>
+                            <input type="text" name="unidadMedida" id="editInsumoUnidad" class="form-control-jama" readonly style="background-color: var(--lajama-skin);" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-jama">Stock Mínimo</label>
+                            <input type="number" step="0.01" name="stockMinimo" id="editInsumoStockMinimo" class="form-control-jama" required />
+                        </div>
+                    </div>
+                    <div class="mb-3 d-none">
+                        <input type="number" step="0.01" name="stockActual" id="editInsumoStockActual" />
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0 rounded-bottom-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-jama rounded-pill px-4 shadow-sm">Actualizar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalLote" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header header-jama-colored">
+                <h5 class="modal-title fw-bold text-white"><i class="bi bi-box-arrow-in-down me-2"></i>Ingreso de Mercadería / Lote</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info rounded-3 py-2 px-3 small border-0 mb-3" style="background-color: var(--lajama-skin); color: var(--lajama-green);">
+                    <i class="bi bi-info-circle-fill me-2"></i>Insumo: <strong id="loteNombreInsumo">-</strong>
+                </div>
+                <input type="hidden" id="loteIdInsumo" />
+                <input type="hidden" id="loteCategoriaInsumo" />
+
+                <div class="mb-3">
+                    <label class="form-label-jama" id="lblCantidadComprada">Cantidad Comprada *</label>
+                    <input type="number" step="0.01" id="loteKg" class="form-control-jama" placeholder="Ej: 15.5" />
+                </div>
+                <div class="mb-3" id="contenedorPorcionesLote">
+                    <label class="form-label-jama">Rendimiento Estimado (Porciones por Kg) *</label>
+                    <input type="number" step="0.1" id="lotePorcionesPorKg" class="form-control-jama" placeholder="Ej: 5.0" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-jama">Costo Total de la Compra (S/.) *</label>
+                    <div class="input-group">
+                        <span class="input-group-text border-end-0 bg-light fw-bold" style="border-color: var(--lajama-peach);">S/.</span>
+                        <input type="number" step="0.01" id="loteCosto" class="form-control border-start-0 ps-2 form-control-jama" placeholder="0.00" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-jama">Observaciones / Proveedor</label>
+                    <textarea id="loteObservacion" class="form-control-jama" rows="2" placeholder="Opcional..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 rounded-bottom-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success rounded-pill px-4 shadow-sm" onclick="guardarLote()">Confirmar Ingreso</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalProduccion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark border-bottom-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-fire me-2"></i>Procesar Porciones (Cocina)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning border-0 py-2 small mb-3">
+                    <i class="bi bi-egg-fried me-2"></i>Proteína: <strong id="prodNombreInsumo">-</strong>
+                </div>
+                <input type="hidden" id="prodIdInsumo" />
+
+                <div class="mb-3">
+                    <label class="form-label-jama">1. Seleccionar Lote de Origen Vigente *</label>
+                    <select id="prodSelectLote" class="form-select-jama"></select>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label-jama">Kg a Procesar *</label>
+                        <input type="number" step="0.01" id="prodKg" class="form-control-jama" onkeyup="calcularMerma()" onchange="calcularMerma()" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label-jama">Porciones Reales *</label>
+                        <input type="number" id="prodObtenidas" class="form-control-jama" placeholder="Ej: 24" onkeyup="calcularMerma()" onchange="calcularMerma()" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-jama">Merma Pesada en Balanza (Kg) *</label>
+                    <input type="number" step="0.001" id="prodMerma" class="form-control-jama" placeholder="Ej: 0.350 (Pon 0 si no hubo)" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-jama">Notas de Producción</label>
+                    <input type="text" id="prodObservacion" class="form-control-jama" placeholder="Ej: Lote un poco más graso" />
+                </div>
+                <div id="resumenMerma" class="d-none"></div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 rounded-bottom-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Descartar</button>
+                <button type="button" class="btn btn-warning text-dark fw-bold rounded-pill px-4 shadow-sm" onclick="guardarProduccion()">Procesar Stock</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAjuste" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header header-jama-dark">
+                <h5 class="modal-title fw-bold text-white"><i class="bi bi-sliders me-2"></i>Ajustar Porciones</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="small text-muted mb-2 text-center">Insumo: <strong id="ajusteNombreInsumo" class="text-dark">-</strong></p>
+                <input type="hidden" id="ajusteIdInsumo" />
+                <input type="hidden" id="ajusteTipo" />
+
+                <div class="d-flex gap-2 mb-4 justify-content-center">
+                    <button type="button" id="btnIngreso" class="btn btn-outline-success flex-fill rounded-3 fw-bold small py-2" onclick="seleccionarTipoAjuste('INGRESO')">
+                        <i class="bi bi-plus-circle me-1"></i>Ingreso
+                    </button>
+                    <button type="button" id="btnEgreso" class="btn btn-outline-danger flex-fill rounded-3 fw-bold small py-2" onclick="seleccionarTipoAjuste('EGRESO')">
+                        <i class="bi bi-dash-circle me-1"></i>Egreso
+                    </button>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label-jama">Cantidad de Porciones *</label>
+                    <input type="number" id="ajusteCantidad" class="form-control-jama text-center fw-bold fs-5" placeholder="0" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-jama">Motivo del Ajuste *</label>
+                    <textarea id="ajusteMotivo" class="form-control-jama" rows="2" placeholder="Ej: Cuadrado por inventario físico"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 rounded-bottom-4">
+                <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Atrás</button>
+                <button type="button" class="btn btn-jama btn-sm rounded-pill px-4 shadow-sm" onclick="guardarAjuste()">Aplicar Ajuste</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDetalleReceta" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--lajama-skin); border-bottom: 2px solid var(--lajama-peach);">
+                <h5 class="modal-title fw-bold text-dark" id="tituloModalReceta">
+                    <i class="bi bi-journal-text me-2"></i>Receta del Plato
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                    <tr class="small text-uppercase text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                        <th class="ps-3 py-2">Insumo Requerido</th>
+                        <th class="py-2">Medida</th>
+                        <th class="text-end py-2">Cantidad Usada</th>
+                        <th class="text-center pe-3 py-2">Quitar</th>
+                    </tr>
+                    </thead>
+                    <tbody id="cuerpoDetalleReceta">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
 <th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
 <script th:src="@{/js/insumos.js}"></script>

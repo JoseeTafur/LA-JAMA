@@ -34,14 +34,17 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(@NonNull InterceptorRegistry registry) {
         registry.addInterceptor(sessionInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/login", "/css/**", "/js/**", "/img/**", "/error", "/favicon.png");
+                .excludePathPatterns("/login", "/carta/**",
+                        "/admin/pagos-digitales/api/guardar",
+                        "/admin/pagos-digitales/api/actualizar-imagen/**",
+                        "/css/**", "/js/**", "/img/**", "/imagenes/**", "/error", "/favicon.png");
     }
 
     @Override
     public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:8080")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedOrigins("http://localhost:8080", "http://localhost:3000")
+                .allowedMethods("GET", "PATCH", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowCredentials(true);
     }
 

@@ -1,120 +1,167 @@
-:root {
-    --lajama-green: #1B3A2C;
-    --lajama-peach: #fed7aa;
-    --lajama-skin: #FFB38A;
-    --lajama-cream: #FFF7ED;
-    --lajama-white: #FFFFFF;
-    /* Tonos acento para indicar Fresco/Frío (Ceviches, Bebidas) */
-    --lajama-cold: #3b82f6;
-    --lajama-cold-hover: #1d4ed8;
-}
-
-/* --- TARJETAS ESTILO TICKET PREMIUM --- */
+/* --- TARJETAS ESTILO TICKET PREMIUM (BARRA FRÍA) --- */
 .card-pedido {
     background: var(--lajama-white) !important;
-    border: 2px solid var(--lajama-peach) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 8px 20px rgba(27, 58, 44, 0.04) !important;
-    transition: transform 0.25s ease, box-shadow 0.25s ease !important;
+    border: 2px solid #b6effb !important; /* Borde celeste suave */
+    border-radius: 14px !important;
+    box-shadow: 0 6px 16px rgba(13, 202, 240, 0.05) !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease !important;
 }
 
 .card-pedido:hover {
-    transform: translateY(-5px) !important;
-    box-shadow: 0 12px 24px rgba(59, 130, 246, 0.08) !important;
-    border-color: var(--lajama-skin) !important;
+    transform: translateY(-4px) !important;
+    box-shadow: 0 16px 28px rgba(13, 202, 240, 0.15) !important;
+    border-color: #31d2f2 !important; /* Borde celeste activo al pasar el mouse */
 }
 
-/* Encabezado del ticket */
+/* Encabezado del Ticket */
 .card-header {
-    border-bottom: 2px dashed var(--lajama-cream) !important;
-    padding-bottom: 12px !important;
+    background: transparent !important;
+    border-bottom: 2px dashed #b6effb !important;
+    padding: 1rem 1.1rem 0.7rem 1.1rem !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
 }
 
 .badge-id {
     color: var(--lajama-green) !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-family: var(--font-sans) !important;
     font-weight: 800 !important;
     font-size: 0.85rem !important;
 }
 
-/* Temporizador Reactivo Estación Fría */
+/* Temporizador */
 .timer-container {
-    color: var(--lajama-cold) !important;
-    font-family: 'Vollkorn', serif !important;
+    color: #087990 !important; /* Tono azul oscuro */
+    font-family: var(--font-serif) !important;
     font-weight: 700 !important;
     font-size: 1.2rem !important;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 6px;
 }
 
-/* Cuerpo del ticket */
-.card-body h5 {
+.timer-urgent {
+    background-color: #cff4fc; /* Fondo alerta cyan suave */
+    animation: pulso-urgente-frio 2.5s infinite ease-in-out;
+}
+
+@keyframes pulso-urgente-frio {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* Cuerpo del Ticket */
+.card-body {
+    padding: 1.1rem !important;
+    flex-grow: 1;
+}
+
+.cliente-nombre {
     color: var(--lajama-green) !important;
-    font-family: 'Vollkorn', serif !important;
+    font-family: var(--font-serif) !important;
     font-weight: 800 !important;
     font-size: 1.3rem !important;
-    font-style: normal !important; /* Mantiene legibilidad */
+    margin-bottom: 1rem !important;
+}
+
+/* Lista de Platos */
+.items-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .item-plato {
-    border-bottom: 1px dotted var(--lajama-peach) !important;
-    padding: 10px 0 !important;
+    border: 1px solid transparent;
+    background-color: #f8f9fa;
+    padding: 8px 10px !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
 }
 
 .item-cantidad {
-    color: var(--lajama-cold) !important;
+    font-family: var(--font-sans) !important;
     font-weight: 800 !important;
-    font-size: 1.1rem !important;
-    background-color: var(--lajama-cream);
-    padding: 2px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--lajama-peach);
+    font-size: 1rem !important;
+    background-color: #f8f9fa !important;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    border: 1px solid;
+    margin-right: 10px;
+    display: inline-block;
+    text-align: center;
 }
 
 .item-nombre {
-    color: #333333 !important;
-    font-weight: 600 !important;
+    font-family: var(--font-sans) !important;
+    font-size: 0.9rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
 }
 
-/* --- BOTONES Y ACCIONES INTEGRADOS --- */
-.btn-printer {
-    background-color: var(--lajama-white) !important;
-    color: var(--lajama-green) !important;
-    border: none !important;
-    border-top: 1px solid var(--lajama-peach) !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 60px;
-    font-size: 1.2rem;
-    transition: all 0.2s ease !important;
-}
-
-.btn-printer:hover {
-    color: var(--lajama-cold) !important;
-    background-color: var(--lajama-cream) !important;
-}
-
-.btn-despachar {
-    background: var(--lajama-green) !important;
-    color: var(--lajama-white) !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
+/* Badges y botones micro-compactos */
+.badge {
+    padding: 4px 6px !important;
+    font-size: 0.65rem !important;
     font-weight: 700 !important;
     text-transform: uppercase;
-    letter-spacing: 1px !important;
-    padding: 16px !important;
-    border-radius: 0 0 14px 0 !important; /* Ajuste exacto al borde curvo de la card */
+    letter-spacing: 0.3px;
+    border-radius: 4px !important;
+    max-width: 95px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.15);
+}
+
+.item-plato button.btn-outline-info {
+    padding: 2px 6px !important;
+    font-size: 0.8rem !important;
+    border-radius: 5px !important;
+}
+
+.item-plato button.hover-success:hover {
+    background-color: #198754 !important;
+    color: white !important;
+    border-color: #198754 !important;
+}
+
+/* Pie de Tarjeta */
+.card-footer {
+    border-top: 1px solid rgba(27, 58, 44, 0.05) !important;
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+.footer-actions {
+    display: flex;
+    width: 100%;
+}
+
+.btn-printer, .footer-actions a {
+    font-family: var(--font-sans) !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px !important;
+    border: none !important;
+    border-radius: 0 0 12px 12px !important;
     transition: all 0.2s ease !important;
-    cursor: pointer;
 }
-
-.btn-despachar:hover {
-    background: var(--lajama-cold-hover) !important; /* Feedback visual en tono frío al pasar el mouse */
-    letter-spacing: 1.5px !important;
-}
-.status-badge-jama {
-    background-color: var(--lajama-cold);
-    color: white;
-    font-weight: 700;
-    font-size: 0.85rem;
-    border: 2px solid var(--lajama-peach);
-}
-

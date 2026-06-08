@@ -1,4 +1,3 @@
-
 $(document).ready(function () {
 
 
@@ -44,12 +43,12 @@ $(document).ready(function () {
                         ? '<span class="badge text-bg-warning">☀️ Día</span>'
                         : '<span class="badge text-bg-info text-dark">🌙 Noche</span>'
                 },
-                {
+                /*{
                     data: 'tipoContrato',
                     render: (d) => d === 'PLANILLA'
                         ? '<span class="badge text-bg-primary">Planilla</span>'
                         : '<span class="badge text-bg-secondary">Eventual</span>'
-                },
+                },*/
                 {
                     data: 'estado',
                     render: (d) => d === 1

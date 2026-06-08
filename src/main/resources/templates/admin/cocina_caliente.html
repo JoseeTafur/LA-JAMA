@@ -40,7 +40,13 @@
         </div>
 
         <div th:unless="${#lists.isEmpty(pedidos)}" class="pedidos-grid">
-            <div th:each="p : ${pedidos}" class="card-pedido" th:id="'pedido-' + ${p.id}">
+            <div th:each="p : ${pedidos}"
+                 class="card-pedido"
+                 th:id="'pedido-' + ${p.id}"
+                 th:with="detallesCalientes=${p.getListaDetalles().?[producto != null && producto.categoria != null && #strings.contains(#strings.toUpperCase(producto.categoria.nombre), 'CALIENTE') && !cocinado]},
+                          platosActivosCalientes=${detallesCalientes.?[!canceladoPorCliente]}"
+                 th:style="${#lists.isEmpty(platosActivosCalientes)} ? 'display: none;' : ''">
+
                 <div class="card-header">
                     <span class="badge-id">ORD. #[[${p.id}]]</span>
                     <div class="timer-container" th:data-start="${p.fechaCreacion}">
@@ -76,15 +82,15 @@
                                 </div>
 
                                 <div class="d-flex align-items-center gap-2">
-    <span th:if="${!d.impresoEnCocina && !d.canceladoPorCliente}"
-          class="badge bg-warning text-dark shadow-sm animate__animated animate__pulse animate__infinite">
-        <i class="bi bi-star-fill me-1"></i>NUEVO
-    </span>
+                                    <span th:if="${!d.impresoEnCocina && !d.canceladoPorCliente}"
+                                          class="badge bg-warning text-dark shadow-sm animate__animated animate__pulse animate__infinite">
+                                        <i class="bi bi-star-fill me-1"></i>NUEVO
+                                    </span>
 
                                     <span th:if="${d.canceladoPorCliente}"
                                           class="badge bg-danger text-white shadow-sm fw-bold px-2 py-1">
-        <i class="bi bi-exclamation-octagon-fill me-1"></i>MERMA
-    </span>
+                                        <i class="bi bi-exclamation-octagon-fill me-1"></i>MERMA
+                                    </span>
 
                                     <button th:if="${!d.canceladoPorCliente && d.impresoEnCocina}"
                                             type="button"
@@ -111,7 +117,6 @@
 
                 <div class="card-footer" th:with="nuevosCalientes=${p.getListaDetalles().?[!canceladoPorCliente && !impresoEnCocina && producto != null && producto.categoria != null && producto.categoria.nombre.toUpperCase().contains('CALIENTE')]}">
                     <div class="footer-actions d-flex gap-2 w-100">
-
                         <a th:href="@{'/admin/cocina/ticket/' + ${p.id} + '/caliente'}" target="_blank"
                            class="btn w-100 fw-bold d-flex align-items-center justify-content-center"
                            th:classappend="${#lists.isEmpty(nuevosCalientes)} ? 'btn-secondary' : 'btn-danger btn-alerta-ticket'">
