@@ -305,4 +305,9 @@ public class CajaController {
         return ResponseEntity.ok(movimientoCajaRepository.findByTipoOrderByFechaDesc("VENTA"));
     }
 
+    @GetMapping("/delivery/nuevo")
+    public String nuevoDelivery(Model model) {
+        return "admin/cajero_delivery";
+    }
+
 }
