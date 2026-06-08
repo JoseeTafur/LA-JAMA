@@ -45,10 +45,12 @@ async function listImagePaths(dir) {
 }
 
 function buildUrl(req, tipo, id, filename) {
-  const segments = ["uploads", normalizeTipo(tipo)];
+//  const segments = ["uploads", normalizeTipo(tipo)];
+  const segments = [normalizeTipo(tipo)];
   if (id) segments.push(id);
   segments.push(filename);
-  return `${req.protocol}://${req.get("host")}/${segments.join("/")}`;
+//  return `${req.protocol}://${req.get("host")}/${segments.join("/")}`;
+  return `${segments.join("/")}`;
 }
 
 async function saveFiles(files, destDir, req, tipo, id) {

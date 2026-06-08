@@ -6,6 +6,8 @@ $(document).ready(function () {
 
     const formId = '#form';
 
+    const baseImgUrl = APP_CONFIG.imageBaseUrl;
+
     const API_BASE = '/admin/pagos-digitales/api';
     const ENDPOINTS = {
         list:         `${API_BASE}/listar`,
@@ -50,7 +52,7 @@ $(document).ready(function () {
                     }
                 },
                 {
-                    data: 'observacion', defaultContent: "-"
+                    data: 'observacion', render: (data) => data?.trim() ? data : '-'
                 },
                 {
                     data: null, orderable: false, searchable: false,
@@ -103,8 +105,18 @@ $(document).ready(function () {
             if (!accion) return;
 
             switch (accion) {
-                case "aprobar": aprobar(); break;
-                case "anular": anular(); break;
+                case "aprobar": AppUtils.showConfirmationDialog({
+                    title: "Aprobar pago",
+                    text: "¿Está seguro que desea aprobar el pago?",
+                    confirmButtonColor: '#198754',
+                    confirmButtonText: 'Aprobar'
+                }, aprobar); break;
+                case "anular": AppUtils.showConfirmationDialog({
+                    title: "Anular pago",
+                    text: "¿Está seguro que desea anular el pago?",
+                    confirmButtonColor: '#ffc107',
+                    confirmButtonText: 'Anular'
+                }, anular); break;
             }
         });
     }
@@ -215,26 +227,59 @@ $(document).ready(function () {
     }
 
     function openModalImg(id) {
-        $('#pagoImg').attr('src', '');
+        const startTime = Date.now();
+        AppUtils.showLoading(true);
+        const minDuration = 200;
+        $('#pagoImg').attr('src', '').hide();
         $('#imagen-error').text('');
         $('#modalImgTitle').text("Ver imagen");
         $.get(ENDPOINTS.get(id))
             .done(res => {
-                if (!res.success) return;
-
-                const imgUrl = res.data.imgUrl;
-
-                if(imgUrl) {
-                    $('#pagoImg').attr('src', imgUrl);
-                } else {
-                    $('#imagen-error').text('No se encontró imagen');
+                if (!res.success) {
+                    hideLoading(minDuration, startTime)
+                    return;
                 }
 
+                let imgUrl = res.data.imgUrl;
+                imgUrl = `${baseImgUrl}/${imgUrl}`
+
+                if (imgUrl) {
+                    let settled = false;
+
+                    const finish = (showImg, errorMsg = '') => {
+                        if (settled) return;
+                        settled = true;
+                        $('#imagen-error').text(errorMsg);
+                        if (showImg) $('#pagoImg').show();
+                        else $('#pagoImg').hide();
+                        hideLoading(minDuration, startTime);
+                    };
+
+                    const img = $('#pagoImg')
+                        .off('load error')
+                        .on('load', function () { finish(true); })
+                        .on('error', function () { finish(false, 'No se pudo cargar la imagen'); })
+                        .attr('src', imgUrl);
+
+                    if (img[0].complete) {
+                        finish(true);
+                    }
+                } else {
+                    $('#pagoImg').hide();
+                    $('#imagen-error').text('No se encontró imagen');
+                    hideLoading(minDuration, startTime);
+                }
                 modalImg.show();
             })
             .fail(() => {
                 AppUtils.showNotification('Error al cargar imagen', 'error');
+                hideLoading(minDuration, startTime);
             });
+    }
+
+    function hideLoading(minDuration, startTime) {
+        const elapsed = Date.now() - startTime;
+        setTimeout(() => AppUtils.showLoading(false), Math.max(0, minDuration - elapsed));
     }
 
     // ── Helpers ───────────────────────────────────────────
