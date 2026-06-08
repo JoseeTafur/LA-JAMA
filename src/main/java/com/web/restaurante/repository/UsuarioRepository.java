@@ -15,6 +15,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     List<Usuario> findAllByEstadoNot(Integer estado);
     long countByEstadoNot(Integer estado);
     long countByPerfil_Id(Long idPerfil);
+    long countByPerfil_NombreIgnoreCaseAndEstadoNot(String nombrePerfil, Integer estado);
 
     Optional<Usuario> findByUsuario(String usuario);
     Optional<Usuario> findByUsuarioIgnoreCase(String usuario);

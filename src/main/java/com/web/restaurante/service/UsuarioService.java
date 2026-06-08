@@ -2,6 +2,7 @@ package com.web.restaurante.service;
 
 import com.web.restaurante.model.Usuario;
 import com.web.restaurante.repository.UsuarioRepository;
+import com.web.restaurante.repository.PerfilRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final PerfilRepository perfilRepository;
 
     
     @Transactional(readOnly = true)
@@ -58,8 +60,20 @@ public class UsuarioService {
 
         validarDuplicados(usuario);
         validarClave(usuario.getClave());
-        usuario.setClave(passwordEncoder.encode(usuario.getClave().trim()));
 
+        // Máximo 3 administradores — buscamos el perfil por id para leer su nombre real
+        if (usuario.getPerfil() != null && usuario.getPerfil().getId() != null) {
+            perfilRepository.findById(usuario.getPerfil().getId()).ifPresent(perfil -> {
+                if ("Administrador".equalsIgnoreCase(perfil.getNombre())) {
+                    long totalAdmins = usuarioRepository.countByPerfil_NombreIgnoreCaseAndEstadoNot("Administrador", 2);
+                    if (totalAdmins >= 3) {
+                        throw new IllegalArgumentException("No se pueden registrar más de 3 administradores.");
+                    }
+                }
+            });
+        }
+
+        usuario.setClave(passwordEncoder.encode(usuario.getClave().trim()));
         return usuarioRepository.save(usuario);
     }
 
@@ -82,6 +96,15 @@ public class UsuarioService {
 
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        // No se puede eliminar un administrador
+        if (usuario.getPerfil() != null && usuario.getPerfil().getId() != null) {
+            perfilRepository.findById(usuario.getPerfil().getId()).ifPresent(perfil -> {
+                if ("Administrador".equalsIgnoreCase(perfil.getNombre())) {
+                    throw new IllegalArgumentException("No está permitido eliminar una cuenta de administrador.");
+                }
+            });
+        }
 
         usuario.setEstado(2);
         usuarioRepository.save(usuario);
