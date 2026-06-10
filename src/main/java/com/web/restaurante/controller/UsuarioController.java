@@ -26,6 +26,12 @@ public class UsuarioController {
 
     @GetMapping
     public String mostrarPagina(Model model) {
+        // ========================================================
+        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
+        // ========================================================
+        model.addAttribute("activeUri", "/usuarios"); // Match idéntico con tu BD
+        model.addAttribute("titleHeader", "Gestión de Usuarios de Sistema");
+
         List<Usuario> usuarios = usuarioService.listar();
         model.addAttribute("usuarios", usuarios);
         model.addAttribute("formUsuario", new Usuario());

@@ -81,3 +81,166 @@
 h3 {
     letter-spacing: -1px;
 }
+
+
+/* ========================================================
+   🖼️ TELÓN PREMIUM AHUMADO CON TRANSPARENCIA (DASHBOARD)
+   ======================================================== */
+.premium-entrance-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+
+  /* 🌟 SUAVIZADO: Dejamos de usar negro sólido (#050807) y pasamos a un
+     antracita oscuro con 85% de opacidad para que el panel se intuya de fondo */
+  background: rgba(10, 15, 13, 0.85) !important;
+
+  /* Agregamos desenfoque ambiental para dar un acabado acrílico premium */
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              backdrop-filter 0.6s ease;
+}
+
+/* Transición de desvanecimiento hacia la luz */
+.premium-entrance-overlay:not(.active) {
+  opacity: 0;
+  backdrop-filter: blur(0px) !important;
+  -webkit-backdrop-filter: blur(0px) !important;
+  pointer-events: none;
+}
+
+.premium-entrance-overlay video {
+  width: 250px !important;
+  height: 250px !important;
+  display: block !important;
+  background: transparent !important;
+  filter: drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 5px #fff7ed);
+  mix-blend-mode: screen;
+}
+
+.entrance-text-jama {
+  color: #fed7aa !important;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.video-wrapper-jama {
+  position: relative;
+  width: 250px;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 🖼️ La silueta estática que se pinta en el milisegundo cero */
+.entrance-static-brand {
+  position: absolute;
+  width: 200px; /* Ajusta al tamaño ideal de tu isotipo/logo */
+  height: auto;
+  opacity: 1;
+  filter: drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 5px #fff7ed);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  z-index: 2;
+}
+
+/* El video arranca camuflado */
+#entrance-video.waiting {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+/* Cuando la GPU da el play real, el video emerge con suavidad encima de la foto */
+#entrance-video:not(.waiting) {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 3;
+}
+
+/* ========================================================
+   📊 LOADER ESTILO MATRIZ / SHADCN (INTEGRADO A LA JAMA)
+   ======================================================== */
+.loader-matrix-jama {
+  width: 45px;
+    height: 40px;
+    background: linear-gradient(#0000 calc(1*100%/6),#fff 0 calc(3*100%/6),#0000 0),
+              linear-gradient(#0000 calc(2*100%/6),#fff 0 calc(4*100%/6),#0000 0),
+              linear-gradient(#0000 calc(3*100%/6),#fff 0 calc(5*100%/6),#0000 0);
+    background-size: 10px 400%;
+    background-repeat: no-repeat;
+    animation: matrix 1s infinite linear;
+  }
+
+  @keyframes matrix {
+    0% {
+      background-position: 0% 100%, 50% 100%, 100% 100%
+    }
+
+    100% {
+      background-position: 0% 0%, 50% 0%, 100% 0%
+    }
+  }
+
+
+  /* ========================================================
+     📱 REGLAS DE RESPONSIVIDAD PARA EL SIDEBAR FLOTANTE
+     ======================================================== */
+  @media (max-width: 767.98px) {
+    /* Forzamos al menú a salir de la pantalla por defecto */
+    .sidebar {
+      position: fixed !important;
+      top: 0;
+      left: -280px; /* Escondido */
+      width: 280px;
+      height: 100vh;
+      z-index: 1050 !important; /* Por encima de todo el contenido */
+      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      background-color: var(--lajama-green, #1B3A2C) !important;
+    }
+
+    /* Clase dinámica que inyecta el JS */
+    .sidebar.active {
+      left: 0 !important;
+    }
+
+    /* El velo oscuro translúcido protector */
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(5, 8, 7, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 1040; /* Justo abajo del sidebar */
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .sidebar-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  /* En escritorios escondemos el velo por completo */
+  @media (min-width: 768px) {
+    .sidebar-overlay {
+      display: none !important;
+    }
+  }

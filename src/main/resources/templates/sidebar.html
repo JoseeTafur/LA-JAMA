@@ -2,12 +2,15 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<!-- COMPONENTE 1: EL MENU LATERAL ORIGINAL (SIN TOCAR NADA) -->
 <div th:fragment="sidebar(activeUri)">
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <nav id="sidebar" class="sidebar p-3">
-        <div class="text-center mb-4 px-3 pt-4 position-relative">
+
+        <div class="bg-cursor-glow header-bg-glow" id="sidebar-glow"></div>
+        <div class="pattern-bg ripple-container header-ripple-grid" id="sidebar-ripple"></div>
+
+        <div class="text-center mb-4 px-3 pt-4 position-relative z-2">
             <a th:href="@{/dashboard}" class="text-decoration-none d-inline-block">
                 <img th:src="@{/img/logo.png}" alt="Logo La Jama"
                      style="width: 180px; max-width: 100%; height: auto; object-fit: contain;">
@@ -18,71 +21,208 @@
             </button>
         </div>
 
-        <hr class="text-white-50" />
+        <hr class="text-white-50 position-relative z-2" />
 
-        <div class="flex-grow-1 overflow-auto">
-            <ul class="nav nav-pills flex-column mb-auto">
-                <li th:each="opcion : ${session.opcionesIndependientes}" class="mb-1">
-                    <a th:href="@{${opcion.ruta}}"
-                       class="nav-link text-sidebar-color d-flex align-items-center"
-                       th:classappend="${opcion.ruta == activeUri} ? 'active' : ''">
-                        <i class="bi bi-circle-fill me-2" style="font-size: 0.5rem;"></i>
-                        <span th:text="${opcion.nombre}"></span>
-                    </a>
-                </li>
+        <div class="jama-uiverse-container">
 
-                <li class="nav-item mb-1" th:each="grupo : ${session.menuAgrupado.entrySet()}">
-                    <th:block th:with="isGroupActive=${grupo.value.?[ruta == #activeUri].size() > 0}">
-                        <a class="nav-link text-sidebar-color d-flex justify-content-between align-items-center"
-                           data-bs-toggle="collapse"
-                           th:href="@{'#collapse-' + ${grupo.key}}"
-                           th:aria-expanded="${isGroupActive}"
-                           th:classappend="${!isGroupActive} ? 'collapsed' : ''">
-                            <span th:text="${grupo.key}"></span>
-                            <i class="bi bi-chevron-down small"></i>
-                        </a>
+            <div class="sidebar-scrollable-menu">
+                <article class="jama-uiverse-menu">
 
-                        <div th:id="@{'collapse-' + ${grupo.key}}"
-                             class="collapse"
-                             th:classappend="${isGroupActive} ? 'show' : ''">
-                            <ul class="nav flex-column ps-3 mt-1">
-                                <li th:each="opcion : ${grupo.value}">
-                                    <a th:href="@{${opcion.ruta}}"
-                                       class="nav-link text-sidebar-color rounded-pill mb-1 small"
-                                       th:classappend="${opcion.ruta == activeUri} ? 'active-submenu' : ''">
-                                        <span th:text="${opcion.nombre}"></span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </th:block>
-                </li>
-            </ul>
-        </div>
+                    <label th:each="opcion : ${session.opcionesIndependientes}"
+                           th:for="${'radio-' + opcion.nombre}"
+                           class="jama-uiverse-item"
+                           th:with="uriLimpia=${activeUri != null ? #strings.replace(activeUri, '/admin', '') : ''}"
+                           th:classappend="${opcion.ruta == activeUri || opcion.ruta == uriLimpia || (activeUri == '/' && opcion.ruta == '/dashboard')} ? 'active-uiverse' : ''"
+                           th:data-module="${#strings.toLowerCase(opcion.nombre)}">
 
-        <div class="mt-auto">
-            <hr class="text-white-50" />
-            <a href="/logout" class="nav-link text-sidebar-color d-flex align-items-center py-3">
-                <i class="bi bi-box-arrow-left me-2"></i>
-                <span>Cerrar Sesión</span>
-            </a>
+                        <input class="jama-radio-hidden"
+                               type="radio"
+                               name="sidebar_path"
+                               th:id="${'radio-' + opcion.nombre}"
+                               th:checked="${opcion.ruta == activeUri || opcion.ruta == uriLimpia || (activeUri == '/' && opcion.ruta == '/dashboard')}"
+                               th:onclick="|window.location.href='@{${opcion.ruta}}'|" />
+
+                        <i class="bi jama-uiverse-icon"
+                           th:classappend="${opcion.nombre == 'Dashboard' ? 'bi-speedometer2' :
+                                           opcion.nombre == 'Usuarios' ? 'bi-person-gear' :
+                                           opcion.nombre == 'Perfiles' ? 'bi-shield-lock' :
+                                           opcion.nombre == 'Empleados' ? 'bi-people-fill' :
+                                           opcion.nombre == 'Insumos' ? 'bi-box-seam' : 'bi-grid-1x2-fill'}"></i>
+
+                        <span class="jama-uiverse-text" th:text="${opcion.nombre}">Dashboard</span>
+                    </label>
+
+                    <div th:each="grupo : ${session.menuAgrupado.entrySet()}" class="jama-uiverse-group-wrapper">
+
+                        <th:block th:with="folder=${#strings.toLowerCase(grupo.key)},
+                                           isGroupActive=${activeUri != null && (
+                                               (folder == 'cocina' && activeUri.contains('/cocina/')) ||
+                                               (folder == 'almacen' && (activeUri.contains('/almacen/') || activeUri.contains('/productos'))) ||
+                                               (folder == 'mesas' && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
+                                               (folder == 'mesero' && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
+                                               (folder == 'admin' && activeUri.startsWith('/admin/') && !activeUri.contains('/cocina/') && !activeUri.contains('/mesas') && !activeUri.contains('/mesero') && !activeUri.contains('/almacen/') && !activeUri.contains('/productos') && !activeUri.contains('/usuarios') && !activeUri.contains('/perfiles') && !activeUri.contains('/empleados'))
+                                           )}">
+
+                            <label th:for="${'radio-' + grupo.key}"
+                                   class="jama-uiverse-item text-between"
+                                   th:classappend="${isGroupActive} ? 'active-uiverse' : ''"
+                                   data-bs-toggle="collapse"
+                                   th:href="@{'#collapse-' + ${grupo.key}}"
+                                   th:aria-expanded="${isGroupActive}"
+                                   th:data-module="${folder}">
+
+                                <input class="jama-radio-hidden"
+                                       type="radio"
+                                       name="sidebar_path"
+                                       th:id="${'radio-' + grupo.key}"
+                                       th:checked="${isGroupActive}" />
+
+                                <div class="d-flex align-items-center gap-3">
+                                    <i class="bi jama-uiverse-icon"
+                                       th:classappend="${isGroupActive} ? 'bi-folder2-open' : 'bi-folder-fill'"></i>
+                                    <span class="jama-uiverse-text" th:text="${grupo.key}">Grupo</span>
+                                </div>
+                                <i class="bi bi-chevron-down jama-uiverse-arrow"></i>
+                            </label>
+
+                            <div th:id="@{'collapse-' + ${grupo.key}}"
+                                 class="collapse"
+                                 th:classappend="${isGroupActive} ? 'show' : ''">
+                                <ul class="submenu-list-uiverse">
+                                    <li th:each="opcion : ${grupo.value}">
+                                        <a th:href="@{${opcion.ruta}}"
+                                           class="submenu-item-uiverse"
+                                           th:classappend="${opcion.ruta == activeUri || (activeUri.contains('/mesas') && opcion.ruta.contains('/mesero'))} ? 'active-submenu' : ''">
+                                            <i class="bi bi-circle-fill me-2" style="font-size: 0.4rem;"></i>
+                                            <span th:text="${opcion.nombre}">Subopción</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+
+                        </th:block>
+                    </div>
+
+                </article>
+            </div>
+
+            <label for="radio-logout" class="jama-uiverse-item btn-logout-uiverse mt-auto fallback-logout-fixed">
+                <input class="jama-radio-hidden"
+                       type="radio"
+                       name="sidebar_path"
+                       id="radio-logout"
+                       onclick="sessionStorage.removeItem('jama_sesion_activa'); window.location.href='/logout';" />
+                <i class="bi bi-box-arrow-right jama-uiverse-icon"></i>
+                <span class="jama-uiverse-text">Cerrar Sesión</span>
+            </label>
+
         </div>
     </nav>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sidebarElement = document.getElementById("sidebar");
+            const gridContainer = document.getElementById("sidebar-ripple");
+            const glowElement = document.getElementById("sidebar-glow");
+
+            if (gridContainer && sidebarElement) {
+                for (let i = 0; i < 250; i++) {
+                    const cell = document.createElement("div");
+                    cell.className = "ripple-cell";
+                    gridContainer.appendChild(cell);
+                }
+
+                const cells = gridContainer.querySelectorAll(".ripple-cell");
+
+                sidebarElement.addEventListener("mousemove", (e) => {
+                    const rect = sidebarElement.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    if (glowElement) {
+                        glowElement.style.setProperty("--bg-x", x);
+                        glowElement.style.setProperty("--bg-y", y);
+                    }
+                });
+
+                gridContainer.addEventListener("click", (e) => {
+                    const cell = e.target.closest(".ripple-cell");
+                    if (!cell) return;
+
+                    const rect = gridContainer.getBoundingClientRect();
+                    const cols = Math.floor(rect.width / 40);
+
+                    const cellIndex = Array.from(cells).indexOf(cell);
+                    if (cellIndex === -1) return;
+
+                    const clickedRow = Math.floor(cellIndex / cols);
+                    const clickedCol = cellIndex % cols;
+
+                    cells.forEach((c, index) => {
+                        const row = Math.floor(index / cols);
+                        const col = index % cols;
+
+                        const distance = Math.sqrt(
+                            Math.pow(row - clickedRow, 2) + Math.pow(col - clickedCol, 2)
+                        );
+
+                        c.classList.remove("animate-ripple");
+                        void c.offsetWidth;
+                        c.style.setProperty("--delay", `${distance * 50}ms`);
+                        c.classList.add("animate-ripple");
+                    });
+                });
+            }
+        });
+
+        $(document).ready(function () {
+            const $sidebar        = $('#sidebar');
+            const $openSidebarBtn = $('#open-sidebar');
+            const $closeSidebarBtn= $('#close-sidebar');
+            const $sidebarOverlay = $('#sidebar-overlay');
+
+            if ($openSidebarBtn.length && $sidebar.length) {
+                $openSidebarBtn.on('click', function () {
+                    $sidebar.addClass('active');
+                    if ($sidebarOverlay.length) $sidebarOverlay.addClass('active');
+                });
+
+                function cerrarMenuMovil() {
+                    $sidebar.removeClass('active');
+                    if ($sidebarOverlay.length) $sidebarOverlay.removeClass('active');
+                }
+
+                if ($closeSidebarBtn.length) $closeSidebarBtn.on('click', cerrarMenuMovil);
+                if ($sidebarOverlay.length) $sidebarOverlay.on('click', cerrarMenuMovil);
+            }
+
+            $('.sidebar .collapse').on('shown.bs.collapse', function () {
+                localStorage.setItem('menu_abierto_' + this.id, 'true');
+            }).on('hidden.bs.collapse', function () {
+                localStorage.removeItem('menu_abierto_' + this.id);
+            });
+        });
+    </script>
 </div>
 
-
-<!-- COMPONENTE 2: EL BANNER DE CABECERA CON NUESTRO BANNER.PNG -->
 <header th:fragment="logistica_header(titulo)" class="main-header-banner">
-    <div class="header-title-container">
-        <h2 class="header-title fs-5" th:text="${titulo}">La Jama</h2>
+
+    <div id="stars"></div>
+    <div id="stars2"></div>
+    <div id="stars3"></div>
+
+    <div class="header-title-container d-flex align-items-center gap-3">
+        <button id="open-sidebar" class="btn btn-outline-light border-2 d-md-none rounded-3 px-2 py-1" type="button">
+            <i class="bi bi-list fs-4"></i>
+        </button>
+        <h2 class="header-title fs-5 mb-0" th:text="${titulo}">La Jama</h2>
     </div>
 
     <div class="d-flex gap-2">
-        <!-- Botón dinámico para la vista de Usuarios -->
         <button th:if="${titulo == 'Gestión de Usuarios'}"
                 id="btnNuevoRegistro"
-                class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
-            Nuevo Registro <i class="bi bi-plus ms-2"></i>
+                class="btn btn-nuevo-jama">
+            <i class="bi bi-plus"></i> Nuevo Registro
         </button>
     </div>
 </header>

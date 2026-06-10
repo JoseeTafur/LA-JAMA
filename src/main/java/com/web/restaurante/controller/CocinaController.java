@@ -57,12 +57,26 @@ public class CocinaController {
 
         if ("caliente".equals(tipoLimpio)) {
             List<Pedido> pedidosCalientes = pedidoService.listarPedidosCalientes();
+
+            // ========================================================
+            // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
+            // ========================================================
+            model.addAttribute("activeUri", "/admin/cocina/caliente");
+            model.addAttribute("titleHeader", "Monitor de Cocina Caliente");
+
             model.addAttribute("pedidos", pedidosCalientes);
             model.addAttribute("estacion", "Cocina Caliente");
             model.addAttribute("tipoEstacion", "caliente");
             return "admin/cocina_caliente";
         } else if ("fria".equals(tipoLimpio)) {
             List<Pedido> pedidosFrios = pedidoService.listarPedidosFrios();
+
+            // ========================================================
+            // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
+            // ========================================================
+            model.addAttribute("activeUri", "/admin/cocina/fria");
+            model.addAttribute("titleHeader", "Monitor de Cocina Fría / Frescos");
+
             model.addAttribute("pedidos", pedidosFrios);
             model.addAttribute("estacion", "Cocina Fría / Frescos");
             model.addAttribute("tipoEstacion", "fria");

@@ -1,127 +1,55 @@
-:root {
-    --lajama-green: #1B3A2C;
-    --lajama-peach: #fed7aa;
-    --lajama-skin: #FFB38A;
-    --lajama-cream: #FFF7ED;
-    --lajama-white: #FFFFFF;
-}
+/* ========================================================
+   🎨 EMPLEADOS.CSS - COMPLEMENTOS EXCLUSIVOS DE LA VISTA
+   ======================================================== */
 
-/* --- ESTRUCTURA --- */
-.main-content {
-    background-color: var(--lajama-cream);
-}
-
-/* --- TARJETA --- */
-.card-color1 {
-    background: var(--lajama-white);
-    border: 2px solid var(--lajama-peach) !important;
-    border-radius: 25px !important;
-}
-
-.text-jama-green {
-    color: var(--lajama-green) !important;
-}
-
-/* --- TABLA --- */
 #tabla {
-    border-collapse: separate;
-    border-spacing: 0 8px;
+    border-collapse: separate !important;
+    border-spacing: 0 10px !important;
 }
 
-#tabla thead th {
-    background-color: var(--lajama-green);
-    color: var(--lajama-white);
-    padding: 15px;
-    border: none;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    font-weight: 700;
-}
-
-#tabla thead th:first-child { border-radius: 12px 0 0 12px; }
-#tabla thead th:last-child { border-radius: 0 12px 12px 0; }
-
-#tabla tbody td {
-    padding: 12px;
-    color: #444;
+#tabla tbody tr {
+    background-color: var(--lajama-white) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
 }
 
 #tabla tbody tr:hover {
     background-color: var(--lajama-cream) !important;
     transform: translateY(-2px);
-    transition: all 0.2s ease;
+    box-shadow: 0 6px 16px rgba(27, 58, 44, 0.06), 0 0 1px var(--lajama-skin) !important;
 }
 
-/* --- FORMULARIOS --- */
+/* 📦 FILTRO DE CONTROLES EXCLUSIVOS */
 .filtro-jama {
-    border: 2px solid var(--lajama-peach);
-    background-color: var(--lajama-white);
-    border-radius: 10px;
-    color: var(--lajama-green);
-    font-weight: 600;
+    border: 2px solid var(--lajama-peach) !important;
+    background-color: var(--lajama-white) !important;
+    border-radius: 10px !important;
+    color: var(--lajama-green) !important;
+    font-weight: 600 !important;
+    height: 42px;
+    padding: 0 2rem 0 1rem !important;
 }
 
-.form-label {
-    color: var(--lajama-green);
+.filtro-jama:focus {
+    border-color: var(--lajama-skin) !important;
+    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.2) !important;
 }
 
-.form-control, .form-select {
-    border: 2px solid var(--lajama-peach);
-    border-radius: 12px;
+/* Alineamiento centrado para columnas de control en pantallas de escritorio */
+@media (min-width: 768px) {
+    #tabla tbody td:nth-child(5),
+    #tabla tbody td:nth-child(6),
+    #tabla tbody td:nth-child(7) {
+        text-align: center;
+        vertical-align: middle;
+    }
+    #tabla .action-buttons-wrapper {
+        justify-content: center;
+    }
 }
 
-.form-control:focus, .form-select:focus {
-    border-color: var(--lajama-skin);
-    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.2);
-}
-
-/* --- MODALES --- */
-.modal-content {
-    border-radius: 30px !important;
-    background-color: var(--lajama-cream);
-}
-
-.modal-header {
-    background-color: var(--lajama-green);
-    border-radius: 30px 30px 0 0 !important;
-}
-
-.modal-footer {
-    border-radius: 0 0 30px 30px !important;
-}
-
-/* --- BOTONES --- */
-.btn-jama-primary {
-    background-color: var(--lajama-green);
-    color: white;
-    border: none;
-    font-weight: 700;
-}
-
-.btn-jama-primary:hover {
-    background-color: #0d231a;
-    color: white;
-    transform: scale(1.05);
-}
-
-.btn-outline-jama {
-    border: 2px solid var(--lajama-green);
-    color: var(--lajama-green);
-    font-weight: 700;
-}
-
-.btn-outline-jama:hover {
-    background-color: var(--lajama-green);
-    color: white;
-}
-
-/* Badges de turno y estado */
-.badge {
+/* Estilo personalizado extra para los badges de turnos */
+.table-jama .badge {
     padding: 6px 12px;
     border-radius: 8px;
     font-weight: 600;
 }
-
-/* Estilo para los turnos en la tabla */
-.turno-dia { background-color: #fef9c3; color: #854d0e; }
-.turno-noche { background-color: #e0e7ff; color: #3730a3; }

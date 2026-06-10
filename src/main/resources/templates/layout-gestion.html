@@ -1,44 +1,31 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content, js)">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-
-    <title th:text="${title}">Cargando...</title>
-
+    <title th:text="${title}">La Jama</title>
     <th:block th:replace="~{links :: headLinks}"></th:block>
-    <link th:if="${css != null}" rel="stylesheet" th:href="@{${css}}">
+    <link th:href="@{/css/layout-gestion.css}" rel="stylesheet" />
 </head>
 <body>
 <div class="wrapper">
-    <!-- 1. Cargamos el Sidebar independiente a la izquierda -->
     <div th:replace="~{sidebar :: sidebar(activeUri=${activeUri})}"></div>
 
-    <!-- 2. Contenedor del contenido a la derecha -->
     <main id="main-content" class="main-content">
-
-        <!-- 3. Inyectamos la plantilla de cabecera con el banner.png arriba del contenedor -->
         <div th:replace="~{sidebar :: logistica_header(${titleHeader})}"></div>
 
-        <div th:if="${view != null}" th:replace="${view} :: content"></div>
+        <div class="container-fluid p-4">
+            <th:block th:replace="${content}"></th:block>
+        </div>
     </main>
 </div>
 
 
-<div th:if="${view != null}" th:replace="${view} :: modals"></div>
+
+<th:block th:replace="${modals}"></th:block>
 
 <div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
-
 <th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
-
-<script th:inline="javascript">
-    window.APP_CONFIG = {
-        imageBaseUrl: [[${imageBaseUrl}]]
-    };
-</script>
-
-<script th:if="${js != null}" th:src="@{${js}}"></script>
-
+<script th:src="@{${js}}"></script>
 </body>
 </html>

@@ -1,151 +1,590 @@
-/* Paleta de Colores La Jama */
+/* ========================================================
+   ESTILOS DE LOGIN PREMIUM - ESTILO SHADCN / LA JAMA
+   ======================================================== */
+
 :root {
-    --jama-green: #1B3A2C;
-    --jama-green-light: #2d5a44;
-    --jama-ocre: #933D2D;
-    --white: #ffffff;
-    --glass-bg: rgba(255, 255, 255, 0.9);
+  --lajama-green: #1B3A2C;
+  --lajama-peach: #fed7aa;
+  --lajama-skin: #FFB38A;
+  --lajama-cream: #FFF7ED;
+  --lajama-white: #FFFFFF;
+  --text-dark: #2D2D2D;
+  --text-muted: #6B7280;
+  --border-color: #E5E7EB;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
-    font-family: 'Inter', sans-serif;
-    /* Fondo con un degradado elegante y sutil */
-    background: linear-gradient(135deg, var(--jama-green) 0%, #0a1a14 100%);
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
+  background-color: var(--lajama-cream);
+  color: var(--text-dark);
 }
 
-/* Contenedor principal */
-.login-container {
-    background-image: url('https://www.transparenttextures.com/patterns/cubes.png'); /* Textura sutil */
+/* ========================================================
+   CONTENEDORES PRINCIPALES Y CUADRÍCULA ACETERNITY UI
+   ======================================================== */
+
+.login-page-container {
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  overflow: hidden;
+  background: radial-gradient(circle at top center, #0F2A1E 0%, #050807 100%);
+}
+
+@media (min-width: 768px) {
+  .login-page-container {
+    padding: 2.5rem;
+  }
+}
+
+.bg-cursor-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle 600px at calc(var(--bg-x, 50%) * 1px) calc(var(--bg-y, 50%) * 1px),
+    rgba(27, 58, 44, 0.35) 0%,
+    transparent 100%
+  );
+  transition: background 0.1s ease;
+}
+
+.ripple-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  z-index: 1;
+  -webkit-mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 20%, rgba(0,0,0,0) 80%);
+  mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 20%, rgba(0,0,0,0) 80%);
+}
+
+.ripple-cell {
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  opacity: 0.6;
+  background-color: transparent;
+  transition: background-color 0.2s ease, opacity 0.3s ease;
+  cursor: pointer;
+}
+
+.ripple-cell:hover {
+  background-color: rgba(254, 215, 170, 0.05);
+  opacity: 1;
+}
+
+.ripple-cell.animate-ripple {
+  animation: cell-ripple 500ms ease-out none 1 var(--delay, 0ms);
+}
+
+@keyframes cell-ripple {
+  0% { background-color: transparent; }
+  50% { background-color: rgba(254, 215, 170, 0.08); }
+  100% { background-color: transparent; }
+}
+
+/* ========================================================
+   LUZ INTERACTIVA DEL CURSOR (EXCLUSIVA DEL BANNER DERECHO)
+   ======================================================== */
+
+.cursor-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle 280px at calc(var(--x, 50%) * 1px) calc(var(--y, 50%) * 1px),
+    rgba(254, 215, 170, 0.10) 0%,
+    rgba(57, 255, 20, 0.01) 50%,
+    transparent 100%
+  );
+  transition: background 0.05s ease, opacity 0.3s ease;
+}
+
+/* ========================================================
+   ESTRUCTURA DEL CARD CENTRAL
+   ======================================================== */
+
+.login-card-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 44rem;
+  z-index: 10;
+}
+
+.login-card {
+  background-color: var(--lajama-white);
+  border-radius: 1.25rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  border: 2px solid var(--lajama-peach);
+  overflow: hidden;
+}
+
+.login-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .login-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ========================================================
+   FORMULARIO E INPUTS
+   ======================================================== */
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+@media (min-width: 768px) {
+  .login-form {
+    padding: 3rem 2.5rem;
+  }
+}
+
+.form-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .form-header {
+    text-align: left;
+  }
+}
+
+.form-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--lajama-green);
+  letter-spacing: -0.025em;
+}
+
+.form-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-balance: balance;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--lajama-green);
+}
+
+.input-relative input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  border-radius: 0.75rem;
+  border: 2px solid var(--lajama-peach);
+  background-color: var(--lajama-white);
+  color: var(--text-dark);
+  transition: all 0.2s ease;
+}
+
+.input-relative input:focus {
+  outline: none;
+  border-color: var(--lajama-skin);
+  box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.25);
+}
+
+.form-link {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.form-link:hover {
+  color: var(--lajama-green);
+}
+
+.form-link-strong {
+  font-size: 0.875rem;
+  color: var(--lajama-green);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.form-link-strong:hover {
+  text-decoration: underline;
+}
+
+.btn-jama-submit {
+  width: 100%;
+  padding: 0.85rem;
+  background-color: var(--lajama-green);
+  color: var(--lajama-white);
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.btn-jama-submit:hover {
+  background-color: #0d231a;
+  transform: translateY(-1px);
+}
+
+/* ========================================================
+   COLUMNA LATERAL (BANNER) Y FOOTER
+   ======================================================== */
+
+.login-banner-side {
+  display: none;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--lajama-green);
+  background-image: radial-gradient(circle at 20% 30%, rgba(254, 215, 170, 0.15) 0%, transparent 70%);
+}
+
+@media (min-width: 768px) {
+  .login-banner-side {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 2rem;
+  }
 }
 
-/* La tarjeta del login */
-.login-page {
-    background: var(--glass-bg);
-    backdrop-filter: blur(10px);
-    border: none !important;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-    max-width: 450px; /* Tamaño ideal para un login */
-    transition: transform 0.4s ease;
+.banner-overlay-text {
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  color: var(--lajama-white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
 }
 
-.login-page:hover {
-    transform: translateY(-5px);
+.login-logo-img {
+  width: 200px;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
 }
 
-.center {
-    padding: 3rem 2.5rem;
+.logo-slogan {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--lajama-peach);
+  letter-spacing: 0.5px;
 }
 
-/* Títulos */
-.login-title {
-    font-family: 'Mooli', sans-serif;
-    color: var(--jama-green);
-    font-weight: 700;
-    font-size: 2.2rem;
-    margin-bottom: 0.5rem;
-    text-align: center;
+.terms-text {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255, 247, 237, 0.6);
+  line-height: 1.5;
 }
 
-.login-subtitle {
-    color: #666;
-    text-align: center;
-    font-size: 0.95rem;
-    margin-bottom: 2rem;
+.terms-text a {
+  color: var(--lajama-peach);
+  text-decoration: underline;
 }
 
-/* Estilo de los inputs con Iconos */
-.form-group-icon {
-    position: relative;
-    margin-bottom: 1.5rem;
+.input-relative {
+  position: relative;
+  width: 100%;
 }
 
-.input-icon {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--jama-green);
-    font-size: 1.2rem;
-    z-index: 10;
-}
-
-.form-control {
-    padding: 12px 15px 12px 45px;
-    border-radius: 12px;
-    border: 2px solid #eee;
-    background: #fdfdfd;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus {
-    border-color: var(--jama-green);
-    box-shadow: 0 0 0 4px rgba(27, 58, 44, 0.1);
-    outline: none;
-}
-
-/* Toggle de contraseña */
 .password-toggle {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: #999;
-    transition: color 0.3s;
-    z-index: 10;
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: color 0.2s ease;
+  z-index: 5;
 }
 
 .password-toggle:hover {
-    color: var(--jama-ocre);
+  color: var(--lajama-green);
 }
 
-/* Botón de Ingreso */
-.btn-login {
-    background: linear-gradient(135deg, var(--jama-green) 0%, var(--jama-green-light) 100%);
-    color: white;
-    border: none;
-    padding: 14px;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.3s ease;
-    box-shadow: 0 10px 20px rgba(27, 58, 44, 0.2);
+#clave {
+  padding-right: 2.75rem;
 }
 
-.btn-login:hover {
-    background: var(--jama-ocre);
-    color: white;
-    transform: scale(1.02);
-    box-shadow: 0 10px 20px rgba(147, 61, 45, 0.3);
+/* ========================================================
+   🌟 ELEMENTOS DINÁMICOS INYECTADOS (GEOMETRIC BOXES LOADER)
+   ======================================================== */
+
+.loader {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  transform: rotate(45deg);
 }
 
-.btn-login i {
-    font-size: 1.4rem;
-    transition: transform 0.3s ease;
+.loader-square {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  margin: 2px;
+  border-radius: 4px; /* Un toque leve de redondeado tipo Shadcn */
+  background: var(--lajama-peach); /* Integrado a nuestra paleta */
+  animation: square-animation 10s ease-in-out infinite both;
 }
 
-.btn-login:hover i {
-    transform: translateX(5px);
+/* 🌟 CORREGIDO: Ajuste de índices base 1 para Thymeleaf/Navegadores */
+.loader-square:nth-of-type(1) { animation-delay: 0s; }
+.loader-square:nth-of-type(2) { animation-delay: -1.4285714286s; }
+.loader-square:nth-of-type(3) { animation-delay: -2.8571428571s; }
+.loader-square:nth-of-type(4) { animation-delay: -4.2857142857s; }
+.loader-square:nth-of-type(5) { animation-delay: -5.7142857143s; }
+.loader-square:nth-of-type(6) { animation-delay: -7.1428571429s; }
+.loader-square:nth-of-type(7) { animation-delay: -8.5714285714s; }
+
+@keyframes square-animation {
+  0%, 10.5%, 100% { left: 0; top: 0; }
+  12.5%, 23% { left: 32px; top: 0; }
+  25%, 35.5% { left: 64px; top: 0; }
+  37.5%, 48% { left: 64px; top: 32px; }
+  50%, 60.5% { left: 32px; top: 32px; }
+  62.5%, 73% { left: 32px; top: 64px; }
+  75%, 85.5% { left: 0; top: 64px; }
+  87.5%, 98% { left: 0; top: 32px; }
 }
 
-/* Responsivo */
-@media (max-width: 576px) {
-    .login-page {
-        width: 90% !important;
-        margin: 20px auto;
+/* ========================================================
+   CORRECCIÓN DE RENDERIZADO PARA EL OVERLAY PREMIUM
+   ======================================================== */
+.loading-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(6, 10, 8, 0.94) !important;
+  z-index: 99999 !important; /* Nos aseguramos de superar el z-index de las tarjetas */
+}
+
+/* Forzamos al elemento de video a tomar dimensiones reales rompiendo el overflow */
+.loading-overlay video {
+  display: block !important;
+  width: 250px !important;
+  height: auto !important;
+  min-height: 50px;
+  z-index: 100000 !important;
+}
+
+/* ========================================================
+   GLOW LÁSER COMPACTO Y ULTRA FINO (CASI BLANCO)
+   ======================================================== */
+
+#premium-video {
+  width: 250px !important;
+  height: 250px !important;
+  display: block !important;
+  background: transparent !important;
+  z-index: 1000000 !important;
+
+  /* 🌟 EL TRUCO DEL FILAMENTO FINO:
+     - 1px de radio: Crea una línea blanca sólida y delgada en el borde exacto del video.
+     - 5px de radio: Un micro-reflejo cremoso para que no parezca un corte pixelado.
+     Eliminamos el tercer drop-shadow para quitar todo el volumen ambiental. */
+  filter: drop-shadow(0 0 1px #ffffff)
+          drop-shadow(0 0 5px #fff7ed);
+
+  /* Mantiene el acople perfecto con el fondo oscuro de La Jama */
+  mix-blend-mode: screen;
+
+  /* Micro-pulsación sutil para mantener el video vivo */
+  animation: destelloFino 1.2s ease-in-out infinite;
+}
+
+/* --- ANIMACIÓN DE CONTORNO VIVO --- */
+@keyframes destelloFino {
+  0%, 50% {
+    filter: drop-shadow(0 0 1px #ffffff)
+            drop-shadow(0 0 5px #fff7ed);
+  }
+  15% {
+    /* En el punto medio, la luz se vuelve un poco más densa,
+       pero sin expandirse hacia afuera */
+    filter: drop-shadow(0 0 2px #ffffff)
+            drop-shadow(0 0 7px #ffffff);
+  }
+}
+
+/* ========================================================
+   ESTILOS DEL OVERLAY PREMIUM CON DESENFOQUE CINEMÁTICO
+   ======================================================== */
+.premium-loading-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  display: flex !important; /* Siempre en flex para no romper el renderizado */
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 1.5rem !important;
+
+  /* 🌟 ESTADO INICIAL: Totalmente invisible y sin clics */
+  background: rgba(6, 10, 8, 0) !important;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  opacity: 0;
+  pointer-events: none;
+
+  /* Transición suave de 400ms para la entrada y salida */
+  transition: background 0.4s ease, backdrop-filter 0.4s ease, opacity 0.4s ease;
+}
+
+/* 🌟 ESTADO ACTIVO: Cuando JS le inyecta esta clase, todo se transforma suavemente */
+.premium-loading-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+  background: rgba(6, 10, 8, 0.94) !important;
+  backdrop-filter: blur(8px); /* Micro-desenfoque de la cuadrícula trasera */
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.premium-loading-overlay video {
+  display: block !important;
+  width: 250px !important;
+  height: 250px !important;
+  background: transparent !important;
+}
+
+.premium-loading-text {
+  color: #fed7aa !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 1px !important;
+  margin: 0 !important;
+  font-family: system-ui, sans-serif !important;
+}
+
+/* ========================================================
+   🎥 KINETIC ENTRANCE OVERLAY (Match perfecto con el Login)
+   ======================================================== */
+.premium-loading-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 1.5rem !important;
+
+  /* Nace siendo un bloque negro sólido para amortiguar el F5 */
+  background: #050807 !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 1;
+  pointer-events: auto;
+
+  /* Transición suave hacia la luz de 0.6s */
+  transition: background 0.6s ease, backdrop-filter 0.6s ease, opacity 0.6s ease;
+}
+
+/* Estado de salida: se desvanece de forma limpia */
+.premium-loading-overlay:not(.active) {
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(6, 10, 8, 0) !important;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+}
+
+/* 1. Activamos las transiciones nativas entre páginas distintas */
+@view-transition {
+  navigation: auto;
+}
+
+/* 2. Personalizamos la entrada de la nueva página (Dashboard) */
+::view-transition-new(root) {
+  animation: 1000ms cubic-bezier(0.4, 0, 0.2, 1) both ola-circular-verde;
+}
+
+/* 3. Evitamos el parpadeo de la vista vieja fijando su opacidad */
+::view-transition-old(root) {
+  animation: none;
+  opacity: 1;
+}
+
+/* ========================================================
+   📊 LOADER ESTILO MATRIZ / SHADCN (INTEGRADO A LA JAMA)
+   ======================================================== */
+.loader-matrix-jama {
+  width: 45px;
+    height: 40px;
+    background: linear-gradient(#0000 calc(1*100%/6),#fff 0 calc(3*100%/6),#0000 0),
+              linear-gradient(#0000 calc(2*100%/6),#fff 0 calc(4*100%/6),#0000 0),
+              linear-gradient(#0000 calc(3*100%/6),#fff 0 calc(5*100%/6),#0000 0);
+    background-size: 10px 400%;
+    background-repeat: no-repeat;
+    animation: matrix 1s infinite linear;
+  }
+
+  @keyframes matrix {
+    0% {
+      background-position: 0% 100%, 50% 100%, 100% 100%
     }
-    .center {
-        padding: 2rem 1.5rem;
+
+    100% {
+      background-position: 0% 0%, 50% 0%, 100% 0%
     }
-}
+  }

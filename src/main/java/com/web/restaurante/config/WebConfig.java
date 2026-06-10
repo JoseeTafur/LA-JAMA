@@ -16,28 +16,35 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/css/**").addResourceLocations("classpath:/static/css/").setCachePeriod(0);
-
         registry.addResourceHandler("/js/**").addResourceLocations("classpath:/static/js/").setCachePeriod(0);
-
         registry.addResourceHandler("/imagenes/**").addResourceLocations("file:/C:/restaurante/imagenes/");
-
-        registry.addResourceHandler("/favicon.png")
-                .addResourceLocations("classpath:/static/")
-                .setCachePeriod(0);
-
+        registry.addResourceHandler("/favicon.png").addResourceLocations("classpath:/static/").setCachePeriod(0);
         registry.addResourceHandler("/img/**").addResourceLocations("classpath:/static/img/").setCachePeriod(0);
 
-        // registry.addResourceHandler("/img/**").addResourceLocations("classpath:/static/img/").setCachePeriod(0);
+        // 🌟 SOLUCIÓN 1: Registrar la carpeta de videos estáticos
+        registry.addResourceHandler("/video/**")
+                .addResourceLocations("classpath:/static/video/")
+                .setCachePeriod(0);
     }
 
     @Override
     public void addInterceptors(@NonNull InterceptorRegistry registry) {
         registry.addInterceptor(sessionInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/login", "/carta/**",
+                .excludePathPatterns(
+                        "/login",
+                        "/carta/**",
                         "/admin/pagos-digitales/api/guardar",
                         "/admin/pagos-digitales/api/actualizar-imagen/**",
-                        "/css/**", "/js/**", "/img/**", "/imagenes/**", "/error", "/favicon.png");
+                        "/css/**",
+                        "/js/**",
+                        "/img/**",
+                        "/imagenes/**",
+                        "/error",
+                        "/favicon.png",
+                        // 🌟 SOLUCIÓN 2: Excluir los videos del control de sesión para el Login
+                        "/video/**"
+                );
     }
 
     @Override
@@ -47,6 +54,4 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedMethods("GET", "PATCH", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowCredentials(true);
     }
-
-
 }

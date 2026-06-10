@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -19,7 +20,13 @@ public class PerfilController {
     private final PerfilService perfilService;
 
     @GetMapping
-    public String mostrarPagina(){
+    public String mostrarPagina(Model model) { // 💡 Agregamos el Model aquí
+        // ========================================================
+        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
+        // ========================================================
+        model.addAttribute("activeUri", "/perfiles"); // Match idéntico con tu BD
+        model.addAttribute("titleHeader", "Gestión de Perfiles y Accesos");
+
         return "perfiles";
     }
 

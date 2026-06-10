@@ -1,6 +1,4 @@
 $(document).ready(function () {
-
-
     let dataTable;
     let isEditing = false;
     let modal;
@@ -17,7 +15,6 @@ $(document).ready(function () {
         usuarios:     `${API_BASE}/usuarios-disponibles`,
         toggleStatus: (id) => `${API_BASE}/cambiar-estado/${id}`,
         buscar:       `${API_BASE}/buscar`
-
     };
 
     initializeDataTable();
@@ -26,10 +23,10 @@ $(document).ready(function () {
     cargarUsuariosDisponibles();
     setupEventListeners();
 
-    // ── DataTable ────────────────────────────────────────────
     function initializeDataTable() {
         dataTable = $('#tabla').DataTable({
             responsive: true,
+            autoWidth: false, // 🌟 Evitamos que rompa las proporciones en celulares
             processing: true,
             ajax: { url: ENDPOINTS.list, dataSrc: 'data' },
             columns: [
@@ -43,12 +40,6 @@ $(document).ready(function () {
                         ? '<span class="badge text-bg-warning">☀️ Día</span>'
                         : '<span class="badge text-bg-info text-dark">🌙 Noche</span>'
                 },
-                /*{
-                    data: 'tipoContrato',
-                    render: (d) => d === 'PLANILLA'
-                        ? '<span class="badge text-bg-primary">Planilla</span>'
-                        : '<span class="badge text-bg-secondary">Eventual</span>'
-                },*/
                 {
                     data: 'estado',
                     render: (d) => d === 1
@@ -57,7 +48,7 @@ $(document).ready(function () {
                 },
                 {
                     data: null, orderable: false, searchable: false,
-                    render: (data, type, row) => AppUtils.createActionButtons(row)
+                    render: (data, type, row) => createActionButtons(row)
                 },
             ],
             dom: "<'row pb-2 align-items-center'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
@@ -74,50 +65,77 @@ $(document).ready(function () {
                 search:        "Buscar:",
                 loadingRecords:"Cargando...",
                 paginate: { first: "Primero", last: "Último", next: "Siguiente", previous: "Anterior" }
-            }
+            },
+            pageLength: 10
         });
     }
 
-    // ── Cargar cargos en select ───────────────────────────
+    function createActionButtons(row) {
+        // 🌟 REEMPLAZO PREMIUM: Botonera unificada con la misma física reactiva que Usuarios y Perfiles
+        return `
+            <div class="action-buttons-wrapper">
+                <button type="button" class="action-jama-btn btn-action-edit action-edit" data-id="${row.id}" title="Editar Empleado">
+                    <svg viewBox="0 0 39 7" class="pencil-cap" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <line y1="3.5" x2="39" y2="3.5" stroke-width="4"/>
+                    </svg>
+                    <svg viewBox="0 0 33 39" class="pencil-body" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 2L2 15V37H31V15L27 2H6Z" stroke-width="3"/>
+                        <path d="M12 15V30" stroke-width="4" stroke="white"/>
+                        <path d="M21 15V30" stroke-width="4" stroke="white"/>
+                    </svg>
+                    <svg viewBox="0 0 89 80" class="sparks" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M40 0L50 30L80 40L50 50L40 80L30 50L0 40L30 30Z"/>
+                    </svg>
+                </button>
+
+                <button type="button" class="action-jama-btn btn-action-status action-status ${row.estado === 1 ? 'is-active' : ''}" data-id="${row.id}" title="Cambiar Estado">
+                    <svg class="eye-lid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                    </svg>
+                    <svg class="eye-pupil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <div class="eye-flash"></div>
+                </button>
+
+                <button type="button" class="action-jama-btn btn-action-delete action-delete" data-id="${row.id}" title="Eliminar Empleado">
+                    <svg viewBox="0 0 39 7" class="bin-top" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <line y1="5" x2="39" y2="5" stroke-width="4"/>
+                        <line x1="12" y1="1.5" x2="26" y2="1.5" stroke-width="3"/>
+                    </svg>
+                    <svg viewBox="0 0 33 39" class="bin-bottom" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M0 0H33V35C33 37.2 31.2 39 29 39H4C1.8 39 0 37.2 0 35V0Z"/>
+                        <path d="M12 6V29" stroke="white" stroke-width="4"/>
+                        <path d="M21 6V29" stroke="white" stroke-width="4"/>
+                    </svg>
+                    <svg viewBox="0 0 89 80" class="garbage" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20.5 10.5L37.5 15.5L42.5 11.5L51.5 12.5L68.75 0L72 11.5L79.5 12.5H88.5L87 22L68.75 31.5Z"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }
+
     function cargarCargos() {
         const select = $('#id_cargo');
-
-        $.get(ENDPOINTS.cargos)
-            .done(function (res) {
-                console.log("Datos recibidos de cargos:", res); // Esto es para que verifiques en consola
-                if (res.success && res.data) {
-                    select.empty().append('<option value="">-- Seleccione cargo --</option>');
-                    res.data.forEach(c => {
-                        select.append(`<option value="${c.id}">${c.nombre}</option>`);
-                    });
-                }
-            })
-            .fail(function (error) {
-                console.error("Error al cargar cargos de La Jama:", error);
-                select.empty().append('<option value="">Error al cargar</option>');
-            });
+        $.get(ENDPOINTS.cargos).done(function (res) {
+            if (res.success && res.data) {
+                select.empty().append('<option value="">-- Seleccione cargo --</option>');
+                res.data.forEach(c => select.append(`<option value="${c.id}">${c.nombre}</option>`));
+            }
+        });
     }
 
     function cargarUsuariosDisponibles() {
         $.get(ENDPOINTS.usuarios, function (res) {
             if (!res.success) return;
             const select = $('#id_usuario');
-
-            // Limpiamos y ponemos la opción por defecto
             select.empty().append('<option value="">-- Sin acceso (Solo personal) --</option>');
-
-            res.data.forEach(u => {
-                // Mostramos el login y el correo entre paréntesis para identificarlo bien
-                const infoUsuario = `${u.usuario} (${u.correo})`;
-                select.append(`<option value="${u.id}">${infoUsuario}</option>`);
-            });
+            res.data.forEach(u => select.append(`<option value="${u.id}">${u.usuario} (${u.correo})</option>`));
         });
     }
 
-    // ── Eventos ──────────────────────────────────────────
     function setupEventListeners() {
-
-        // Botón nuevo
         $('#btnNuevoRegistro').on('click', function () {
             isEditing = false;
             $('#modalTitle').text('Agregar Empleado');
@@ -125,52 +143,23 @@ $(document).ready(function () {
             modal.show();
         });
 
-        // Filtro por turno
         $('#filtroTurno').on('change', function () {
             const turno = $(this).val();
             const url = turno ? `${ENDPOINTS.buscar}?turno=${turno}` : ENDPOINTS.list;
             dataTable.ajax.url(url).load();
         });
 
-        // Guardar (submit form)
-        $('#form').on('submit', function (e) {
-            e.preventDefault();
-            guardarEmpleado();
-        });
-
-        // Editar
-        $('#tabla').on('click', '.action-edit', function () {
-            const id = $(this).data('id');
-            editarEmpleado(id);
-        });
-
-        // Cambiar estado
-        $('#tabla').on('click', '.action-status', function () {
-            const id = $(this).data('id');
-            AppUtils.showConfirmationDialog(
-                { title: '¿Cambiar estado?', text: 'Se alternará el estado del empleado.', icon: 'question', confirmButtonColor: '#f59e0b' },
-                () => cambiarEstado(id)
-            );
-        });
-
-        // Eliminar
-        $('#tabla').on('click', '.action-delete', function () {
-            const id = $(this).data('id');
-            AppUtils.showConfirmationDialog(
-                { title: '¿Eliminar empleado?', text: 'Esta acción no se puede deshacer.', icon: 'warning' },
-                () => eliminarEmpleado(id)
-            );
-        });
+        $('#form').on('submit', function (e) { e.preventDefault(); guardarEmpleado(); });
+        $('#tabla').on('click', '.action-edit', function () { editarEmpleado($(this).data('id')); });
+        $('#tabla').on('click', '.action-status', function () { cambiarEstado($(this).data('id')); });
+        $('#tabla').on('click', '.action-delete', function () { eliminarEmpleado($(this).data('id')); });
     }
-
-    // ── CRUD ──────────────────────────────────────────────
 
     function guardarEmpleado() {
         limpiarErrores();
-
-        const idVal   = $('#id').val();
-        const usuarioId = $('#id_usuario').val();
+        const idVal = $('#id').val();
         const cargoId = $('#id_cargo').val();
+        const usuarioId = $('#id_usuario').val();
 
         const payload = {
             id:           idVal ? parseInt(idVal) : null,
@@ -185,35 +174,22 @@ $(document).ready(function () {
             usuario:      usuarioId ? { id: parseInt(usuarioId) } : null
         };
 
-        // Validaciones frontend
-        let hayError = false;
-        if (!payload.nombre) { mostrarError('nombre-error', 'El nombre es obligatorio'); hayError = true; }
-        if (!payload.apellido) { mostrarError('apellido-error', 'El apellido es obligatorio'); hayError = true; }
-        if (payload.dni && payload.dni.length !== 8) { mostrarError('dni-error', 'El DNI debe tener 8 dígitos'); hayError = true; }
-        if (hayError) return;
+        if (!payload.nombre) { mostrarError('nombre-error', 'El nombre es obligatorio'); return; }
+        if (!payload.apellido) { mostrarError('apellido-error', 'El apellido es obligatorio'); return; }
+        if (payload.dni && payload.dni.length !== 8) { mostrarError('dni-error', 'El DNI debe tener 8 dígitos'); return; }
 
         AppUtils.showLoading(true);
-
         $.ajax({
-            url:         ENDPOINTS.save,
-            method:      'POST',
-            contentType: 'application/json',
-            data:        JSON.stringify(payload),
+            url: ENDPOINTS.save, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
             success: function (res) {
                 AppUtils.showLoading(false);
                 if (res.success) {
                     modal.hide();
                     dataTable.ajax.reload(null, false);
                     AppUtils.showNotification(res.message, 'success');
-                } else {
-                    AppUtils.showNotification(res.message || 'Error al guardar', 'error');
-                }
+                } else { AppUtils.showNotification(res.message, 'error'); }
             },
-            error: function (xhr) {
-                AppUtils.showLoading(false);
-                const msg = xhr.responseJSON?.message || 'Error al guardar el empleado';
-                AppUtils.showNotification(msg, 'error');
-            }
+            error: function () { AppUtils.showLoading(false); AppUtils.showNotification('Error al guardar el empleado', 'error'); }
         });
     }
 
@@ -221,7 +197,7 @@ $(document).ready(function () {
         AppUtils.showLoading(true);
         $.get(ENDPOINTS.get(id), function (res) {
             AppUtils.showLoading(false);
-            if (!res.success) { AppUtils.showNotification('No se pudo cargar el empleado', 'error'); return; }
+            if (!res.success) return;
 
             isEditing = true;
             const e = res.data;
@@ -232,7 +208,6 @@ $(document).ready(function () {
             $('#nombre').val(e.nombre);
             $('#apellido').val(e.apellido);
             $('#dni').val(e.dni);
-            $('#correo').val(e.correo);
             $('#telefono').val(e.telefono);
             $('#turno').val(e.turno);
             $('#tipoContrato').val(e.tipoContrato);
@@ -241,50 +216,34 @@ $(document).ready(function () {
             if (e.usuario) $('#id_usuario').val(e.usuario.id);
 
             modal.show();
-        }).fail(function () {
-            AppUtils.showLoading(false);
-            AppUtils.showNotification('Error al cargar empleado', 'error');
-        });
+        }).fail(function () { AppUtils.showLoading(false); });
     }
 
     function cambiarEstado(id) {
+        AppUtils.showLoading(true);
         $.post(ENDPOINTS.toggleStatus(id), function (res) {
-            if (res.success) {
-                dataTable.ajax.reload(null, false);
-                AppUtils.showNotification(res.message, 'success');
-            } else {
-                AppUtils.showNotification(res.message, 'error');
-            }
-        }).fail(function () {
-            AppUtils.showNotification('Error al cambiar estado', 'error');
-        });
+            AppUtils.showLoading(false);
+            if (res.success) { dataTable.ajax.reload(null, false); AppUtils.showNotification(res.message, 'success'); }
+        }).fail(function () { AppUtils.showLoading(false); });
     }
 
     function eliminarEmpleado(id) {
-        $.ajax({
-            url:    ENDPOINTS.delete(id),
-            method: 'DELETE',
-            success: function (res) {
-                if (res.success) {
-                    dataTable.ajax.reload(null, false);
-                    AppUtils.showNotification(res.message, 'success');
-                } else {
-                    AppUtils.showNotification(res.message, 'error');
-                }
-            },
-            error: function (xhr) {
-                const msg = xhr.responseJSON?.message || 'Error al eliminar';
-                AppUtils.showNotification(msg, 'error');
+        AppUtils.showConfirmationDialog(
+            { title: '¿Eliminar empleado?', text: 'Esta acción no se puede deshacer.', icon: 'warning' },
+            () => {
+                AppUtils.showLoading(true);
+                $.ajax({
+                    url: ENDPOINTS.delete(id), method: 'DELETE',
+                    success: function (res) {
+                        AppUtils.showLoading(false);
+                        if (res.success) { dataTable.ajax.reload(null, false); AppUtils.showNotification(res.message, 'success'); }
+                    },
+                    error: function () { AppUtils.showLoading(false); }
+                });
             }
-        });
+        );
     }
 
-    // ── Helpers ───────────────────────────────────────────
-    function mostrarError(elementId, mensaje) {
-        $(`#${elementId}`).text(mensaje);
-    }
-
-    function limpiarErrores() {
-        $('.invalid-feedback').text('');
-    }
+    function mostrarError(elementId, mensaje) { $(`#${elementId}`).text(mensaje); }
+    function limpiarErrores() { $('.invalid-feedback').text(''); }
 });

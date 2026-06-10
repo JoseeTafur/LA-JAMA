@@ -1,0 +1,465 @@
+/* ========================================================
+   💎 INTERFAZ DE GESTIÓN PREMIUM - ESTILO SHADCN / LA JAMA
+   ======================================================== */
+
+:root {
+  --lajama-green: #1B3A2C;
+  --lajama-peach: #fed7aa;
+  --lajama-brown: #933D2D;
+  --lajama-skin: #FFB38A;
+  --lajama-cream: #FFF7ED;
+  --lajama-white: #FFFFFF;
+  --text-dark: #2D2D2D;
+  --border-color: rgba(27, 58, 44, 0.08);
+}
+
+/* --- 1. TARJETA Y CONTENEDOR PRINCIPAL --- */
+.card-color1 {
+  background: var(--lajama-white) !important;
+  border: 1px solid rgba(254, 215, 170, 0.4) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 10px 30px -10px rgba(27, 58, 44, 0.05) !important;
+  padding: 0.5rem;
+}
+
+.card-title {
+  color: var(--lajama-green) !important;
+  font-size: 1.4rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  position: relative;
+}
+
+.card-title::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 30px;
+  height: 3.5px;
+  background: var(--lajama-skin);
+  border-radius: 50rem;
+}
+
+/* --- 2. BOTÓN PRINCIPAL KINETIC (ACETERNITY STYLE) --- */
+.btn-jama-kinetic {
+  position: relative;
+  height: 42px;
+  padding: 0 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--lajama-green) !important;
+  color: var(--lajama-white) !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(254, 215, 170, 0.2) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 4px 12px rgba(27, 58, 44, 0.15);
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn-jama-kinetic::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(254, 215, 170, 0.15), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+
+.btn-jama-kinetic:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(27, 58, 44, 0.25), 0 0 8px rgba(254, 215, 170, 0.4);
+  border-color: var(--lajama-skin) !important;
+}
+
+.btn-jama-kinetic:hover::before { transform: translateX(100%); }
+.btn-jama-kinetic i { transition: transform 0.3s ease; }
+.btn-jama-kinetic:hover i { transform: rotate(90deg); }
+.btn-jama-kinetic:active { transform: scale(0.98); }
+
+/* --- 3. TABLA FLOTANTE DE FILAS SEPARADAS --- */
+.table-responsive-jama {
+    width: 100%;
+    padding: 4px;
+    overflow-x: hidden; /* Escritorio: Sin scroll */
+    overflow-y: visible;
+}
+
+.table-jama {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 8px !important;
+  margin-top: -8px !important;
+  vertical-align: middle;
+}
+
+.table-jama thead th {
+  background-color: var(--lajama-green) !important;
+  color: var(--lajama-white) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 0.85rem 1.1rem !important;
+  border: none !important;
+  white-space: nowrap; /* Evita que el texto de la cabecera se rompa */
+}
+
+.table-jama thead th:first-child { border-radius: 0.6rem 0 0 0.6rem !important; }
+.table-jama thead th:last-child { border-radius: 0 0.6rem 0.6rem 0 !important; }
+
+.table-jama tbody tr {
+  background-color: var(--lajama-white) !important;
+  box-shadow: 0 2px 6px rgba(27, 58, 44, 0.03) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.table-jama tbody td {
+  padding: 0.9rem 1.1rem !important;
+  color: var(--text-dark) !important;
+  font-size: 0.9rem !important;
+  border-top: 1px solid var(--border-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.table-jama tbody tr td:first-child {
+  border-left: 1px solid var(--border-color) !important;
+  border-radius: 0.6rem 0 0 0.6rem !important;
+  font-weight: 600;
+}
+
+.table-jama tbody tr td:last-child {
+  border-right: 1px solid var(--border-color) !important;
+  border-radius: 0 0.6rem 0.6rem 0 !important;
+}
+
+.table-jama tbody tr:hover {
+  transform: translateY(-1.5px);
+  background-color: var(--lajama-cream) !important;
+  box-shadow: 0 6px 16px rgba(27, 58, 44, 0.06), 0 0 1px var(--lajama-skin) !important;
+}
+
+.table-jama tbody tr:hover td { border-color: var(--lajama-peach) !important; }
+
+/* --- 4. MICRO-BOTONES DE ACCIÓN KINETIC (CRUD) --- */
+.action-buttons-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-jama-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.action-jama-btn:active { transform: scale(0.9); }
+
+/* 🔴 ELIMINAR */
+.btn-action-delete { background-color: #fee2e2; border-color: #fca5a5; }
+.btn-action-delete .bin-bottom { width: 11px; z-index: 2; fill: #dc2626; }
+.btn-action-delete .bin-top { width: 13px; transform-origin: right; transition: transform 0.3s ease; z-index: 2; stroke: #dc2626; }
+.btn-action-delete .garbage { position: absolute; width: 10px; height: auto; z-index: 1; opacity: 0; fill: #dc2626; }
+.btn-action-delete:hover { background-color: #dc2626; border-color: #b91c1c; }
+.btn-action-delete:hover .bin-top { transform: rotate(45deg); stroke: #ffffff; }
+.btn-action-delete:hover .bin-bottom { fill: #ffffff; }
+.btn-action-delete:hover .garbage { animation: throw 0.4s linear forwards; }
+
+/* ✏️ EDITAR */
+.btn-action-edit { background-color: var(--lajama-cream); border-color: var(--lajama-peach); }
+.btn-action-edit .pencil-body { width: 11px; z-index: 2; fill: var(--lajama-green); }
+.btn-action-edit .pencil-cap { width: 13px; transform-origin: left; transition: transform 0.3s ease; z-index: 2; stroke: var(--lajama-green); }
+.btn-action-edit .sparks { position: absolute; width: 9px; z-index: 1; opacity: 0; fill: var(--lajama-skin); }
+.btn-action-edit:hover { background-color: var(--lajama-green); border-color: #11251c; }
+.btn-action-edit:hover .pencil-cap { transform: translateY(-3px) rotate(-20px); stroke: #ffffff; }
+.btn-action-edit:hover .pencil-body { fill: #ffffff; }
+.btn-action-edit:hover .sparks { animation: throw 0.4s ease-out forwards; }
+
+/* 👁️ ESTADO */
+.btn-action-status { background-color: #fef3c7; border-color: #fcd34d; color: #d97706; }
+.btn-action-status .eye-lid { width: 16px; z-index: 2; transition: transform 0.3s ease; }
+.btn-action-status .eye-pupil { width: 16px; position: absolute; z-index: 2; transition: all 0.3s ease; }
+.btn-action-status .eye-flash { position: absolute; width: 100%; height: 100%; background-color: var(--lajama-skin); top: 100%; left: 0; z-index: 1; transition: all 0.3s ease; }
+.btn-action-status:hover { background-color: #d97706; border-color: #b45309; color: #ffffff; }
+.btn-action-status:hover .eye-pupil { transform: scale(1.2); }
+.btn-action-status:hover .eye-flash { top: 0; opacity: 0.15; }
+.btn-action-status.is-active { background-color: #dcfce7; border-color: #86efac; color: #16a34a; }
+.btn-action-status.is-active:hover { background-color: #16a34a; border-color: #14532d; color: #ffffff; }
+
+@keyframes throw {
+  from { transform: translate(-150%, 150%); opacity: 0; }
+  50% { opacity: 1; }
+  to { transform: translate(120%, -120%); opacity: 0; }
+}
+
+/* --- 5. PAGINACIÓN LÍQUIDA INTERACTIVA --- */
+.dataTables_wrapper .dataTables_paginate { margin-top: 1.5rem !important; padding: 0.5rem 0; }
+.dataTables_wrapper .pagination { display: flex !important; gap: 8px !important; margin: 0 !important; flex-wrap: wrap; } /* 🌟 Permite salto de línea en móviles */
+.dataTables_wrapper .pagination .page-item { list-style: none; }
+.dataTables_wrapper .pagination .page-link {
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  width: 40px !important; height: 40px !important; padding: 0 !important; background-color: transparent !important;
+  color: var(--text-dark) !important; font-weight: 700 !important; font-size: 0.9rem !important;
+  border: 1px solid var(--border-color) !important; border-radius: 10px !important; cursor: pointer;
+  position: relative !important; z-index: 1 !important; overflow: visible !important;
+  transition: all 0.48s cubic-bezier(0.23, 1, 0.32, 1) !important;
+}
+.dataTables_wrapper .pagination .page-link::before {
+  content: ""; position: absolute; top: -24px; left: 50%; width: 40px; height: 40px;
+  border-radius: 10px; background-color: var(--lajama-green); transform: translate(-50%, -50%); z-index: -1; opacity: 0; scale: 0;
+  transition: all 0.48s cubic-bezier(0.23, 1, 0.32, 1) !important;
+}
+.dataTables_wrapper .pagination .page-link::after {
+  content: ""; position: absolute; bottom: -32px; left: 50%; width: 6px; height: 6px;
+  border-radius: 50%; background-color: var(--lajama-skin); transform: translateX(-50%); scale: 0; opacity: 0; z-index: 2;
+  transition: all 0.48s 0.1s cubic-bezier(0.23, 1, 0.32, 1) !important;
+}
+.dataTables_wrapper .pagination .page-item:not(.active):not(.disabled) .page-link:hover {
+  border-color: var(--lajama-green) !important; color: var(--lajama-green) !important; background-color: var(--lajama-cream) !important; transform: translateY(-2px);
+}
+.dataTables_wrapper .pagination .page-item.active .page-link { border-color: transparent !important; color: var(--lajama-white) !important; scale: 1.05; font-weight: 800 !important; box-shadow: 0 4px 12px rgba(27, 58, 44, 0.15) !important; }
+.dataTables_wrapper .pagination .page-item.active .page-link::before { opacity: 1; scale: 1; top: 50%; }
+.dataTables_wrapper .pagination .page-item.active .page-link::after { bottom: -10px; opacity: 1; scale: 1; box-shadow: 0 2px 8px var(--lajama-skin); }
+.dataTables_wrapper .pagination .page-item:first-child .page-link, .dataTables_wrapper .pagination .page-item:last-child .page-link { width: auto !important; padding: 0 1rem !important; font-size: 0.8rem !important; text-transform: uppercase; letter-spacing: 0.05em; }
+.dataTables_wrapper .pagination .page-item.disabled .page-link { opacity: 0.4 !important; border-color: var(--border-color) !important; color: var(--text-muted) !important; cursor: not-allowed; }
+
+/* --- 6. MODALES (BLUR BACKGROUND) --- */
+.modal-backdrop { background-color: #050807 !important; opacity: 0.6 !important; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.modal-content { border: 1px solid var(--lajama-peach) !important; border-radius: 1.25rem !important; box-shadow: 0 20px 50px rgba(5, 8, 7, 0.15) !important; }
+.modal-header { background-color: var(--lajama-green) !important; color: white !important; border-bottom: none !important; border-radius: 1.25rem 1.25rem 0 0; }
+.form-control, .form-select { border: 2px solid var(--lajama-peach) !important; border-radius: 12px !important; padding: 12px !important; background-color: var(--lajama-white) !important; }
+.form-control:focus, .form-select:focus { outline: none !important; border-color: var(--lajama-skin) !important; box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.25) !important; }
+.form-label { color: var(--lajama-green); font-weight: 700; margin-bottom: 6px; font-size: 0.9rem; }
+
+
+/* ========================================================
+   📱 7. RESPONSIVE MEDIA QUERIES (ARREGLADO PARA MÓVILES)
+   ======================================================== */
+
+@media (max-width: 991.98px) {
+  /* 🌟 Habilita el desplazamiento táctil horizontal en tablets/móviles */
+  .table-responsive-jama {
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 15px; /* Espacio extra para que no se coma el borde inferior */
+  }
+}
+
+@media (max-width: 767.98px) {
+  .card-color1 { padding: 1rem !important; border-radius: 0.75rem !important; }
+  .card-title { font-size: 1.2rem !important; }
+
+  /* Ajuste drástico de los controles de DataTables para que no rompan la pantalla */
+  .dataTables_wrapper .row {
+    margin: 0 !important;
+  }
+  .dataTables_wrapper .row > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding: 0 !important;
+  }
+
+  /* Buscador al 100% de ancho */
+  .dataTables_wrapper .dataTables_filter,
+  .dataTables_wrapper .dataTables_length {
+    width: 100% !important;
+    text-align: center !important;
+  }
+  .dataTables_wrapper .dataTables_filter input {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-top: 8px;
+    display: block;
+  }
+
+  /* Paginación centrada y que pueda saltar de línea */
+  .dataTables_wrapper .pagination {
+    justify-content: center !important;
+    width: 100% !important;
+    gap: 6px !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  /* Reduce los márgenes de las celdas para hacer caber más datos */
+  .table-jama thead th { padding: 0.7rem 0.6rem !important; font-size: 0.7rem !important; }
+  .table-jama tbody td { padding: 0.75rem 0.5rem !important; font-size: 0.85rem !important; }
+
+  /* Los botones de acción ahora envuelven (wrap) en pantallas enanas */
+  .action-buttons-wrapper { flex-wrap: wrap; justify-content: center; gap: 6px !important; }
+  .action-jama-btn { width: 32px; height: 32px; }
+
+  /* El botón de nuevo registro ocupa toda la línea */
+  .btn-jama-kinetic { width: 100% !important; justify-content: center !important; }
+
+  .modal-dialog { margin: 0.5rem !important; }
+
+  /* Soporte visual si usas el plugin Responsive de DataTables (El ícono "+") */
+  table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
+  table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
+    background-color: var(--lajama-green) !important;
+    box-shadow: 0 0 3px var(--lajama-skin) !important;
+  }
+}
+
+/* ========================================================
+   💎 6. MODALES MAESTROS (BACKDROP BLUR & GLASS SHADCN STYLE)
+   ======================================================== */
+
+/* --- Fondo desenfocado premium con mayor saturación --- */
+.modal-backdrop {
+  background-color: #050807 !important;
+  opacity: 0.4 !important;
+  backdrop-filter: blur(8px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
+  transition: all 0.3s ease;
+}
+
+/* --- Cascarón del Modal --- */
+.modal-content {
+  background-color: var(--lajama-white) !important;
+  border: 1px solid rgba(254, 215, 170, 0.6) !important;
+  border-radius: 1.25rem !important; /* Esquinas suavizadas */
+  box-shadow: 0 25px 50px -12px rgba(27, 58, 44, 0.25) !important;
+  overflow: hidden;
+  transition: transform 0.3s ease-out;
+}
+
+/* --- Encabezado Orgánico --- */
+.modal-header {
+  background: linear-gradient(135deg, var(--lajama-green) 0%, #26503d 100%) !important;
+  color: var(--lajama-white) !important;
+  border-bottom: none !important;
+  padding: 1.25rem 1.75rem !important;
+}
+
+.modal-title {
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Botón cerrar (X) estilizado */
+.btn-close-white {
+  filter: invert(1) grayscale(100%) brightness(200%) !important;
+  opacity: 0.75;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.btn-close-white:hover {
+  opacity: 1;
+  transform: rotate(90deg);
+}
+
+/* --- Cuerpo del Formulario e Inputs Modernos --- */
+.modal-body {
+  background-color: var(--lajama-white) !important;
+  padding: 1.75rem !important;
+}
+
+.form-label {
+  color: var(--lajama-green) !important;
+  font-weight: 700 !important;
+  font-size: 0.8rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.4rem !important;
+}
+
+.form-control, .form-select {
+  border: 1.5px solid rgba(27, 58, 44, 0.12) !important;
+  border-radius: 0.65rem !important;
+  padding: 0.65rem 0.9rem !important;
+  font-size: 0.9rem !important;
+  background-color: #f9fafb !important;
+  color: var(--text-dark) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Foco interactivo con el color durazno sutil */
+.form-control:focus, .form-select:focus {
+  background-color: var(--lajama-white) !important;
+  border-color: var(--lajama-skin) !important;
+  box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.22) !important;
+}
+
+.form-control::placeholder {
+  color: #9ca3af !important;
+  opacity: 0.8;
+}
+
+/* --- Footer Distributivo --- */
+.modal-footer {
+  background-color: var(--lajama-cream) !important;
+  border-top: 1px solid rgba(254, 215, 170, 0.3) !important;
+  padding: 1rem 1.75rem !important;
+}
+
+/* --- Botón Secundario (Cancelar) --- */
+.modal-footer .btn-secondary {
+  background-color: transparent !important;
+  color: #6b7280 !important;
+  border: 1px solid rgba(27, 58, 44, 0.15) !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  padding: 0.55rem 1.25rem !important;
+  border-radius: 0.65rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.modal-footer .btn-secondary:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  color: #374151 !important;
+  border-color: rgba(27, 58, 44, 0.25) !important;
+}
+
+/* --- Botón Primario (Guardar) --- */
+.modal-footer .btn-primary {
+  background-color: var(--lajama-green) !important;
+  border: 1px solid rgba(254, 215, 170, 0.2) !important;
+  color: var(--lajama-white) !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  padding: 0.55rem 1.75rem !important;
+  border-radius: 0.65rem !important;
+  box-shadow: 0 4px 10px rgba(27, 58, 44, 0.12) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.modal-footer .btn-primary:hover {
+  background-color: #12281e !important;
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px rgba(27, 58, 44, 0.22) !important;
+}
+
+.modal-footer .btn-primary:active {
+  transform: scale(0.98);
+}
+
+/* Pequeñas ayudas o textos informativos */
+.text-muted {
+  font-size: 0.8rem !important;
+  color: #6b7280 !important;
+}

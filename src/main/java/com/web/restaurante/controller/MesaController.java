@@ -25,9 +25,14 @@ public class MesaController {
     private final PedidoService pedidoService;
     private final MesaRepository mesaRepository;
     private final PedidoRepository pedidoRepository;
-
     @GetMapping
     public String verPlanoMesas(Model model) {
+        // ========================================================
+        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
+        // ========================================================
+        model.addAttribute("activeUri", "/admin/mesas");
+        model.addAttribute("titleHeader", "Plano de Distribución de Mesas");
+
         List<MesaDTO> mesasDTO = mesaService.obtenerMesasParaSalon();
         List<Pedido> pedidosActivos = mesaService.obtenerPedidosActivos();
 

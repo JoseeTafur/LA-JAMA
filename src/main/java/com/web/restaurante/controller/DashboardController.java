@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.util.Map;
 
 @RequiredArgsConstructor
-@Controller
+@Controller 
 public class DashboardController {
     private final UsuarioService usuarioService;
     private final EmpleadoService empleadoService;
@@ -26,6 +26,12 @@ public class DashboardController {
                 ? session.getAttribute("rol").toString().toUpperCase()
                 : "INVITADO";
 
+        // ========================================================
+        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
+        // ========================================================
+        // activeUri debe coincidir exactamente con la ruta configurada en base de datos/sesión
+        model.addAttribute("activeUri", "/dashboard");
+        model.addAttribute("titleHeader", "Panel de Control");
         model.addAttribute("rol", rol);
 
         // KPIs solo para ADMIN y CAJERO

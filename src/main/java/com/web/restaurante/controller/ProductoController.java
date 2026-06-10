@@ -28,6 +28,12 @@ public class ProductoController {
 
     @GetMapping
     public String listar(Model model) {
+        // ========================================================
+        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
+        // ========================================================
+        model.addAttribute("activeUri", "/admin/productos"); // 💡 Ajusta si en tu BD no lleva /admin
+        model.addAttribute("titleHeader", "Catálogo de Productos y Platos");
+
         model.addAttribute("productos", productoRepository.findAll());
         model.addAttribute("categorias", categoriaRepository.findAll());
         return "admin/productos_lista";

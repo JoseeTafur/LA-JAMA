@@ -42,6 +42,12 @@ public class MeseroController {
                               @RequestParam(required = false) Long pedidoId) {
         if (session.getAttribute("usuarioLogueado") == null) return "redirect:/login";
 
+        // ========================================================
+        // 🔒 PERSISTENCIA EN SALA: Forzamos a que el sidebar crea que seguimos en Mesas
+        // ========================================================
+        model.addAttribute("activeUri", "/admin/mesas");
+        model.addAttribute("titleHeader", "Comandera / Mesa N° " + (mesaId != null ? mesaId : ""));
+
         if (mesaId == null) {
             return "redirect:/admin/mesas";
         }

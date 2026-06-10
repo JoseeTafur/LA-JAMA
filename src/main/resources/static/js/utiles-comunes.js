@@ -1,3 +1,6 @@
+// ========================================================
+// MÓDULO GLOBAL DE UTILITARIOS (APPUTILS)
+// ========================================================
 const AppUtils = (function () {
     const Toast = Swal.mixin({
         toast: true,
@@ -18,18 +21,31 @@ const AppUtils = (function () {
         });
     }
 
+    // Inyección dinámica de tus 7 bloques geométricos en cascada (Para procesos CRUD internos)
+    // Modifica únicamente esta sección dentro de tu AppUtils de utiles-comunes.js
     function showLoading(show) {
-        const overlayId = 'loading-overlay';
+        const overlayId = 'crud-loading-overlay'; // ID único para operaciones CRUD internos
         if (show) {
             if ($(`#${overlayId}`).length === 0) {
                 $('body').append(`
                     <div id="${overlayId}" class="loading-overlay" style="
                         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                        background: rgba(255, 255, 255, 0.7); z-index: 9999;
-                        display: flex; justify-content: center; align-items: center;">
-                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                            <span class="visually-hidden">Cargando...</span>
+                        background: rgba(6, 10, 8, 0.94); z-index: 99999; /* Mayor z-index */
+                        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rem;">
+
+                        <div class="loader">
+                            <div class="loader-square"></div>
+                            <div class="loader-square"></div>
+                            <div class="loader-square"></div>
+                            <div class="loader-square"></div>
+                            <div class="loader-square"></div>
+                            <div class="loader-square"></div>
+                            <div class="loader-square"></div>
                         </div>
+
+                        <p style="color: #fed7aa; font-size: 1.1rem; font-weight: 600; letter-spacing: 1px; margin: 0; font-family: system-ui, sans-serif;">
+                            Procesando solicitud...
+                        </p>
                     </div>
                 `);
             }
@@ -39,10 +55,7 @@ const AppUtils = (function () {
     }
 
     function createActionButtons(row) {
-        const statusIcon = row.estado === 1
-            ? '<i class="bi bi-eye-slash-fill"></i>'
-            : '<i class="bi bi-eye-fill"></i>';
-
+        const statusIcon = row.estado === 1 ? '<i class="bi bi-eye-slash-fill"></i>' : '<i class="bi bi-eye-fill"></i>';
         const statusClass = row.estado === 1 ? 'btn-outline-warning action-status' : 'btn-outline-success action-status';
         const statusTitle = row.estado === 1 ? 'Desactivar' : 'Activar';
 
@@ -63,17 +76,8 @@ const AppUtils = (function () {
 
     function clearForm(formId) {
         $(`${formId} #id`).val('');
-        $(`${formId} input[type="text"],
-           ${formId} input[type="number"],
-           ${formId} input[type="date"],
-           ${formId} input[type="email"],
-           ${formId} input[type="password"],
-           ${formId} input[type="tel"],
-           ${formId} input[type="file"],
-           ${formId} textarea`).val('');
-
+        $(`${formId} input[type="text"], ${formId} input[type="number"], ${formId} input[type="date"], ${formId} input[type="email"], ${formId} input[type="password"], ${formId} input[type="tel"], ${formId} input[type="file"], ${formId} textarea`).val('');
         $(`${formId} select`).prop('selectedIndex', 0).trigger('change');
-
         $(`${formId} .form-control, ${formId} .form-select`).removeClass('is-invalid');
         $('.invalid-feedback').text('');
     }
@@ -90,9 +94,7 @@ const AppUtils = (function () {
             cancelButtonText: 'Cancelar',
             reverseButtons: true
         };
-
         const config = { ...defaults, ...options };
-
         Swal.fire(config).then((result) => {
             if (result.isConfirmed && typeof onConfirm === 'function') {
                 onConfirm();
@@ -108,3 +110,31 @@ const AppUtils = (function () {
         showConfirmationDialog: showConfirmationDialog,
     };
 })();
+
+// ========================================================
+// CONTROL DE SIDEBAR INTERNO (JQUERY)
+// ========================================================
+$(document).ready(function () {
+    function setupSidebar() {
+        const sidebar = $('#sidebar');
+        const openSidebarBtn = $('#open-sidebar');
+        const closeSidebarBtn = $('#close-sidebar');
+        const sidebarOverlay = $('#sidebar-overlay');
+
+        if (openSidebarBtn.length) {
+            openSidebarBtn.on('click', function () {
+                sidebar.addClass('active');
+                sidebarOverlay.addClass('active');
+            });
+
+            function closeSidebar() {
+                sidebar.removeClass('active');
+                sidebarOverlay.removeClass('active');
+            }
+
+            closeSidebarBtn.on('click', closeSidebar);
+            sidebarOverlay.on('click', closeSidebar);
+        }
+    }
+    setupSidebar();
+});
