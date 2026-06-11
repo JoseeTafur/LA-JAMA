@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content, js)">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content, modals, js)">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -20,12 +20,17 @@
     </main>
 </div>
 
-
-
 <th:block th:replace="${modals}"></th:block>
 
 <div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
 <th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
-<script th:src="@{${js}}"></script>
+
+<script th:src="@{/js/utiles-comunes.js}"></script>
+
+<script th:src="@{/js/sidebar.js}"></script>
+<script th:src="@{/js/main.js}"></script>
+
+<script th:src="@{{path}(path=${js})}"></script>
 </body>
 </html>

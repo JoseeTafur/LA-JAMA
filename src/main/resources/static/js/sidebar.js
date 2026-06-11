@@ -1,12 +1,72 @@
 /**
  * LA JAMA - MÓDULO DE CONTROL DE NAVEGACIÓN Y SIDEBAR
  * Responsabilidad: Gestionar la responsividad del menú lateral, persistencia
- * de estados colapsados y limpieza de caché del historial de navegación.
+ * de estados colapsados, limpieza de caché y efectos interactivos kinéticos.
  */
 
+// ─── 1. INTERACTIVIDAD CINÉTICA DE CUADRADITOS (VANILLA JS) ───────────────────
+document.addEventListener("DOMContentLoaded", function () {
+    const sidebarElement = document.getElementById("sidebar");
+    const gridContainer = document.getElementById("sidebar-ripple");
+    const glowElement = document.getElementById("sidebar-glow");
+
+    if (gridContainer && sidebarElement) {
+        // Inyectamos las 250 celdas interactivas en el contenedor del DOM
+        for (let i = 0; i < 250; i++) {
+            const cell = document.createElement("div");
+            cell.className = "ripple-cell";
+            gridContainer.appendChild(cell);
+        }
+
+        const cells = gridContainer.querySelectorAll(".ripple-cell");
+
+        // Tracking del cursor sobre las celdas para el brillo de fondo
+        sidebarElement.addEventListener("mousemove", (e) => {
+            const rect = sidebarElement.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (glowElement) {
+                glowElement.style.setProperty("--bg-x", x);
+                glowElement.style.setProperty("--bg-y", y);
+            }
+        });
+
+        // Ola concéntrica expansiva al hacer clic
+        gridContainer.addEventListener("click", (e) => {
+            const cell = e.target.closest(".ripple-cell");
+            if (!cell) return;
+
+            const rect = gridContainer.getBoundingClientRect();
+            const cols = Math.floor(rect.width / 40);
+
+            const cellIndex = Array.from(cells).indexOf(cell);
+            if (cellIndex === -1) return;
+
+            const clickedRow = Math.floor(cellIndex / cols);
+            const clickedCol = cellIndex % cols;
+
+            cells.forEach((c, index) => {
+                const row = Math.floor(index / cols);
+                const col = index % cols;
+
+                const distance = Math.sqrt(
+                    Math.pow(row - clickedRow, 2) + Math.pow(col - clickedCol, 2)
+                );
+
+                c.classList.remove("animate-ripple");
+                void c.offsetWidth; // Forzar reflow táctil del DOM
+                c.style.setProperty("--delay", `${distance * 50}ms`);
+                c.classList.add("animate-ripple");
+            });
+        });
+    }
+});
+
+// ─── 2. SELECTORES Y EVENTOS COMPARTIDOS (JQUERY) ───────────────────────────
 $(document).ready(function () {
     // ========================================================
-    // 1. DECLARACIÓN DE SELECTORES COMPARTIDOS
+    // DECLARACIÓN DE SELECTORES COMPARTIDOS
     // ========================================================
     const $sidebar        = $('#sidebar');
     const $openSidebarBtn = $('#open-sidebar');
@@ -14,7 +74,7 @@ $(document).ready(function () {
     const $sidebarOverlay = $('#sidebar-overlay');
 
     // ========================================================
-    // 2. CONTROLADOR DE EVENTOS EN PANTALLAS MÓVILES
+    // CONTROLADOR DE EVENTOS EN PANTALLAS MÓVILES
     // ========================================================
     if ($openSidebarBtn.length && $sidebar.length) {
 
@@ -38,10 +98,8 @@ $(document).ready(function () {
     }
 
     // ========================================================
-    // 3. PERSISTENCIA DE SUBMENÚS DESPLEGABLES (BOOTSTRAP)
+    // PERSISTENCIA DE SUBMENÚS DESPLEGABLES (BOOTSTRAP)
     // ========================================================
-    // Este bloque previene que los colapsables dinámicos de Thymeleaf
-    // pierdan su estado de foco al cambiar de sección interna.
     $('.sidebar .collapse').on('shown.bs.collapse', function () {
         localStorage.setItem('menu_abierto_' + this.id, 'true');
     }).on('hidden.bs.collapse', function () {

@@ -6,16 +6,13 @@
 <div id="contenido">
     <div class="card rounded-lg card-color1">
         <div class="card-body">
-
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="card-title h5 fw-bold">Lista de Usuarios</h1>
-
                 <button type="button" id="btnNuevoRegistro" class="btn-jama-kinetic">
                     <i class="bi bi-plus-lg"></i>
                     <span>Nuevo Registro</span>
                 </button>
             </div>
-
             <div class="table-responsive-jama">
                 <table id="tabla" class="table table-jama responsive" style="width: 100%">
                     <thead>
@@ -28,11 +25,9 @@
                         <th>Acciones</th>
                     </tr>
                     </thead>
-                    <tbody>
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
-
         </div>
     </div>
 </div>
@@ -48,19 +43,16 @@
                 <form id="form" novalidate>
                     <div class="modal-body p-4">
                         <input type="hidden" id="id" name="id" />
-
                         <div class="mb-3">
                             <label for="usuario" class="form-label">Nombre de Usuario</label>
                             <input type="text" id="usuario" class="form-control" placeholder="Ej. juan.perez" required />
                             <div id="usuario-error" class="invalid-feedback d-block"></div>
                         </div>
-
                         <div class="mb-3">
                             <label for="correo" class="form-label">Correo Electrónico</label>
                             <input type="email" id="correo" class="form-control" placeholder="ejemplo@lajama.com" required />
                             <div id="correo-error" class="invalid-feedback d-block"></div>
                         </div>
-
                         <div class="mb-3">
                             <label for="id_perfil" class="form-label">Perfil / Rol</label>
                             <select id="id_perfil" class="form-select" required>
@@ -68,7 +60,6 @@
                             </select>
                             <div id="id_perfil-error" class="invalid-feedback d-block"></div>
                         </div>
-
                         <div class="mb-3">
                             <label for="clave" class="form-label">Contraseña</label>
                             <input type="password" id="clave" class="form-control" placeholder="Mínimo 6 caracteres" />

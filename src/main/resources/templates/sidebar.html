@@ -24,7 +24,6 @@
         <hr class="text-white-50 position-relative z-2" />
 
         <div class="jama-uiverse-container">
-
             <div class="sidebar-scrollable-menu">
                 <article class="jama-uiverse-menu">
 
@@ -53,7 +52,6 @@
                     </label>
 
                     <div th:each="grupo : ${session.menuAgrupado.entrySet()}" class="jama-uiverse-group-wrapper">
-
                         <th:block th:with="folder=${#strings.toLowerCase(grupo.key)},
                                            isGroupActive=${activeUri != null && (
                                                (folder == 'cocina' && activeUri.contains('/cocina/')) ||
@@ -99,10 +97,8 @@
                                     </li>
                                 </ul>
                             </div>
-
                         </th:block>
                     </div>
-
                 </article>
             </div>
 
@@ -115,98 +111,11 @@
                 <i class="bi bi-box-arrow-right jama-uiverse-icon"></i>
                 <span class="jama-uiverse-text">Cerrar Sesión</span>
             </label>
-
         </div>
     </nav>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const sidebarElement = document.getElementById("sidebar");
-            const gridContainer = document.getElementById("sidebar-ripple");
-            const glowElement = document.getElementById("sidebar-glow");
-
-            if (gridContainer && sidebarElement) {
-                for (let i = 0; i < 250; i++) {
-                    const cell = document.createElement("div");
-                    cell.className = "ripple-cell";
-                    gridContainer.appendChild(cell);
-                }
-
-                const cells = gridContainer.querySelectorAll(".ripple-cell");
-
-                sidebarElement.addEventListener("mousemove", (e) => {
-                    const rect = sidebarElement.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-
-                    if (glowElement) {
-                        glowElement.style.setProperty("--bg-x", x);
-                        glowElement.style.setProperty("--bg-y", y);
-                    }
-                });
-
-                gridContainer.addEventListener("click", (e) => {
-                    const cell = e.target.closest(".ripple-cell");
-                    if (!cell) return;
-
-                    const rect = gridContainer.getBoundingClientRect();
-                    const cols = Math.floor(rect.width / 40);
-
-                    const cellIndex = Array.from(cells).indexOf(cell);
-                    if (cellIndex === -1) return;
-
-                    const clickedRow = Math.floor(cellIndex / cols);
-                    const clickedCol = cellIndex % cols;
-
-                    cells.forEach((c, index) => {
-                        const row = Math.floor(index / cols);
-                        const col = index % cols;
-
-                        const distance = Math.sqrt(
-                            Math.pow(row - clickedRow, 2) + Math.pow(col - clickedCol, 2)
-                        );
-
-                        c.classList.remove("animate-ripple");
-                        void c.offsetWidth;
-                        c.style.setProperty("--delay", `${distance * 50}ms`);
-                        c.classList.add("animate-ripple");
-                    });
-                });
-            }
-        });
-
-        $(document).ready(function () {
-            const $sidebar        = $('#sidebar');
-            const $openSidebarBtn = $('#open-sidebar');
-            const $closeSidebarBtn= $('#close-sidebar');
-            const $sidebarOverlay = $('#sidebar-overlay');
-
-            if ($openSidebarBtn.length && $sidebar.length) {
-                $openSidebarBtn.on('click', function () {
-                    $sidebar.addClass('active');
-                    if ($sidebarOverlay.length) $sidebarOverlay.addClass('active');
-                });
-
-                function cerrarMenuMovil() {
-                    $sidebar.removeClass('active');
-                    if ($sidebarOverlay.length) $sidebarOverlay.removeClass('active');
-                }
-
-                if ($closeSidebarBtn.length) $closeSidebarBtn.on('click', cerrarMenuMovil);
-                if ($sidebarOverlay.length) $sidebarOverlay.on('click', cerrarMenuMovil);
-            }
-
-            $('.sidebar .collapse').on('shown.bs.collapse', function () {
-                localStorage.setItem('menu_abierto_' + this.id, 'true');
-            }).on('hidden.bs.collapse', function () {
-                localStorage.removeItem('menu_abierto_' + this.id);
-            });
-        });
-    </script>
 </div>
 
 <header th:fragment="logistica_header(titulo)" class="main-header-banner">
-
     <div id="stars"></div>
     <div id="stars2"></div>
     <div id="stars3"></div>

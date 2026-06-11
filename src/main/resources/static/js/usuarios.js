@@ -113,12 +113,31 @@ $(document).ready(function () {
     }
 
     function setupEventListeners() {
-        $('#btnNuevoRegistro').on('click', openModalForNew);
-        $(formId).on('submit', (e) => { e.preventDefault(); saveUsuario(); });
-        $('#tabla tbody').on('click', '.action-edit', handleEdit);
-        $('#tabla tbody').on('click', '.action-status', handleToggleStatus);
-        $('#tabla tbody').on('click', '.action-delete', handleDelete);
-    }
+            // Botón nuevo registro
+            $('#btnNuevoRegistro').on('click', openModalForNew);
+
+            // Guardar formulario
+            $(formId).on('submit', function (e) {
+                e.preventDefault();
+                saveUsuario();
+            });
+
+            // 🌟 Captura segura de botones dinámicos usando funciones anónimas de jQuery
+            $('#tabla tbody').on('click', '.action-edit', function () {
+                const id = $(this).data('id');
+                handleEdit(id); // Pasamos el ID directamente como argumento seguro
+            });
+
+            $('#tabla tbody').on('click', '.action-status', function () {
+                const id = $(this).data('id');
+                handleToggleStatus(id);
+            });
+
+            $('#tabla tbody').on('click', '.action-delete', function () {
+                const id = $(this).data('id');
+                handleDelete(id);
+            });
+        }
 
     function reloadTable() { dataTable.ajax.reload(null, false); }
 
@@ -165,52 +184,49 @@ $(document).ready(function () {
             .finally(() => AppUtils.showLoading(false));
     }
 
-    function handleEdit() {
-        const id = $(this).data('id');
-        AppUtils.showLoading(true);
-        fetch(`${ENDPOINTS.get(id)}?t=${new Date().getTime()}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) { openModalForEdit(data.data); }
-                else { AppUtils.showNotification('Error al cargar usuario', 'error'); }
-            })
-            .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
-            .finally(() => AppUtils.showLoading(false));
-    }
+    function handleEdit(id) { // 👈 Ahora recibe el ID directamente, sin depender de '$(this)'
+            AppUtils.showLoading(true);
+            fetch(`${ENDPOINTS.get(id)}?t=${new Date().getTime()}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) { openModalForEdit(data.data); }
+                    else { AppUtils.showNotification('Error al cargar usuario', 'error'); }
+                })
+                .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
+                .finally(() => AppUtils.showLoading(false));
+        }
 
-    function handleToggleStatus() {
-        const id = $(this).data('id');
-        AppUtils.showLoading(true);
-        fetch(ENDPOINTS.toggleStatus(id), { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
-                else { AppUtils.showNotification(data.message, 'error'); }
-            })
-            .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
-            .finally(() => AppUtils.showLoading(false));
-    }
+    function handleToggleStatus(id) { // 👈 Recibe el ID directamente
+            AppUtils.showLoading(true);
+            fetch(ENDPOINTS.toggleStatus(id), { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
+                    else { AppUtils.showNotification(data.message, 'error'); }
+                })
+                .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
+                .finally(() => AppUtils.showLoading(false));
+        }
 
-    function handleDelete() {
-        const id = $(this).data('id');
-        Swal.fire({
-            title: '¿Estás seguro?', text: "¡El usuario será marcado como eliminado!",
-            icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, ¡eliminar!', cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                AppUtils.showLoading(true);
-                fetch(`${ENDPOINTS.delete}/${id}`, { method: 'DELETE' })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
-                        else { AppUtils.showNotification(data.message, 'error'); }
-                    })
-                    .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
-                    .finally(() => AppUtils.showLoading(false));
-            }
-        });
-    }
+    function handleDelete(id) { // 👈 Recibe el ID directamente
+            Swal.fire({
+                title: '¿Estás seguro?', text: "¡El usuario será marcado como eliminado!",
+                icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, ¡eliminar!', cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    AppUtils.showLoading(true);
+                    fetch(`${ENDPOINTS.delete}/${id}`, { method: 'DELETE' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
+                            else { AppUtils.showNotification(data.message, 'error'); }
+                        })
+                        .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
+                        .finally(() => AppUtils.showLoading(false));
+                }
+            });
+        }
 
     function openModalForNew() {
         isEditing = false;
