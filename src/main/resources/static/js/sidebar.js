@@ -1,67 +1,63 @@
-/**
- * LA JAMA - MÓDULO DE CONTROL DE NAVEGACIÓN Y SIDEBAR
- * Responsabilidad: Gestionar la responsividad del menú lateral, persistencia
- * de estados colapsados, limpieza de caché y efectos interactivos kinéticos.
- */
+(function() {
+            function construirCuadradosSiderbar() {
+                const gridContainer = document.getElementById("sidebar-ripple");
+                const sidebarElement = document.getElementById("sidebar");
+                const glowElement = document.getElementById("sidebar-glow");
 
-// ─── 1. INTERACTIVIDAD CINÉTICA DE CUADRADITOS (VANILLA JS) ───────────────────
-document.addEventListener("DOMContentLoaded", function () {
-    const sidebarElement = document.getElementById("sidebar");
-    const gridContainer = document.getElementById("sidebar-ripple");
-    const glowElement = document.getElementById("sidebar-glow");
+                if (!gridContainer || !sidebarElement) return;
 
-    if (gridContainer && sidebarElement) {
-        // Inyectamos las 250 celdas interactivas en el contenedor del DOM
-        for (let i = 0; i < 250; i++) {
-            const cell = document.createElement("div");
-            cell.className = "ripple-cell";
-            gridContainer.appendChild(cell);
-        }
+                // Evitamos duplicados si pasa por múltiples renders
+                gridContainer.innerHTML = '';
 
-        const cells = gridContainer.querySelectorAll(".ripple-cell");
+                // Inyectamos exactamente los 250 cuadraditos interactivos
+                for (let i = 0; i < 250; i++) {
+                    const cell = document.createElement("div");
+                    cell.className = "ripple-cell";
+                    gridContainer.appendChild(cell);
+                }
 
-        // Tracking del cursor sobre las celdas para el brillo de fondo
-        sidebarElement.addEventListener("mousemove", (e) => {
-            const rect = sidebarElement.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+                const cells = gridContainer.querySelectorAll(".ripple-cell");
 
-            if (glowElement) {
-                glowElement.style.setProperty("--bg-x", x);
-                glowElement.style.setProperty("--bg-y", y);
+                // Tracking del mouse para el glow
+                sidebarElement.addEventListener("mousemove", (e) => {
+                    const rect = sidebarElement.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    if (glowElement) {
+                        glowElement.style.setProperty("--bg-x", x + "px");
+                        glowElement.style.setProperty("--bg-y", y + "px");
+                    }
+                });
+
+                // Ola expansiva al hacer click
+                gridContainer.addEventListener("click", (e) => {
+                    const cell = e.target.closest(".ripple-cell");
+                    if (!cell) return;
+
+                    const rect = gridContainer.getBoundingClientRect();
+                    const cols = Math.floor(rect.width / 40) || 1;
+                    const cellIndex = Array.from(cells).indexOf(cell);
+                    if (cellIndex === -1) return;
+
+                    const clickedRow = Math.floor(cellIndex / cols);
+                    const clickedCol = cellIndex % cols;
+
+                    cells.forEach((c, index) => {
+                        const row = Math.floor(index / cols);
+                        const col = index % cols;
+                        const distance = Math.sqrt(Math.pow(row - clickedRow, 2) + Math.pow(col - clickedCol, 2));
+
+                        c.classList.remove("animate-ripple");
+                        void c.offsetWidth; // Forzar reflow
+                        c.style.setProperty("--delay", `${distance * 50}ms`);
+                        c.classList.add("animate-ripple");
+                    });
+                });
             }
-        });
 
-        // Ola concéntrica expansiva al hacer clic
-        gridContainer.addEventListener("click", (e) => {
-            const cell = e.target.closest(".ripple-cell");
-            if (!cell) return;
-
-            const rect = gridContainer.getBoundingClientRect();
-            const cols = Math.floor(rect.width / 40);
-
-            const cellIndex = Array.from(cells).indexOf(cell);
-            if (cellIndex === -1) return;
-
-            const clickedRow = Math.floor(cellIndex / cols);
-            const clickedCol = cellIndex % cols;
-
-            cells.forEach((c, index) => {
-                const row = Math.floor(index / cols);
-                const col = index % cols;
-
-                const distance = Math.sqrt(
-                    Math.pow(row - clickedRow, 2) + Math.pow(col - clickedCol, 2)
-                );
-
-                c.classList.remove("animate-ripple");
-                void c.offsetWidth; // Forzar reflow táctil del DOM
-                c.style.setProperty("--delay", `${distance * 50}ms`);
-                c.classList.add("animate-ripple");
-            });
-        });
-    }
-});
+            // Ejecución garantizada sin importar retardos de Thymeleaf
+            setTimeout(construirCuadradosSiderbar, 50);
+        })();
 
 // ─── 2. SELECTORES Y EVENTOS COMPARTIDOS (JQUERY) ───────────────────────────
 $(document).ready(function () {

@@ -3,11 +3,13 @@
  * Motor completo del Kardex con separación de flujos y bloques orientados a Lotes.
  */
 
-async function abrirKardexPorciones(id, nombre, categoria) {
+async function abrirKardexPorciones(id, nombre, categoria, unidadMedida) {
     categoriaKardexActual = categoria;
     paginaActualKardex = 1;
 
     const esProteina = (categoria === 'PROTEINA');
+    const unidadReal = unidadMedida ? unidadMedida : 'unidades';
+
     document.querySelectorAll('.btn-filtro').forEach(btn => {
         const filtro = btn.getAttribute('data-filtro');
         if (['PRODUCCION', 'VENTA'].includes(filtro)) {
@@ -19,7 +21,7 @@ async function abrirKardexPorciones(id, nombre, categoria) {
     if (cabecera) {
         cabecera.innerHTML = esProteina
             ? `<th class="ps-3">Fecha</th><th>Origen</th><th>Detalle</th><th class="text-end">Merma (Kg)</th><th class="text-end">Porciones</th><th class="text-end pe-3">Saldo</th>`
-            : `<th class="ps-3">Fecha</th><th>Origen</th><th>Detalle</th><th class="text-end">Cantidad</th><th class="text-end pe-3">Saldo Actual</th>`;
+            : `<th class="ps-3">Fecha</th><th>Origen</th><th>Detalle</th><th class="text-end">Cantidad (${unidadReal})</th><th class="text-end pe-3">Saldo Actual</th>`;
     }
 
     const tituloId = document.getElementById('tituloKardexPorciones');
@@ -109,35 +111,30 @@ function procesarYRenderizarBloquesKardex() {
     let bloqueActual = null;
     const esProteina = (categoriaKardexActual === 'PROTEINA');
 
-    kardexDataFiltrada.forEach(mov => {
-        const origen = (mov.origen || mov.tipo || '').toUpperCase();
-        const motivo = (mov.motivo || '').toUpperCase();
+    movimientosLimpios.forEach(mov => {
+            const origen = (mov.origen || mov.tipo || '').toUpperCase();
+            const motivo = (mov.motivo || mov.detalle || '').toUpperCase();
 
-        // 🌟 CONDICIONAL DE FUNDACIÓN DE BLOQUE:
-        // Si es proteína: Busca la palabra 'LOTE' o 'ENTRADA' en la cadena de origen
-        // Si es general: Evalúa si es un 'INGRESO' puro o si el detalle descriptivo contiene 'LOTE' o 'COMPRA'
-        const esNuevoLote = esProteina
-            ? (origen.includes('LOTE') || origen.includes('ENTRADA'))
-            : (origen === 'INGRESO' || motivo.includes('LOTE') || motivo.includes('COMPRA'));
+            // 🌟 CONDICIONAL INTEGRADO: Agrupa por lote de forma inteligente
+            const esNuevoLote = esProteina
+                ? (origen.includes('LOTE') || origen.includes('ENTRADA') || origen.includes('INGRESO'))
+                : (origen === 'INGRESO' || motivo.includes('LOTE') || motivo.includes('COMPRA') || motivo.includes('APERTURA'));
 
-        if (esNuevoLote || !bloqueActual) {
-            if (bloqueActual) bloquesTemporales.push(bloqueActual);
-            bloqueActual = {
-                id: bloquesTemporales.length + 1,
-                fechaLote: mov.fecha,
-                movimientos: [] // Inicializa el contenedor del nuevo lote abierto
-            };
-        }
-        bloqueActual.movimientos.push(mov);
-    });
+            if (esNuevoLote || !bloqueActual) {
+                if (bloqueActual) bloquesTemporales.push(bloqueActual);
+                bloqueActual = {
+                    id: bloquesTemporales.length + 1,
+                    fechaLote: mov.fecha,
+                    movimientos: []
+                };
+            }
+            bloqueActual.movimientos.push(mov);
+        });
 
-    if (bloqueActual) bloquesTemporales.push(bloqueActual);
-
-    // Mantenemos el orden descendente: El lote de compra más reciente aparecerá en la página 1
-    bloquesKardexPaginados = bloquesTemporales.reverse();
-
-    renderizarKardexPorFilas();
-}
+        if (bloqueActual) bloquesTemporales.push(bloqueActual);
+        bloquesKardexPaginados = bloquesTemporales.reverse();
+        renderizarFilaPaginada(categoria);
+    }
 
 function renderizarKardexPorFilas() {
     const cuerpo = document.getElementById('cuerpoKardexPorciones');
@@ -527,7 +524,6 @@ function renderizarTablaKardexPlanaDirecta() {
 // ─── CONSTRUCTOR DE FILA (reutilizable) ──────────────────────────────
 
 function construirFilaMovimiento(mov) {
-
     const esProduccion = (mov.origen === 'PRODUCCION' || (mov.motivo && mov.motivo.includes('PRODUCCION')));
     const claseFila = esProduccion ? 'fila-produccion' : '';
     let fecha = '-';
@@ -539,44 +535,49 @@ function construirFilaMovimiento(mov) {
 
     const detalle      = mov.detalle || mov.motivo || '-';
     const origen       = mov.origen  || 'LOGÍSTICA';
-    const esIngreso    = mov.signo === '+' || mov.tipo === 'INGRESO';
+    const esIngreso    = mov.signo === '+' || mov.tipo === 'INGRESO' || (mov.motivo && mov.motivo.toUpperCase().includes('INGRESO'));
     const signo        = esIngreso ? '+' : '-';
     const colorCantidad = esIngreso ? 'text-success' : 'text-danger';
 
-    let cantidadTexto = '-';
-    if (mov.cantidad !== undefined && mov.cantidad !== null) {
-        cantidadTexto = typeof mov.cantidad === 'number' ? `${mov.cantidad} porc.` : mov.cantidad;
-    }
+    let stockFinal = mov.stockResultante !== undefined && mov.stockResultante !== null ? mov.stockResultante : (mov.stockFinal || '-');
 
-    let stockFinal = '-';
-    if (mov.stockResultante !== undefined && mov.stockResultante !== null && mov.stockResultante !== 'null' && mov.stockResultante !== '') {
-        stockFinal = mov.stockResultante;
-    } else if (mov.stockFinal !== undefined && mov.stockFinal !== null && mov.stockFinal !== 'null' && mov.stockFinal !== '') {
-        stockFinal = mov.stockFinal;
-    }
+    // 📊 VALIDACIÓN CRÍTICA DE IDENTIDAD DE INSUMO
+    if (categoriaKardexActual === 'PROTEINA') {
+        // Formato para proteínas (Porciones y Mermas activas)
+        let cantidadTexto = typeof mov.cantidad === 'number' ? `${mov.cantidad} porc.` : mov.cantidad;
+        let textoMerma = '0.000 kg';
+        let claseColorMerma = 'text-muted';
 
-    // 📊 RECEPTOR DE MERMA CON RESPALDO DE NOMBRE DE PROPIEDAD
-    let textoMerma = '0.000 kg';
-    let claseColorMerma = 'text-muted';
-
-    // Verificación exhaustiva del objeto para pintar el número real
-    const campoMerma = mov.mermaKg !== undefined ? mov.mermaKg : mov.merma;
-    if (campoMerma !== undefined && campoMerma !== null) {
-        const valorMerma = parseFloat(campoMerma);
-        textoMerma = valorMerma.toFixed(3) + ' kg';
-        if (valorMerma > 0) {
-            claseColorMerma = 'text-danger fw-bold';
+        const campoMerma = mov.mermaKg !== undefined ? mov.mermaKg : mov.merma;
+        if (campoMerma !== undefined && campoMerma !== null) {
+            const valorMerma = parseFloat(campoMerma);
+            textoMerma = valorMerma.toFixed(3) + ' kg';
+            if (valorMerma > 0) claseColorMerma = 'text-danger fw-bold';
         }
-    }
 
-    return `
-            <tr class="align-middle ${claseFila}"> <td class="ps-3 text-muted small">${fecha}</td>
+        return `
+            <tr class="align-middle ${claseFila}">
+                <td class="ps-3 text-muted small">${fecha}</td>
                 <td>${badgeOrigen(origen)}</td>
                 <td class="fw-semibold text-secondary small">${detalle}</td>
                 <td class="text-end col-merma-kardex ${claseColorMerma}">${textoMerma}</td>
                 <td class="text-end fw-bold ${colorCantidad}">${signo} ${cantidadTexto}</td>
                 <td class="text-end pe-3 fw-bold text-dark">${stockFinal}</td>
             </tr>`;
+    } else {
+        // 🛒 CASO GENERAL (Arroz, Vegetales, Bebidas, etc.): Stock limpio sin "porc."
+        const cantidadText = typeof mov.cantidad === 'number' ? `${mov.cantidad.toFixed(2)}` : mov.cantidad;
+        const stockFinalFormateado = typeof stockFinal === 'number' ? stockFinal.toFixed(2) : stockFinal;
+
+        return `
+            <tr class="align-middle">
+                <td class="ps-3 text-muted small">${fecha}</td>
+                <td>${badgeOrigen(origen)}</td>
+                <td class="fw-semibold text-secondary small">${detalle}</td>
+                <td class="text-end fw-bold ${colorCantidad}">${signo} ${cantidadText}</td>
+                <td class="text-end pe-3 fw-bold text-dark">${stockFinalFormateado}</td>
+            </tr>`;
+    }
 }
 
 // ─── BADGE DE ORIGEN ─────────────────────────────────────────────────

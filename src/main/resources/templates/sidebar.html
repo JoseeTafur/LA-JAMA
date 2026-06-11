@@ -24,8 +24,12 @@
         <hr class="text-white-50 position-relative z-2" />
 
         <div class="jama-uiverse-container">
-            <div class="sidebar-scrollable-menu">
-                <article class="jama-uiverse-menu">
+            <div class="sidebar-scrollable-menu position-relative">
+
+                <div class="pattern-bg ripple-container header-ripple-grid opacity-25"
+                     style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 1; pointer-events: none;"></div>
+
+                <article class="jama-uiverse-menu position-relative z-2">
 
                     <label th:each="opcion : ${session.opcionesIndependientes}"
                            th:for="${'radio-' + opcion.nombre}"
@@ -53,13 +57,13 @@
 
                     <div th:each="grupo : ${session.menuAgrupado.entrySet()}" class="jama-uiverse-group-wrapper">
                         <th:block th:with="folder=${#strings.toLowerCase(grupo.key)},
-                                           isGroupActive=${activeUri != null && (
-                                               (folder == 'cocina' && activeUri.contains('/cocina/')) ||
-                                               (folder == 'almacen' && (activeUri.contains('/almacen/') || activeUri.contains('/productos'))) ||
-                                               (folder == 'mesas' && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
-                                               (folder == 'mesero' && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
-                                               (folder == 'admin' && activeUri.startsWith('/admin/') && !activeUri.contains('/cocina/') && !activeUri.contains('/mesas') && !activeUri.contains('/mesero') && !activeUri.contains('/almacen/') && !activeUri.contains('/productos') && !activeUri.contains('/usuarios') && !activeUri.contains('/perfiles') && !activeUri.contains('/empleados'))
-                                           )}">
+                       isGroupActive=${activeUri != null && (
+                           (folder == 'cocina' && activeUri.contains('/cocina/')) ||
+                           (folder == 'almacen' && (activeUri.contains('/almacen/') || activeUri.contains('/productos'))) ||
+                           (folder == 'mesas' && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
+                           (folder == 'mesero' && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
+                           (folder == 'admin' && activeUri.startsWith('/admin/') && !activeUri.contains('/cocina/') && !activeUri.contains('/mesas') && !activeUri.contains('/mesero') && !activeUri.contains('/almacen/') && !activeUri.contains('/productos') && !activeUri.contains('/usuarios') && !activeUri.contains('/perfiles') && !activeUri.contains('/empleados'))
+                       )}">
 
                             <label th:for="${'radio-' + grupo.key}"
                                    class="jama-uiverse-item text-between"
@@ -67,7 +71,7 @@
                                    data-bs-toggle="collapse"
                                    th:href="@{'#collapse-' + ${grupo.key}}"
                                    th:aria-expanded="${isGroupActive}"
-                                   th:data-module="${folder}">
+                                   th:data-module="${folder == 'admin' ? 'Cajero' : folder}">
 
                                 <input class="jama-radio-hidden"
                                        type="radio"
@@ -78,7 +82,10 @@
                                 <div class="d-flex align-items-center gap-3">
                                     <i class="bi jama-uiverse-icon"
                                        th:classappend="${isGroupActive} ? 'bi-folder2-open' : 'bi-folder-fill'"></i>
-                                    <span class="jama-uiverse-text" th:text="${grupo.key}">Grupo</span>
+
+                                    <!-- 🌟 SOLUCIÓN VISUAL: Interceptamos lo que se dibuja en el HTML de forma interactiva -->
+                                    <span class="jama-uiverse-text"
+                                          th:text="${grupo.key == 'Admin' || folder == 'admin' ? 'Cajero' : grupo.key}">Grupo</span>
                                 </div>
                                 <i class="bi bi-chevron-down jama-uiverse-arrow"></i>
                             </label>
@@ -100,17 +107,15 @@
                         </th:block>
                     </div>
                 </article>
-            </div>
-
-            <label for="radio-logout" class="jama-uiverse-item btn-logout-uiverse mt-auto fallback-logout-fixed">
-                <input class="jama-radio-hidden"
-                       type="radio"
-                       name="sidebar_path"
-                       id="radio-logout"
-                       onclick="sessionStorage.removeItem('jama_sesion_activa'); window.location.href='/logout';" />
-                <i class="bi bi-box-arrow-right jama-uiverse-icon"></i>
-                <span class="jama-uiverse-text">Cerrar Sesión</span>
-            </label>
+            </div> <label for="radio-logout" class="jama-uiverse-item btn-logout-uiverse mt-auto fallback-logout-fixed">
+            <input class="jama-radio-hidden"
+                   type="radio"
+                   name="sidebar_path"
+                   id="radio-logout"
+                   onclick="sessionStorage.removeItem('jama_sesion_activa'); window.location.href='/logout';" />
+            <i class="bi bi-box-arrow-right jama-uiverse-icon"></i>
+            <span class="jama-uiverse-text">Cerrar Sesión</span>
+        </label>
         </div>
     </nav>
 </div>

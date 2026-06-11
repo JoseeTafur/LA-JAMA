@@ -12,7 +12,7 @@
     <div th:replace="~{sidebar :: sidebar(activeUri=${activeUri})}"></div>
 
     <main id="main-content" class="main-content">
-        <div th:replace="~{sidebar :: logistica_header(${titleHeader})}"></div>
+        <div th:replace="~{sidebar :: logistica_header(${titleHeader ?: title})}"></div>
 
         <div class="container-fluid p-4">
             <th:block th:replace="${content}"></th:block>

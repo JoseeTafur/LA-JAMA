@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>La Jama - Dashboard Principal</title>
     <th:block th:replace="~{links :: headLinks}"></th:block>
+
     <link th:href="@{/css/dashboard.css}" rel="stylesheet" />
 </head>
 <body class="bg-light">
@@ -148,6 +149,7 @@
 </div>
 
 <th:block th:replace="~{links :: scriptLinks}"></th:block>
-<script th:if="${rol == 'ADMIN' or rol == 'CAJERO'}" th:src="@{/js/dashboard.js}"></script>
+
+<script th:src="@{/js/sidebar.js}"></script> <script th:if="${rol == 'ADMIN' or rol == 'CAJERO'}" th:src="@{/js/dashboard.js}"></script>
 </body>
 </html>

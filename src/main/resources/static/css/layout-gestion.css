@@ -772,3 +772,32 @@
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: .8; transform: scale(1.02); }
 }
+
+/* Sintonización de las tarjetas del layout antiguo a tus clases premium Shadcn */
+.card-tabla {
+    background: var(--lajama-white) !important;
+    border: 1px solid rgba(254, 215, 170, 0.4) !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 10px 30px -10px rgba(27, 58, 44, 0.05) !important;
+}
+
+/* Switches de disponibilidad en carta estilizados */
+.custom-switch-jama .form-check-input {
+    width: 2.5em !important;
+    height: 1.25em !important;
+    background-color: #e5e7eb !important;
+    border: 1px solid rgba(27, 58, 44, 0.15) !important;
+    transition: background-position .15s ease-in-out, background-color .15s ease-in-out !important;
+}
+
+.custom-switch-jama .form-check-input:checked {
+    background-color: var(--lajama-green) !important;
+    border-color: var(--lajama-green) !important;
+}
+
+/* Alineación de imágenes de los platos */
+.img-thumbnail {
+    border: 1px solid var(--border-color) !important;
+    padding: 0.25rem !important;
+    background-color: var(--lajama-white) !important;
+}

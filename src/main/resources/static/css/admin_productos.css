@@ -1,221 +1,223 @@
-:root {
-    --lajama-green: #1B3A2C;
-    --lajama-peach: #fed7aa;
-    --lajama-skin: #FFB38A;
-    --lajama-cream: #FFF7ED;
-    --lajama-brown: #933D2D;
-    --lajama-white: #FFFFFF;
-}
-
-/* --- MAQUETACIÓN --- */
-.main-content {
-    background-color: var(--lajama-cream);
-    min-height: 100vh;
-}
-
-.card-jama {
-    background: var(--lajama-white);
-    border: 2px solid var(--lajama-peach) !important;
-    border-radius: 25px !important;
-}
+/* ==========================================================================
+   💎 INTERFAZ DE GESTIÓN PREMIUM — ESTILO SHADCN / LA JAMA
+   ========================================================================== */
 
 .text-jama-green {
-    color: var(--lajama-green) !important;
+    color: var(--lajama-green, #1B3A2C) !important;
 }
 
-.text-ocre {
-    color: var(--lajama-brown) !important;
+.text-jama-skin {
+    color: var(--lajama-brown, #933D2D) !important;
 }
 
-/* --- BUSCADOR --- */
-.search-group-jama {
-    border: 2px solid var(--lajama-peach);
-    border-radius: 12px;
-    background-color: var(--lajama-white);
+/* --- 1. CONTENEDORES Y BUSCADOR --- */
+.search-container {
+    border-radius: 9999px;
     overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.03);
 }
 
-.search-group-jama .input-group-text {
-    color: var(--lajama-green);
+.search-container input:focus {
+    box-shadow: none;
+    background-color: #fff !important;
 }
 
-/* --- FORMULARIOS --- */
-.input-jama {
-    border: 2px solid var(--lajama-peach) !important;
-    border-radius: 12px !important;
-    background-color: var(--lajama-white) !important;
+.card-tabla {
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
 }
 
-.input-jama:focus {
-    border-color: var(--lajama-skin) !important;
-    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.2) !important;
-    outline: none;
-}
-
-/* --- TABLA --- */
-#tablaProductos {
-    border-collapse: separate;
-    border-spacing: 0 8px;
-}
-
-#tablaProductos thead th {
-    background-color: var(--lajama-green);
-    color: var(--lajama-white);
-    padding: 15px;
-    border: none;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    font-weight: 700;
-}
-
-#tablaProductos thead th:first-child { border-radius: 12px 0 0 12px; }
-#tablaProductos thead th:last-child { border-radius: 0 12px 12px 0; }
-
-#tablaProductos tbody td {
-    padding: 15px;
-    background-color: var(--lajama-white);
-    border-top: 1px solid var(--lajama-cream);
-    border-bottom: 1px solid var(--lajama-cream);
-}
-
-#tablaProductos tbody tr:hover td {
-    background-color: var(--lajama-cream) !important;
-}
-
-.img-producto-jama {
-    width: 55px;
-    height: 55px;
-    object-fit: cover;
-    border: 2px solid var(--lajama-peach);
-    transition: transform 0.2s ease;
-}
-
-.img-producto-jama:hover {
-    transform: scale(1.15);
-}
-
-/* --- BADGES --- */
-.badge-frio {
-    background-color: #e0e7ff !important;
-    color: #3730a3 !important;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-weight: 600;
-}
-
-.badge-caliente {
-    background-color: #fee2e2 !important;
-    color: #991b1b !important;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-weight: 600;
-}
-
-.badge-stock-ok {
-    background-color: #dcfce7 !important;
-    color: #166534 !important;
-    padding: 6px 10px;
-    border-radius: 8px;
-}
-
-.badge-stock-low {
-    background-color: #fee2e2 !important;
-    color: #991b1b !important;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-weight: bold;
-    animation: pulse-red 2s infinite;
-}
-
-@keyframes pulse-red {
-    0% { box-shadow: 0 0 0 0 rgba(153, 27, 27, 0.4); }
-    70% { box-shadow: 0 0 0 6px rgba(153, 27, 27, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(153, 27, 27, 0); }
-}
-
-/* --- CONTROLES FORM SWITCH --- */
+/* --- 2. COMPONENTES DE FORMULARIO MAESTRO --- */
 .custom-switch-jama .form-check-input {
     width: 2.5em;
     height: 1.25em;
-    background-color: #ccc;
-    border-color: transparent;
     cursor: pointer;
 }
 
 .custom-switch-jama .form-check-input:checked {
-    background-color: var(--lajama-green);
-    border-color: var(--lajama-green);
+    background-color: var(--lajama-green, #1B3A2C);
+    border-color: var(--lajama-green, #1B3A2C);
 }
 
-/* --- BOTONES --- */
-.btn-jama {
-    background-color: var(--lajama-green);
-    color: var(--lajama-white);
-    font-weight: 700;
-    border: none;
-    transition: all 0.2s ease;
+#modalProducto .modal-header {
+    background: radial-gradient(circle at top center, #26503d 0%, var(--lajama-green, #1B3A2C) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.btn-jama:hover {
-    background-color: #0d231a;
-    color: var(--lajama-white);
-    transform: scale(1.04);
+
+/* ==========================================================================
+   📂 FOLDER FILE UPLOAD — Uiverse by 3bdel3ziz-T (Optimizado para La Jama)
+   ========================================================================== */
+
+.uiverse-wrapper-panel {
+    --transition: 350ms;
+    --folder-W: 130px;
+    --folder-H: 85px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 15px;
+    background: linear-gradient(135deg, #26503d, #1B3A2C); /* Gradient adaptado a la paleta La Jama */
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    height: 180px;
+    width: 220px;
+    position: relative;
+    margin: 15px auto;
+    perspective: 1000px; /* Crítico para perspectiva 3D real */
 }
 
-.btn-outline-jama-green {
-    border: 2px solid var(--lajama-green);
-    color: var(--lajama-green);
-    font-weight: 700;
+/* ── Carpeta flotante ───────────────────────────────────────────── */
+.uiverse-wrapper-panel .folder {
+    --scale: 1; /* Variable para manejar el escalado sin romper keyframes */
+    position: absolute;
+    top: 25px;
+    left: calc(50% - (var(--folder-W) / 2));
+    width: var(--folder-W);
+    height: var(--folder-H);
+    animation: floatUiverse 2.5s infinite ease-in-out;
+    transition: transform var(--transition) ease;
+    transform-style: preserve-3d;
 }
 
-.btn-outline-jama-green:hover {
-    background-color: var(--lajama-green);
-    color: var(--lajama-white);
+.uiverse-wrapper-panel:hover .folder {
+    --scale: 1.05; /* Escala sutil controlada */
 }
 
-.btn-action-jama {
-    border: none;
-    padding: 8px 12px;
-    border-radius: 10px;
-    transition: all 0.2s ease;
-    background: transparent;
+/* ── Caras delantera y trasera ──────────────────────────────────── */
+.uiverse-wrapper-panel .folder .front-side,
+.uiverse-wrapper-panel .folder .back-side {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: transform var(--transition);
+    transform-origin: bottom center;
 }
 
-.btn-edit { color: var(--lajama-green); }
-.btn-edit:hover { background-color: var(--lajama-cream); transform: scale(1.1); }
-.btn-delete { color: var(--lajama-brown); }
-.btn-delete:hover { background-color: #fee2e2; transform: scale(1.1); }
-
-/* --- MODALES --- */
-.modal-content {
-    border-radius: 25px !important;
-    overflow: hidden;
+.uiverse-wrapper-panel .folder .front-side {
+    z-index: 3; /* Por encima de las hojas internas */
 }
 
-.modal-header {
-    background-color: var(--lajama-green);
+.uiverse-wrapper-panel .folder .back-side {
+    z-index: 0;
 }
 
-.bg-jama-cream-modal {
-    background-color: var(--lajama-cream);
-}
-
-.bg-light-footer {
-    background-color: var(--lajama-white);
-    border-top: 1px solid var(--lajama-peach) !important;
-}
-
-.border-peach-light {
-    border-color: var(--lajama-peach) !important;
-}
-
-.img-preview-box {
-    border: 3px solid var(--lajama-peach);
-    max-height: 150px;
-    object-fit: cover;
-}
-
-.file-input-jama {
-    border: 2px solid var(--lajama-peach);
+/* ── Hojas blancas de fondo (Efecto apilado) ─────────────────────── */
+.uiverse-wrapper-panel .folder .back-side::before,
+.uiverse-wrapper-panel .folder .back-side::after {
+    content: "";
+    display: block;
     background-color: white;
+    opacity: 0.4;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    transform-origin: bottom center;
+    border-radius: 10px;
+    transition: transform var(--transition);
+    z-index: 0;
+}
+
+.uiverse-wrapper-panel:hover .folder .back-side::before {
+    transform: rotateX(-5deg) skewX(5deg);
+}
+
+.uiverse-wrapper-panel:hover .folder .back-side::after {
+    transform: rotateX(-15deg) skewX(12deg);
+}
+
+/* ── Apertura de la tapa frontal en hover ───────────────────────── */
+.uiverse-wrapper-panel:hover .folder .front-side {
+    transform: rotateX(-45deg) skewX(15deg);
+}
+
+/* ── Pestaña superior de la carpeta ─────────────────────────────── */
+.uiverse-wrapper-panel .folder .tip {
+    background: linear-gradient(135deg, #ff9a56, #ff6f56);
+    width: 60px;
+    height: 18px;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    z-index: 1;
+}
+
+/* ── Tapas de la carpeta ────────────────────────────────────────── */
+.uiverse-wrapper-panel .folder .cover {
+    background: linear-gradient(135deg, #ffe563, #ffc663);
+    width: 100%;
+    height: 100%;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+}
+
+/* ── Hoja central contenedora de la foto previa ─────────────────── */
+.uiverse-wrapper-panel .folder .custom-paper-inside {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(var(--folder-W) * 0.92);
+    height: calc(var(--folder-H) * 0.95);
+    background-color: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    z-index: 2;
+    transition: transform var(--transition) cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.uiverse-wrapper-panel .folder .custom-paper-inside .folder-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* ── La foto emerge hacia arriba al abrir la carpeta ────────────── */
+.uiverse-wrapper-panel:hover .folder .custom-paper-inside {
+    transform: translate(-50%, -40px) rotate(-3deg) scale(1.02);
+}
+
+/* ── Botón de Selección inferior ────────────────────────────────── */
+.uiverse-wrapper-panel .custom-file-upload {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #ffffff;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: background var(--transition) ease, border var(--transition);
+    display: inline-block;
+    width: 100%;
+    padding: 8px 15px;
+    position: relative;
+    z-index: 10; /* Asegura el clic por encima de la animación */
+}
+
+.uiverse-wrapper-panel .custom-file-upload:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.uiverse-wrapper-panel .custom-file-upload input[type="file"] {
+    display: none;
+}
+
+/* ── Animación Fluida de Flotación 3D ───────────────────────────── */
+@keyframes floatUiverse {
+    0%   { transform: scale(var(--scale)) translateY(0px);   }
+    50%  { transform: scale(var(--scale)) translateY(-10px); }
+    100% { transform: scale(var(--scale)) translateY(0px);   }
 }

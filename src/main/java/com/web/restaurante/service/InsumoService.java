@@ -168,6 +168,14 @@ public class InsumoService {
         for (InsumoProducto ip : insumos) {
             Insumo insumo = ip.getInsumo();
 
+            // 🚨 REGLA DE INTEGRIDAD DE LA JAMA:
+            // Si el insumo NO es proteína, NO se debe restar automáticamente con la venta.
+            if (insumo.getCategoria() == null || !"PROTEINA".equalsIgnoreCase(insumo.getCategoria())) {
+                System.out.println("[La Jama - Logística] Ignorando descuento automático para insumo general: " + insumo.getNombre());
+                continue; // 🚀 Salta al siguiente ingrediente sin tocar el stock ni el Kardex
+            }
+
+            // 🥩 Si es proteína, continúa con el descuento de porciones normal
             double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
             double totalADescontar = cantidadUsada * cantidadPedida;
 
