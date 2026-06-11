@@ -47,6 +47,13 @@
                     <i class="bi bi-journal-check"></i> Recetas
                 </span>
             </label>
+
+            <label th:if="${session.rol == 'ADMIN'}" class="radio-jama" onclick="cambiarPestañaAsincrona('crear-receta')">
+                <input type="radio" name="moduloInsumos" id="radio-btn-crear-receta">
+                <span class="name-jama">
+                    <i class="bi bi-journal-plus"></i> Crear Receta
+                </span>
+            </label>
         </div>
 
         <div class="tab-content">
@@ -61,6 +68,10 @@
 
             <div id="pane-recetas" class="tab-pane-jama d-none" th:if="${session.rol == 'ADMIN'}">
                 <th:block th:replace="~{Insumosgestion :: #contenido_submodulo}"></th:block>
+            </div>
+
+            <div id="pane-crear-receta" class="tab-pane-jama d-none" th:if="${session.rol == 'ADMIN'}">
+                <th:block th:replace="~{Insumosrecetas :: #contenido_submodulo}"></th:block>
             </div>
 
         </div>

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
-
+import java.util.Map;
 import java.util.List;
 
 @Controller
@@ -57,9 +57,19 @@ public class InsumoController {
     }
 
     @PostMapping("/eliminar/{id}")
-    public String eliminarInsumo(@PathVariable Long id) {
-        insumoService.eliminarInsumo(id);
-        return "redirect:/insumos?tab=catalogo";
+    @ResponseBody
+    public ResponseEntity<?> eliminarInsumoAsincrono(@PathVariable Long id) {
+        try {
+            // Invocamos la coreografía de baja que implementamos en el Service
+            insumoService.ejecutarBajaLogicaAvanzada(id);
+
+            // Retornamos éxito en un formato JSON limpio que leerá JavaScript
+            return ResponseEntity.ok()
+                    .body("{\"success\": true, \"message\": \"Insumo archivado correctamente y recetas desvinculadas.\"}");
+        } catch (RuntimeException e) {
+            // Si ocurre algún fallo imprevisto, respondemos con código 400 y el error
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @GetMapping("/producto/{idProducto}")
@@ -107,5 +117,16 @@ public class InsumoController {
         }
 
         return "redirect:/insumos?tab=recetas";
+    }
+
+    @PostMapping("/lote/registrar")
+    @ResponseBody
+    public ResponseEntity<?> registrarLoteGeneral(@RequestBody java.util.Map<String, Object> payload) {
+        try {
+            insumoService.registrarLote(payload);
+            return ResponseEntity.ok().body("{\"success\": true, \"message\": \"Lote general registrado correctamente\"}");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

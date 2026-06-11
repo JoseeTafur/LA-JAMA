@@ -17,4 +17,5 @@ public class MovimientoPorcionesDTO {
     private Integer cantidadPorciones;
     private String motivo;
     private Integer stockResultante;
+    private Double mermaKg;
 }

@@ -1,73 +1,341 @@
 /**
  * LA JAMA — insumos-kardex.js
- * Motor completo del Kardex: bloques paginados, filtros combinados,
- * ordenamiento por columna e inversión de flujo.
- * Depende de: insumos-core.js (variables globales de kardex)
+ * Motor completo del Kardex con separación de flujos y bloques orientados a Lotes.
  */
 
-// ─── APERTURA DEL KARDEX ─────────────────────────────────────────────
-
 async function abrirKardexPorciones(id, nombre, categoria) {
-
-const filtrosExclusivosProteina = ['PRODUCCION', 'AJUSTE', 'VENTA'];
-filtrosExclusivosProteina.forEach(filtro => {
-    const btn = document.querySelector(`[data-filtro="${filtro}"]`);
-    if (btn) btn.classList.toggle('d-none', categoria !== 'PROTEINA');
-});
-
     categoriaKardexActual = categoria;
+    paginaActualKardex = 1;
 
-    const titulo = categoria === 'PROTEINA'
-        ? `Kardex por Porciones: ${nombre}`
-        : `Kardex de Ingresos: ${nombre}`;
-    document.getElementById('tituloKardexPorciones').innerHTML =
-        `<i class="bi bi-clock-history me-2"></i>${titulo}`;
-
-    document.querySelectorAll('.col-merma-kardex').forEach(el => {
-        el.style.display = (categoria === 'PROTEINA') ? 'table-cell' : 'none';
+    const esProteina = (categoria === 'PROTEINA');
+    document.querySelectorAll('.btn-filtro').forEach(btn => {
+        const filtro = btn.getAttribute('data-filtro');
+        if (['PRODUCCION', 'VENTA'].includes(filtro)) {
+            btn.classList.toggle('d-none', !esProteina);
+        }
     });
+
+    const cabecera = document.getElementById('cabeceraKardexDinamica');
+    if (cabecera) {
+        cabecera.innerHTML = esProteina
+            ? `<th class="ps-3">Fecha</th><th>Origen</th><th>Detalle</th><th class="text-end">Merma (Kg)</th><th class="text-end">Porciones</th><th class="text-end pe-3">Saldo</th>`
+            : `<th class="ps-3">Fecha</th><th>Origen</th><th>Detalle</th><th class="text-end">Cantidad</th><th class="text-end pe-3">Saldo Actual</th>`;
+    }
+
+    const tituloId = document.getElementById('tituloKardexPorciones');
+    if (tituloId) {
+        tituloId.innerHTML = esProteina
+            ? `<i class="bi bi-clock-history me-2 text-warning"></i>Kardex por Porciones: <span class="text-warning">${nombre}</span>`
+            : `<i class="bi bi-clock-history me-2 text-info"></i>Historial de Movimientos: <span class="text-info">${nombre}</span>`;
+    }
 
     const cuerpo = document.getElementById('cuerpoKardexPorciones');
-    if (cuerpo) {
-        cuerpo.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Estructurando bloques indexed...</td></tr>';
-    }
+    if (cuerpo) cuerpo.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-success me-2"></div>Cargando registros históricos...</td></tr>';
 
-    // Resetear inputs de búsqueda
-    if (document.getElementById('searchKardexTexto'))      document.getElementById('searchKardexTexto').value = '';
+    if (document.getElementById('searchKardexTexto')) document.getElementById('searchKardexTexto').value = '';
     if (document.getElementById('searchKardexFechaInicio')) document.getElementById('searchKardexFechaInicio').value = '';
-    if (document.getElementById('searchKardexFechaFin'))    document.getElementById('searchKardexFechaFin').value = '';
+    if (document.getElementById('searchKardexFechaFin')) document.getElementById('searchKardexFechaFin').value = '';
 
-    // Resetear botones de filtro
-    document.querySelectorAll('.btn-filtro').forEach(btn => {
-        btn.classList.remove('active', 'btn-dark', 'btn-success', 'btn-warning', 'btn-secondary', 'btn-danger');
-        btn.classList.add('btn-outline-secondary');
-    });
+    document.querySelectorAll('.btn-filtro').forEach(btn => btn.classList.remove('active', 'btn-dark'));
+    document.querySelectorAll('.btn-filtro').forEach(btn => btn.classList.add('btn-outline-secondary'));
     const btnTodos = document.querySelector('[data-filtro="TODOS"]');
-    if (btnTodos) {
-        btnTodos.classList.add('active', 'btn-dark');
-        btnTodos.classList.remove('btn-outline-secondary');
-    }
+    if (btnTodos) { btnTodos.classList.add('active', 'btn-dark'); btnTodos.classList.remove('btn-outline-secondary'); }
 
-    if (modalKardexPorcionesInstance) {
-        modalKardexPorcionesInstance.show();
-    } else {
-        new bootstrap.Modal(document.getElementById('modalKardexPorciones')).show();
-    }
+    if (modalKardexPorcionesInstance) modalKardexPorcionesInstance.show();
 
     try {
-        const res         = await fetch(`/proteinas/kardex/${id}`);
+        const urlEndpoint = esProteina ? `/proteinas/kardex/${id}` : `/insumos/kardex/${id}`;
+        const res = await fetch(urlEndpoint);
         const dataOriginal = await res.json();
 
-        kardexData         = dataOriginal.reverse();
+        // 🌟 REGLA DE INTEGRIDAD: Ordenamos la data de más antigua a más reciente para armar los bloques de abajo hacia arriba
+        kardexData = dataOriginal.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
         kardexDataFiltrada = [...kardexData];
 
-        paginaActualKardex = 1;
-        procesarYRenderizarBloquesKardex(kardexDataFiltrada, categoria);
+        ejecutarFiltroCombinadoKardex();
     } catch (e) {
-        if (cuerpo) {
-            cuerpo.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al compilar el historial asíncrono.</td></tr>';
-        }
+        console.error(e);
+        if (cuerpo) cuerpo.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al compilar el historial asíncrono.</td></tr>';
     }
+}
+
+function filtrarKardex(filtro) {
+    document.querySelectorAll('.btn-filtro').forEach(btn => {
+        btn.classList.remove('active', 'btn-dark');
+        btn.classList.add('btn-outline-secondary');
+    });
+    const btnActivo = document.querySelector(`[data-filtro="${filtro}"]`);
+    if (btnActivo) {
+        btnActivo.classList.add('active', 'btn-dark');
+        btnActivo.classList.remove('btn-outline-secondary');
+    }
+    paginaActualKardex = 1;
+    ejecutarFiltroCombinadoKardex();
+}
+
+function ejecutarFiltroCombinadoKardex() {
+    const texto = (document.getElementById('searchKardexTexto')?.value || '').toLowerCase().trim();
+    const fechaInicioStr = document.getElementById('searchKardexFechaInicio')?.value || '';
+    const fechaFinStr = document.getElementById('searchKardexFechaFin')?.value || '';
+    const btnActivo = document.querySelector('.btn-filtro.active');
+    const filtroOrigen = btnActivo ? btnActivo.getAttribute('data-filtro') : 'TODOS';
+
+    const timeInicio = fechaInicioStr ? new Date(fechaInicioStr + 'T00:00:00').getTime() : null;
+    const timeFin = fechaFinStr ? new Date(fechaFinStr + 'T23:59:59').getTime() : null;
+
+    kardexDataFiltrada = kardexData.filter(mov => {
+        const origenMv = (mov.origen || mov.tipo || '').toUpperCase();
+        if (filtroOrigen !== 'TODOS' && !origenMv.includes(filtroOrigen)) return false;
+
+        if (mov.fecha) {
+            const timeMov = new Date(mov.fecha).getTime();
+            if (timeInicio && timeMov < timeInicio) return false;
+            if (timeFin && timeMov > timeFin) return false;
+        }
+
+        if (texto) {
+            const detalle = (mov.detalle || mov.motivo || '').toLowerCase();
+            const origenStr = (mov.origen || mov.tipo || '').toLowerCase();
+            if (!detalle.includes(texto) && !origenStr.includes(texto)) return false;
+        }
+        return true;
+    });
+
+    procesarYRenderizarBloquesKardex();
+}
+
+function procesarYRenderizarBloquesKardex() {
+    let bloquesTemporales = [];
+    let bloqueActual = null;
+    const esProteina = (categoriaKardexActual === 'PROTEINA');
+
+    kardexDataFiltrada.forEach(mov => {
+        const origen = (mov.origen || mov.tipo || '').toUpperCase();
+        const motivo = (mov.motivo || '').toUpperCase();
+
+        // 🌟 CONDICIONAL DE FUNDACIÓN DE BLOQUE:
+        // Si es proteína: Busca la palabra 'LOTE' o 'ENTRADA' en la cadena de origen
+        // Si es general: Evalúa si es un 'INGRESO' puro o si el detalle descriptivo contiene 'LOTE' o 'COMPRA'
+        const esNuevoLote = esProteina
+            ? (origen.includes('LOTE') || origen.includes('ENTRADA'))
+            : (origen === 'INGRESO' || motivo.includes('LOTE') || motivo.includes('COMPRA'));
+
+        if (esNuevoLote || !bloqueActual) {
+            if (bloqueActual) bloquesTemporales.push(bloqueActual);
+            bloqueActual = {
+                id: bloquesTemporales.length + 1,
+                fechaLote: mov.fecha,
+                movimientos: [] // Inicializa el contenedor del nuevo lote abierto
+            };
+        }
+        bloqueActual.movimientos.push(mov);
+    });
+
+    if (bloqueActual) bloquesTemporales.push(bloqueActual);
+
+    // Mantenemos el orden descendente: El lote de compra más reciente aparecerá en la página 1
+    bloquesKardexPaginados = bloquesTemporales.reverse();
+
+    renderizarKardexPorFilas();
+}
+
+function renderizarKardexPorFilas() {
+    const cuerpo = document.getElementById('cuerpoKardexPorciones');
+    if (!cuerpo) return;
+
+    if (bloquesKardexPaginados.length === 0) {
+        cuerpo.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-muted bg-light-jama">
+            <div class="d-flex flex-column align-items-center justify-content-center gap-2">
+                <i class="bi bi-folder-x fs-2" style="color: var(--lajama-skin);"></i>
+                <span class="fw-semibold small" style="color: var(--lajama-green);">No se registraron movimientos en este rango</span>
+            </div>
+        </td></tr>`;
+        actualizarFooterKardex(0, 0, 0, 1);
+        return;
+    }
+
+    const totalPaginas = bloquesKardexPaginados.length;
+    if (paginaActualKardex > totalPaginas) paginaActualKardex = 1;
+
+    const bloqueVisible = bloquesKardexPaginados[paginaActualKardex - 1];
+    let htmlFilas = '';
+
+    if (bloqueVisible) {
+        let fechaCabecera = '-';
+        if (bloqueVisible.fechaLote) {
+            fechaCabecera = new Date(bloqueVisible.fechaLote).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        const esLoteActual = (paginaActualKardex === 1);
+
+        htmlFilas += `
+            <tr class="table-sticky-divider">
+                <td colspan="6" class="ps-3 py-2 internal-block-header fw-bold">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="bi bi-box-seam-fill me-2 text-jama-gold"></i>
+                            AUDITORÍA DE STOCK — BLOQUE #${bloqueVisible.id}
+                            ${esLoteActual ? '<span class="badge bg-danger ms-2 animate-pulse" style="font-size:0.65rem;">LOTE OPERATIVO</span>' : ''}
+                        </span>
+                        <span class="badge bg-jama-translucid text-dark small">
+                            <i class="bi bi-calendar3 me-1"></i>Apertura: ${fechaCabecera}
+                        </span>
+                    </div>
+                </td>
+            </tr>`;
+
+        [...bloqueVisible.movimientos].forEach(mov => {
+            let fecha = mov.fecha || '-';
+            if (fecha.includes('T')) {
+                fecha = new Date(fecha).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            }
+
+            const detalle = mov.detalle || mov.motivo || '-';
+            const origen = mov.origen || mov.tipo || 'LOGÍSTICA';
+            const esIngreso = mov.signo === '+' || (mov.tipo && mov.tipo.toUpperCase() === 'INGRESO') || (mov.motivo && mov.motivo.toUpperCase().includes('INGRESO'));
+            const signo = esIngreso ? '+' : '-';
+            const colorCantidad = esIngreso ? 'text-success' : 'text-danger';
+            const stockFinal = mov.stockResultante !== undefined ? mov.stockResultante : '-';
+
+            if (categoriaKardexActual === 'PROTEINA') {
+                let textoMerma = '0.000 kg';
+                let claseColorMerma = 'text-muted';
+
+                const campoMerma = mov.mermaKg !== undefined ? mov.mermaKg : mov.merma;
+                if (campoMerma !== undefined && campoMerma !== null) {
+                    const valorMerma = parseFloat(campoMerma);
+                    textoMerma = `${valorMerma.toFixed(3)} kg`;
+                    if (valorMerma > 0) {
+                        claseColorMerma = 'text-danger fw-bold';
+                    }
+                }
+
+                const cantidadText = typeof mov.cantidad === 'number' ? `${mov.cantidad} porc.` : mov.cantidad;
+
+                htmlFilas += `
+                    <tr class="align-middle">
+                        <td class="ps-3 text-muted small">${fecha}</td>
+                        <td>${badgeOrigen(origen)}</td>
+                        <td class="fw-semibold text-secondary small">${detalle}</td>
+                        <td class="text-end col-merma-kardex ${claseColorMerma}">${textoMerma}</td>
+                        <td class="text-end fw-bold ${colorCantidad}">${signo} ${cantidadText}</td>
+                        <td class="text-end pe-3 fw-bold text-dark">${stockFinal}</td>
+                    </tr>`;
+            } else {
+                const cantidadText = typeof mov.cantidad === 'number' ? `${mov.cantidad}` : mov.cantidad;
+                htmlFilas += `
+                    <tr class="align-middle">
+                        <td class="ps-3 text-muted small">${fecha}</td>
+                        <td>${badgeOrigen(origen)}</td>
+                        <td class="fw-semibold text-secondary small">${detalle}</td>
+                        <td class="text-end fw-bold ${colorCantidad}">${signo} ${cantidadText}</td>
+                        <td class="text-end pe-3 fw-bold text-dark">${stockFinal}</td>
+                    </tr>`;
+            }
+        });
+    }
+
+    cuerpo.innerHTML = htmlFilas;
+
+    // 🌟 FORZAMOS EL AJUSTE EN CALIENTE DE LA VISIBILIDAD DE LA COLUMNA DE MERMAS
+    document.querySelectorAll('.col-merma-kardex').forEach(el => {
+        el.style.display = (categoriaKardexActual === 'PROTEINA') ? 'table-cell' : 'none';
+    });
+
+    actualizarFooterKardex(paginaActualKardex, totalPaginas, bloqueVisible ? bloqueVisible.movimientos.length : 0);
+}
+
+
+function actualizarFooterKardex(pagActual, totalPaginas, totalFilasBloque) {
+    const footer = document.getElementById('nav-paginador-kardex');
+    if (!footer) return;
+
+    let listaBotones = '';
+
+    listaBotones += `<li class="page-item-jama ${pagActual === 1 ? 'disabled' : ''}">
+        <button class="page-link-jama" onclick="cambiarPaginaKardexNav(${pagActual - 1})">ANTERIOR</button>
+    </li>`;
+
+    for (let i = 1; i <= totalPaginas; i++) {
+        listaBotones += `<li class="page-item-jama ${pagActual === i ? 'active' : ''}">
+            <button class="page-link-jama" onclick="cambiarPaginaKardexNav(${i})">${i}</button>
+        </li>`;
+    }
+
+    listaBotones += `<li class="page-item-jama ${pagActual === totalPaginas ? 'disabled' : ''}">
+        <button class="page-link-jama" onclick="cambiarPaginaKardexNav(${pagActual + 1})">SIGUIENTE</button>
+    </li>`;
+
+    // 🌟 INYECCIÓN EN CALIENTE DE ESTILOS PARA NAV SECUNDARIO
+    footer.innerHTML = `
+        <style>
+            .jama-table-controls {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+            }
+            .pagination-sm, .jama-pagination-wrapper {
+                list-style: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                display: flex !important;
+                align-items: center;
+                gap: 6px !important;
+            }
+            .page-link-jama-block,
+            .page-link-jama {
+                background-color: var(--lajama-white, #FFFFFF) !important;
+                color: var(--lajama-green, #1B3A2C) !important;
+                border: 1px solid var(--lajama-peach, #EAD9C9) !important;
+                padding: 6px 14px !important;
+                font-size: 0.75rem !important;
+                font-weight: 700 !important;
+                text-transform: uppercase;
+                border-radius: 8px !important;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                outline: none !important;
+                box-shadow: none !important;
+                display: inline-block;
+            }
+            .page-link-jama-block:hover,
+            .page-link-jama:hover {
+                background-color: var(--lajama-skin, #F4EBE1) !important;
+                color: var(--lajama-green-hover, #11251C) !important;
+                border-color: var(--lajama-gold, #D4A373) !important;
+            }
+            .btn-pag-jama-active,
+            .page-link-jama-block.btn-pag-jama-active,
+            .page-item-jama.active .page-link-jama {
+                background-color: var(--lajama-green, #1B3A2C) !important;
+                color: var(--lajama-cream, #FBF9F4) !important;
+                border-color: var(--lajama-green, #1B3A2C) !important;
+                box-shadow: var(--shadow-sm, 0 2px 8px rgba(27,58,44,0.04)) !important;
+            }
+        </style>
+
+        <div class="jama-table-controls w-100 px-2">
+            <div class="text-muted small fw-semibold">
+                Viendo Bloque de Auditoría <span class="badge bg-dark text-white rounded-pill px-2">#${bloquesKardexPaginados[pagActual - 1]?.id || pagActual}</span> con ${totalFilasBloque} transacciones internas
+            </div>
+            <ul class="jama-pagination-wrapper mb-0">
+                ${listaBotones}
+            </ul>
+        </div>`;
+}
+
+function cambiarPaginaKardexNav(numPag) {
+    paginaActualKardex = numPag;
+    renderizarKardexPorFilas();
+}
+
+function invertirFlujoActualKardex() {
+    // Invierte el orden de los bloques en las páginas
+    bloquesKardexPaginados.reverse();
+    paginaActualKardex = 1;
+    renderizarKardexPorFilas();
+    AppUtils.showNotification('Sentido de bloques invertido', 'success');
 }
 
 // ─── FILTRO POR ORIGEN (botones del modal) ───────────────────────────
@@ -259,6 +527,9 @@ function renderizarTablaKardexPlanaDirecta() {
 // ─── CONSTRUCTOR DE FILA (reutilizable) ──────────────────────────────
 
 function construirFilaMovimiento(mov) {
+
+    const esProduccion = (mov.origen === 'PRODUCCION' || (mov.motivo && mov.motivo.includes('PRODUCCION')));
+    const claseFila = esProduccion ? 'fila-produccion' : '';
     let fecha = '-';
     if (mov.fecha) {
         fecha = mov.fecha.includes('T')
@@ -284,20 +555,28 @@ function construirFilaMovimiento(mov) {
         stockFinal = mov.stockFinal;
     }
 
-    let textoMerma = '-';
-    if (mov.mermaKg !== undefined && mov.mermaKg !== null) {
-        textoMerma = parseFloat(mov.mermaKg).toFixed(3);
+    // 📊 RECEPTOR DE MERMA CON RESPALDO DE NOMBRE DE PROPIEDAD
+    let textoMerma = '0.000 kg';
+    let claseColorMerma = 'text-muted';
+
+    // Verificación exhaustiva del objeto para pintar el número real
+    const campoMerma = mov.mermaKg !== undefined ? mov.mermaKg : mov.merma;
+    if (campoMerma !== undefined && campoMerma !== null) {
+        const valorMerma = parseFloat(campoMerma);
+        textoMerma = valorMerma.toFixed(3) + ' kg';
+        if (valorMerma > 0) {
+            claseColorMerma = 'text-danger fw-bold';
+        }
     }
 
     return `
-        <tr class="align-middle">
-            <td class="ps-3 text-muted small">${fecha}</td>
-            <td>${badgeOrigen(origen)}</td>
-            <td class="fw-semibold text-secondary small">${detalle}</td>
-            <td class="text-end col-merma-kardex text-danger fw-bold">${textoMerma}</td>
-            <td class="text-end fw-bold ${colorCantidad}">${signo} ${cantidadTexto}</td>
-            <td class="text-end pe-3 fw-bold text-dark">${stockFinal}</td>
-        </tr>`;
+            <tr class="align-middle ${claseFila}"> <td class="ps-3 text-muted small">${fecha}</td>
+                <td>${badgeOrigen(origen)}</td>
+                <td class="fw-semibold text-secondary small">${detalle}</td>
+                <td class="text-end col-merma-kardex ${claseColorMerma}">${textoMerma}</td>
+                <td class="text-end fw-bold ${colorCantidad}">${signo} ${cantidadTexto}</td>
+                <td class="text-end pe-3 fw-bold text-dark">${stockFinal}</td>
+            </tr>`;
 }
 
 // ─── BADGE DE ORIGEN ─────────────────────────────────────────────────
@@ -305,7 +584,7 @@ function construirFilaMovimiento(mov) {
 function badgeOrigen(origen) {
     const map = {
         'LOTE':       '<span class="badge bg-light-success text-success border px-2 py-1 rounded-pill small fw-bold">🛒 Lote</span>',
-        'PRODUCCION': '<span class="badge bg-light-warning text-warning-dark border px-2 py-1 rounded-pill small fw-bold">🔥 Producción</span>',
+        'PRODUCCION': '<span class="badge bg-light-warning border px-2 py-1 rounded-pill small fw-bold" style="color:#94600E">🔥 Producción</span>',
         'AJUSTE':     '<span class="badge bg-light-secondary text-secondary border px-2 py-1 rounded-pill small fw-bold">⚙️ Ajuste</span>',
         'VENTA':      '<span class="badge bg-light-danger text-danger border px-2 py-1 rounded-pill small fw-bold">📦 Venta</span>',
         'LOGÍSTICA':  '<span class="badge bg-light border px-2 py-1 rounded-pill small text-dark">📦 Logística</span>'
@@ -347,27 +626,92 @@ function inyectarControlesPaginacion(categoria) {
 
     const bloqueVisibleActual = bloquesKardexPaginados[(paginaActualKardex - 1) * maxBloquesPorPagina]?.id || 1;
 
+    // 🌟 INYECCIÓN EN CALIENTE DE ESTILOS PARA BLOQUES
     footer.innerHTML = `
-        <div class="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2 p-2 bg-light rounded-bottom-4">
-            <div class="d-flex align-items-center gap-1 bg-white p-1 rounded border shadow-sm" style="max-width:190px; border-color:var(--lajama-peach) !important;">
-                <span class="text-muted small ps-1 fw-bold" style="font-size:0.68rem; color:var(--lajama-green) !important;">IR AL BLOQUE:</span>
-                <input type="number" id="inputDestinoBloque" min="1" max="${bloquesKardexPaginados.length}"
-                       class="form-control form-control-sm text-center fw-bold border-0 p-0 text-dark"
-                       style="width:40px; background:transparent;" placeholder="${bloqueVisibleActual}">
-                <button type="button" class="btn btn-jama btn-sm rounded-2 py-0 px-2" style="height:24px;"
-                        onclick="window.saltarABloqueManual('${categoria}', ${bloquesKardexPaginados.length})">
-                    <i class="bi bi-arrow-right-short fs-5" style="line-height:0;"></i>
-                </button>
-            </div>
-            <ul class="pagination pagination-sm justify-content-center mb-0 gap-1 flex-wrap">
-                ${listaItems}
-            </ul>
-            <div class="text-end text-muted fw-semibold" style="font-size:0.75rem;">
-                Viendo bloque inicial <span class="badge bg-dark text-white rounded-pill px-2">#${bloqueVisibleActual}</span>
-                de ${bloquesKardexPaginados.length} bloques totales
-            </div>
-        </div>`;
-}
+            <style>
+                .jama-table-controls {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    width: 100%;
+                }
+                .pagination-sm, .jama-pagination-wrapper {
+                    list-style: none !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    display: flex !important;
+                    align-items: center;
+                    gap: 6px !important;
+                }
+                .page-link-jama-block,
+                .page-link-jama {
+                    background-color: var(--lajama-white, #FFFFFF) !important;
+                    color: var(--lajama-green, #1B3A2C) !important;
+                    border: 1px solid var(--lajama-peach, #EAD9C9) !important;
+                    padding: 6px 14px !important;
+                    font-size: 0.75rem !important;
+                    font-weight: 700 !important;
+                    text-transform: uppercase;
+                    border-radius: 8px !important;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    outline: none !important;
+                    box-shadow: none !important;
+                    display: inline-block;
+                }
+                .page-link-jama-block:hover,
+                .page-link-jama:hover {
+                    background-color: var(--lajama-skin, #F4EBE1) !important;
+                    color: var(--lajama-green-hover, #11251C) !important;
+                    border-color: var(--lajama-gold, #D4A373) !important;
+                }
+                .btn-pag-jama-active,
+                .page-link-jama-block.btn-pag-jama-active,
+                .page-item-jama.active .page-link-jama {
+                    background-color: var(--lajama-green, #1B3A2C) !important;
+                    color: var(--lajama-cream, #FBF9F4) !important;
+                    border-color: var(--lajama-green, #1B3A2C) !important;
+                    box-shadow: var(--shadow-sm, 0 2px 8px rgba(27,58,44,0.04)) !important;
+                }
+
+                /* 🌟 PARCHE DE ARREGLO PARA EL INPUT DE TEXTO DE BLOQUES */
+                .input-bloque-jama {
+                    width: 55px !important; /* Más holgura física para escribir */
+                    background: transparent !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    margin: 0 4px !important;
+                    font-size: 0.9rem !important;
+                    height: 24px !important;
+                }
+                .input-bloque-jama:focus {
+                    outline: none !important;
+                    box-shadow: none !important;
+                }
+            </style>
+
+            <div class="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2 p-2 bg-light rounded-bottom-4">
+                <div class="d-flex align-items-center gap-1 bg-white p-1 rounded border shadow-sm" style="max-width:220px; border-color:var(--lajama-peach) !important;">
+                    <span class="text-muted small ps-1 fw-bold" style="font-size:0.68rem; color:var(--lajama-green) !important; white-space: nowrap;">IR AL BLOQUE:</span>
+
+                    <input type="number" id="inputDestinoBloque" min="1" max="${bloquesKardexPaginados.length}"
+                           class="form-control form-control-sm text-center fw-bold text-dark input-bloque-jama"
+                           placeholder="${bloqueVisibleActual}">
+
+                    <button type="button" class="btn btn-jama btn-sm rounded-2 py-0 px-2" style="height:24px;"
+                            onclick="window.saltarABloqueManual('${categoria}', ${bloquesKardexPaginados.length})">
+                        <i class="bi bi-arrow-right-short fs-5" style="line-height:0;"></i>
+                    </button>
+                </div>
+                <ul class="pagination pagination-sm justify-content-center mb-0 gap-1 flex-wrap">
+                    ${listaItems}
+                </ul>
+                <div class="text-end text-muted fw-semibold" style="font-size:0.75rem;">
+                    Viendo bloque inicial <span class="badge bg-dark text-white rounded-pill px-2">#${bloqueVisibleActual}</span>
+                    de ${bloquesKardexPaginados.length} bloques totales
+                </div>
+            </div>`;
+    }
 
 function removerControlesPaginacionExistentes() {
     const footer = document.getElementById('nav-paginador-kardex');

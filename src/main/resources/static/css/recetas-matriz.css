@@ -1,0 +1,206 @@
+/* ==========================================================================
+   LA JAMA — HOJA DE ESTILOS UNIFICADA PARA TARJETAS DE RECETAS
+   Mapea tanto el listado (Insumosgestion) como la selección (Insumosrecetas)
+   ========================================================================== */
+
+/* Contenedores físicos de las grillas (Soporta ambos IDs) */
+#listaPlatosRecetario, #gridPlatosDestino {
+    padding-top: 15px !important;
+    padding-bottom: 15px !important;
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+/* Custom Scrollbar elegante para La Jama */
+.style-scrollbar-jama::-webkit-scrollbar {
+    width: 6px;
+}
+.style-scrollbar-jama::-webkit-scrollbar-thumb {
+    background: rgba(27, 58, 44, 0.15);
+    border-radius: 10px;
+}
+
+/* Envoltorio individual de cada plato */
+#listaPlatosRecetario .recipe-card-item,
+#gridPlatosDestino .recipe-card-item {
+    display: inline-block;
+    width: 190px;
+    height: 260px;
+    margin: 0;
+    padding: 0;
+    vertical-align: top;
+    overflow: visible !important; /* Evita que se mutile el agrandamiento hover */
+}
+
+/* 🌟 LA TARJETA UNIVERSAL DE UIVERSE (CORREGIDA) */
+#listaPlatosRecetario .recipe-uiverse-card,
+#gridPlatosDestino .recipe-uiverse-card {
+    --card-bg:      #FBF9F4;
+    --card-accent:  #1B3A2C;
+    --card-gold:    #D4A373;
+    --card-text:    #1B3A2C;
+    --card-shadow:  0 10px 15px -3px rgba(27, 58, 44, 0.06);
+
+    width: 190px;
+    height: 260px;
+    background: var(--card-bg) !important;
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--card-shadow);
+    border: 1px solid #EAD9C9 !important;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    cursor: pointer;
+    display: flex !important;
+    flex-direction: column;
+    contain: layout style;
+}
+
+/* Destello de luz (shine) */
+#listaPlatosRecetario .card__shine, #gridPlatosDestino .card__shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(255,255,255,0) 40%, rgba(255,255,255,0.75) 50%, rgba(255,255,255,0) 60%);
+    background-size: 200% 100%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+/* Halo superior (glow) */
+#listaPlatosRecetario .card__glow, #gridPlatosDestino .card__glow {
+    position: absolute;
+    inset: -10px;
+    background: radial-gradient(circle at 50% 0%, rgba(212, 163, 115, 0.35) 0%, rgba(212, 163, 115, 0) 70%);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+
+/* Contenido Interno */
+#listaPlatosRecetario .card__content, #gridPlatosDestino .card__content {
+    padding: 1.15em;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    position: relative;
+    z-index: 2;
+}
+
+/* Badge superior */
+#listaPlatosRecetario .card__badge, #gridPlatosDestino .card__badge {
+    position: absolute;
+    top: 11px;
+    right: 11px;
+    background: var(--card-accent);
+    color: #EAD9C9;
+    padding: 0.22em 0.55em;
+    border-radius: 999px;
+    font-size: 0.65em;
+    font-weight: 700;
+    text-transform: uppercase;
+    transform: scale(0.8);
+    opacity: 0;
+    transition: all 0.35s ease 0.1s;
+    z-index: 3;
+}
+
+/* Imagen del Plato */
+#listaPlatosRecetario .card__image, #gridPlatosDestino .card__image {
+    width: 100%;
+    height: 105px;
+    border-radius: 12px;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+#listaPlatosRecetario .card__title, #gridPlatosDestino .card__title {
+    color: var(--card-text) !important;
+    font-size: 1em;
+    margin: 0;
+    font-weight: 700;
+}
+
+#listaPlatosRecetario .card__description, #gridPlatosDestino .card__description {
+    color: var(--card-text) !important;
+    font-size: 0.72em;
+    margin: 0;
+    opacity: 0.55;
+}
+
+#listaPlatosRecetario .card__footer, #gridPlatosDestino .card__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+}
+
+#listaPlatosRecetario .card__button, #gridPlatosDestino .card__button {
+    width: 30px;
+    height: 30px;
+    background: var(--card-accent) !important;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #F4EBE1 !important;
+    transition: all 0.3s ease;
+    transform: scale(0.88);
+}
+
+#listaPlatosRecetario .card__button svg, #gridPlatosDestino .card__button svg {
+    fill: none !important;
+    stroke: #F4EBE1 !important;
+}
+
+/* ─── HOVER EFFECTS UNIFICADOS ─── */
+#listaPlatosRecetario .recipe-uiverse-card:hover,
+#gridPlatosDestino .recipe-uiverse-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 22px 28px -6px rgba(27, 58, 44, 0.12), 0 8px 12px -4px rgba(27, 58, 44, 0.06) !important;
+    border-color: rgba(212, 163, 115, 0.5) !important;
+}
+
+#listaPlatosRecetario .recipe-uiverse-card:hover .card__shine, #gridPlatosDestino .recipe-uiverse-card:hover .card__shine {
+    opacity: 1;
+    animation: jama-shine 2.5s infinite linear;
+}
+
+#listaPlatosRecetario .recipe-uiverse-card:hover .card__glow, #gridPlatosDestino .recipe-uiverse-card:hover .card__glow { opacity: 1; }
+#listaPlatosRecetario .recipe-uiverse-card:hover .card__badge, #gridPlatosDestino .recipe-uiverse-card:hover .card__badge { transform: scale(1); opacity: 1; }
+#listaPlatosRecetario .recipe-uiverse-card:hover .card__image, #gridPlatosDestino .recipe-uiverse-card:hover .card__image { transform: translateY(-5px) scale(1.04); }
+
+#listaPlatosRecetario .recipe-uiverse-card:hover .card__button,
+#gridPlatosDestino .recipe-uiverse-card:hover .card__button {
+    transform: scale(1);
+    background: var(--card-gold) !important;
+}
+#listaPlatosRecetario .recipe-uiverse-card:hover .card__button svg,
+#gridPlatosDestino .recipe-uiverse-card:hover .card__button svg {
+    stroke: #1B3A2C !important;
+}
+
+/* ─── 🌟 COMPORTAMIENTO DE TARJETA SELECCIONADA (PASO 1) ─── */
+.tarjeta-seleccionada .recipe-uiverse-card {
+    border: 3px solid #1B3A2C !important;
+    transform: translateY(-6px);
+    box-shadow: 0 15px 25px rgba(27, 58, 44, 0.15) !important;
+}
+.tarjeta-seleccionada .card__badge {
+    background: #1B3A2C !important;
+    color: #FBF9F4 !important;
+    opacity: 1 !important;
+    transform: scale(1) !important;
+}
+.tarjeta-seleccionada .card__button {
+    background: #D4A373 !important;
+}
+
+@keyframes jama-shine {
+    0% { background-position: -100% 0; }
+    100% { background-position: 200% 0; }
+}

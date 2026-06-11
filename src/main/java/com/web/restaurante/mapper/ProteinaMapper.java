@@ -12,7 +12,6 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface ProteinaMapper {
 
-    // 🔥 FORZAMOS EL MAPEO: Mapeamos los datos del lote, incluyendo rendimiento y saldos operativos
     @Mapping(source = "insumo.id", target = "idInsumo")
     @Mapping(source = "insumo.nombre", target = "nombreInsumo")
     @Mapping(source = "porcionesPorKg", target = "porcionesPorKg")
@@ -26,5 +25,6 @@ public interface ProteinaMapper {
 
     @Mapping(source = "insumo.id", target = "idInsumo")
     @Mapping(source = "insumo.nombre", target = "nombreInsumo")
+    @Mapping(source = "mermaKg", target = "mermaKg")
     MovimientoPorcionesDTO toDTO(MovimientoPorciones movimiento);
 }

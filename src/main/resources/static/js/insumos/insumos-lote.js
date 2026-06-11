@@ -42,7 +42,7 @@ async function guardarLote() {
     const observacion = document.getElementById('loteObservacion').value;
 
     let porcionesPorKg = document.getElementById('lotePorcionesPorKg').value;
-    if (categoria !== 'PROTEINA') porcionesPorKg = "1.0";
+    if (categoria !== 'PROTEINA') porcionesPorKg = "0.0";
 
     if (!kgComprados || parseFloat(kgComprados) <= 0) {
         AppUtils.showNotification('Ingresa una cantidad válida comprada', 'error');
@@ -57,9 +57,11 @@ async function guardarLote() {
         return;
     }
 
+    const urlDestino = (categoria === 'PROTEINA') ? '/proteinas/lotes/registrar' : '/insumos/lote/registrar';
+
     AppUtils.showLoading(true);
     try {
-        const res = await fetch('/proteinas/lotes/registrar', {
+        const res = await fetch(urlDestino, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -67,22 +69,65 @@ async function guardarLote() {
                 kgComprados:   parseFloat(kgComprados),
                 porcionesPorKg: parseFloat(porcionesPorKg),
                 costoTotal:    parseFloat(costoTotal),
-                observacion:   observacion || null
+                observacion:   observacion || ""
             })
         });
 
         AppUtils.showLoading(false);
 
-        if (res.ok) {
+    if (res.ok) {
             modalLoteInstance?.hide();
-            AppUtils.showNotification('Ingreso registrado con éxito', 'success');
-            await new Promise(resolve => setTimeout(resolve, 600));
-            location.reload();
+            AppUtils.showNotification('Ingreso de lote registrado con éxito', 'success');
+
+            const botonFila = document.querySelector(`button[data-id="${idInsumo}"]`);
+            const fila = botonFila ? botonFila.closest('tr') : null;
+
+            let celdaTarget = null;
+            let nuevoStock = 0;
+
+            if (fila) {
+                // 1. Localizamos la celda de stock/porciones (Segunda columna)
+                const celdaStock = fila.querySelector('.badge-stock-dinamico');
+
+                if (celdaStock) {
+                    const stockActual = parseFloat(celdaStock.textContent) || 0;
+                    const cantidadNueva = parseFloat(kgComprados);
+
+                    if (categoria === 'PROTEINA') {
+                        // 🌟 REGLA CORREGIDA: El lote de proteína NO suma porciones en caliente, se mantiene el stock actual
+                        nuevoStock = stockActual;
+
+                        // 🌟 REGLA ADICIONAL: Actualizamos visualmente el rendimiento maestro en la tercera columna (td:nth-child(3))
+                        const celdaRendimiento = fila.querySelector('td:nth-child(3) .fw-semibold');
+                        if (celdaRendimiento) {
+                            celdaRendimiento.textContent = parseFloat(porcionesPorKg).toFixed(1);
+                        }
+                    } else {
+                        // Los insumos generales reemplazan el número por el nuevo contenedor (Regla de reinicio)
+                        nuevoStock = cantidadNueva;
+                    }
+
+                    celdaStock.textContent = (categoria === 'PROTEINA') ? Math.round(nuevoStock) : nuevoStock;
+                    celdaTarget = celdaStock;
+                }
+            }
+
+            // Evaluamos el semáforo visual con el valor real persistido
+            if (celdaTarget) {
+                const esProteina = (categoria === 'PROTEINA');
+                actualizarSemaforoVisualStock(celdaTarget, nuevoStock, esProteina);
+            }
+
+            sincronizarFiltrosYPaginas();
+
         } else {
-            AppUtils.showNotification('Error al procesar el registro', 'error');
+            const txtErr = await res.text();
+            console.error("Error devuelto por el servidor:", txtErr);
+            AppUtils.showNotification('Error al procesar el registro en el servidor', 'error');
         }
     } catch (e) {
         AppUtils.showLoading(false);
+        console.error("Excepción atrapada en el flujo asíncrono:", e);
         AppUtils.showNotification('Error de conexión con el servidor', 'error');
     }
 }

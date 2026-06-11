@@ -121,44 +121,84 @@ function calcularMerma() {
 }
 
 async function guardarProduccion() {
-    const idInsumo   = document.getElementById('prodIdInsumo').value;
-    const idLote     = document.getElementById('prodSelectLote').value;
-    const kg         = document.getElementById('prodKg').value;
-    const esperadas  = document.getElementById('prodEsperadas').value;
-    const obtenidas  = document.getElementById('prodObtenidas').value;
-    const observacion = document.getElementById('prodObservacion').value;
+    // 1. Recopilación de datos del formulario del modal de cocina
+    const idInsumo       = document.getElementById('prodIdInsumo').value;
+    const idLote         = document.getElementById('prodSelectLote').value;
+    const kgProcesados   = document.getElementById('prodKg').value;
+    const porcionesObtenidas = document.getElementById('prodObtenidas').value;
+    const mermaKg        = document.getElementById('prodMerma').value;
+    const observacion    = document.getElementById('prodObservacion').value;
 
-    if (!idLote || !kg || !esperadas || !obtenidas) {
-        AppUtils.showNotification('Completa todos los campos requeridos', 'error');
-        return;
-    }
+    // Validaciones rápidas de seguridad
+    if (!idLote) { AppUtils.showNotification('Selecciona un lote válido', 'error'); return; }
+    if (!kgProcesados || parseFloat(kgProcesados) <= 0) { AppUtils.showNotification('Ingresa los kg a procesar', 'error'); return; }
+    if (!porcionesObtenidas || parseInt(porcionesObtenidas) <= 0) { AppUtils.showNotification('Ingresa las porciones reales obtenidas', 'error'); return; }
 
     AppUtils.showLoading(true);
     try {
+        // Enviamos los datos al endpoint de producción que ya tienes en tu ProteinaController
         const res = await fetch('/proteinas/produccion/registrar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 idLote: parseInt(idLote),
-                kgProcesados: parseFloat(kg),
-                porcionesEsperadas: parseInt(esperadas),
-                porcionesObtenidas: parseInt(obtenidas),
-                observacion: observacion || null
+                kgProcesados: parseFloat(kgProcesados),
+                porcionesObtenidas: parseInt(porcionesObtenidas),
+                mermaKg: parseFloat(mermaKg) || 0.0,
+                observacion: observacion || ""
             })
         });
+
         AppUtils.showLoading(false);
+
         if (res.ok) {
-            modalProduccionInstance.hide();
-            AppUtils.showNotification('Producción registrada. Stock actualizado.', 'success');
-            // Recargar para reflejar nuevo stock
-            setTimeout(() => location.reload(), 1200);
+            // 🌟 ÉXITO: Cerramos el modal de cocina sin pestañear
+            if (window.modalProduccionInstance) {
+                modalProduccionInstance.hide();
+            } else {
+                bootstrap.Modal.getInstance(document.getElementById('modalProduccion'))?.hide();
+            }
+
+            AppUtils.showNotification('Producción procesada e ingresada a cocina', 'success');
+
+            // 🌟 MUTACIÓN DEL DOM EN CALIENTE (Adiós al F5)
+            const botonFila = document.querySelector(`button[data-id="${idInsumo}"]`);
+            const fila = botonFila ? botonFila.closest('tr') : null;
+
+            let celdaTarget = null;
+            let nuevoStockCalculado = 0;
+
+            if (fila) {
+                // Buscamos el badge del stock dinámico que creamos en el paso anterior
+                const celdaStock = fila.querySelector('.badge-stock-dinamico');
+                if (celdaStock) {
+                    const stockActual = parseFloat(celdaStock.textContent) || 0;
+                    const porcionesNuevas = parseInt(porcionesObtenidas);
+
+                    // 🥩 En producción SÍ se acumulan las porciones reales obtenidas
+                    nuevoStockCalculado = stockActual + porcionesNuevas;
+                    celdaStock.textContent = Math.round(nuevoStockCalculado);
+
+                    celdaTarget = celdaStock; // Guardamos referencia para el semáforo
+                }
+            }
+
+            // 🚦 Evaluamos el semáforo en tiempo real con las porciones reales acumuladas
+            if (celdaTarget) {
+                actualizarSemaforoVisualStock(celdaTarget, nuevoStockCalculado, true);
+            }
+
+            // Sincronizamos las páginas y filtros de la tabla principal
+            sincronizarFiltrosYPaginas();
+
         } else {
-            const err = await res.text();
-            AppUtils.showNotification('Error: ' + err, 'error');
+            const txtErr = await res.text();
+            AppUtils.showNotification('Error en cocina: ' + (txtErr || 'No se pudo registrar'), 'error');
         }
     } catch (e) {
         AppUtils.showLoading(false);
-        AppUtils.showNotification('Error de conexión', 'error');
+        console.error("Excepción en producción asíncrona:", e);
+        AppUtils.showNotification('Error de red al conectar con la cocina', 'error');
     }
 }
 

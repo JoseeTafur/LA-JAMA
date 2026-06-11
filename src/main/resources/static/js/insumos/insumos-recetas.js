@@ -4,6 +4,7 @@
  * Depende de: insumos-core.js
  */
 
+// ─── 1. CONTROL DE DETALLES (Insumosgestion.html) ───────────────────
 async function cargarDetalleReceta(idProducto, nombreProducto) {
     document.getElementById('tituloModalReceta').innerHTML =
         `<i class="bi bi-journal-text me-2"></i>Receta: ${nombreProducto}`;
@@ -12,7 +13,7 @@ async function cargarDetalleReceta(idProducto, nombreProducto) {
     cuerpo.innerHTML = `
         <tr>
             <td colspan="4" class="text-center py-4">
-                <div class="spinner-border text-primary" role="status"></div><br>Cargando...
+                <div class="spinner-border text-success" role="status"></div><br>Cargando...
             </td>
         </tr>`;
 

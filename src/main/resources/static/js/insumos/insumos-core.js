@@ -336,16 +336,69 @@ function abrirModalNuevoInsumo() {
 }
 
 function confirmarEliminacion(id) {
-    AppUtils.showConfirmationDialog({
-        title: '¿Eliminar insumo?',
-        text: 'Se borrará de la lista de almacén general.',
+    // 1. Desplegamos el cuadro informativo con la advertencia de los dos impactos
+    Swal.fire({
+        title: '<span style="color: var(--lajama-green); font-weight: 800;">¿Estás seguro de eliminar este insumo?</span>',
+        html: `<div class="text-start small p-2 rounded" style="background-color: var(--lajama-cream); border: 1px dashed rgba(27,58,44,0.15); font-family: system-ui, sans-serif;">
+                <p class="mb-2">⚠️ <strong>Impacto en Recetas:</strong> Se desvinculará automáticamente de todas las fórmulas de platos donde esté asignado actualmente.</p>
+                <p class="mb-0">📊 <strong>Impacto en Almacén:</strong> El insumo desaparecerá de las listas operativas, pero su historial (Kardex) quedará archivado de forma segura.</p>
+               </div>`,
         icon: 'warning',
+        showCancelButton: true,
         confirmButtonColor: '#dc3545',
-        confirmButtonText: 'Eliminar'
-    }, function () {
-        AppUtils.showLoading(true);
-        const formEliminar = document.getElementById('form-eliminar-' + id);
-        if (formEliminar) formEliminar.submit();
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, archivar e inactivar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                // 2. Activamos el overlay geométrico de carga
+                AppUtils.showLoading(true);
+
+                // 3. Lanzamos la petición al endpoint REST asíncrono
+                const res = await fetch(`/insumos/eliminar/${id}`, { method: 'POST' });
+
+                AppUtils.showLoading(false);
+
+                if (res.ok) {
+                    AppUtils.showNotification('Insumo archivado y recetas purgadas con éxito', 'success');
+
+                    // 🌟 4. BARRIDO MULTITABLA EN CALIENTE (Adiós al F5)
+
+                    // A) Buscamos y removemos la fila en la pestaña de Catálogo
+                    const botonTacho = document.querySelector(`#tablaCatalogo button.btn-action-delete[data-id="${id}"]`);
+                    const filaCatalogo = botonTacho ? botonTacho.closest('tr') : null;
+                    if (filaCatalogo) {
+                        filaCatalogo.classList.add('animate__animated', 'animate__fadeOutLeft');
+                        setTimeout(() => filaCatalogo.remove(), 400);
+                    }
+
+                    // B) Buscamos y removemos la fila en la pestaña de Porciones (si es que era una proteína)
+                    // Buscamos cualquier botón de acción de esa fila que comparta el mismo data-id
+                    const botonPorciones = document.querySelector(`#cuerpoTablaPrincipal button[data-id="${id}"]`);
+                    const filaPorciones = botonPorciones ? botonPorciones.closest('tr') : null;
+                    if (filaPorciones) {
+                        filaPorciones.classList.add('animate__animated', 'animate__fadeOutLeft');
+                        setTimeout(() => filaPorciones.remove(), 400);
+                    }
+
+                    // 5. Le damos 450ms a que terminen las animaciones de salida y recalculamos AMBOS paginadores
+                    setTimeout(() => {
+                        filtrarCatalogo();       // Recalcula páginas e info del Catálogo
+                        filtrarTablaPrincipal(); // Recalcula páginas e info de Porciones
+                    }, 450);
+
+                } else {
+                    const errText = await res.text();
+                    AppUtils.showNotification('No se pudo procesar la baja: ' + errText, 'error');
+                }
+            } catch (error) {
+                AppUtils.showLoading(false);
+                console.error(error);
+                AppUtils.showNotification('Fallo de comunicación con el servidor', 'error');
+            }
+        }
     });
 }
 
@@ -366,17 +419,45 @@ function manejadorModalKardex(btn) {
 }
 
 function manejadorModalEditar(btn) {
-    prepararEdicionInsumo(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria'), btn.getAttribute('data-unidad'), btn.getAttribute('data-actual'), btn.getAttribute('data-minimo'));
+    // Captura los atributos HTML nativos de la fila y los transfiere a la función de preparación
+    prepararEdicionInsumo(
+        btn.getAttribute('data-id'),
+        btn.getAttribute('data-nombre'),
+        btn.getAttribute('data-categoria'),
+        btn.getAttribute('data-unidad'),
+        btn.getAttribute('data-minimo')
+    );
+}
+
+function prepararEdicionInsumo(id, nombre, categoria, unidadMedida, stockMinimo) {
+    // Inyección de textos planos en el formulario
+    document.getElementById('editInsumoId').value = id;
+    document.getElementById('editInsumoNombre').value = nombre;
+    document.getElementById('editInsumoUnidad').value = unidadMedida;
+    document.getElementById('editInsumoStockMinimo').value = stockMinimo;
+
+    // 🌟 CONTROL DE INYECCIÓN DE CATEGORÍA:
+    // Forzamos mayúsculas estrictas para evitar desajustes posicionales con el primer option (PROTEINA)
+    const selectCategoria = document.getElementById('editarCategoria');
+    if (selectCategoria && categoria) {
+        selectCategoria.value = categoria.toUpperCase().trim();
+    }
+
+    // Desplegamos el modal correspondiente cargado en las variables de entorno de La Jama
+    if (modalEditarInsumoInstance) {
+        modalEditarInsumoInstance.show();
+    }
 }
 
 /**
  * Alterna la visibilidad de los submódulos de insumos en el cliente sin generar F5
  */
 function cambiarPestañaAsincrona(pestañaDestino) {
-    // 1. Ocultamos todos los paneles agregando d-none
+    // 1. Ocultamos todos los paneles agregando d-none (Incluimos el nuevo pane)
     document.getElementById('pane-proteinas')?.classList.add('d-none');
     document.getElementById('pane-catalogo')?.classList.add('d-none');
     document.getElementById('pane-recetas')?.classList.add('d-none');
+    document.getElementById('pane-crear-receta')?.classList.add('d-none');
 
     // 2. Mostramos el panel seleccionado quitando d-none y activando su radio correspondiente
     if (pestañaDestino === 'proteinas') {
@@ -391,8 +472,46 @@ function cambiarPestañaAsincrona(pestañaDestino) {
         document.getElementById('pane-recetas')?.classList.remove('d-none');
         const radio = document.getElementById('radio-btn-recetas');
         if (radio) radio.checked = true;
+    } else if (pestañaDestino === 'crear-receta') {
+        // 🌟 NUEVA ACCIÓN: Activa el flujo del formulario de composición
+        document.getElementById('pane-crear-receta')?.classList.remove('d-none');
+        const radio = document.getElementById('radio-btn-crear-receta');
+        if (radio) radio.checked = true;
     }
 
     // 3. Forzamos al motor de paginación a recalcular y reacomodar las filas de las tablas
     sincronizarFiltrosYPaginas();
+}
+
+/**
+ * Evalúa el stock actual contra el mínimo de un elemento del DOM y aplica el semáforo visual (Rojo/Verde)
+ * @param {HTMLElement} celdaStock - El elemento span/badge que contiene el número
+ * @param {number} nuevoStock - El valor numérico recién calculado
+ * @param {boolean} esProteina - Clave para saber si maneja clases badge o texto plano
+ */
+function actualizarSemaforoVisualStock(celdaStock, nuevoStock, esProteina) {
+    if (!celdaStock) return;
+
+    // Leemos el stock mínimo guardado en el atributo data-minimo del HTML
+    const stockMinimo = parseFloat(celdaStock.getAttribute('data-minimo')) || 0;
+
+    if (nuevoStock <= stockMinimo) {
+        // En estado crítico 🚨
+        if (esProteina) {
+            celdaStock.classList.remove('bg-success');
+            celdaStock.classList.add('bg-danger');
+        } else {
+            celdaStock.classList.remove('text-dark');
+            celdaStock.classList.add('text-danger');
+        }
+    } else {
+        // En estado óptimo
+        if (esProteina) {
+            celdaStock.classList.remove('bg-danger');
+            celdaStock.classList.add('bg-success');
+        } else {
+            celdaStock.classList.remove('text-danger');
+            celdaStock.classList.add('text-dark');
+        }
+    }
 }

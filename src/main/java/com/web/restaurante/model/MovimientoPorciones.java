@@ -35,6 +35,9 @@ public class MovimientoPorciones {
     @Column(nullable = false)
     private Integer stockResultante;
 
+    @Column(name = "merma_kg", nullable = false)
+    private Double mermaKg = 0.0;
+
     @PrePersist
     protected void onCreate() {
         this.fecha = LocalDateTime.now();

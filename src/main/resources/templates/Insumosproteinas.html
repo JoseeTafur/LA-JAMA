@@ -36,7 +36,11 @@
                         <span th:if="${insumo.estado == 0}" class="badge bg-danger ms-1" style="font-size: 0.65rem;">INACTIVO</span>
                     </td>
                     <td>
-                        <span class="badge bg-success text-white px-2 py-1 rounded fw-bold" th:text="${insumo.stockActual != null ? insumo.stockActual.intValue() : 0}"></span>
+    <span th:data-minimo="${insumo.stockMinimo != null ? insumo.stockMinimo.intValue() : 0}"
+          class="badge px-2 py-1 rounded fw-bold badge-stock-dinamico"
+          th:classappend="${insumo.stockActual != null and insumo.stockMinimo != null and insumo.stockActual <= insumo.stockMinimo} ? 'bg-danger text-white' : 'bg-success text-white'"
+          th:text="${insumo.stockActual != null ? insumo.stockActual.intValue() : 0}">
+    </span>
                         <span class="text-muted small ms-1">porciones</span>
                     </td>
                     <td>
@@ -79,7 +83,11 @@
                         <span th:if="${insumo.estado == 0}" class="badge bg-danger ms-1" style="font-size: 0.65rem;">INACTIVO</span>
                     </td>
                     <td>
-                        <span class="fw-bold text-dark" th:text="${insumo.unidadMedida == 'Und' or insumo.unidadMedida == 'Saco' or insumo.unidadMedida == 'Sacos' ? (insumo.stockActual != null ? insumo.stockActual.intValue() : 0) : (insumo.stockActual != null ? insumo.stockActual : 0)}"></span>
+    <span th:data-minimo="${insumo.stockMinimo != null ? insumo.stockMinimo : 0}"
+          class="fw-bold badge-stock-dinamico"
+          th:classappend="${insumo.stockActual != null and insumo.stockMinimo != null and insumo.stockActual <= insumo.stockMinimo} ? 'text-danger' : 'text-dark'"
+          th:text="${insumo.unidadMedida == 'Und' or insumo.unidadMedida == 'Saco' or insumo.unidadMedida == 'Sacos' ? (insumo.stockActual != null ? insumo.stockActual.intValue() : 0) : (insumo.stockActual != null ? insumo.stockActual : 0)}">
+    </span>
                         <span class="text-muted small ms-1" th:text="${insumo.unidadMedida == 'Und' ? 'unidades' : (insumo.unidadMedida == 'Saco' or insumo.unidadMedida == 'Sacos' ? 'sacos' : (insumo.unidadMedida == 'Gr' ? 'gramos' : (insumo.unidadMedida == 'Litro' ? 'litros' : 'kg')))}"></span>
                     </td>
                     <td><span class="text-muted small">N/A</span></td>
@@ -91,6 +99,14 @@
                                     onclick="manejadorModalLote(this)" style="font-size: 0.8rem !important; height: 34px !important;">
                                 <i class="bi bi-box-arrow-in-down"></i> <span>Lote</span>
                             </button>
+
+                            <button th:disabled="${insumo.estado == 0}"
+                                    class="btn btn-sm btn-action-edit"
+                                    th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}"
+                                    onclick="manejadorModalAjuste(this)" style="width: 34px; height: 34px; min-width: 34px; display: inline-flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-sliders text-dark"></i>
+                            </button>
+
                             <button class="btn btn-sm btn-jama-kinetic px-2 py-1 h-auto bg-secondary border-secondary"
                                     th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" th:data-categoria="${insumo.categoria}"
                                     onclick="manejadorModalKardex(this)" style="font-size: 0.8rem !important; height: 34px !important;">

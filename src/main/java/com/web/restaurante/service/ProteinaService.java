@@ -44,7 +44,6 @@ public class ProteinaService {
         LoteInsumo lote = new LoteInsumo();
         lote.setInsumo(insumo);
         lote.setKgComprados(dto.getKgComprados());
-        // El saldo inicial es igual a los kilos comprados
         lote.setSaldoKg(dto.getKgComprados());
         lote.setCostoTotal(dto.getCostoTotal());
         lote.setObservacion(dto.getObservacion());
@@ -71,28 +70,33 @@ public class ProteinaService {
         LoteInsumo lote = loteInsumoRepository.findById(dto.getIdLote())
                 .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
 
-        // Control de stock finito
         if (lote.getSaldoKg() < dto.getKgProcesados()) {
             throw new RuntimeException("Error: El lote seleccionado solo cuenta con "
                     + lote.getSaldoKg() + " kg disponibles.");
         }
 
-        // 🔥 RESTAR CANTIDAD: Aquí se descuenta el stock operativo del lote
+        if (dto.getMermaKg() > dto.getKgProcesados()) {
+            throw new RuntimeException("Error: La merma registrada (" + dto.getMermaKg()
+                    + " kg) no puede ser superior a los kg procesados (" + dto.getKgProcesados() + " kg).");
+        }
+
         double nuevoSaldoLote = lote.getSaldoKg() - dto.getKgProcesados();
         lote.setSaldoKg(nuevoSaldoLote);
         loteInsumoRepository.save(lote);
 
-        // Resto de tu código de producción (cálculo de mermas, stock de insumo maestro, etc.)
         double porcionesEsperadasTeoricas = dto.getKgProcesados() * lote.getPorcionesPorKg();
-        double merma = dto.getKgProcesados() - (dto.getKgProcesados()
-                * ((double) dto.getPorcionesObtenidas() / (porcionesEsperadasTeoricas > 0 ? porcionesEsperadasTeoricas : 1)));
+        int esperadasRedondeadas = (int) Math.round(porcionesEsperadasTeoricas);
+
+        double porcentajeEficiencia = esperadasRedondeadas > 0
+                ? ((double) dto.getPorcionesObtenidas() / esperadasRedondeadas) * 100
+                : 0.0;
 
         ProduccionPorciones produccion = new ProduccionPorciones();
         produccion.setLote(lote);
         produccion.setKgProcesados(dto.getKgProcesados());
-        produccion.setPorcionesEsperadas((int) Math.round(porcionesEsperadasTeoricas));
+        produccion.setPorcionesEsperadas(esperadasRedondeadas);
         produccion.setPorcionesObtenidas(dto.getPorcionesObtenidas());
-        produccion.setMermaKg(Math.round(merma * 1000.0) / 1000.0);
+        produccion.setMermaKg(dto.getMermaKg());
         produccion.setObservacion(dto.getObservacion());
         produccion.setFechaProduccion(LocalDateTime.now());
 
@@ -102,7 +106,19 @@ public class ProteinaService {
         insumo.setStockActual((double) nuevoStock);
         insumoRepository.save(insumo);
 
-        registrarMovimiento(insumo, dto.getPorcionesObtenidas(), "INGRESO", "PRODUCCION", nuevoStock);
+        String detalleHistorialKardex = String.format(
+                "Producción: %d porc. obtenidas / %d esperadas (Eficiencia: %.1f%%, Merma en Balanza: %.3f kg)",
+                dto.getPorcionesObtenidas(),
+                esperadasRedondeadas,
+                porcentajeEficiencia,
+                dto.getMermaKg()
+        );
+
+        if (dto.getObservacion() != null && !dto.getObservacion().trim().isEmpty()) {
+            detalleHistorialKardex += " — Obs: " + dto.getObservacion();
+        }
+
+        registrarMovimiento(insumo, dto.getPorcionesObtenidas(), "INGRESO", detalleHistorialKardex, nuevoStock, dto.getMermaKg());
 
         return proteinaMapper.toDTO(produccionRepository.save(produccion));
     }
@@ -129,7 +145,8 @@ public class ProteinaService {
         insumo.setStockActual((double) nuevoStock);
         insumoRepository.save(insumo);
 
-        return proteinaMapper.toDTO(registrarMovimiento(insumo, cantidad, tipo, motivo, nuevoStock));
+        // 🌟 CORREGIDO: Los ajustes manuales no generan merma de balanza, pasamos 0.0 explícito
+        return proteinaMapper.toDTO(registrarMovimiento(insumo, cantidad, tipo, motivo, nuevoStock, 0.0));
     }
 
     @Transactional
@@ -139,15 +156,15 @@ public class ProteinaService {
 
     // ─── PRIVADO ──────────────────────────────────────────────
 
-    private MovimientoPorciones registrarMovimiento(Insumo insumo, Integer cantidad,
-                                                    String tipo, String motivo, Integer stockResultante) {
+    private MovimientoPorciones registrarMovimiento(Insumo insumo, Integer cantidad, String tipo,
+                                                    String motivo, Integer stockResultante, Double mermaKg) {
         MovimientoPorciones mov = new MovimientoPorciones();
         mov.setInsumo(insumo);
         mov.setCantidadPorciones(cantidad);
         mov.setTipo(tipo);
         mov.setMotivo(motivo);
         mov.setStockResultante(stockResultante);
-        // 🛡️ Aseguramos la fecha en Java
+        mov.setMermaKg(mermaKg != null ? mermaKg : 0.0);
         mov.setFecha(LocalDateTime.now());
         return movimientoPorcionesRepository.save(mov);
     }
@@ -155,7 +172,7 @@ public class ProteinaService {
     public List<KardexProteinaDTO> obtenerKardexUnificado(Long idInsumo) {
         List<KardexProteinaDTO> linea = new ArrayList<>();
 
-        // 1. Lotes (compras del admin)
+        // 1. Lotes
         loteInsumoRepository.findTop50ByInsumoIdOrderByFechaCompraDesc(idInsumo)
                 .forEach(lote -> {
                     String detalle = lote.getKgComprados() + " kg comprados";
@@ -164,7 +181,6 @@ public class ProteinaService {
                     if (lote.getObservacion() != null)
                         detalle += " (" + lote.getObservacion() + ")";
 
-                    // 🛡️ Si por alguna razón la fecha es nula en BD, usamos la actual para evitar caídas
                     LocalDateTime fecha = lote.getFechaCompra() != null ? lote.getFechaCompra() : LocalDateTime.now();
 
                     linea.add(new KardexProteinaDTO(
@@ -177,7 +193,7 @@ public class ProteinaService {
                     ));
                 });
 
-        // 2. Producciones (cocinero)
+        // 2. Producciones
         produccionRepository.findTop50ByLoteInsumoIdOrderByFechaProduccionDesc(idInsumo)
                 .forEach(prod -> {
                     String detalle = prod.getPorcionesObtenidas() + " porc. obtenidas"
@@ -186,36 +202,46 @@ public class ProteinaService {
                     if (prod.getObservacion() != null)
                         detalle += " (" + prod.getObservacion() + ")";
 
-                    // 🛡️ Control de nulos
                     LocalDateTime fecha = prod.getFechaProduccion() != null ? prod.getFechaProduccion() : LocalDateTime.now();
 
-                    linea.add(new KardexProteinaDTO(
+                    KardexProteinaDTO dto = new KardexProteinaDTO(
                             fecha,
                             "PRODUCCION",
                             detalle,
                             "+",
                             prod.getPorcionesObtenidas() + " porc.",
                             null
-                    ));
+                    );
+                    // 🌟 MAPEADO: Pasamos la merma de la producción al DTO unificado
+                    dto.setMermaKg(prod.getMermaKg());
+                    linea.add(dto);
                 });
 
-        // 3. Movimientos (ajustes y ventas)
+        // ─── 3. Movimientos (DENTRO DE obtenerKardexUnificado) ───
         movimientoPorcionesRepository.findTop50ByInsumoIdOrderByFechaDesc(idInsumo)
                 .forEach(mov -> {
-                    // 🛡️ Control de nulos
                     LocalDateTime fecha = mov.getFecha() != null ? mov.getFecha() : LocalDateTime.now();
 
-                    linea.add(new KardexProteinaDTO(
+                    // 🌟 CORREGIDO: Usamos .startsWith("VENTA") para capturar "VENTA_SALA - Despacho..."
+                    String tipoOperacion = "AJUSTE";
+                    if (mov.getMotivo() != null && (mov.getMotivo().startsWith("VENTA") || mov.getMotivo().equals("VENTA"))) {
+                        tipoOperacion = "VENTA";
+                    }
+
+                    KardexProteinaDTO dto = new KardexProteinaDTO(
                             fecha,
-                            mov.getMotivo().equals("VENTA") ? "VENTA" : "AJUSTE",
+                            tipoOperacion,
                             mov.getMotivo(),
                             mov.getTipo().equals("INGRESO") ? "+" : "-",
                             mov.getCantidadPorciones() + " porc.",
                             mov.getStockResultante()
-                    ));
+                    );
+
+                    // 🌟 MAPEADO: Pasamos la merma del movimiento (ajustes/ventas) al DTO unificado
+                    dto.setMermaKg(mov.getMermaKg());
+                    linea.add(dto);
                 });
 
-        // 🛡️ Ordenar todo por fecha descendente usando un comparador que tolera fallos de nulos por si acaso
         linea.sort(Comparator.comparing(KardexProteinaDTO::getFecha, Comparator.nullsLast(Comparator.reverseOrder())));
 
         return linea;
@@ -226,24 +252,14 @@ public class ProteinaService {
         Insumo insumo = insumoRepository.findById(insumoId)
                 .orElseThrow(() -> new RuntimeException("Insumo no encontrado"));
 
-        // Creamos la entidad del movimiento para el Kardex adaptada a tus atributos reales
         MovimientoPorciones mov = new MovimientoPorciones();
         mov.setInsumo(insumo);
-
-// 1. Mapeado a 'cantidadPorciones' (Convertido a int si 'cantidad' viene como double)
         mov.setCantidadPorciones((int) cantidad);
-
-// 2. Mapeado a 'tipo' (Mantenemos tu estándar)
         mov.setTipo("EGRESO");
-
-// 3. Mapeado a 'motivo' (Unificamos origen y detalle aquí ya que tu entidad no tiene esos campos)
         mov.setMotivo("VENTA_SALA - Despacho de comanda Pedido N° " + pedidoId);
-
-// 4. Mapeado a 'stockResultante' (Convertimos el stock actual del insumo a int)
-// Nota: Asegúrate de que insumo.getStockActual() devuelva el stock YA restado
         mov.setStockResultante((int) Math.round(insumo.getStockActual()));
+        mov.setMermaKg(0.0); // Una venta no genera merma física de porcionamiento
 
-// Guardamos en tu repositorio
         movimientoPorcionesRepository.save(mov);
     }
 }

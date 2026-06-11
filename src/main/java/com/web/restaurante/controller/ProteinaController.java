@@ -67,12 +67,17 @@ public class ProteinaController {
 
     @PostMapping("/movimientos/ajustar")
     @ResponseBody
-    public ResponseEntity<MovimientoPorcionesDTO> ajustarPorciones(
+    public ResponseEntity<?> ajustarPorciones(
             @RequestParam Long idInsumo,
             @RequestParam Integer cantidad,
             @RequestParam String tipo,
             @RequestParam String motivo) {
-        return ResponseEntity.ok(proteinaService.ajustarPorciones(idInsumo, cantidad, tipo, motivo));
+        try {
+            MovimientoPorcionesDTO dto = proteinaService.ajustarPorciones(idInsumo, cantidad, tipo, motivo);
+            return ResponseEntity.ok(dto);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @GetMapping("/kardex/{idInsumo}")

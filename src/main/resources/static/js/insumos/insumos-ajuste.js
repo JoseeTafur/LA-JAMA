@@ -41,6 +41,22 @@ async function guardarAjuste() {
     if (!cantidad || parseInt(cantidad) <= 0) { AppUtils.showNotification('Ingresa una cantidad válida', 'error'); return; }
     if (!motivo.trim())                     { AppUtils.showNotification('Ingresa el motivo del ajuste', 'error'); return; }
 
+    // 🌟 CANDADO DE FRONTEND: Evitar envíos que fuercen stock menor a cero
+    const botonFila = document.querySelector(`#cuerpoTablaPrincipal button[data-id="${idInsumo}"]`);
+    const fila = botonFila ? botonFila.closest('tr') : null;
+
+    if (fila && tipo === 'EGRESO') {
+        const celdaStock = fila.querySelector('td:nth-child(2) .badge');
+        if (celdaStock) {
+            const stockActual = parseFloat(celdaStock.textContent) || 0;
+            if (parseInt(cantidad) > stockActual) {
+                // Detiene el proceso antes de tocar al servidor
+                AppUtils.showNotification(`Operación cancelada. Solo cuentas con ${stockActual} porciones disponibles.`, 'error');
+                return;
+            }
+        }
+    }
+
     AppUtils.showLoading(true);
     try {
         const params = new URLSearchParams({ idInsumo, cantidad, tipo, motivo });
@@ -52,42 +68,42 @@ async function guardarAjuste() {
             modalAjusteInstance?.hide();
             AppUtils.showNotification('Ajuste de porciones registrado', 'success');
 
-            // 🌟 ACTUALIZACIÓN ASÍNCRONA COMPLETA (SIN RECARGAR)
-            // Buscamos cualquier botón de la fila que tenga el data-id para amarrar el nodo <tr>
-            const botonFila = document.querySelector(`#cuerpoTablaPrincipal button[data-id="${idInsumo}"]`);
-            const fila = botonFila ? botonFila.closest('tr') : null;
+            // 🌟 Declaramos las referencias en un scope accesible
+            let celdaStockActualizada = null;
+            let nuevoStockCalculado = 0;
 
             if (fila) {
-                // Selector exacto: Segunda columna (Stock), primer elemento con clase .badge
                 const celdaStock = fila.querySelector('td:nth-child(2) .badge');
-
                 if (celdaStock) {
                     const stockActual = parseFloat(celdaStock.textContent) || 0;
                     const cantidadAjuste = parseFloat(cantidad);
 
-                    // Calculamos el nuevo stock en caliente
-                    let nuevoStock = stockActual;
                     if (tipo === 'INGRESO') {
-                        nuevoStock = stockActual + cantidadAjuste;
+                        nuevoStockCalculado = stockActual + cantidadAjuste;
                     } else {
-                        // Evitamos que baje de 0 para mantener la integridad visual
-                        nuevoStock = Math.max(0, stockActual - cantidadAjuste);
+                        nuevoStockCalculado = Math.max(0, stockActual - cantidadAjuste);
                     }
 
-                    // Inyectamos el entero redondeado al badge para mantener la simetría Shadcn
-                    celdaStock.textContent = Math.round(nuevoStock);
+                    celdaStock.textContent = Math.round(nuevoStockCalculado);
+
+                    // Asignamos las referencias para usarlas afuera
+                    celdaStockActualizada = celdaStock;
                 }
             }
 
-            // Recalculas el paginador por si el cambio afecta los filtros o el orden
-            sincronizarFiltrosYPaginas();
+            // 🌟 Ahora sí, pasamos las variables con total seguridad
+            if (celdaStockActualizada) {
+                actualizarSemaforoVisualStock(celdaStockActualizada, nuevoStockCalculado, true);
+            }
 
+            sincronizarFiltrosYPaginas();
         } else {
-            const err = await res.text();
-            AppUtils.showNotification('Error: ' + err, 'error');
+            // 🚨 Si pasa los controles de front pero rebota en BD, capturamos la frase del catch del controller
+            const mensajeError = await res.text();
+            AppUtils.showNotification(mensajeError || 'No se pudo realizar el ajuste', 'error');
         }
     } catch (e) {
         AppUtils.showLoading(false);
-        AppUtils.showNotification('Error de conexión', 'error');
+        AppUtils.showNotification('Error de conexión con el servidor', 'error');
     }
 }

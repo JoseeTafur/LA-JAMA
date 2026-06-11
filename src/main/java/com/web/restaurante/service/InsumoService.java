@@ -32,16 +32,32 @@ public class InsumoService {
     public List<InsumoDTO> listarInsumos() {
         return insumoRepository.findAll()
                 .stream()
+                .filter(insumo -> insumo.getEstado() != null && insumo.getEstado() != -1)
                 .map(insumoMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     public InsumoDTO guardarInsumo(InsumoDTO dto) {
-        Insumo insumo = insumoMapper.toEntity(dto);
-        insumo.setCategoria(dto.getCategoria());
+        Insumo insumo;
+
+        if (dto.getId() != null) {
+            insumo = insumoRepository.findById(dto.getId())
+                    .orElseThrow(() -> new RuntimeException("Insumo no encontrado"));
+
+            insumo.setNombre(dto.getNombre());
+            insumo.setCategoria(dto.getCategoria());
+            insumo.setUnidadMedida(dto.getUnidadMedida());
+            insumo.setStockMinimo(dto.getStockMinimo());
+        } else {
+            // Si es nuevo, usamos el mapper normal
+            insumo = insumoMapper.toEntity(dto);
+            insumo.setCategoria(dto.getCategoria());
+        }
+
         if (insumo.getEstado() == null) {
             insumo.setEstado(1);
         }
+
         return insumoMapper.toDTO(insumoRepository.save(insumo));
     }
 
@@ -60,14 +76,18 @@ public class InsumoService {
         insumoRepository.save(insumo);
     }
 
-    // 🌟 NUEVO MÉTODO INTERACTIVO COMPLETO PARA CONTROL DE LOTES (PROT + ALMACÉN GENERAL)
+    // 🌟 MÉTODO CORREGIDO Y BLINDADO CONTRA CAMPOS NULOS DE ABARROTES GENERALES
     @Transactional
     public void registrarLote(java.util.Map<String, Object> payload) {
         Long idInsumo = Long.valueOf(payload.get("idInsumo").toString());
         Double kgComprados = Double.valueOf(payload.get("kgComprados").toString());
-        Double porcionesPorKg = Double.valueOf(payload.get("porcionesPorKg").toString());
-        Double costoTotal = Double.valueOf(payload.get("costoTotal").toString());
+        Double costoTotal = payload.get("costoTotal") != null ? Double.valueOf(payload.get("costoTotal").toString()) : 0.0;
         String observacion = payload.get("observacion") != null ? payload.get("observacion").toString() : "";
+
+        // 🛡️ CONTROL DE NULOS: Si no viene porcionesPorKg (Insumo general), le asignamos 0.0 por defecto
+        Double porcionesPorKg = (payload.get("porcionesPorKg") != null && !payload.get("porcionesPorKg").toString().trim().isEmpty())
+                ? Double.valueOf(payload.get("porcionesPorKg").toString())
+                : 0.0;
 
         Insumo insumo = insumoRepository.findById(idInsumo)
                 .orElseThrow(() -> new RuntimeException("Insumo no encontrado con ID: " + idInsumo));
@@ -78,29 +98,33 @@ public class InsumoService {
         String detalleKardex = "";
 
         if (!"PROTEINA".equalsIgnoreCase(insumo.getCategoria())) {
-            // 🛒 CASO ABARROTES / SACOS: Acumulamos sumando la cantidad directamente al stock actual
-            nuevoStock = stockAnterior + kgComprados;
+            // 🛒 CASO GENERAL (Arroz, Vegetales):
+            // 🌟 CAMBIO: El stock actual se REEMPLAZA por la cantidad del nuevo lote ingresado
+            nuevoStock = kgComprados;
             insumo.setStockActual(nuevoStock);
             cantidadMovimientoKardex = kgComprados;
-            detalleKardex = "Ingreso Lote: " + (observacion.trim().isEmpty() ? "Compra regular" : observacion);
+            detalleKardex = "Apertura de Lote (Stock Reiniciado): " + kgComprados + " " + insumo.getUnidadMedida() +
+                    (observacion.trim().isEmpty() ? "" : " — " + observacion);
         } else {
-            // 🥩 CASO PROTEÍNAS: Convertimos los kilogramos a porciones y acumulamos
+            // 🥩 CASO PROTEÍNAS: Mantiene su comportamiento acumulativo por porciones calculadas
             double porcionesNuevas = Math.round(kgComprados * porcionesPorKg);
             nuevoStock = stockAnterior + porcionesNuevas;
             insumo.setStockActual(nuevoStock);
-            insumo.setPorcionesPorKg(porcionesPorKg); // Actualizamos rendimiento maestro
+            insumo.setPorcionesPorKg(porcionesPorKg);
 
             cantidadMovimientoKardex = porcionesNuevas;
             detalleKardex = "Ingreso Lote: " + kgComprados + " Kg (Rendimiento: " + porcionesPorKg + " porc/Kg)";
         }
 
-        // Guardamos el maestro actualizado
+        // Guardamos el maestro actualizado con flush forzado
         insumoRepository.saveAndFlush(insumo);
 
-        // Dejamos huella en el Kardex usando la misma estructura de tu entidad
+        // Dejamos huella limpia en el Kardex general
         MovimientoInsumo mov = new MovimientoInsumo();
         mov.setInsumo(insumo);
         mov.setCantidad(cantidadMovimientoKardex);
+
+        // 🌟 DOBLE CAPA: Seteamos tanto origen como tipo para que se acople al JS del Kardex que armamos
         mov.setTipo("INGRESO");
         mov.setMotivo(detalleKardex);
         mov.setStockResultante(nuevoStock);
@@ -201,6 +225,31 @@ public class InsumoService {
     @Transactional
     public void limpiarRecetaDeProducto(Long idProducto) {
         insumoProductoRepository.deleteByProductoId(idProducto);
+    }
+
+    @Transactional
+    public void ejecutarBajaLogicaAvanzada(Long idInsumo) {
+        Insumo insumo = insumoRepository.findById(idInsumo)
+                .orElseThrow(() -> new RuntimeException("Insumo no encontrado con ID: " + idInsumo));
+
+        List<InsumoProducto> recetasAfectadas = insumoProductoRepository.findByInsumoId(idInsumo);
+
+        insumoProductoRepository.deleteByInsumoId(idInsumo);
+
+        for (InsumoProducto relacion : recetasAfectadas) {
+            Producto producto = relacion.getProducto();
+            if (producto != null) {
+                List<InsumoProducto> ingredientesRestantes = insumoProductoRepository.findByProductoId(producto.getId());
+
+                if (ingredientesRestantes.isEmpty()) {
+                    producto.setEstado(0);
+                    productoRepository.save(producto);
+                }
+            }
+        }
+
+        insumo.setEstado(-1);
+        insumoRepository.saveAndFlush(insumo);
     }
 
 }

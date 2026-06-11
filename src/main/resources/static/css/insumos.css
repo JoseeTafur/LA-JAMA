@@ -279,30 +279,52 @@ body {
 .bg-light-danger { background-color: var(--lajama-danger-bg) !important; color: var(--lajama-danger) !important; }
 .text-warning-dark { color: #94600E !important; }
 
-/* Bloques de paginación interna */
+/* ==========================================================================
+   LA JAMA — ARREGLO DE CONTRASTE Y BORDES PARA BOTONES DE PAGINACIÓN
+   ========================================================================== */
+
+/* Estilo base unificado para los botones de bloques (Quita el recuadro nativo de la foto) */
 .page-link-jama-block {
-    border: none;
-    padding: 0.4rem 1rem;
-    font-size: 0.75rem;
-    font-weight: 700;
+    background-color: var(--lajama-white) !important;
+    color: var(--lajama-green) !important;
+    border: 1px solid var(--lajama-peach) !important;
+    padding: 6px 14px !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
     text-transform: uppercase;
-    border-radius: 0.5rem;
+    border-radius: 8px !important; /* Fuerza las esquinas redondeadas */
     cursor: pointer;
     transition: all 0.2s ease;
-}
-.btn-pag-jama-inactive {
-    background-color: var(--lajama-white);
-    color: var(--lajama-green);
-    border: 1px solid var(--lajama-peach);
-}
-.btn-pag-jama-inactive:hover { background-color: var(--lajama-skin); }
-.btn-pag-jama-active {
-    background-color: var(--lajama-green);
-    color: var(--lajama-peach);
-    border: 1px solid var(--lajama-green);
-    box-shadow: var(--shadow-sm);
+    outline: none !important;      /* Elimina cualquier marco de enfoque azul o negro */
+    display: inline-block;
 }
 
+/* 1. Comportamiento en Hover (Al pasar el mouse por encima) */
+.page-link-jama-block:hover,
+.btn-pag-jama-inactive:hover {
+    background-color: var(--lajama-skin) !important;
+    color: var(--lajama-green-hover) !important;
+    border-color: var(--lajama-gold) !important;
+}
+
+/* 2. Estado ACTIVO (El bloque operativo seleccionado actualmente) */
+.page-link-jama-block.btn-pag-jama-active,
+.btn-pag-jama-active {
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-cream) !important;
+    border-color: var(--lajama-green) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Limpieza estructural del contenedor ul de Bootstrap para evitar desajustes */
+.pagination.pagination-sm {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center;
+    gap: 6px !important;
+}
 .animate-pulse {
     animation: pulseAlert 2s infinite;
 }
@@ -561,4 +583,89 @@ body {
     padding: 0.25rem 0.5rem;
     font-size: 0.85rem;
     border-radius: 0.5rem;
+}
+
+/* ==========================================================================
+   LA JAMA - ESTILOS PARA LA FILA DE PRODUCCIÓN EN KARDEX
+   ========================================================================== */
+
+/* Fila con fondo crema y línea dorada a la izquierda */
+#cuerpoKardexPorciones tr.fila-produccion {
+    background-color: var(--lajama-cream) !important;
+    border-left: 4px solid var(--lajama-gold) !important;
+}
+
+/* Forzar que el texto de la fila sea verde oscuro y legible */
+#cuerpoKardexPorciones tr.fila-produccion td {
+    color: var(--lajama-green) !important;
+    font-weight: 600 !important;
+}
+
+/* Badge especial para "🔥 Producción" */
+.badge-produccion {
+    background-color: var(--lajama-gold) !important;
+    color: var(--lajama-green) !important;
+    font-weight: 700 !important;
+    padding: 0.35em 0.75em;
+    border-radius: 50rem;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ==========================================================================
+   LA JAMA — EL VERDADERO CSS DE LOS CONTROLES DEL KARDEX
+   ========================================================================== */
+
+/* Contenedor principal inyectado (.jama-table-controls) */
+.jama-table-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+/* El contenedor de los botones de páginas (${listaItems}) */
+.jama-pagination-wrapper {
+    display: flex;
+    gap: 6px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* Los botones individuales de página (Bloque 1, Bloque 2, etc.) */
+.page-item-jama .page-link-jama {
+    background-color: var(--lajama-white) !important;
+    color: var(--lajama-green) !important;
+    border: 1px solid var(--lajama-peach) !important;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Efecto hover sobre los botones del Kárdex */
+.page-item-jama .page-link-jama:hover {
+    background-color: var(--lajama-skin) !important;
+    color: var(--lajama-green-hover) !important;
+}
+
+/* Estado ACTIVO (El bloque de auditoría que estás viendo en pantalla) */
+.page-item-jama.active .page-link-jama {
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-cream) !important;
+    border-color: var(--lajama-green) !important;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Estado DESACTIVADO (Botón Anterior/Siguiente cuando ya no hay más bloques) */
+.page-item-jama.disabled .page-link-jama {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #f1f3f5 !important;
+    color: #6c757d !important;
 }

@@ -87,7 +87,7 @@
                         <div class="card-body p-4">
                             <div class="grid-mesas">
                                 <div th:each="m : ${mesas}"
-                                     th:with="pedidosFiltrados=${pedidos != null ? pedidos.?[numeroMesa == __${m.numero}__ && estado != T(com.web.restaurante.model.enums.EstadoPedido).PAGADO && estado != T(com.web.restaurante.model.enums.EstadoPedido).CANCELADO] : null},
+                                     th:with="pedidosFiltrados=${pedidos != null ? pedidos.?[numeroMesa == __${m.numero}__ && estado.name() != 'PAGADO' && estado.name() != 'CANCELADO'] : null},
                                               pedidoMesa=${pedidosFiltrados != null && !#lists.isEmpty(pedidosFiltrados) ? pedidosFiltrados[#lists.size(pedidosFiltrados) - 1] : null}"
 
                                      th:class="'mesa-box shadow-sm ' +
@@ -139,7 +139,7 @@
 
                             <div th:each="mPadre : ${mesas}"
                                  th:if="${mPadre.numerosMesasHijas != null && !mPadre.numerosMesasHijas.isEmpty()}"
-                                 th:with="pedidosPadre=${pedidos != null ? pedidos.?[numeroMesa == __${mPadre.numero}__ && estado != T(com.web.restaurante.model.enums.EstadoPedido).PAGADO && estado != T(com.web.restaurante.model.enums.EstadoPedido).CANCELADO] : null},
+                                 th:with="pedidosPadre=${pedidos != null ? pedidos.?[numeroMesa == __${mPadre.numero}__ && estado.name() != 'PAGADO' && estado.name() != 'CANCELADO'] : null},
                                           pedidoPadreActivo=${pedidosPadre != null && !#lists.isEmpty(pedidosPadre) ? pedidosPadre[#lists.size(pedidosPadre) - 1] : null}"
 
                                  class="card border-0 shadow-sm rounded-4 tarjeta-unificada"
@@ -375,8 +375,11 @@
 
 <th:block th:replace="~{pago/modal-cobro :: modalCobro}"></th:block>
 <th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script th:src="@{/js/utiles-comunes.js}"></script>
 <script th:src="@{/js/mesas.js}"></script>
 <script th:src="@{/js/caja-movil.js}"></script>
 </body>

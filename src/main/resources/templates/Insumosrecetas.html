@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div id="contenido_submodulo">
+
+    <link th:href="@{/css/crear-receta.css}" rel="stylesheet" />
+
+    <div class="row g-4">
+        <div class="col-xl-12 col-lg-12">
+            <div class="card recipe-creation-container border-0 shadow-sm">
+                <div class="card-body p-4">
+
+                    <form method="post" id="formAsignarMasivo" th:action="@{/insumos/producto/receta/guardar-matriz}">
+
+                        <div class="d-flex align-items-center mb-4 pb-3 border-bottom border-light">
+                            <div class="recipe-header-icon p-2 rounded-circle me-3">
+                                <i class="bi bi-ui-checks fs-4"></i>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold text-dark mb-0">Composición de Fórmulas</h5>
+                                <small class="text-muted">Marca los insumos y asigna sus porciones por plato</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-5">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <label class="fw-bold text-dark mb-0 d-flex align-items-center">
+                                    <span class="recipe-step-indicator">1</span> Seleccionar Plato Destino
+                                </label>
+                                <input type="text" id="buscadorPlatoDestino" class="form-control form-control-sm px-3 selector-search-input" placeholder="🔍 Buscar plato...">
+                            </div>
+
+                            <input type="hidden" name="idProductoSelect" id="inputPlatoSeleccionado" required>
+
+                            <div class="d-flex flex-wrap gap-3 overflow-auto pe-2 py-2 style-scrollbar-jama" style="max-height: 290px;" id="gridPlatosDestino">
+
+                                <div class="recipe-card-item plato-clickable" th:each="p : ${productos}" th:data-id="${p.id}" th:data-nombre="${p.nombre}">
+
+                                    <div class="recipe-uiverse-card pointer-events-none">
+                                        <div class="card__shine"></div>
+                                        <div class="card__glow"></div>
+                                        <div class="card__content">
+                                            <div class="card__badge">ELEGIR</div>
+                                            <div style="--bg-color: #a78bfa" class="card__image">
+                                                <img th:if="${p.imagen != null and p.imagen != ''}"
+                                                     th:src="@{'/uploads/productos/' + ${p.imagen}}"
+                                                     style="width: 100%; height: 100%; object-fit: cover; display: block;" alt="">
+                                                <div th:if="${p.imagen == null or p.imagen == ''}"
+                                                     style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, #D4A373, #b8895a);">
+                                                    <i class="bi bi-egg-fried text-white" style="font-size: 1.8rem;"></i>
+                                                </div>
+                                            </div>
+                                            <div class="card__text">
+                                                <p class="card__title text-truncate" th:text="${p.nombre}">Plato</p>
+                                            </div>
+                                            <div class="card__footer">
+                                                <div class="card__price text-muted" style="font-size: 0.7rem;">Click para asignar</div>
+                                                <div class="card__button" style="background: #1B3A2C;">
+                                                    <i class="bi bi-check2 text-white"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <label class="fw-bold text-dark mb-0 d-flex align-items-center">
+                                    <span class="recipe-step-indicator">2</span> Insumos y Porciones Requeridas
+                                </label>
+                                <input type="text" id="buscarInsumoMatriz" class="form-control form-control-sm px-3 selector-search-input" placeholder="🔍 Filtrar ingredientes...">
+                            </div>
+
+                            <div class="matrix-scroll-container pe-2 style-scrollbar-jama" style="max-height: 400px; overflow-y: auto;">
+                                <div class="recipe-matrix-grid">
+
+                                    <div class="matrix-group">
+                                        <div class="text-muted small fw-bold mb-3 text-uppercase font-monospace">🥩 Proteínas</div>
+                                        <div th:each="ins : ${insumos}" th:if="${ins.categoria == 'PROTEINA' and (ins.estado == null or ins.estado == 1)}"
+                                             class="recipe-matrix-item matrix-item-light d-flex align-items-center justify-content-between py-2 px-3 mb-2 rounded-3 shadow-sm"
+                                             th:data-insumo-id="${ins.id}">
+
+                                            <div class="m-0 d-flex align-items-center gap-2">
+                                                <div class="checkbox-wrapper-12">
+                                                    <div class="cbx">
+                                                        <input class="check-insumo-receta" type="checkbox" th:name="'insumosSeleccionados'" th:value="${ins.id}" th:id="'check-' + ${ins.id}">
+                                                        <label th:for="'check-' + ${ins.id}"></label>
+                                                        <svg fill="none" viewBox="0 0 15 14" height="14" width="15">
+                                                            <path d="M2 8.36364L6.23077 12L13 2"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" style="display:none;">
+                                                        <defs>
+                                                            <filter id="goo-12">
+                                                                <feGaussianBlur result="blur" stdDeviation="4" in="SourceGraphic"></feGaussianBlur>
+                                                                <feColorMatrix result="goo-12" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -7" mode="matrix" in="blur"></feColorMatrix>
+                                                                <feBlend in2="goo-12" in="SourceGraphic"></feBlend>
+                                                            </filter>
+                                                        </defs>
+                                                    </svg>
+                                                </div>
+
+                                                <label class="text-dark fw-semibold small cursor-pointer" th:for="'check-' + ${ins.id}" th:text="${ins.nombre}"></label>
+                                            </div>
+
+                                            <div class="portion-input-group d-flex align-items-center gap-1">
+                                                <input type="number"
+                                                       step="1"
+                                                       value="1"
+                                                       min="1"
+                                                       th:name="'porciones-' + ${ins.id}"
+                                                       th:id="'portion-' + ${ins.id}"
+                                                       class="form-control form-control-sm text-center portion-field"
+                                                       placeholder="1">
+                                                <span class="text-muted widget-unit-text">porc.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="matrix-group">
+                                        <div class="text-muted small fw-bold mb-3 text-uppercase font-monospace">🥬 Vegetales, Salsas y Abarrotes</div>
+                                        <div th:each="ins : ${insumos}" th:if="${ins.categoria != 'PROTEINA' and (ins.estado == null or ins.estado == 1)}"
+                                             class="recipe-matrix-item matrix-item-light d-flex align-items-center justify-content-between py-2 px-3 mb-2 rounded-3 shadow-sm"
+                                             th:data-insumo-id="${ins.id}">
+
+                                            <div class="m-0 d-flex align-items-center gap-2">
+                                                <div class="checkbox-wrapper-12">
+                                                    <div class="cbx">
+                                                        <input class="check-insumo-receta" type="checkbox" th:name="'insumosSeleccionados'" th:value="${ins.id}" th:id="'check-' + ${ins.id}">
+                                                        <label th:for="'check-' + ${ins.id}"></label>
+                                                        <svg fill="none" viewBox="0 0 15 14" height="14" width="15">
+                                                            <path d="M2 8.36364L6.23077 12L13 2"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" style="display:none;">
+                                                        <defs>
+                                                            <filter id="goo-12">
+                                                                <feGaussianBlur result="blur" stdDeviation="4" in="SourceGraphic"></feGaussianBlur>
+                                                                <feColorMatrix result="goo-12" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -7" mode="matrix" in="blur"></feColorMatrix>
+                                                                <feBlend in2="goo-12" in="SourceGraphic"></feBlend>
+                                                            </filter>
+                                                        </defs>
+                                                    </svg>
+                                                </div>
+
+                                                <label class="text-dark fw-semibold small cursor-pointer" th:for="'check-' + ${ins.id}" th:text="${ins.nombre}"></label>
+                                            </div>
+
+                                            <div class="portion-input-group d-flex align-items-center gap-1">
+                                                <input type="number" step="0.1" value="1.0" min="0.1" th:name="'porciones-' + ${ins.id}" th:id="'portion-' + ${ins.id}" class="form-control form-control-sm text-center portion-field" placeholder="1.0">
+                                                <span class="text-muted widget-unit-text">porc.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-top border-light">
+                            <button type="submit" class="btn btn-save-recipe-jama w-100 fw-bold rounded-pill py-2 shadow-sm">
+                                <i class="bi bi-cloud-check-fill me-2"></i>Guardar Configuración de Receta
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+    // 1. Buscador dinámico sobre la Grilla de Platos
+    const buscadorPlato = document.getElementById('buscadorPlatoDestino');
+    if(buscadorPlato) {
+        buscadorPlato.addEventListener('keyup', function() {
+            const texto = this.value.toLowerCase().trim();
+            document.querySelectorAll('.plato-clickable').forEach(fila => {
+                const nombre = fila.getAttribute('data-nombre').toLowerCase();
+                fila.style.display = nombre.includes(texto) ? '' : 'none';
+            });
+        });
+    }
+
+    // 2. Control Visual de Selección de Tarjeta y Carga de Insumos Existentes
+    const inputOculto = document.getElementById('inputPlatoSeleccionado');
+
+    document.querySelectorAll('.plato-clickable').forEach(tarjeta => {
+        tarjeta.addEventListener('click', async function() {
+            // Alternar estado visual de selección en la tarjeta
+            document.querySelectorAll('.plato-clickable').forEach(t => t.classList.remove('tarjeta-seleccionada'));
+            this.classList.add('tarjeta-seleccionada');
+
+            const idProducto = this.getAttribute('data-id');
+            inputOculto.value = idProducto;
+
+            // 🌟 REINICIAR MATRIZ CON VALORES ENTEROS ("1" en lugar de "1.0")
+            document.querySelectorAll('.check-insumo-receta').forEach(chk => chk.checked = false);
+            document.querySelectorAll('.portion-field').forEach(input => input.value = "1");
+
+            try {
+                document.body.style.cursor = 'wait';
+
+                const response = await fetch(`/insumos/producto/${idProducto}`);
+                const asignaciones = await response.json();
+
+                if (asignaciones && asignaciones.length > 0) {
+                    asignaciones.forEach(item => {
+                        const checkbox = document.getElementById(`check-${item.idInsumo}`);
+                        const portionInput = document.getElementById(`portion-${item.idInsumo}`);
+
+                        if (checkbox) {
+                            checkbox.checked = true;
+                        }
+                        if (portionInput) {
+                            // 🌟 BLINDAJE: Redondeamos por si la BD devuelve un decimal viejo
+                            portionInput.value = Math.round(item.cantidadUsada);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error("Error al sincronizar la matriz del plato:", error);
+            } finally {
+                document.body.style.cursor = 'default';
+            }
+        });
+    });
+
+    // 3. Validador antes del Submit de Persistencia
+    document.getElementById('formAsignarMasivo').addEventListener('submit', function(e) {
+        if(!inputOculto.value) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Falta el Plato',
+                text: 'Haz clic sobre una de las tarjetas para elegir el plato de destino.',
+                confirmButtonColor: '#1B3A2C'
+            });
+        }
+    });
+
+    // 🌟 CONTROL ESTRICTO DE ENTEROS EN LOS INPUTS
+    document.querySelectorAll('.portion-field').forEach(input => {
+        // Bloquear teclas de puntuación y operadores matemáticos
+        input.addEventListener('keydown', function(e) {
+            if (['.', ',', 'e', 'E', '-', '+'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+
+        // Limpiar cualquier pegado o entrada inválida en tiempo real
+        input.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value === '0' || this.value === '') {
+                this.value = '1'; // Mínimo seguro de porciones en La Jama
+            }
+        });
+    });
+});
+    </script>
+</div>
+
+</body>
+</html>

@@ -680,3 +680,95 @@
   font-size: 0.75rem !important;
   letter-spacing: 0.03em;
 }
+
+/* ========================================================
+   💎 MODAL KARDEX PREMIUM — ESTILO SHADCN / LA JAMA
+   ======================================================== */
+
+/* Cabeceras de Bloques de Auditoría */
+.internal-block-header {
+    background: linear-gradient(90deg, rgba(27, 58, 44, 0.08) 0%, rgba(254, 215, 170, 0.15) 100%) !important;
+    color: var(--lajama-green) !important;
+    font-size: 0.8rem !important;
+    letter-spacing: 0.03em;
+    border-left: 4px solid var(--lajama-skin) !important;
+    border-top: 1px solid rgba(27, 58, 44, 0.05) !important;
+    border-bottom: 1px solid rgba(27, 58, 44, 0.05) !important;
+}
+
+.table-sticky-divider {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Badges de Origen Translúcidos con Identidad Vibrante */
+.badge-kardex-jama {
+    padding: 0.4rem 0.75rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    border-radius: 50rem !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.01em;
+}
+
+.badge-kardex-produccion {
+    background-color: var(--lajama-warning-bg) !important;
+    color: #94600E !important;
+    border-color: rgba(222, 158, 54, 0.3) !important;
+}
+
+.bg-light-lote {
+    background-color: rgba(27, 58, 44, 0.1) !important;
+    color: #1B3A2C !important;
+    border: 1px solid rgba(27, 58, 44, 0.2) !important;
+}
+.bg-light-produccion {
+    background-color: rgba(254, 215, 170, 0.25) !important;
+    color: #b56005 !important;
+    border: 1px solid rgba(254, 215, 170, 0.5) !important;
+}
+.bg-light-ajuste {
+    background-color: rgba(107, 114, 128, 0.1) !important;
+    color: #4b5563 !important;
+    border: 1px solid rgba(107, 114, 128, 0.2) !important;
+}
+.bg-light-venta {
+    background-color: rgba(220, 53, 69, 0.08) !important;
+    color: #dc3545 !important;
+    border: 1px solid rgba(220, 53, 69, 0.18) !important;
+}
+
+/* Alineación de datos numéricos en Auditoría */
+#tablaKardexModal tbody td {
+    font-size: 0.85rem !important;
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid rgba(27, 58, 44, 0.04) !important;
+}
+
+#tablaKardexModal tbody tr:hover {
+    background-color: rgba(255, 247, 237, 0.6) !important;
+}
+
+/* Controles de salto rápido de Bloques */
+.bg-jama-translucid {
+    background-color: rgba(27, 58, 44, 0.05) !important;
+    font-weight: 700 !important;
+    color: var(--lajama-green) !important;
+}
+
+.text-jama-gold {
+    color: #D97706 !important;
+}
+
+/* Efecto de palpitación para el lote activo actual */
+.animate-pulse {
+    animation: pulso-alerta 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+@keyframes pulso-alerta {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .8; transform: scale(1.02); }
+}
