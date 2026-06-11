@@ -14,13 +14,19 @@ let modalAjusteInstance         = null;
 let modalKardexPorcionesInstance = null;
 let modalEditarInstance         = null;
 
-// ─── ESTADO GLOBAL DEL KARDEX ────────────────────────────────────────
+// ─── ESTADO GLOBAL DEL KARDEX Y REGISTROS ────────────────────────────
 let maxBloquesPorPagina     = 1;
 let paginaActualKardex      = 1;
 let bloquesKardexPaginados  = [];
 let kardexDataFiltrada      = [];
 let categoriaKardexActual   = '';
 let kardexData              = [];
+
+let paginaActualPrincipal = 1;
+let limiteFilasPrincipal  = 10;
+
+let paginaActualCatalogo  = 1;
+let limiteFilasCatalogo   = 10;
 
 let ordenamientoKardexDireccion = {
     fecha:    true,
@@ -31,17 +37,17 @@ let ordenamientoKardexDireccion = {
     saldo:    false
 };
 
-// ─── INICIALIZACIÓN DOM ───────────────────────────────────────────────
+// ─── INICIALIZACIÓN DOM UNIFICADA Y SEGURA ───────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Modales Bootstrap
+    // Modales Bootstrap (Solo se inicializan si el nodo existe físicamente)
     const nuevoInsumoEl = document.getElementById('modalNuevoInsumo');
     if (nuevoInsumoEl) modalNuevoInsumoInstance = new bootstrap.Modal(nuevoInsumoEl);
 
     const editarInsumoEl = document.getElementById('modalEditarInsumo');
     if (editarInsumoEl) {
         modalEditarInsumoInstance = new bootstrap.Modal(editarInsumoEl);
-        modalEditarInstance       = modalEditarInsumoInstance; // alias
+        modalEditarInstance       = modalEditarInsumoInstance;
     }
 
     const detalleRecetaEl = document.getElementById('modalDetalleReceta');
@@ -58,6 +64,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const kardexEl = document.getElementById('modalKardexPorciones');
     if (kardexEl) modalKardexPorcionesInstance = new bootstrap.Modal(kardexEl);
+
+    // Inicializar corte de paginación física al cargar la pestaña
+    if (document.getElementById('cuerpoTablaPrincipal')) {
+        ejecutarPaginacionTabla('#cuerpoTablaPrincipal tr:not(.fila-no-results)', '#paginadorPrincipal', paginaActualPrincipal, limiteFilasPrincipal, (p) => { paginaActualPrincipal = p; });
+    }
+    if (document.getElementById('tablaCatalogo')) {
+        ejecutarPaginacionTabla('#tablaCatalogo tbody tr:not(.fila-no-results)', '#paginadorCatalogo', paginaActualCatalogo, limiteFilasCatalogo, (p) => { paginaActualCatalogo = p; });
+    }
 
     // Restricciones lógicas al crear nuevos insumos
     const selectCategoria = document.getElementById('selectCategoria');
@@ -84,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formAsignar = document.getElementById('formAsignar');
     if (formAsignar) {
         formAsignar.addEventListener('submit', (e) => {
-            const selectPlato = document.getElementById('selectProducto').value;
+            const selectPlato = document.getElementById('selectProducto')?.value;
             if (!selectPlato) {
                 e.preventDefault();
                 AppUtils.showNotification('Debe seleccionar un plato base para la receta', 'error');
@@ -107,10 +121,213 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selectLote) {
         selectLote.addEventListener('change', actualizarPorcionesEsperadas);
     }
+
+    // Buscador rápido interno de ingredientes (Matriz de Recetas)
+    const buscadorMatriz = document.getElementById('buscarInsumoMatriz');
+    if (buscadorMatriz) {
+        buscadorMatriz.addEventListener('keyup', function() {
+            const textoBusqueda = this.value.toLowerCase().trim();
+            document.querySelectorAll('.recipe-matrix-item').forEach(fila => {
+                const label = fila.querySelector('label');
+                if (label) {
+                    const nombreInsumo = label.textContent.toLowerCase();
+                    fila.style.display = nombreInsumo.includes(textoBusqueda) ? '' : 'none';
+                }
+            });
+        });
+    }
 });
 
-// ─── FUNCIONES BASE COMPARTIDAS ───────────────────────────────────────
+// ─── LÓGICA DE FILTRADO Y PAGINACIÓN INTEGRADA ───────────────────────
 
+function filtrarTablaPrincipal() {
+    const buscador = document.getElementById('buscadorPrincipal');
+    if (!buscador) return;
+
+    const textoBuscado = buscador.value.toLowerCase().trim();
+    const filas = document.querySelectorAll('#cuerpoTablaPrincipal tr:not(.fila-no-results)');
+    let contadorVisibles = 0;
+
+    filas.forEach(fila => {
+        const primeraCelda = fila.querySelector('td:first-child');
+        if (primeraCelda) {
+            const nombre = primeraCelda.textContent.toLowerCase();
+            if (nombre.includes(textoBuscado)) {
+                fila.removeAttribute('data-filtro-oculto');
+                contadorVisibles++;
+            } else {
+                fila.setAttribute('data-filtro-oculto', 'true');
+                fila.style.display = 'none';
+            }
+        }
+    });
+
+    // Controlar el mensaje de vacío
+    manejadorMensajeNoResultados('#cuerpoTablaPrincipal', contadorVisibles, 4);
+
+    // Recalcular la paginación sobre los ítems que pasaron el filtro del buscador
+    ejecutarPaginacionTabla('#cuerpoTablaPrincipal tr:not(.fila-no-results)', '#paginadorPrincipal', paginaActualPrincipal, limiteFilasPrincipal, (p) => { paginaActualPrincipal = p; });
+}
+
+function filtrarCatalogo() {
+    const buscador = document.getElementById('buscadorInsumos');
+    if (!buscador) return;
+
+    const input = buscador.value.toLowerCase().trim();
+    const filas = document.querySelectorAll('#tablaCatalogo tbody tr:not(.fila-no-results)');
+    let contadorVisibles = 0;
+
+    filas.forEach(fila => {
+        const celdaNombre = fila.querySelector('td:nth-child(1)');
+        const celdaCategoria = fila.querySelector('td:nth-child(2)');
+
+        if (celdaNombre) {
+            const nombre = celdaNombre.textContent.toLowerCase();
+            const categoria = celdaCategoria ? celdaCategoria.textContent.toLowerCase() : '';
+
+            if (nombre.includes(input) || categoria.includes(input)) {
+                fila.removeAttribute('data-filtro-oculto');
+                contadorVisibles++;
+            } else {
+                fila.setAttribute('data-filtro-oculto', 'true');
+                fila.style.display = 'none';
+            }
+        }
+    });
+
+    manejadorMensajeNoResultados('#tablaCatalogo tbody', contadorVisibles, 5);
+
+    ejecutarPaginacionTabla('#tablaCatalogo tbody tr:not(.fila-no-results)', '#paginadorCatalogo', paginaActualCatalogo, limiteFilasCatalogo, (p) => { paginaActualCatalogo = p; });
+}
+
+function cambiarLimiteFilasPrincipal() {
+    const selector = document.getElementById('registrosPorPaginaPrincipal');
+    if (selector) {
+        limiteFilasPrincipal = parseInt(selector.value);
+        paginaActualPrincipal = 1;
+        filtrarTablaPrincipal();
+    }
+}
+
+function cambiarLimiteFilasCatalogo() {
+    const selector = document.getElementById('registrosPorPaginaCatalogo');
+    if (selector) {
+        limiteFilasCatalogo = parseInt(selector.value);
+        paginaActualCatalogo = 1;
+        filtrarCatalogo();
+    }
+}
+
+/**
+ * Motor de fraccionamiento físico de filas e inyección de paginadores Shadcn
+ */
+/**
+ * Motor de fraccionamiento físico de filas e inyección de paginadores Shadcn con texto informativo
+ */
+function ejecutarPaginacionTabla(selectorFilas, selectorPaginador, paginaActual, limiteFilas, callbackPagina) {
+    const filas = Array.from(document.querySelectorAll(selectorFilas));
+    const paginador = document.querySelector(selectorPaginador);
+    if (!paginador) return;
+
+    // Evaluamos estrictamente las filas que no están ocultas por el filtro de texto
+    const filasFiltradas = filas.filter(f => f.getAttribute('data-filtro-oculto') !== 'true');
+    const totalFilas = filasFiltradas.length;
+    // Forzamos a que como mínimo exista 1 página siempre
+    const totalPaginas = Math.max(1, Math.ceil(totalFilas / limiteFilas));
+
+    if (paginaActual > totalPaginas) paginaActual = 1;
+    if (totalPaginas === 0) paginaActual = 1;
+    callbackPagina(paginaActual);
+
+    const inicio = (paginaActual - 1) * limiteFilas;
+    const fin = inicio + limiteFilas;
+
+    filasFiltradas.forEach((fila, indice) => {
+        if (indice >= inicio && indice < fin) {
+            fila.style.display = '';
+        } else {
+            fila.style.display = 'none';
+        }
+    });
+
+    // Actualización del texto informativo de registros (Izquierda)
+    const infoId = selectorPaginador === '#paginadorPrincipal' ? 'infoRegistrosPrincipal' : 'infoRegistrosCatalogo';
+    const infoContenedor = document.getElementById(infoId);
+    if (infoContenedor) {
+        if (totalFilas === 0) {
+            infoContenedor.textContent = "Mostrando registros del 0 al 0 de un total de 0 registros";
+        } else {
+            const registroInicio = inicio + 1;
+            const registroFin = Math.min(fin, totalFilas);
+            infoContenedor.textContent = `Mostrando registros del ${registroInicio} al ${registroFin} de un total de ${totalFilas} registros`;
+        }
+    }
+
+    // ─── RENDERS DE BOTONERA ESTÁTICA SIEMPRE VISIBLE ───
+    paginador.innerHTML = '';
+
+    // 1. Botón Anterior (Se deshabilita si estás en la página 1)
+    const btnAnt = document.createElement('li');
+    btnAnt.className = `page-item-jama ${paginaActual === 1 ? 'disabled' : ''}`;
+    btnAnt.innerHTML = `<button class="page-link-jama">ANTERIOR</button>`;
+    if (paginaActual > 1) {
+        btnAnt.onclick = () => { callbackPagina(paginaActual - 1); sincronizarFiltrosYPaginas(); };
+    }
+    paginador.appendChild(btnAnt);
+
+    // 2. Números de Páginas (Imprime el "1" obligatoriamente)
+    for (let i = 1; i <= totalPaginas; i++) {
+        const btnPag = document.createElement('li');
+        btnPag.className = `page-item-jama ${paginaActual === i ? 'active' : ''}`;
+        btnPag.innerHTML = `<button class="page-link-jama">${i}</button>`;
+        btnPag.onclick = () => { if (paginaActual !== i) { callbackPagina(i); sincronizarFiltrosYPaginas(); } };
+        paginador.appendChild(btnPag);
+    }
+
+    // 3. Botón Siguiente (Se deshabilita si estás en la última página o solo hay una)
+    const btnSig = document.createElement('li');
+    btnSig.className = `page-item-jama ${paginaActual === totalPaginas ? 'disabled' : ''}`;
+    btnSig.innerHTML = `<button class="page-link-jama">SIGUIENTE</button>`;
+    if (paginaActual < totalPaginas) {
+        btnSig.onclick = () => { callbackPagina(paginaActual + 1); sincronizarFiltrosYPaginas(); };
+    }
+    paginador.appendChild(btnSig);
+}
+
+function sincronizarFiltrosYPaginas() {
+    if (document.getElementById('cuerpoTablaPrincipal')) {
+        ejecutarPaginacionTabla('#cuerpoTablaPrincipal tr:not(.fila-no-results)', '#paginadorPrincipal', paginaActualPrincipal, limiteFilasPrincipal, (p) => { paginaActualPrincipal = p; });
+    }
+    if (document.getElementById('tablaCatalogo')) {
+        ejecutarPaginacionTabla('#tablaCatalogo tbody tr:not(.fila-no-results)', '#paginadorCatalogo', paginaActualCatalogo, limiteFilasCatalogo, (p) => { paginaActualCatalogo = p; });
+    }
+}
+
+function manejadorMensajeNoResultados(idContenedor, itemsVisibles, totalColumnas) {
+    const contenedor = document.querySelector(idContenedor);
+    if (!contenedor) return;
+
+    let filaMensaje = contenedor.querySelector('.fila-no-results');
+
+    if (itemsVisibles === 0) {
+        if (!filaMensaje) {
+            filaMensaje = document.createElement('tr');
+            filaMensaje.className = 'fila-no-results animate__animated animate__fadeIn';
+            filaMensaje.innerHTML = `
+                <td colspan="${totalColumnas}" class="text-center py-5 text-muted bg-light-jama">
+                    <div class="d-flex flex-column align-items-center justify-content-center gap-2">
+                        <i class="bi bi-folder-x fs-2" style="color: var(--lajama-skin);"></i>
+                        <span class="fw-semibold small" style="color: var(--lajama-green);">No se encontraron insumos que coincidan con la búsqueda</span>
+                    </div>
+                </td>`;
+            contenedor.appendChild(filaMensaje);
+        }
+    } else {
+        if (filaMensaje) filaMensaje.remove();
+    }
+}
+
+// ─── MANEJADORES DE MODALES Y ACCIONES CRUD COMPARTIDAS ───────────────
 function abrirModalNuevoInsumo() {
     if (modalNuevoInsumoInstance) {
         AppUtils.clearForm('#formNuevoInsumo');
@@ -127,229 +344,55 @@ function confirmarEliminacion(id) {
         confirmButtonText: 'Eliminar'
     }, function () {
         AppUtils.showLoading(true);
-        document.getElementById('form-eliminar-' + id).submit();
+        const formEliminar = document.getElementById('form-eliminar-' + id);
+        if (formEliminar) formEliminar.submit();
     });
 }
-
-function actualizarAccion(idProducto) {
-    if (idProducto) {
-        document.getElementById('formAsignar').action = '/insumos/producto/' + idProducto + '/agregar';
-    }
-}
-
-function filtrarCatalogo() {
-    const input = document.getElementById('buscadorInsumos').value.toLowerCase();
-    document.querySelectorAll('.fila-insumo').forEach(fila => {
-        const nombre    = fila.querySelector('.nombre-insumo').textContent.toLowerCase();
-        const categoria = fila.querySelector('.categoria-insumo').textContent.toLowerCase();
-        fila.style.display = (nombre.includes(input) || categoria.includes(input)) ? '' : 'none';
-    });
-}
-
-function filtrarTablaPrincipal() {
-    const textoBuscado = document.getElementById('buscadorPrincipal').value.toLowerCase();
-    document.querySelectorAll('#cuerpoTablaPrincipal .fila-insumo-principal').forEach(fila => {
-        const nombre = fila.querySelector('.nombre-insumo-principal').textContent.toLowerCase();
-        fila.style.display = nombre.includes(textoBuscado) ? '' : 'none';
-    });
-}
-
-function safeGetValue(id) {
-    const el = document.getElementById(id);
-    return el ? el.value : null;
-}
-
-// ─── MANEJADORES HTML → JS (puentes onclick del HTML) ────────────────
 
 function manejadorModalLote(btn) {
-    abrirModalLote(
-        btn.getAttribute('data-id'),
-        btn.getAttribute('data-nombre'),
-        btn.getAttribute('data-categoria')
-    );
+    abrirModalLote(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria'));
 }
 
 function manejadorModalProduccion(btn) {
-    abrirModalProduccion(
-        btn.getAttribute('data-id'),
-        btn.getAttribute('data-nombre')
-    );
+    abrirModalProduccion(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'));
 }
 
 function manejadorModalAjuste(btn) {
-    abrirModalAjuste(
-        btn.getAttribute('data-id'),
-        btn.getAttribute('data-nombre')
-    );
+    abrirModalAjuste(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'));
 }
 
 function manejadorModalKardex(btn) {
-    abrirKardexPorciones(
-        btn.getAttribute('data-id'),
-        btn.getAttribute('data-nombre'),
-        btn.getAttribute('data-categoria')
-    );
+    abrirKardexPorciones(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria'));
 }
 
 function manejadorModalEditar(btn) {
-    prepararEdicionInsumo(
-        btn.getAttribute('data-id'),
-        btn.getAttribute('data-nombre'),
-        btn.getAttribute('data-categoria'),
-        btn.getAttribute('data-unidad'),
-        btn.getAttribute('data-actual'),
-        btn.getAttribute('data-minimo')
-    );
+    prepararEdicionInsumo(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria'), btn.getAttribute('data-unidad'), btn.getAttribute('data-actual'), btn.getAttribute('data-minimo'));
 }
 
-function validarYConfirmarNuevoInsumo() {
-    const form = document.getElementById('formNuevoInsumo');
-    const nombre = form.querySelector('input[name="nombre"]').value.trim();
-    const categoria = document.getElementById('selectCategoria').value;
-    const unidad = document.getElementById('selectUnidad').value;
-    const minimo = form.querySelector('input[name="stockMinimo"]').value;
+/**
+ * Alterna la visibilidad de los submódulos de insumos en el cliente sin generar F5
+ */
+function cambiarPestañaAsincrona(pestañaDestino) {
+    // 1. Ocultamos todos los paneles agregando d-none
+    document.getElementById('pane-proteinas')?.classList.add('d-none');
+    document.getElementById('pane-catalogo')?.classList.add('d-none');
+    document.getElementById('pane-recetas')?.classList.add('d-none');
 
-    if (!nombre) { AppUtils.showNotification('Ingresa el nombre del insumo', 'error'); return; }
-    if (!categoria) { AppUtils.showNotification('Selecciona una categoría', 'error'); return; }
-    if (!unidad) { AppUtils.showNotification('Selecciona una unidad de medida', 'error'); return; }
-    if (!minimo || parseFloat(minimo) <= 0) { AppUtils.showNotification('Ingresa un stock mínimo válido', 'error'); return; }
-
-    let tiempoRestante = 5;
-
-    Swal.fire({
-        title: '<span style="color: #1B3A2C; font-weight: 800;">¿Confirmar Unidad de Medida?</span>',
-        html: `Estás registrando <strong>${nombre}</strong> en <strong>[${unidad}]</strong>.<br><br>
-               <span style="color: #dc3545; font-weight: bold; font-size: 0.85rem;">
-                  ⚠️ ATENCIÓN: La unidad de medida NO podrá ser modificada después para proteger las fórmulas de cocina.
-               </span>`,
-        icon: 'warning',
-        background: '#FFF7ED',
-        showCancelButton: true,
-        confirmButtonColor: '#1B3A2C',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: `Aceptar (${tiempoRestante}s)`,
-        cancelButtonText: 'Cancelar',
-        didOpen: () => {
-            const botonConfirmar = Swal.getConfirmButton();
-            botonConfirmar.disabled = true;
-
-            const intervalo = setInterval(() => {
-                tiempoRestante--;
-                if (tiempoRestante > 0) {
-                    botonConfirmar.innerText = `Aceptar (${tiempoRestante}s)`;
-                } else {
-                    clearInterval(intervalo);
-                    botonConfirmar.innerText = 'Sí, Aceptar';
-                    botonConfirmar.disabled = false; // Se libera el botón
-                }
-            }, 1000);
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            AppUtils.showLoading(true);
-            if (modalNuevoInsumoInstance) modalNuevoInsumoInstance.hide();
-            form.submit();
-        }
-    });
-}
-// Validación al armar recetas (NUEVA MATRIZ)
-    const formAsignarMasivo = document.getElementById('formAsignarMasivo');
-    if (formAsignarMasivo) {
-        formAsignarMasivo.addEventListener('submit', (e) => {
-            const selectPlato = document.getElementById('selectProductoMatriz').value;
-            if (!selectPlato) {
-                e.preventDefault();
-                AppUtils.showNotification('Debe seleccionar un plato destino para la receta', 'error');
-            } else {
-                AppUtils.showLoading(true);
-            }
-        });
+    // 2. Mostramos el panel seleccionado quitando d-none y activando su radio correspondiente
+    if (pestañaDestino === 'proteinas') {
+        document.getElementById('pane-proteinas')?.classList.remove('d-none');
+        const radio = document.getElementById('radio-btn-proteinas');
+        if (radio) radio.checked = true;
+    } else if (pestañaDestino === 'catalogo') {
+        document.getElementById('pane-catalogo')?.classList.remove('d-none');
+        const radio = document.getElementById('radio-btn-catalogo');
+        if (radio) radio.checked = true;
+    } else if (pestañaDestino === 'recetas') {
+        document.getElementById('pane-recetas')?.classList.remove('d-none');
+        const radio = document.getElementById('radio-btn-recetas');
+        if (radio) radio.checked = true;
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-
-        // 1. EVENTO: Cuando seleccionamos un plato del dropdown
-        const selectPlatoMatriz = document.getElementById('selectProductoMatriz');
-        if (selectPlatoMatriz) {
-            selectPlatoMatriz.addEventListener('change', async function() {
-                const idProducto = this.value;
-
-                // Limpiamos visualmente toda la matriz (desmarcamos todo)
-                document.querySelectorAll('.check-insumo-receta').forEach(chk => {
-                    chk.checked = false;
-                    const fila = chk.closest('.recipe-matrix-item');
-                    if (fila) fila.classList.remove('item-selected');
-                });
-                document.querySelectorAll('.input-portion-jama').forEach(inp => {
-                    inp.value = '1.0'; // Reseteamos al valor por defecto
-                });
-
-                // Si volvió al "Buscar plato...", no hacemos nada más
-                if (!idProducto) return;
-
-                // Traemos la receta actual desde el backend
-                try {
-                    AppUtils.showLoading(true);
-                    const response = await fetch(`/insumos/producto/${idProducto}`);
-                    const receta = await response.json();
-
-                    // Pintamos los checks y llenamos las porciones con los datos guardados
-                    receta.forEach(item => {
-                        // OJO: Aquí leemos el ID del insumo que viene de tu DTO
-                        const idInsumo = item.idInsumo || item.insumoId;
-
-                        const checkbox = document.getElementById(`check-${idInsumo}`);
-                        if (checkbox) {
-                            checkbox.checked = true; // Lo marcamos
-
-                            // Iluminamos la fila
-                            const fila = checkbox.closest('.recipe-matrix-item');
-                            if (fila) fila.classList.add('item-selected');
-
-                            // Le ponemos la cantidad de porciones exacta que guardaste
-                            const inputPorciones = document.querySelector(`input[name="porciones-${idInsumo}"]`);
-                            if (inputPorciones) {
-                                inputPorciones.value = item.cantidadUsada;
-                            }
-                        }
-                    });
-                } catch (e) {
-                    console.error("Error al cargar la receta persistente:", e);
-                    AppUtils.showNotification('Error al cargar la receta guardada', 'error');
-                } finally {
-                    AppUtils.showLoading(false);
-                }
-            });
-        }
-
-        // 2. EVENTO: Iluminar la fila cuando el usuario hace clic manual en un checkbox
-        document.querySelectorAll('.check-insumo-receta').forEach(chk => {
-            chk.addEventListener('change', function() {
-                const fila = this.closest('.recipe-matrix-item');
-                if (this.checked) {
-                    fila.classList.add('item-selected');
-                } else {
-                    fila.classList.remove('item-selected');
-                    // Opcional: si lo desmarca, reseteamos su input a 1.0 por limpieza
-                    const inputP = document.querySelector(`input[name="porciones-${this.value}"]`);
-                    if(inputP) inputP.value = '1.0';
-                }
-            });
-        });
-
-        // 3. EVENTO: Buscador rápido interno de la matriz
-        const buscadorMatriz = document.getElementById('buscarInsumoMatriz');
-        if (buscadorMatriz) {
-            buscadorMatriz.addEventListener('keyup', function() {
-                const textoBusqueda = this.value.toLowerCase().trim();
-                document.querySelectorAll('.recipe-matrix-item').forEach(fila => {
-                    const nombreInsumo = fila.querySelector('label').textContent.toLowerCase();
-                    if (nombreInsumo.includes(textoBusqueda)) {
-                        fila.style.display = ''; // Mostrar
-                    } else {
-                        fila.style.display = 'none'; // Ocultar
-                    }
-                });
-            });
-        }
-    });
+    // 3. Forzamos al motor de paginación a recalcular y reacomodar las filas de las tablas
+    sincronizarFiltrosYPaginas();
+}

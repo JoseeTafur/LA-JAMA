@@ -51,7 +51,37 @@ async function guardarAjuste() {
         if (res.ok) {
             modalAjusteInstance?.hide();
             AppUtils.showNotification('Ajuste de porciones registrado', 'success');
-            setTimeout(() => location.reload(), 1000);
+
+            // 🌟 ACTUALIZACIÓN ASÍNCRONA COMPLETA (SIN RECARGAR)
+            // Buscamos cualquier botón de la fila que tenga el data-id para amarrar el nodo <tr>
+            const botonFila = document.querySelector(`#cuerpoTablaPrincipal button[data-id="${idInsumo}"]`);
+            const fila = botonFila ? botonFila.closest('tr') : null;
+
+            if (fila) {
+                // Selector exacto: Segunda columna (Stock), primer elemento con clase .badge
+                const celdaStock = fila.querySelector('td:nth-child(2) .badge');
+
+                if (celdaStock) {
+                    const stockActual = parseFloat(celdaStock.textContent) || 0;
+                    const cantidadAjuste = parseFloat(cantidad);
+
+                    // Calculamos el nuevo stock en caliente
+                    let nuevoStock = stockActual;
+                    if (tipo === 'INGRESO') {
+                        nuevoStock = stockActual + cantidadAjuste;
+                    } else {
+                        // Evitamos que baje de 0 para mantener la integridad visual
+                        nuevoStock = Math.max(0, stockActual - cantidadAjuste);
+                    }
+
+                    // Inyectamos el entero redondeado al badge para mantener la simetría Shadcn
+                    celdaStock.textContent = Math.round(nuevoStock);
+                }
+            }
+
+            // Recalculas el paginador por si el cambio afecta los filtros o el orden
+            sincronizarFiltrosYPaginas();
+
         } else {
             const err = await res.text();
             AppUtils.showNotification('Error: ' + err, 'error');

@@ -1,7 +1,7 @@
 // ========================================================
 // MÓDULO GLOBAL DE UTILITARIOS (APPUTILS)
 // ========================================================
-const AppUtils = (function () {
+window.AppUtils = (function () { // 👈 Cambiado de "const AppUtils" a "window.AppUtils"
     const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
@@ -103,12 +103,12 @@ const AppUtils = (function () {
     }
 
     return {
-        showNotification: showNotification,
-        showLoading: showLoading,
-        createActionButtons: createActionButtons,
-        clearForm: clearForm,
-        showConfirmationDialog: showConfirmationDialog,
-    };
+            showNotification: showNotification,
+            showLoading: showLoading,
+            createActionButtons: createActionButtons,
+            clearForm: clearForm,
+            showConfirmationDialog: showConfirmationDialog,
+        };
 })();
 
 // ========================================================

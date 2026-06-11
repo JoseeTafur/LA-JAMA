@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div id="contenido_submodulo">
+    <div class="card card-color1 p-4 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 border-bottom pb-3 mb-3">
+            <h5 class="fw-bold mb-0">Catálogo General de Insumos</h5>
+            <div class="input-group shadow-sm" style="max-width: 350px;">
+                <span class="input-group-text bg-white border-end-0 rounded-start-pill">
+                    <i class="bi bi-search text-muted"></i>
+                </span>
+                <input type="text" id="buscadorInsumos"
+                       class="form-control border-start-0 rounded-end-pill ps-0"
+                       placeholder="Buscar por nombre o categoría..."
+                       onkeyup="filtrarCatalogo()">
+            </div>
+        </div>
+
+        <div class="table-responsive-jama">
+            <table class="table table-jama align-middle mb-0" id="tablaCatalogo">
+                <thead>
+                <tr>
+                    <th class="ps-4">Insumo</th>
+                    <th>Categoría</th>
+                    <th>Und. Medida</th>
+                    <th>Stock Mínimo</th>
+                    <th th:if="${session.rol == 'ADMIN'}" class="text-center pe-4">Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="insumo : ${insumos}">
+                    <td class="ps-4 fw-semibold text-dark">
+                        <span th:text="${insumo.nombre}" th:classappend="${insumo.estado == 0 ? 'text-muted text-decoration-line-through' : ''}"></span>
+                        <span th:if="${insumo.estado == 0}" class="badge bg-danger ms-2" style="font-size: 0.65rem;">INACTIVO</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-secondary border px-2 py-1 rounded-pill small" th:text="${insumo.categoria}"></span>
+                    </td>
+                    <td class="text-muted" th:text="${insumo.unidadMedida}"></td>
+                    <td class="text-muted" th:text="${insumo.stockMinimo}"></td>
+                    <td th:if="${session.rol == 'ADMIN'}" class="text-center pe-4" style="width: 1%; white-space: nowrap;">
+                        <div class="action-buttons-wrapper justify-content-center">
+
+                            <button type="button" class="action-jama-btn btn-action-edit" th:disabled="${insumo.estado == 0}"
+                                    th:data-id="${insumo.id}" th:data-nombre="${insumo.nombre}" th:data-categoria="${insumo.categoria}"
+                                    th:data-unidad="${insumo.unidadMedida}" th:data-actual="${insumo.stockActual}" th:data-minimo="${insumo.stockMinimo}"
+                                    onclick="manejadorModalEditar(this)">
+                                <svg class="pencil-body" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                            </button>
+
+                            <button type="button" th:if="${insumo.estado != 0}" class="action-jama-btn btn-action-delete" th:data-id="${insumo.id}" onclick="confirmarEliminacion(this.getAttribute('data-id'))">
+                                <svg class="bin-bottom" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            </button>
+
+                            <form th:if="${insumo.estado == 0}" th:action="@{/insumos/reactivar/{id}(id=${insumo.id})}" method="post" class="d-inline-block m-0">
+                                <button type="submit" class="btn btn-sm btn-action-status is-active rounded-pill" title="Reactivar Insumo">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                </button>
+                            </form>
+                        </div>
+                        <form th:action="@{/insumos/eliminar/{id}(id=${insumo.id})}" method="post" th:id="'form-eliminar-' + ${insumo.id}" class="d-none"></form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 pt-3 border-top">
+            <div id="infoRegistrosCatalogo" class="text-muted small fw-semibold">
+                Mostrando registros del 0 al 0 de un total de 0 registros
+            </div>
+
+            <div class="d-flex align-items-center gap-4 flex-wrap">
+                <div class="jama-length-changer">
+                    <span>Mostrar</span>
+                    <select id="registrosPorPaginaCatalogo" class="select-jama-pages" onchange="cambiarLimiteFilasCatalogo()">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span>registros</span>
+                </div>
+                <ul id="paginadorCatalogo" class="jama-pagination-wrapper">
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>

@@ -463,3 +463,220 @@
   font-size: 0.8rem !important;
   color: #6b7280 !important;
 }
+
+/*--------------------------------------*/
+
+/* ═══════════════════════════════════════════════
+   SELECTOR DE MÓDULOS DE INSUMOS — ESTILO LA JAMA
+   ═══════════════════════════════════════════════ */
+.radio-inputs-jama {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  border-radius: 0.75rem; /* Alineado al estándar de tus inputs */
+  background-color: #f3f4f6; /* Fondo gris claro limpio e institucional */
+  box-sizing: border-box;
+  border: 1px solid rgba(27, 58, 44, 0.08); /* Misma opacidad de tu --border-color */
+  padding: 0.25rem;
+  width: 100%;
+  max-width: 550px; /* Tamaño controlado y estético */
+  margin: 0 auto 1.5rem auto; /* Centrado con margen inferior */
+  font-size: 0.85rem;
+}
+
+.radio-inputs-jama .radio-jama {
+  flex: 1 1 auto;
+  text-align: center;
+}
+
+.radio-inputs-jama .radio-jama input {
+  display: none; /* Escondemos el radio original */
+}
+
+.radio-inputs-jama .radio-jama .name-jama {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.6rem; /* Redondeado idéntico a tus celdas de tabla */
+  border: none;
+  padding: 0.55rem 1rem;
+  color: #6b7280; /* Gris secundario suave */
+  font-weight: 600;
+  gap: 8px;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Efecto Hover sobre pestañas inactivas */
+.radio-inputs-jama .radio-jama:not(input:checked) .name-jama:hover {
+  color: var(--lajama-green);
+  background-color: rgba(27, 58, 44, 0.04);
+}
+
+/* 🌟 ESTADO ACTIVO: Pestaña seleccionada (Estilo Oro Premium) */
+.radio-inputs-jama .radio-jama input:checked + .name-jama {
+  background-color: var(--lajama-green) !important;
+  color: var(--lajama-white) !important;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(27, 58, 44, 0.15); /* Sombra cinética idéntica a tus botones */
+}
+
+/* Fuerza a la columna de acciones a ocupar solo el espacio que sus botones necesitan */
+.table-jama tbody tr td:last-child {
+  width: 1%;
+  white-space: nowrap !important;
+}
+
+/* Reducción sutil de los paddings horizontales de los botones cinéticos dentro de la tabla */
+.table-jama .btn-jama-kinetic {
+  height: 34px !important;
+  padding: 0 0.65rem !important;
+  font-size: 0.8rem !important;
+  white-space: nowrap;
+}
+
+/* Ajuste del icono del botón editar que hereda el estilo por defecto */
+.btn-action-edit i {
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ========================================================
+   📱 CONTROL RESPONSIVO DE ACCIONES (4 BOTONES UNIFICADOS)
+   ======================================================== */
+
+@media (max-width: 1200px) {
+  /* Forzamos a que la barra de acciones no se quiebre por nada del mundo */
+  .table-jama td .d-flex {
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  /* Ocultamos el texto de los 3 botones que llevan letras */
+  .table-jama .btn-jama-kinetic span,
+  .table-jama .btn-action-status span {
+    display: none !important;
+  }
+
+  /* Centramos de forma rigurosa los iconos dentro de cada botón */
+  .table-jama .btn-jama-kinetic i,
+  .table-jama .btn-action-status i {
+    margin: 0 !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* Homogenizamos los 4 botones a círculos perfectos de 34px */
+  .table-jama .btn-jama-kinetic,
+  .table-jama .btn-action-status {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    border-radius: 50% !important; /* Estilo Shadcn circular uniforme */
+  }
+}
+.bg-light-jama {
+  background-color: var(--lajama-cream) !important;
+  border-radius: 0.6rem !important;
+  border: 1px dashed rgba(27, 58, 44, 0.15) !important;
+}
+
+/* ========================================================
+   📊 CONTROL DE REGISTROS Y PAGINACIÓN ESTILO SHADCN
+   ======================================================== */
+
+.jama-table-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.jama-length-changer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.select-jama-pages {
+  border: 1.5px solid rgba(27, 58, 44, 0.12) !important;
+  border-radius: 0.5rem !important;
+  padding: 0.35rem 1.5rem 0.35rem 0.5rem !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  color: var(--lajama-green) !important;
+  background-color: var(--lajama-white) !important;
+  cursor: pointer;
+  outline: none !important;
+  transition: all 0.2s ease;
+}
+
+.select-jama-pages:focus {
+  border-color: var(--lajama-skin) !important;
+  box-shadow: 0 0 0 3px rgba(255, 179, 138, 0.2) !important;
+}
+
+/* Envoltura del paginador manual */
+.jama-pagination-wrapper {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  align-items: center;
+}
+
+.jama-pagination-wrapper .page-link-jama {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.5rem;
+  background-color: transparent;
+  color: var(--text-dark);
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.jama-pagination-wrapper .page-item-jama.active .page-link-jama {
+  background-color: var(--lajama-green);
+  border-color: var(--lajama-green);
+  color: var(--lajama-white);
+  box-shadow: 0 4px 10px rgba(27, 58, 44, 0.15);
+}
+
+.jama-pagination-wrapper .page-item-jama:not(.active) .page-link-jama:hover {
+  border-color: var(--lajama-green);
+  color: var(--lajama-green);
+  background-color: var(--lajama-cream);
+  transform: translateY(-1.5px);
+}
+
+.jama-pagination-wrapper .page-item-jama.disabled .page-link-jama {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.jama-pagination-wrapper .page-item-jama:first-child .page-link-jama,
+.jama-pagination-wrapper .page-item-jama:last-child .page-link-jama {
+  width: auto !important;
+  padding: 0 1rem !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.03em;
+}

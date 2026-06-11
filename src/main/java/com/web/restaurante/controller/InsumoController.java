@@ -24,38 +24,42 @@ public class InsumoController {
     private final ProductoRepository productoRepository;
     private final MovimientoRepository movimientoRepository;
 
+    // 🌟 Mantenemos el método intacto, pero capturamos el "tab" opcional para la vista
     @GetMapping
-    public String listarInsumos(Model model) {
+    public String listarInsumos(@RequestParam(value = "tab", required = false, defaultValue = "proteinas") String tab, Model model) {
         model.addAttribute("insumos", insumoService.listarInsumos());
         model.addAttribute("productos", productoRepository.findAll());
         model.addAttribute("insumosProductos", insumoService.listarTodosLosInsumosProducto());
+
+        // Enviamos la pestaña activa a Thymeleaf para que sepa cuál pintar al cargar
+        model.addAttribute("activeTab", tab);
         return "insumos";
     }
+
     @PostMapping("/editar")
     public String editarInsumo(@ModelAttribute InsumoDTO dto) {
-
         insumoService.guardarInsumo(dto);
-
-        return "redirect:/insumos";
+        // Regresa a la raíz, forzando a abrir la pestaña de catálogo general
+        return "redirect:/insumos?tab=catalogo";
     }
 
     @PostMapping("/reactivar/{id}")
     public String reactivarInsumo(@PathVariable Long id) {
         insumoService.reactivarInsumo(id);
-
-        return "redirect:/insumos";
+        return "redirect:/insumos?tab=catalogo";
     }
 
     @PostMapping("/guardar")
-    public String guardarInsumo(@ModelAttribute InsumoDTO dto) {
+    public String guardarInsumo(@ModelAttribute InsumoDTO dto, @RequestParam(value = "originTab", defaultValue = "catalogo") String originTab) {
         insumoService.guardarInsumo(dto);
-        return "redirect:/insumos";
+        // Redirecciona a la pestaña desde donde se invocó el modal
+        return "redirect:/insumos?tab=" + originTab;
     }
 
     @PostMapping("/eliminar/{id}")
     public String eliminarInsumo(@PathVariable Long id) {
         insumoService.eliminarInsumo(id);
-        return "redirect:/insumos";
+        return "redirect:/insumos?tab=catalogo";
     }
 
     @GetMapping("/producto/{idProducto}")
@@ -69,13 +73,13 @@ public class InsumoController {
                                          @RequestParam Long idInsumo,
                                          @RequestParam Double cantidad) {
         insumoService.agregarInsumoAProducto(idProducto, idInsumo, cantidad);
-        return "redirect:/insumos";
+        return "redirect:/insumos?tab=recetas";
     }
 
     @PostMapping("/producto/receta/eliminar/{id}")
     public String eliminarInsumoDeReceta(@PathVariable Long id) {
         insumoService.eliminarInsumoDeReceta(id);
-        return "redirect:/insumos";
+        return "redirect:/insumos?tab=recetas";
     }
 
     @GetMapping("/kardex/{id}")
@@ -89,23 +93,19 @@ public class InsumoController {
                                       @RequestParam(required = false) List<Long> insumosSeleccionados,
                                       jakarta.servlet.http.HttpServletRequest request) {
 
-        // 1. Limpiamos la receta actual del plato para evitar duplicados al reescribir
         insumoService.limpiarRecetaDeProducto(idProductoSelect);
 
-        // 2. Si el usuario marcó al menos un insumo en los checkboxes, los procesamos
         if (insumosSeleccionados != null && !insumosSeleccionados.isEmpty()) {
             for (Long idInsumo : insumosSeleccionados) {
-                // Capturamos el valor dinámico del input de porciones usando su prefijo
                 String porcionesStr = request.getParameter("porciones-" + idInsumo);
                 Double cantidadPorciones = (porcionesStr != null && !porcionesStr.isEmpty())
                         ? Double.valueOf(porcionesStr)
                         : 1.0;
 
-                // Registramos la nueva relación
                 insumoService.agregarInsumoAProducto(idProductoSelect, idInsumo, cantidadPorciones);
             }
         }
 
-        return "redirect:/insumos";
+        return "redirect:/insumos?tab=recetas";
     }
 }
