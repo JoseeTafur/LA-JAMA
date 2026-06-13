@@ -1,24 +1,43 @@
+/**
+ * LA JAMA — usuarios.js
+ * Gestión de personal, aduana de roles y control jerárquico de accesos (Shadcn System).
+ */
 $(document).ready(function () {
     let dataTable;
-    let isEditing = false;
     let modal;
-    
-    const formId = '#form';
+    let esSuperAdmin = false;
+    let esAdmin = false;
 
+    const formId = '#form';
     const API_BASE = '/usuarios/api';
+
     const ENDPOINTS = {
         list: `${API_BASE}/listar`,
         save: `${API_BASE}/guardar`,
         get: (id) => `${API_BASE}/obtener/${id}`,
         delete: `${API_BASE}/eliminar`,
         profiles: `${API_BASE}/perfiles`,
-        toggleStatus: (id) => `${API_BASE}/cambiar-estado/${id}`
+        toggleStatus: (id) => `${API_BASE}/cambiar-estado/${id}`,
+        rolSesion: `${API_BASE}/rol-sesion`
     };
 
-    initializeDataTable();
-    modal = new bootstrap.Modal(document.getElementById('modal'));
-    loadProfiles();
-    setupEventListeners();
+    // 🛡️ PRIMER PASO: Validamos los privilegios del usuario firmado antes de pintar la UI
+    fetch(ENDPOINTS.rolSesion)
+        .then(response => response.json())
+        .then(data => {
+            esSuperAdmin = data.esSuperAdmin || false;
+            esAdmin = data.esAdmin || false;
+
+            // Una vez que el JS conoce el rol, inicializa los componentes seguros
+            initializeDataTable();
+            modal = new bootstrap.Modal(document.getElementById('modal'));
+            loadProfiles();
+            setupEventListeners();
+        })
+        .catch(error => {
+            console.error('Error al validar la jerarquía de sesión:', error);
+            initializeDataTable(); // Caída de emergencia segura
+        });
 
     function initializeDataTable() {
         dataTable = $('#tabla').DataTable({
@@ -35,14 +54,15 @@ $(document).ready(function () {
                 {
                     data: 'estado',
                     render: (data) => data === 1 ?
-                        '<span class="badge text-bg-success">Activo</span>'
-                        : '<span class="badge text-bg-danger">Inactivo</span>'
+                        '<span class="badge text-bg-success px-3 py-1 rounded-pill">Activo</span>'
+                        : '<span class="badge text-bg-danger px-3 py-1 rounded-pill">Inactivo</span>'
                 },
                 {
                     data: null, orderable: false, searchable: false,
                     render: (data, type, row) => {
+                        // 🌟 Conservamos intactos tus botones cinéticos premium personalizados
                         return `
-                        <div class="action-buttons-wrapper">
+                        <div class="action-buttons-wrapper justify-content-center">
                             <button type="button" class="action-jama-btn btn-action-edit action-edit" data-id="${row.id}" title="Editar Usuario">
                                 <svg viewBox="0 0 39 7" class="pencil-cap" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <line y1="3.5" x2="39" y2="3.5" stroke-width="4"/>
@@ -57,7 +77,7 @@ $(document).ready(function () {
                                 </svg>
                             </button>
 
-                            <button type="button" class="action-jama-btn btn-action-status action-status ${row.estado === 1 ? 'is-active' : ''}" data-id="${row.id}" title="Cambiar Estado">
+                            <button type="button" class="action-jama-btn btn-action-status action-status ${row.estado === 1 ? 'is-active' : ''}" data-id="${row.id}" title="Alternar Estado">
                                 <svg class="eye-lid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
                                 </svg>
@@ -67,7 +87,7 @@ $(document).ready(function () {
                                 <div class="eye-flash"></div>
                             </button>
 
-                            <button type="button" class="action-jama-btn btn-action-delete action-delete" data-id="${row.id}" title="Eliminar Usuario">
+                            <button type="button" class="action-jama-btn btn-action-delete" data-id="${row.id}" title="Eliminar Registro">
                                 <svg viewBox="0 0 39 7" class="bin-top" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <line y1="5" x2="39" y2="5" stroke-width="4"/>
                                     <line x1="12" y1="1.5" x2="26" y2="1.5" stroke-width="3"/>
@@ -89,55 +109,38 @@ $(document).ready(function () {
                   "<'row'<'col-sm-12'tr>>" +
                   "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
             language: {
-                "processing": "Procesando...",
-                "lengthMenu": "Mostrar _MENU_ registros",
-                "zeroRecords": "No se encontraron resultados",
-                "emptyTable": "Ningún dato disponible en esta tabla",
-                "info": "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros",
-                "infoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros",
-                "infoFiltered": "(filtrado de un total de _MAX_ registros)",
-                "search": "Buscar:",
-                "loadingRecords": "Cargando...",
-                "paginate": {
-                    "first": "Primero",
-                    "last": "Último",
-                    "next": "Siguiente",
-                    "previous": "Anterior"
-                },
-                "aria": {
-                    "sortAscending": ": Activar para ordenar la columna de manera ascendente",
-                    "sortDescending": ": Activar para ordenar la columna de manera descendente"
-                }
+                processing: "Procesando...", lengthMenu: "Mostrar _MENU_ registros",
+                zeroRecords: "No se encontraron resultados", emptyTable: "Ningún dato disponible en esta tabla",
+                info: "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros",
+                infoEmpty: "Mostrando registros del 0 al 0 de un total de 0 registros",
+                infoFiltered: "(filtrado de un total de _MAX_ registros)", search: "Buscar:",
+                loadingRecords: "Cargando...",
+                paginate: { first: "Primero", last: "Último", next: "Siguiente", previous: "Anterior" }
             }
         });
     }
 
     function setupEventListeners() {
-            // Botón nuevo registro
-            $('#btnNuevoRegistro').on('click', openModalForNew);
+        $('#btnNuevoRegistro').on('click', openModalForNew);
 
-            // Guardar formulario
-            $(formId).on('submit', function (e) {
-                e.preventDefault();
-                saveUsuario();
-            });
+        $(formId).on('submit', function (e) {
+            e.preventDefault();
+            saveUsuario();
+        });
 
-            // 🌟 Captura segura de botones dinámicos usando funciones anónimas de jQuery
-            $('#tabla tbody').on('click', '.action-edit', function () {
-                const id = $(this).data('id');
-                handleEdit(id); // Pasamos el ID directamente como argumento seguro
-            });
+        // 🌟 Captura delegada ultra-segura basada en tus argumentos de ID explícitos
+        $('#tabla tbody').on('click', '.action-edit', function () {
+            handleEdit($(this).data('id'));
+        });
 
-            $('#tabla tbody').on('click', '.action-status', function () {
-                const id = $(this).data('id');
-                handleToggleStatus(id);
-            });
+        $('#tabla tbody').on('click', '.action-status', function () {
+            handleToggleStatus($(this).data('id'));
+        });
 
-            $('#tabla tbody').on('click', '.action-delete', function () {
-                const id = $(this).data('id');
-                handleDelete(id);
-            });
-        }
+        $('#tabla tbody').on('click', '.btn-action-delete', function () {
+            handleDelete($(this).data('id'));
+        });
+    }
 
     function reloadTable() { dataTable.ajax.reload(null, false); }
 
@@ -148,19 +151,61 @@ $(document).ready(function () {
                 if (data.success) {
                     const select = $('#id_perfil');
                     select.empty().append('<option value="" disabled selected>Selecciona un Perfil</option>');
-                    data.data.forEach(profile => select.append(`<option value="${profile.id}">${profile.nombre}</option>`));
+                    data.data.forEach(profile => {
+                        // 🛡️ REGLA: Ocultamos el rol SUPER_ADMIN de las opciones si quien edita es un ADMIN ordinario
+                        if (!esSuperAdmin && profile.nombre.toUpperCase().replace(/ /g, '_').includes('SUPER_ADMIN')) return;
+                        select.append(`<option value="${profile.id}">${profile.nombre}</option>`);
+                    });
                 } else { AppUtils.showNotification('Error al cargar perfiles', 'error'); }
             }).catch(error => console.error('Error cargando perfiles:', error));
     }
 
     function saveUsuario() {
         limpiarErrores();
+
+        const usuarioVal = $('#usuario').val().trim();
+        const correoVal  = $('#correo').val().trim();
+        const claveVal   = $('#clave').val();
+        const esNuevo    = !$('#id').val();
+
+        // 🛡️ ADUANA FRONTEND A: Límites físicos de base de datos
+        if (usuarioVal.length > 30) {
+            AppUtils.showNotification('El identificador de usuario no puede superar los 30 caracteres.', 'error');
+            return;
+        }
+        if (correoVal.length > 50) {
+            AppUtils.showNotification('El correo electrónico no puede superar los 50 caracteres.', 'error');
+            return;
+        }
+
+        // 🛡️ ADUANA FRONTEND B: Formato de correo eインジェクション (Regex limpia)
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoVal)) {
+            AppUtils.showNotification('Por favor, ingresa una estructura de correo electrónico válida.', 'error');
+            return;
+        }
+
+        // 🛡️ ADUANA FRONTEND C: Espacios vacíos en el login
+        if (/\s/.test(usuarioVal)) {
+            AppUtils.showNotification('El nombre de usuario no puede contener espacios en blanco.', 'error');
+            return;
+        }
+
+        // 🛡️ ADUANA FRONTEND D: Fortalezas de clave por rango
+        if (esNuevo && claveVal.length < 6) {
+            AppUtils.showNotification('La contraseña de seguridad debe contener como mínimo 6 caracteres.', 'error');
+            return;
+        }
+        if (!esNuevo && claveVal && claveVal.length < 6) {
+            AppUtils.showNotification('La nueva contraseña debe contener como mínimo 6 caracteres.', 'error');
+            return;
+        }
+
         const formData = {
             id: $('#id').val() || null,
-            usuario: $('#usuario').val().trim(),
-            correo: $('#correo').val().trim(),
+            usuario: usuarioVal,
+            correo: correoVal,
             perfil: { id: $('#id_perfil').val() },
-            clave: $('#clave').val()
+            clave: claveVal
         };
 
         AppUtils.showLoading(true);
@@ -180,73 +225,107 @@ $(document).ready(function () {
                     } else { AppUtils.showNotification(data.message, 'error'); }
                 }
             })
+            .catch(error => AppUtils.showNotification('Error de comunicación con el servidor', 'error'))
+            .finally(() => AppUtils.showLoading(false));
+    }
+
+    function handleEdit(id) {
+        AppUtils.showLoading(true);
+        fetch(`${ENDPOINTS.get(id)}?t=${new Date().getTime()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) { openModalForEdit(data.data); }
+                else { AppUtils.showNotification('Error al cargar la ficha del usuario', 'error'); }
+            })
             .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
             .finally(() => AppUtils.showLoading(false));
     }
 
-    function handleEdit(id) { // 👈 Ahora recibe el ID directamente, sin depender de '$(this)'
-            AppUtils.showLoading(true);
-            fetch(`${ENDPOINTS.get(id)}?t=${new Date().getTime()}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) { openModalForEdit(data.data); }
-                    else { AppUtils.showNotification('Error al cargar usuario', 'error'); }
-                })
-                .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
-                .finally(() => AppUtils.showLoading(false));
-        }
+    function handleToggleStatus(id) {
+        AppUtils.showLoading(true);
+        fetch(ENDPOINTS.toggleStatus(id), { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
+                else { AppUtils.showNotification(data.message, 'error'); }
+            })
+            .catch(error => AppUtils.showNotification('Error de conexión remota', 'error'))
+            .finally(() => AppUtils.showLoading(false));
+    }
 
-    function handleToggleStatus(id) { // 👈 Recibe el ID directamente
-            AppUtils.showLoading(true);
-            fetch(ENDPOINTS.toggleStatus(id), { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
-                    else { AppUtils.showNotification(data.message, 'error'); }
-                })
-                .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
-                .finally(() => AppUtils.showLoading(false));
-        }
-
-    function handleDelete(id) { // 👈 Recibe el ID directamente
-            Swal.fire({
-                title: '¿Estás seguro?', text: "¡El usuario será marcado como eliminado!",
-                icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, ¡eliminar!', cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    AppUtils.showLoading(true);
-                    fetch(`${ENDPOINTS.delete}/${id}`, { method: 'DELETE' })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
-                            else { AppUtils.showNotification(data.message, 'error'); }
-                        })
-                        .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
-                        .finally(() => AppUtils.showLoading(false));
-                }
-            });
-        }
+    function handleDelete(id) {
+        Swal.fire({
+            title: '¿Remover cuenta del sistema?', text: "El empleado perderá sus accesos de forma inmediata.",
+            icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, purgar cuenta', cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                AppUtils.showLoading(true);
+                fetch(`${ENDPOINTS.delete}/${id}`, { method: 'DELETE' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
+                        else { AppUtils.showNotification(data.message, 'error'); }
+                    })
+                    .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
+                    .finally(() => AppUtils.showLoading(false));
+            }
+        });
+    }
 
     function openModalForNew() {
-        isEditing = false;
         limpiarErrores();
         AppUtils.clearForm(formId);
         $('#modalTitle').text('Agregar Usuario');
+        $('#hint-permisos').remove();
+
+        // Desbloqueo de inputs para nuevos operarios
+        $('#usuario, #correo, #clave').prop('readonly', false).prop('disabled', false);
+        $('#id_perfil').prop('disabled', false);
         modal.show();
     }
 
     function openModalForEdit(usuario) {
-        isEditing = true;
         limpiarErrores();
         AppUtils.clearForm(formId);
         $('#modalTitle').text('Editar Usuario');
+        $('#hint-permisos').remove();
+
         $('#id').val(usuario.id);
         $('#usuario').val(usuario.usuario);
         $('#correo').val(usuario.correo);
         $('#id_perfil').val(usuario.perfil ? usuario.perfil.id : '');
-        $('#id_perfil').prop('disabled', false);
         $('#clave').val('');
+
+        const perfilNombre = usuario.perfil ? usuario.perfil.nombre.toUpperCase().replace(/ /g, '_') : '';
+        const esObjetivoAdmin = perfilNombre.includes('ADMIN') || perfilNombre.includes('ADMINISTRADOR');
+
+        // 🛡️ REGLAS DE NEGOCIO EN CALIENTE DIRECTO AL DOM:
+        if (esSuperAdmin) {
+            // El Super Admin edita lo que quiera de quien sea
+            $('#usuario, #correo, #clave').prop('readonly', false).prop('disabled', false);
+            $('#id_perfil').prop('disabled', false);
+        } else if (esAdmin && !esObjetivoAdmin) {
+            // Un Admin puede alterar operarios secundarios, pero NO degradar su rol ni cambiar su clave
+            $('#usuario, #correo').prop('readonly', false).prop('disabled', false);
+            $('#clave').prop('readonly', true);
+            $('#id_perfil').prop('disabled', true);
+        } else if (esAdmin && esObjetivoAdmin) {
+            // Un Admin plano tiene bloqueados TODOS los campos de otra cuenta administradora
+            $('#usuario, #correo, #clave').prop('readonly', true).prop('disabled', false);
+            $('#id_perfil').prop('disabled', true);
+
+            // Inyectamos el banner explicativo usando tus layouts limpios
+            $('#form .row').prepend(`
+                <div id="hint-permisos" class="col-12">
+                    <div class="alert alert-danger border-0 rounded-3 py-2 small mb-2 text-start" style="background-color: #fce8e6; color: #a51d24;">
+                        <i class="bi bi-shield-lock-fill me-1"></i>
+                        Seguridad de Rango: No tienes permisos para alterar una cuenta administradora. Solo el <strong>Super Admin</strong> posee dicha atribución.
+                    </div>
+                </div>
+            `);
+        }
 
         modal.show();
     }

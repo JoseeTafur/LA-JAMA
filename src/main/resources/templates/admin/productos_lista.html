@@ -7,6 +7,16 @@
 
     <link rel="stylesheet" th:href="@{/css/admin_productos.css}">
 
+    <div th:if="${errorProducto != null}"
+         class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm mb-4 border-0"
+         role="alert" style="background-color: #fce8e6; color: #a51d24;">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-circle-fill me-2 fs-5"></i>
+            <span class="fw-semibold small" th:text="${errorProducto}"></span>
+        </div>
+        <button type="button" class="btn-close small" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
     <div class="card rounded-lg card-color1">
         <div class="card-body p-4">
 
@@ -169,20 +179,28 @@
 
                             <div class="col-md-7">
                                 <div class="mb-3">
-                                    <label class="form-label">Nombre del Plato</label>
-                                    <input type="text" id="prodNombre" name="nombre" class="form-control" required placeholder="Ej. Lomo Saltado">
+                                    <label class="form-label fw-bold small text-dark">Nombre del Plato</label>
+                                    <input type="text" id="prodNombre" name="nombre" class="form-control" required placeholder="Ej. Lomo Saltado" maxlength="30">
+                                    <div class="d-flex justify-content-between">
+                                        <div id="prodNombre-error" class="text-danger small mt-1 fw-semibold" style="font-size: 0.75rem;"></div>
+                                        <small id="contadorNombre" class="text-muted mt-1 small">0/30</small>
+                                    </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Descripción / Detalles de cocina</label>
-                                    <textarea id="prodDesc" name="descripcion" class="form-control" rows="2" placeholder="Ingredientes básicos o guarnición..."></textarea>
+                                    <label class="form-label fw-bold small text-dark">Descripción / Detalles de cocina</label>
+                                    <textarea id="prodDesc" name="descripcion" class="form-control" rows="2" placeholder="Ingredientes básicos o guarnición..." maxlength="150"></textarea>
+                                    <div class="d-flex justify-content-end">
+                                        <small id="contadorDesc" class="text-muted mt-1 small">0/150</small>
+                                    </div>
                                 </div>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Precio de Venta (S/)</label>
-                                        <input type="number" id="prodPrecio" name="precio" class="form-control" step="0.01" required placeholder="0.00">
+                                        <label class="form-label fw-bold small text-dark">Precio de Venta (S/)</label>
+                                        <input type="number" id="prodPrecio" name="precio" class="form-control" step="0.01" min="10.00" max="70.00" required placeholder="0.00">
+                                        <div id="prodPrecio-error" class="text-danger small mt-1 fw-semibold" style="font-size: 0.75rem;"></div>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Categoría Estación</label>
+                                        <label class="form-label fw-bold small text-dark">Categoría Estación</label>
                                         <select id="prodCat" name="categoria.id" class="form-select" required>
                                             <option th:each="cat : ${categorias}" th:value="${cat.id}" th:text="${cat.nombre}"></option>
                                         </select>

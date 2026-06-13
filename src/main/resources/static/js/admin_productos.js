@@ -1,16 +1,18 @@
-// ========================================================
+// =========================================================================
 // LA JAMA — MOTOR DE ADMINISTRACIÓN DE PRODUCTOS (SHADCN SYSTEM)
-// ========================================================
+// =========================================================================
 
 let modalProductoInstance = null;
 let currentPage = 1;
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Inicialización de Modales Bootstrap
     const modalEl = document.getElementById('modalProducto');
     if (modalEl) {
         modalProductoInstance = new bootstrap.Modal(modalEl);
     }
 
+    // 2. Interceptación del Submit para cargar el overlay
     const form = document.getElementById('formProducto');
     if (form) {
         form.addEventListener('submit', function() {
@@ -18,11 +20,95 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Inicializamos la paginación fluida por bloques
+    // 3. Captura de Inputs para las validaciones en caliente
+    const inputNombre = document.getElementById('prodNombre');
+    const inputPrecio = document.getElementById('prodPrecio');
+    const inputDesc   = document.getElementById('prodDesc');
+    const inputArchivo = document.querySelector('input[name="archivoImagen"]');
+
+    // 🛡️ Filtro de caracteres para el Nombre del plato (Solo letras y espacios)
+    if (inputNombre) {
+        inputNombre.addEventListener('input', function () {
+            this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]/g, '');
+            const contador = document.getElementById('contadorNombre');
+            if (contador) contador.textContent = this.value.length + '/30';
+        });
+    }
+
+    // 🛡️ Contador de caracteres para la Descripción
+    if (inputDesc) {
+        inputDesc.addEventListener('input', function () {
+            const contador = document.getElementById('contadorDesc');
+            if (contador) contador.textContent = this.value.length + '/150';
+        });
+    }
+
+    // 🛡️ Aduana de precio por rango de rentabilidad (S/ 10.00 - S/ 70.00)
+    if (inputPrecio) {
+        inputPrecio.addEventListener('blur', function () {
+            const val = parseFloat(this.value);
+            const errorEl = document.getElementById('prodPrecio-error');
+            if (isNaN(val) || val < 10.00 || val > 70.00) {
+                if (errorEl) errorEl.textContent = 'El precio debe estar entre S/ 10.00 y S/ 70.00.';
+                this.value = ''; // Limpia el valor corrupto
+            } else {
+                if (errorEl) errorEl.textContent = '';
+            }
+        });
+    }
+
+    // 🛡️ Filtro Ultra-Estricto para subida de archivos (Usa la notificación del sistema)
+    if (inputArchivo) {
+        inputArchivo.addEventListener('change', function(e) {
+            const archivo = e.target.files[0];
+
+            if (archivo) {
+                // 1. Validar peso máximo (2MB)
+                const limitePeso = 2 * 1024 * 1024;
+                if (archivo.size > limitePeso) {
+                    // 🌟 Reemplazado alert por tu notificación nativa
+                    AppUtils.showNotification('¡Archivo muy pesado! La imagen no debe superar los 2MB.', 'error');
+                    this.value = '';
+                    const imgPrevia = document.getElementById('imgPrevia');
+                    if (imgPrevia) imgPrevia.src = '/img/not-found.png';
+                    return;
+                }
+
+                // 2. Validar extensiones permitidas
+                const formatosPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+                if (!formatosPermitidos.includes(archivo.type)) {
+                    // 🌟 Reemplazado alert por tu notificación nativa
+                    AppUtils.showNotification('Formato no soportado. Selecciona una imagen JPG, PNG o WEBP.', 'error');
+                    this.value = '';
+                    const imgPrevia = document.getElementById('imgPrevia');
+                    if (imgPrevia) imgPrevia.src = '/img/not-found.png';
+                    return;
+                }
+            }
+        });
+    }
+
+    // 🛡️ Sincronizador de contadores al abrir el modal para editar o registrar
+    if (modalEl) {
+        modalEl.addEventListener('shown.bs.modal', function () {
+            const n = document.getElementById('prodNombre').value || "";
+            const d = document.getElementById('prodDesc').value || "";
+
+            const contNombre = document.getElementById('contadorNombre');
+            const contDesc = document.getElementById('contadorDesc');
+            const errorPrecio = document.getElementById('prodPrecio-error');
+
+            if (contNombre) contNombre.textContent = n.length + '/30';
+            if (contDesc) contDesc.textContent = d.length + '/150';
+            if (errorPrecio) errorPrecio.textContent = '';
+        });
+    }
+
+    // Inicializamos la paginación fluida por bloques al arrancar la vista
     paginarTablaManual();
 });
 
-// 🔍 FILTRADO DINÁMICO + CONTROL DE VISTA VACÍA
+// 🔍 FILTRADO DINÁMICO + CONTROL DE VISTA VACÍA (Lógica Líquida)
 function filtrarTabla() {
     const input = document.getElementById("busqueda").value.toUpperCase().trim();
     const rows = document.querySelectorAll("#tablaProductos tbody .producto-fila");
@@ -53,13 +139,12 @@ function filtrarTabla() {
     }
 }
 
-// 📊 MOTOR DE PAGINACIÓN MANUAL LÍQUIDA INTERACTIVA
+// 📊 MOTOR DE PAGINACIÓN MANUAL INTERACTIVA
 function paginarTablaManual(pageTarget = 1) {
     currentPage = pageTarget;
     const maxRows = parseInt(document.getElementById("maxRows").value);
     const busquedaActiva = document.getElementById("busqueda").value.toUpperCase().trim();
 
-    // Si hay búsqueda filtramos sobre las válidas, si no, sobre todas las filas
     const selectorFilas = busquedaActiva !== "" ? "#tablaProductos tbody .busqueda-valida" : "#tablaProductos tbody .producto-fila";
     const rows = document.querySelectorAll(selectorFilas);
     const totalRows = rows.length;
@@ -76,7 +161,6 @@ function paginarTablaManual(pageTarget = 1) {
         rows[i].style.display = "";
     }
 
-    // Dibujar el bloqueador de botones líquido
     renderPaginadorContenedor(totalPages);
 }
 
@@ -146,7 +230,7 @@ function editarProducto(id) {
             }
 
             const img = document.getElementById('imgPrevia');
-            img.src = p.imagen ? `/imagenes/${p.imagen}` : '/img/not-found.png';
+            img.src = p.imagen ? `/uploads/productos/${p.imagen}` : '/img/not-found.png';
 
             document.getElementById('modalTitulo').innerText = 'Editar Producto';
             if (modalProductoInstance) modalProductoInstance.show();
@@ -173,17 +257,6 @@ function cambiarEstado(id, checkbox) {
     }).catch(() => {
         checkbox.checked = !checkbox.checked;
         AppUtils.showNotification('Fallo de conexión', 'error');
-    });
-}
-
-function filtrarTabla() {
-    const input = document.getElementById("busqueda").value.toUpperCase();
-    const rows = document.querySelectorAll("#tablaProductos tbody tr");
-
-    rows.forEach(row => {
-        const nombre = row.cells[1].textContent.toUpperCase();
-        const categoria = row.cells[2].textContent.toUpperCase();
-        row.style.display = (nombre.includes(input) || categoria.includes(input)) ? "" : "none";
     });
 }
 

@@ -8,18 +8,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * Interceptor de sesión y permisos por rol.
- *
- * Roles del sistema:
- *  - ADMIN      → acceso total
- *  - CAJERO     → caja, despacho, delivery, productos, pagos-digitales, historial
- *  - MESERO     → mesas, mesero
- *  - COCINA     → cocina (caliente/fría según cargo)
- *  - REPARTIDOR → admin/entregas/mis-pedidos
- *  - INVITADO   → solo dashboard
- *
- * Las rutas públicas (/login, /carta/**, recursos estáticos) ya están
- * excluidas en WebConfig.addInterceptors(), no se repiten aquí.
+ * LA JAMA — SessionInterceptor
+ * Interceptor de sesión y control perimetral de accesos con jerarquía SUPER_ADMIN.
  */
 @Component
 public class SessionInterceptor implements HandlerInterceptor {
@@ -33,93 +23,74 @@ public class SessionInterceptor implements HandlerInterceptor {
         HttpSession session = request.getSession(false);
         String path = request.getServletPath();
 
-        // ── 1. Sin sesión → login ──────────────────────────────────────────────
+        // ── 1. ADUANA ESTRUCTURAL: Sin sesión activa → Redirección limpia al Login ─────────────────
         if (session == null || session.getAttribute("usuarioLogueado") == null) {
             response.sendRedirect("/login");
             return false;
         }
 
-        // ── 2. Leer rol ────────────────────────────────────────────────────────
+        // ── 2. EXTRACCIÓN DE PRIVILEGIOS DE LA SESIÓN ───────────────────────────────────────────
         String rol = session.getAttribute("rol") != null
                 ? session.getAttribute("rol").toString().trim().toUpperCase()
                 : "INVITADO";
 
-        // ADMIN pasa todo sin restricción
+        // 🔥 PASAPORTE SUPREMO: El rango SUPER_ADMIN posee inmunidad total sobre cualquier recurso
+        if ("SUPER_ADMIN".equals(rol)) {
+            return true;
+        }
+
+        // 🔥 PASAPORTE ADMINISTRATIVO: El rango ADMIN hereda acceso total sobre todo el ecosistema
         if ("ADMIN".equals(rol)) {
             return true;
         }
 
-        // ── 3. Tabla de permisos por prefijo de ruta ───────────────────────────
+        // ── 3. MATRIZ DE PERMISOS PARA ROLES OPERATIVOS MENORES ───────────────────────────
+        // (Al haber escapado SUPER_ADMIN y ADMIN arriba, aquí solo evalúa operarios estrictos)
 
-        // — Panel de Caja
-        if (path.startsWith("/admin/caja")) {
+        // — Módulos de Caja, Despacho, Delivery y Catálogo de Productos
+        if (path.startsWith("/admin/caja") ||
+                path.startsWith("/admin/despacho") ||
+                path.startsWith("/admin/productos") ||
+                path.startsWith("/admin/pagos-digitales") ||
+                path.startsWith("/delivery") ||
+                path.startsWith("/historial")) {
             return verificar(rol, response, "CAJERO");
         }
 
-        // — Panel de Despacho
-        if (path.startsWith("/admin/despacho")) {
-            return verificar(rol, response, "CAJERO");
-        }
-
-        // — Gestión de Productos / Almacén
-        if (path.startsWith("/admin/productos")) {
-            return verificar(rol, response, "CAJERO");
-        }
-
-        // — Pagos digitales
-        if (path.startsWith("/admin/pagos-digitales")) {
-            return verificar(rol, response, "CAJERO");
-        }
-
-        // — Delivery
-        if (path.startsWith("/delivery")) {
-            return verificar(rol, response, "CAJERO");
-        }
-
-        // — Historial de caja/ventas
-        if (path.startsWith("/historial")) {
-            return verificar(rol, response, "CAJERO");
-        }
-
-        // — Panel de Mesas
-        if (path.startsWith("/admin/mesas")) {
+        // — Módulos de Salón (Mesas y Comandas de mozos)
+        if (path.startsWith("/admin/mesas") || path.startsWith("/admin/mesero")) {
             return verificar(rol, response, "MESERO");
         }
 
-        // — Panel de Mesero / comandas
-        if (path.startsWith("/admin/mesero")) {
-            return verificar(rol, response, "MESERO");
-        }
-
-        // — Panel de Cocina
+        // — Módulos de Producción (Monitores de Cocina)
         if (path.startsWith("/admin/cocina")) {
             return verificar(rol, response, "COCINA");
         }
 
-        // — Entregas / repartidor
+        // — Módulos de Despacho Logístico (Repartidores)
         if (path.startsWith("/admin/entregas") || path.startsWith("/entregas") || path.startsWith("/repartidor")) {
             return verificar(rol, response, "REPARTIDOR");
         }
 
-        // — Gestión de Usuarios, Empleados y Perfiles (solo ADMIN — ya cubierto arriba)
-        if (path.startsWith("/usuarios") || path.startsWith("/empleados") || path.startsWith("/perfiles")) {
+        // ── 4. MURO DE CONTENCIÓN JERÁRQUICO DIRECTIVO ─────────────────────────────────────────
+        // Si la petición llegó hasta aquí y es de rango menor (Cajero, Mozo, Cocinero),
+        // se le deniega el acceso inmediato a planillas, configuraciones de sistema o insumos de almacén.
+        if (path.startsWith("/usuarios") ||
+                path.startsWith("/empleados") ||
+                path.startsWith("/perfiles") ||
+                path.startsWith("/insumos") ||
+                path.startsWith("/proteinas")) {
             response.sendRedirect("/dashboard?error=unauthorized");
             return false;
         }
 
-        // — Insumos y Proteínas (solo ADMIN)
-        if (path.startsWith("/insumos") || path.startsWith("/proteinas")) {
-            response.sendRedirect("/dashboard?error=unauthorized");
-            return false;
-        }
-
-        // ── 4. Resto de rutas (dashboard, APIs públicas) → permitir ───────────
+        // ── 5. RUTAS GENERALES LIBRES (Dashboard, APIs informativas de sesión, etc.) ───────────────
         return true;
     }
 
     /**
-     * Comprueba que el rol actual coincida con el rol requerido.
-     * Si no coincide, redirige a /dashboard?error=unauthorized.
+     * Valida si el operario estricto en sesión coincide con la ruta requerida.
+     * Si no cumple la firma, efectúa el rebote preventivo al panel de control.
      */
     private boolean verificar(String rolActual, HttpServletResponse response, String rolRequerido) throws Exception {
         if (rolRequerido.equals(rolActual)) {

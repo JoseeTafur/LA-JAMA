@@ -5,15 +5,23 @@
 
 <div id="contenido">
     <div class="card rounded-lg card-color1">
-        <div class="card-body">
+        <div class="card-body p-4">
 
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="card-title h5 fw-bold">Lista de Roles del Sistema</h1>
+                <h1 class="card-title h5 fw-bold">
+                    <i class="bi bi-shield-lock-fill me-2" style="color: var(--lajama-skin);"></i>Lista de Roles del Sistema
+                </h1>
 
-                <button type="button" id="btnNuevoRegistro" class="btn-jama-kinetic">
-                    <i class="bi bi-plus-lg"></i>
-                    <span>Nuevo Registro</span>
-                </button>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="badge px-3 py-2 rounded-pill small d-none d-md-inline-block"
+                          style="background-color: var(--lajama-cream); color: var(--lajama-green); border: 1px dashed rgba(27,58,44,0.15);">
+                        <i class="bi bi-info-circle me-1"></i> Configuración de accesos
+                    </span>
+                    <button type="button" id="btnNuevoRegistro" class="btn-jama-kinetic">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Nuevo Registro</span>
+                    </button>
+                </div>
             </div>
 
             <div class="table-responsive-jama">
@@ -21,14 +29,13 @@
                     <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Descripción</th>
+                        <th>Nombre del Rol</th>
+                        <th>Descripción Operativa</th>
                         <th>Estado</th>
-                        <th>Acciones</th>
+                        <th class="text-center" style="width: 150px;">Acciones</th>
                     </tr>
                     </thead>
-                    <tbody>
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
 
@@ -38,31 +45,43 @@
 
 <div id="modales">
     <div class="modal fade" id="modal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="modalTitle">Agregar Perfil</h5>
+                    <h5 class="modal-title" id="modalTitle">
+                        <i class="bi bi-sliders2 me-2"></i> Agregar Perfil
+                    </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form id="form" novalidate>
                     <div class="modal-body p-4">
                         <input type="hidden" id="id" name="id" />
 
-                        <div class="mb-3">
-                            <label for="nombre" class="form-label">Nombre del Rol</label>
-                            <input type="text" id="nombre" class="form-control" placeholder="Ej. Administrador, Cocinero..." required />
-                            <div id="nombre-error" class="invalid-feedback d-block"></div>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label for="nombre" class="form-label fw-semibold small text-dark">Nombre del Rol</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light" style="border: 1px solid #ced4da; border-radius: 8px 0 0 8px;"><i class="bi bi-tag-fill text-muted"></i></span>
+                                    <input type="text" id="nombre" name="nombre" class="form-control"
+                                           placeholder="Ej. Administrador, Cocinero..." maxlength="30" required />
+                                </div>
+                                <div id="nombre-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="descripcion" class="form-label fw-semibold small text-dark">Descripción de Responsabilidades</label>
+                                <textarea id="descripcion" name="descripcion" class="form-control" rows="3"
+                                          placeholder="Define qué módulos o tareas controlará este rol..." maxlength="100" required></textarea>
+                                <div id="descripcion-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="descripcion" class="form-label">Descripción</label>
-                            <textarea id="descripcion" class="form-control" rows="3" placeholder="Define las responsabilidades de este perfil..." required></textarea>
-                            <div id="descripcion-error" class="invalid-feedback d-block"></div>
-                        </div>
                     </div>
                     <div class="modal-footer border-0 px-4 pb-4">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i> Guardar Cambios
+                        </button>
                     </div>
                 </form>
             </div>
@@ -72,26 +91,36 @@
     <div id="permisosModal" class="modal fade" tabindex="-1" aria-labelledby="permisosModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header" style="background-color: var(--lajama-skin) !important;">
-                    <h5 class="modal-title text-dark"><i class="bi bi-lock-fill me-2"></i>Asignar Permisos</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="permisosModalLabel">
+                        <i class="bi bi-shield-lock-fill me-2"></i> Asignar Permisos del Sistema
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
                     <form id="formPermisos">
                         <input type="hidden" id="permisoPerfilId" />
-                        <div class="alert alert-warning border-0 rounded-4 mb-4" style="background-color: var(--lajama-cream); border: 1px solid var(--lajama-peach) !important;">
-                            <i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>
-                            Seleccione los módulos a los que tendrá acceso el perfil:
-                            <strong id="permisoPerfilNombre" class="d-block mt-1 text-dark"></strong>
+
+                        <div class="alert alert-warning border-0 rounded-4 mb-4"
+                             style="background-color: var(--lajama-cream); border: 1px solid var(--lajama-peach) !important; color: #664d03;">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="bi bi-exclamation-triangle-fill mt-1 text-warning fs-5"></i>
+                                <div>
+                                    <span class="small d-block fw-medium">Seleccione los módulos operativos a los que tendrá acceso comercial el perfil:</span>
+                                    <strong id="permisoPerfilNombre" class="d-block mt-1 text-dark fs-6" style="color: var(--lajama-green) !important;"></strong>
+                                </div>
+                            </div>
                         </div>
 
-                        <div id="listaOpciones" class="list-group list-group-flush rounded-4 overflow-hidden border border-jama-peach">
+                        <div id="listaOpciones" class="list-group list-group-flush rounded-4 overflow-hidden border border-jama-peach shadow-sm">
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer border-0 px-4 pb-4">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" id="btnGuardarPermisos" class="btn btn-primary">Guardar Permisos</button>
+                    <button type="button" id="btnGuardarPermisos" class="btn btn-primary">
+                        <i class="bi bi-check-all me-1 fs-5"></i> Aplicar Permisos
+                    </button>
                 </div>
             </div>
         </div>

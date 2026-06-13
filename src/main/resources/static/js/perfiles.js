@@ -1,8 +1,13 @@
+/**
+ * LA JAMA — perfiles.js
+ * Gestión de roles, micro-interacciones cinéticas y matriz asíncrona de permisos.
+ */
 $(document).ready(function () {
     let dataTable;
     let isEditing = false;
     let modal;
     let permisosModal;
+    let esSuperAdmin = false;
     const formid = '#form';
 
     const API_BASE = '/perfiles/api';
@@ -12,14 +17,26 @@ $(document).ready(function () {
         get: (id) => `${API_BASE}/obtener/${id}`,
         toggleStatus: (id) => `${API_BASE}/cambiar-estado/${id}`,
         delete: (id) => `${API_BASE}/eliminar/${id}`,
-        options: `${API_BASE}/opciones`
+        options: `${API_BASE}/opciones`,
+        rolSesion: '/usuarios/api/rol-sesion'
     };
 
-    initializeDataTable();
-    modal = new bootstrap.Modal(document.getElementById('modal'));
-    permisosModal = new bootstrap.Modal(document.getElementById('permisosModal'));
+    // 🛡️ CONTROL JERÁRQUICO PRIORITARIO: Evaluamos el rango antes de inicializar la interfaz
+    fetch(ENDPOINTS.rolSesion)
+        .then(response => response.json())
+        .then(data => {
+            esSuperAdmin = data.esSuperAdmin || false;
 
-    setupEventListeners();
+            // Una vez resuelta la identidad, montamos el DOM seguro
+            initializeDataTable();
+            modal = new bootstrap.Modal(document.getElementById('modal'));
+            permisosModal = new bootstrap.Modal(document.getElementById('permisosModal'));
+            setupEventListeners();
+        })
+        .catch(error => {
+            console.error('Error al capturar el rol de sesión:', error);
+            initializeDataTable(); // Caída de contingencia segura
+        });
 
     function initializeDataTable() {
         dataTable = $('#tabla').DataTable({
@@ -36,7 +53,9 @@ $(document).ready(function () {
                 { data: 'descripcion' },
                 {
                     data: 'estado',
-                    render: (data) => data === 1 ? '<span class="badge text-bg-success">Activo</span>' : '<span class="badge text-bg-danger">Inactivo</span>'
+                    render: (data) => data === 1
+                        ? '<span class="badge text-bg-success px-3 py-1 rounded-pill">Activo</span>'
+                        : '<span class="badge text-bg-danger px-3 py-1 rounded-pill">Inactivo</span>'
                 },
                 {
                     data: null, orderable: false, searchable: false,
@@ -61,14 +80,7 @@ $(document).ready(function () {
                 "search": "Buscar:",
                 "loadingRecords": "Cargando...",
                 "paginate": {
-                    "first": "Primero",
-                    "last": "Último",
-                    "next": "Siguiente",
-                    "previous": "Anterior"
-                },
-                "aria": {
-                    "sortAscending": ": Activar para ordenar la columna de manera ascendente",
-                    "sortDescending": ": Activar para ordenar la columna de manera descendente"
+                    "first": "Primero", "last": "Último", "next": "Siguiente", "previous": "Anterior"
                 }
             },
             pageLength: 10
@@ -76,10 +88,15 @@ $(document).ready(function () {
     }
 
     function createActionButtons(row) {
-        // 🌟 INTEGRACIÓN DE COMPONENTES CRUD CINÉTICOS Y MICRO-INTERACTIVOS
+        // 🛡️ REGLA DE NEGOCIO: Si el usuario no es SUPER_ADMIN, se inyecta una clase especial para bloquear el click visualmente
+        const lockClass = !esSuperAdmin ? 'btn-action-locked' : '';
+        const lockTitleEdit = !esSuperAdmin ? 'Solo el Super Admin puede editar roles' : 'Editar Perfil';
+        const lockTitlePerm = !esSuperAdmin ? 'Solo el Super Admin puede alterar privilegios' : 'Asignar Permisos';
+
+        // 🌟 INTEGRACIÓN DE COMPONENTES CRUD CINÉTICOS PREMIUM PROTEGIDOS POR JERARQUÍA
         return `
             <div class="action-buttons-wrapper">
-                <button type="button" class="action-jama-btn btn-action-edit action-edit" data-id="${row.id}" title="Editar Perfil">
+                <button type="button" class="action-jama-btn btn-action-edit action-edit ${lockClass}" data-id="${row.id}" title="${lockTitleEdit}">
                     <svg viewBox="0 0 39 7" class="pencil-cap" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <line y1="3.5" x2="39" y2="3.5" stroke-width="4"/>
                     </svg>
@@ -93,7 +110,7 @@ $(document).ready(function () {
                     </svg>
                 </button>
 
-                <button type="button" class="action-jama-btn btn-action-permissions action-permissions" data-id="${row.id}" title="Asignar Permisos">
+                <button type="button" class="action-jama-btn btn-action-permissions action-permissions ${lockClass}" data-id="${row.id}" title="${lockTitlePerm}">
                     <i class="bi bi-key-fill key-icon"></i>
                 </button>
 
@@ -128,16 +145,17 @@ $(document).ready(function () {
     function setupEventListeners() {
         $('#btnNuevoRegistro').on('click', openModalForNew);
         $(formid).on('submit', (e) => { e.preventDefault(); savePerfil(); });
-        $('#tabla tbody').on('click', '.action-edit', handleEdit);
-        $('#tabla tbody').on('click', '.action-status', handleToggleStatus);
-        $('#tabla tbody').on('click', '.action-permissions', handlePermissions);
+
+        // 🌟 CAPTURA DELEGADA INTEGRAL Y ULTRA-SEGURA: Resiste filtrados y saltos de página
+        $('#tabla tbody').on('click', '.action-edit', function() { handleEdit($(this).data('id')); });
+        $('#tabla tbody').on('click', '.action-status', function() { handleToggleStatus($(this).data('id')); });
+        $('#tabla tbody').on('click', '.action-permissions', function() { handlePermissions($(this).data('id')); });
+        $('#tabla tbody').on('click', '.action-delete', function() { handleDelete($(this).data('id')); });
+
         $('#btnGuardarPermisos').on('click', savePermissions);
-        $('#tabla tbody').on('click', '.action-delete', handleDelete);
     }
 
-    function reloadTable() {
-        dataTable.ajax.reload();
-    }
+    function reloadTable() { dataTable.ajax.reload(null, false); }
 
     function savePerfil() {
         const perfilData = {
@@ -147,14 +165,19 @@ $(document).ready(function () {
         };
 
         if (!perfilData.nombre) {
-            AppUtils.showNotification('El nombre es obligatorio', 'error');
+            AppUtils.showNotification('El nombre del rol es mandatorio.', 'error');
+            return;
+        }
+
+        // 🛡️ ADUANA FRONTEND: Bloqueo de peticiones si no posee rango de fábrica
+        if (!esSuperAdmin) {
+            AppUtils.showNotification('Acceso denegado: Solo el Super Admin puede registrar o alterar perfiles.', 'error');
             return;
         }
 
         AppUtils.showLoading(true);
         fetch(ENDPOINTS.save, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(perfilData)
         })
             .then(response => response.json())
@@ -167,91 +190,94 @@ $(document).ready(function () {
                     AppUtils.showNotification(data.message, 'error');
                 }
             })
-            .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
+            .catch(error => AppUtils.showNotification('Error de comunicación con el servidor', 'error'))
             .finally(() => AppUtils.showLoading(false));
     }
 
-    function handleEdit(e) {
-        const id = $(this).data('id');
+    function handleEdit(id) {
+        if (!esSuperAdmin) {
+            AppUtils.showNotification('Operación denegada: Privilegios exclusivos del Super Admin.', 'error');
+            return;
+        }
         AppUtils.showLoading(true);
-        fetch(ENDPOINTS.get(id))
+        fetch(`${ENDPOINTS.get(id)}?t=${new Date().getTime()}`)
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    openModalForEdit(data.data);
-                } else {
-                    AppUtils.showNotification('Error al cargar perfil', 'error');
-                }
+                if (data.success) { openModalForEdit(data.data); }
+                else { AppUtils.showNotification('Error al recuperar los datos del rol.', 'error'); }
             })
             .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
             .finally(() => AppUtils.showLoading(false));
     }
 
-    function handleToggleStatus(e) {
-        const id = $(this).data('id');
+    function handleToggleStatus(id) {
+        // 🛡️ ADUANA PROTECTORA DE SEGURIDAD NATIVA: Evita apagar las cuentas maestras
+        const tr = $(`button[data-id="${id}"].action-status`).closest('tr');
+        const row = dataTable.row(tr).data();
+        if (row) {
+            const nombreRol = row.nombre.toUpperCase().replace(/ /g, '_');
+            if ((nombreRol.includes('SUPER_ADMIN') || nombreRol.includes('ADMINISTRADOR')) && !esSuperAdmin) {
+                AppUtils.showNotification('Operación inválida: Solo el Super Admin puede suspender perfiles administrativos.', 'error');
+                return;
+            }
+        }
+
         AppUtils.showLoading(true);
         fetch(ENDPOINTS.toggleStatus(id), { method: 'POST' })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    AppUtils.showNotification(data.message, 'success');
-                    reloadTable();
-                } else {
-                    AppUtils.showNotification(data.message, 'error');
-                }
+                if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
+                else { AppUtils.showNotification(data.message, 'error'); }
             })
-            .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
+            .catch(error => AppUtils.showNotification('Error de conexión remota', 'error'))
             .finally(() => AppUtils.showLoading(false));
     }
 
-    function handleDelete(e) {
-        const id = $(this).data('id');
+    function handleDelete(id) {
+        // 🛡️ ADUANA PROTECTORA DE SEGURIDAD NATIVA: Impide borrar la raíz del sistema
+        const tr = $(`button[data-id="${id}"].action-delete`).closest('tr');
+        const row = dataTable.row(tr).data();
+        if (row) {
+            const nombreRol = row.nombre.toUpperCase().replace(/ /g, '_');
+            if ((nombreRol.includes('SUPER_ADMIN') || nombreRol.includes('ADMINISTRADOR')) && !esSuperAdmin) {
+                AppUtils.showNotification('Operación denegada: No se puede purgar un perfil de nivel administrativo.', 'error');
+                return;
+            }
+        }
 
         Swal.fire({
-            title: '¿Estás seguro?',
-            text: "¡No podrás revertir esta acción! Se eliminará el perfil permanentemente.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, ¡eliminar!',
-            cancelButtonText: 'Cancelar'
+            title: '¿Eliminar este perfil operativo?',
+            text: "¡Atención! Se revocarán de golpe las opciones de acceso a todos los usuarios ligados a este rol.",
+            icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, purgar rol', cancelButtonText: 'Cancelar',
+            reverseButtons: true
         }).then((result) => {
             if (result.isConfirmed) {
                 AppUtils.showLoading(true);
-                fetch(ENDPOINTS.delete(id), {
-                    method: 'DELETE'
-                })
+                fetch(ENDPOINTS.delete(id), { method: 'DELETE' })
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) {
-                            AppUtils.showNotification(data.message, 'success');
-                            reloadTable();
-                        } else {
-                            AppUtils.showNotification(data.message, 'error');
-                        }
+                        if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
+                        else { AppUtils.showNotification(data.message, 'error'); }
                     })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        AppUtils.showNotification('Error de conexión al eliminar el perfil.', 'error');
-                    })
-                    .finally(() => {
-                        AppUtils.showLoading(false);
-                    });
+                    .catch(error => AppUtils.showNotification('Error de comunicación con el servidor.', 'error'))
+                    .finally(() => AppUtils.showLoading(false));
             }
         });
     }
 
-// ── 1. CARGAR PERMISOS (CON COPILOTO DE VERIFICACIÓN) ────────────────
-    async function handlePermissions(e) {
-        const id = $(this).data('id');
+    // ── CARGAR PERMISOS (CON COMPROBACIÓN CONTRA ANTICACHÉ) ────────────────
+    async function handlePermissions(id) {
+        if (!esSuperAdmin) {
+            AppUtils.showNotification('Acceso denegado: El control de accesos es de atribución única del Super Admin.', 'error');
+            return;
+        }
         AppUtils.showLoading(true);
         $('#permisoPerfilId').val(id);
 
         try {
-            // Forzamos la petición al backend para traer los datos más frescos
             const [perfilRes, opcionesRes] = await Promise.all([
-                fetch(`${ENDPOINTS.get(id)}?t=${new Date().getTime()}`), // Evita caché de navegador
+                fetch(`${ENDPOINTS.get(id)}?t=${new Date().getTime()}`), // Rompe la memoria caché física del cliente
                 fetch(ENDPOINTS.options)
             ]);
 
@@ -263,12 +289,10 @@ $(document).ready(function () {
                 const listaOpciones = $('#listaOpciones');
                 listaOpciones.empty();
 
-                // Extraemos los IDs activos en un array plano para que la comparación sea ultra rápida y segura
                 const opcionesActivasIds = perfilData.data.opciones ?
                     perfilData.data.opciones.map(op => parseInt(op.id || op)) : [];
 
                 opcionesData.data.forEach(opcion => {
-                    // Copiloto de seguridad: Compara si el ID de la opción general está en el mapa del perfil
                     const isChecked = opcionesActivasIds.includes(parseInt(opcion.id));
 
                     const item = `
@@ -281,44 +305,40 @@ $(document).ready(function () {
                 });
                 permisosModal.show();
             } else {
-                AppUtils.showNotification('Error al cargar datos de permisos', 'error');
+                AppUtils.showNotification('Error al procesar el mapeo de módulos.', 'error');
             }
         } catch (error) {
-            console.error("Error cargando permisos:", error);
-            AppUtils.showNotification('Error de conexión al cargar permisos', 'error');
+            AppUtils.showNotification('Fallo de respuesta al cargar la matriz de permisos.', 'error');
         } finally {
             AppUtils.showLoading(false);
         }
     }
 
-    // ── 2. GUARDAR PERMISOS (MAPEADO DE RELACIÓN SEGURO) ────────────────
+    // ── GUARDAR PERMISOS (CONSERVANDO DESCRIPCIONES Y ENTIDADES) ──────────────
     async function savePermissions() {
+        if (!esSuperAdmin) {
+            AppUtils.showNotification('Operación rechazada: Rango insuficiente.', 'error');
+            return;
+        }
         const perfilId = $('#permisoPerfilId').val();
 
-        // Obtenemos los checkboxes seleccionados en el formato de entidad que Spring Boot espera
         const selectedOpciones = $('#listaOpciones input:checked').map(function () {
-            return {
-                id: parseInt($(this).val())
-            };
+            return { id: parseInt($(this).val()) };
         }).get();
 
         AppUtils.showLoading(true);
         try {
-            // 1. Traemos el estado del perfil para no pisar campos como el "estado" o la "descripción"
             const perfilRes = await fetch(ENDPOINTS.get(perfilId));
             const perfilData = await perfilRes.json();
 
             if (!perfilData.success) {
-                AppUtils.showNotification('No se pudo obtener el perfil para actualizar', 'error');
+                AppUtils.showNotification('No se pudo ubicar el perfil maestro para actualizar.', 'error');
                 return;
             }
 
             const perfilToUpdate = perfilData.data;
-
-            // 2. Inyectamos la nueva colección de opciones seleccionadas
             perfilToUpdate.opciones = selectedOpciones;
 
-            // 3. Enviamos la actualización al controlador de Spring
             const saveRes = await fetch(ENDPOINTS.save, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -328,22 +348,23 @@ $(document).ready(function () {
 
             if (saveData.success) {
                 permisosModal.hide();
-                AppUtils.showNotification('Permisos actualizados correctamente', 'success');
-
-                // 🌟 CLAVE DE PERSISTENCIA: Recargamos la tabla para refrescar los objetos en memoria del DOM
-                reloadTable();
+                AppUtils.showNotification('Fórmula de accesos actualizada con éxito en la base de datos.', 'success');
+                reloadTable(); // Sincroniza la tabla reactivamente sin meter F5
             } else {
-                AppUtils.showNotification(saveData.message || 'Error al guardar permisos', 'error');
+                AppUtils.showNotification(saveData.message || 'Error al procesar la actualización.', 'error');
             }
         } catch (error) {
-            console.error("Error guardando permisos:", error);
-            AppUtils.showNotification('Error de conexión al guardar permisos', 'error');
+            AppUtils.showNotification('Error de conexión al inyectar permisos.', 'error');
         } finally {
             AppUtils.showLoading(false);
         }
     }
 
     function openModalForNew() {
+        if (!esSuperAdmin) {
+            AppUtils.showNotification('Acceso denegado: Solo el Super Admin posee privilegios de creación.', 'error');
+            return;
+        }
         isEditing = false;
         AppUtils.clearForm(formid);
         $('#modalTitle').text('Agregar Perfil');

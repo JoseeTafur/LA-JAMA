@@ -20,11 +20,11 @@ public class PerfilController {
     private final PerfilService perfilService;
 
     @GetMapping
-    public String mostrarPagina(Model model) { // 💡 Agregamos el Model aquí
+    public String mostrarPagina(Model model) {
         // ========================================================
         // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
         // ========================================================
-        model.addAttribute("activeUri", "/perfiles"); // Match idéntico con tu BD
+        model.addAttribute("activeUri", "/perfiles"); // Asegura el foco en el Sidebar
         model.addAttribute("titleHeader", "Gestión de Perfiles y Accesos");
 
         return "perfiles";
@@ -67,7 +67,7 @@ public class PerfilController {
         try {
             Perfil perfilGuardado = perfilService.guardar(perfil);
             response.put("success", true);
-            response.put("message", perfil.getId() != null ? "Perfil actualizado" : "Perfil creado");
+            response.put("message", perfil.getId() != null ? "Perfil actualizado correctamente" : "Perfil creado correctamente");
             response.put("perfil", perfilGuardado);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -83,17 +83,13 @@ public class PerfilController {
         Map<String, Object> response = new HashMap<>();
         try {
             Perfil perfil = perfilService.alternarEstado(id);
-
             response.put("success", true);
-            response.put("message", "Estado del perfil actualizado");
+            response.put("message", "Estado del perfil actualizado correctamente");
             response.put("data", perfil);
-
             return ResponseEntity.ok(response);
-
         } catch (IllegalArgumentException e) {
             response.put("success", false);
             response.put("message", e.getMessage());
-
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }

@@ -39,7 +39,7 @@
                         </div>
                         <div class="input-relative">
                             <input id="clave" name="clave" type="password" placeholder="Contraseña" required autocomplete="current-password" />
-                            <span class="password-toggle" id="togglePassword">
+                            <span class="password-toggle" id="togglePassword" style="cursor: pointer;">
                                 <i class="bi bi-eye"></i>
                             </span>
                         </div>
@@ -65,6 +65,7 @@
     </div>
 </div>
 
+<!-- 🎥 Tu overlay de carga premium intacto -->
 <div id="loading-overlay" class="premium-loading-overlay">
     <video id="premium-video" loop muted playsinline preload="auto">
         <source th:src="@{/video/loader_lajama.webm}" type="video/webm">
@@ -75,6 +76,7 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<!-- 🛡️ Mensajes de error devueltos por el backend -->
 <script th:if="${error}">
     Swal.fire({
         icon: 'error',
@@ -85,5 +87,71 @@
 </script>
 
 <script th:src="@{/js/main.js}"></script>
+
+<!-- ⚡ SCRIPTS DE INTERACTIVIDAD Y ADUANA DE CLIENTE UNIFICADOS -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const inputPassword = document.querySelector("#clave");
+        const toggleBtn = document.querySelector("#togglePassword");
+        const loginForm = document.getElementById("loginForm");
+
+        // A) Conmutador dinámico de visibilidad de contraseña (Ojito)
+        if (toggleBtn && inputPassword) {
+            toggleBtn.addEventListener("click", function () {
+                const isPassword = inputPassword.getAttribute("type") === "password";
+                inputPassword.setAttribute("type", isPassword ? "text" : "password");
+
+                const icon = this.querySelector("i");
+                if (icon) {
+                    icon.classList.toggle("bi-eye");
+                    icon.classList.toggle("bi-eye-slash");
+                }
+            });
+        }
+
+        // B) Aduana de validación antes del envío físico de datos
+        if (loginForm) {
+            loginForm.addEventListener("submit", function (e) {
+                const usuario = document.getElementById("usuario").value.trim();
+                const clave = document.getElementById("clave").value.trim();
+
+                if (!usuario) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Campo Requerido',
+                        text: 'Por favor, ingresa tu nombre de usuario o correo electrónico.',
+                        confirmButtonColor: '#1B3A2C'
+                    });
+                    return false;
+                }
+
+                if (!clave) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Campo Requerido',
+                        text: 'La contraseña de acceso es obligatoria.',
+                        confirmButtonColor: '#1B3A2C'
+                    });
+                    return false;
+                }
+
+                if (clave.length < 4) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Contraseña Inválida',
+                        text: 'La credencial de acceso debe contener como mínimo 4 caracteres.',
+                        confirmButtonColor: '#1B3A2C'
+                    });
+                    return false;
+                }
+
+                // Si los datos pasan la aduana, el flujo natural ejecutará el video loader de tu main.js
+            });
+        }
+    });
+</script>
 </body>
 </html>

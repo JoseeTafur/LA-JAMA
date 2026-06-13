@@ -3,17 +3,19 @@ package com.web.restaurante.controller;
 import com.web.restaurante.dto.InsumoDTO;
 import com.web.restaurante.dto.InsumoProductoDTO;
 import com.web.restaurante.dto.MovimientoInsumoDTO;
-import com.web.restaurante.model.MovimientoInsumo;
 import com.web.restaurante.repository.ProductoRepository;
-import com.web.restaurante.repository.MovimientoRepository;
 import com.web.restaurante.service.InsumoService;
+import com.web.restaurante.util.ValidationUtil; // 🌟 Conexión segura con tus límites globales
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.ResponseEntity;
-import java.util.Map;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequiredArgsConstructor
@@ -22,25 +24,56 @@ public class InsumoController {
 
     private final InsumoService insumoService;
     private final ProductoRepository productoRepository;
-    private final MovimientoRepository movimientoRepository;
 
-    // 🌟 Mantenemos el método intacto, pero capturamos el "tab" opcional para la vista
     @GetMapping
     public String listarInsumos(@RequestParam(value = "tab", required = false, defaultValue = "proteinas") String tab, Model model) {
+        // ========================================================
+        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
+        // ========================================================
+        model.addAttribute("activeUri", "/insumos");
+        model.addAttribute("titleHeader", "Gestión de Almacén e Insumos");
+
         model.addAttribute("insumos", insumoService.listarInsumos());
         model.addAttribute("productos", productoRepository.findAll());
         model.addAttribute("insumosProductos", insumoService.listarTodosLosInsumosProducto());
-
-        // Enviamos la pestaña activa a Thymeleaf para que sepa cuál pintar al cargar
         model.addAttribute("activeTab", tab);
         return "insumos";
     }
 
     @PostMapping("/editar")
-    public String editarInsumo(@ModelAttribute InsumoDTO dto) {
+    public String editarInsumo(@ModelAttribute InsumoDTO dto, RedirectAttributes redirectAttrs) {
+
+        if (dto.getNombre() == null || dto.getNombre().isBlank() || !ValidationUtil.soloLetras(dto.getNombre())) {
+            redirectAttrs.addFlashAttribute("errorInsumo", "El nombre del insumo es obligatorio y solo puede contener letras.");
+            return "redirect:/insumos?tab=catalogo&error";
+        }
+
+        if (dto.getStockMinimo() != null && dto.getStockMinimo() < 0) {
+            redirectAttrs.addFlashAttribute("errorInsumo", "El stock mínimo no puede ser un número negativo.");
+            return "redirect:/insumos?tab=catalogo&error";
+        }
+
         insumoService.guardarInsumo(dto);
-        // Regresa a la raíz, forzando a abrir la pestaña de catálogo general
         return "redirect:/insumos?tab=catalogo";
+    }
+
+    @PostMapping("/guardar")
+    public String guardarInsumo(@ModelAttribute InsumoDTO dto,
+                                @RequestParam(value = "originTab", defaultValue = "catalogo") String originTab,
+                                RedirectAttributes redirectAttrs) {
+
+        if (dto.getNombre() == null || dto.getNombre().isBlank() || !ValidationUtil.soloLetras(dto.getNombre())) {
+            redirectAttrs.addFlashAttribute("errorInsumo", "El nombre del insumo es obligatorio y solo puede contener letras.");
+            return "redirect:/insumos?tab=" + originTab + "&error";
+        }
+
+        if (dto.getStockMinimo() != null && dto.getStockMinimo() < 0) {
+            redirectAttrs.addFlashAttribute("errorInsumo", "El stock mínimo no puede ser un número negativo.");
+            return "redirect:/insumos?tab=" + originTab + "&error";
+        }
+
+        insumoService.guardarInsumo(dto);
+        return "redirect:/insumos?tab=" + originTab;
     }
 
     @PostMapping("/reactivar/{id}")
@@ -49,26 +82,19 @@ public class InsumoController {
         return "redirect:/insumos?tab=catalogo";
     }
 
-    @PostMapping("/guardar")
-    public String guardarInsumo(@ModelAttribute InsumoDTO dto, @RequestParam(value = "originTab", defaultValue = "catalogo") String originTab) {
-        insumoService.guardarInsumo(dto);
-        // Redirecciona a la pestaña desde donde se invocó el modal
-        return "redirect:/insumos?tab=" + originTab;
-    }
-
     @PostMapping("/eliminar/{id}")
     @ResponseBody
     public ResponseEntity<?> eliminarInsumoAsincrono(@PathVariable Long id) {
+        Map<String, Object> response = new HashMap<>();
         try {
-            // Invocamos la coreografía de baja que implementamos en el Service
             insumoService.ejecutarBajaLogicaAvanzada(id);
-
-            // Retornamos éxito en un formato JSON limpio que leerá JavaScript
-            return ResponseEntity.ok()
-                    .body("{\"success\": true, \"message\": \"Insumo archivado correctamente y recetas desvinculadas.\"}");
+            response.put("success", true);
+            response.put("message", "Insumo archivado correctamente y recetas desvinculadas.");
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            // Si ocurre algún fallo imprevisto, respondemos con código 400 y el error
-            return ResponseEntity.badRequest().body(e.getMessage());
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
         }
     }
 
@@ -115,18 +141,22 @@ public class InsumoController {
                 insumoService.agregarInsumoAProducto(idProductoSelect, idInsumo, cantidadPorciones);
             }
         }
-
         return "redirect:/insumos?tab=recetas";
     }
 
     @PostMapping("/lote/registrar")
     @ResponseBody
     public ResponseEntity<?> registrarLoteGeneral(@RequestBody java.util.Map<String, Object> payload) {
+        Map<String, Object> response = new HashMap<>();
         try {
             insumoService.registrarLote(payload);
-            return ResponseEntity.ok().body("{\"success\": true, \"message\": \"Lote general registrado correctamente\"}");
+            response.put("success", true);
+            response.put("message", "Lote general registrado correctamente");
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
         }
     }
 }

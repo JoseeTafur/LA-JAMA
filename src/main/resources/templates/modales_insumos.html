@@ -14,7 +14,7 @@
                     <input type="hidden" name="originTab" th:value="${activeTab}" />
                     <div class="modal-body p-4">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Nombre</label>
+                            <label class="form-label fw-semibold" >Nombre</label>
                             <input type="text" name="nombre" class="form-control rounded-3" required/>
                         </div>
                         <div class="mb-3">
@@ -41,7 +41,7 @@
                         <div class="row g-3">
                             <div class="col-6">
                                 <label class="form-label fw-semibold">Stock Mínimo</label>
-                                <input type="number" step="0.01" name="stockMinimo" class="form-control rounded-3" value="0"/>
+                                <input type="number" step="0.01" name="stockMinimo" class="form-control rounded-3" value="0" placeholder="Ej: 5"/>
                             </div>
                         </div>
                     </div>
@@ -67,7 +67,7 @@
 
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Nombre</label>
-                            <input type="text" name="nombre" id="editInsumoNombre" class="form-control rounded-3" required/>
+                            <input type="text" name="nombre" id="editInsumoNombre" placeholder="Ej: Pollo" class="form-control rounded-3" required/>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Categoría</label>
@@ -279,11 +279,12 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold">Fecha Inicio</label>
-                            <input type="date" id="searchKardexFechaInicio" class="form-control form-control-sm" onchange="ejecutarFiltroCombinadoKardex()">
+                            <input type="date" id="searchKardexFechaInicio" class="form-control form-control-sm">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label small fw-bold">Fecha Fin</label>
-                            <input type="date" id="searchKardexFechaFin" class="form-control form-control-sm" onchange="ejecutarFiltroCombinadoKardex()">
+                            <input type="date" id="searchKardexFechaFin" class="form-control form-control-sm">
                         </div>
                         <div class="col-md-2 d-grid">
                             <button type="button" class="btn btn-sm btn-outline-danger h-auto py-2 fw-bold" onclick="invertirFlujoActualKardex()">

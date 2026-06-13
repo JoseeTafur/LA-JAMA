@@ -1,10 +1,13 @@
+/**
+ * LA JAMA — empleados.js
+ * Control de planillas, aduana de cliente y captura defensiva de errores 403.
+ */
 $(document).ready(function () {
     let dataTable;
     let isEditing = false;
     let modal;
 
     const formId = '#form';
-
     const API_BASE = '/empleados/api';
     const ENDPOINTS = {
         list:         `${API_BASE}/listar`,
@@ -26,7 +29,7 @@ $(document).ready(function () {
     function initializeDataTable() {
         dataTable = $('#tabla').DataTable({
             responsive: true,
-            autoWidth: false, // 🌟 Evitamos que rompa las proporciones en celulares
+            autoWidth: false, // 🌟 Evitamos scroll horizontal corrupto
             processing: true,
             ajax: { url: ENDPOINTS.list, dataSrc: 'data' },
             columns: [
@@ -37,14 +40,14 @@ $(document).ready(function () {
                 {
                     data: 'turno',
                     render: (d) => d === 'DIA'
-                        ? '<span class="badge text-bg-warning">☀️ Día</span>'
-                        : '<span class="badge text-bg-info text-dark">🌙 Noche</span>'
+                        ? '<span class="badge text-bg-warning px-3 py-1 rounded-pill">☀️ Día</span>'
+                        : '<span class="badge text-bg-info text-dark px-3 py-1 rounded-pill">🌙 Noche</span>'
                 },
                 {
                     data: 'estado',
                     render: (d) => d === 1
-                        ? '<span class="badge text-bg-success">Activo</span>'
-                        : '<span class="badge text-bg-danger">Inactivo</span>'
+                        ? '<span class="badge text-bg-success px-3 py-1 rounded-pill">Activo</span>'
+                        : '<span class="badge text-bg-danger px-3 py-1 rounded-pill">Inactivo</span>'
                 },
                 {
                     data: null, orderable: false, searchable: false,
@@ -71,9 +74,9 @@ $(document).ready(function () {
     }
 
     function createActionButtons(row) {
-        // 🌟 REEMPLAZO PREMIUM: Botonera unificada con la misma física reactiva que Usuarios y Perfiles
+        // 🌟 Conservamos intacta tu botonera cinética con animaciones complejas SVG
         return `
-            <div class="action-buttons-wrapper">
+            <div class="action-buttons-wrapper justify-content-center">
                 <button type="button" class="action-jama-btn btn-action-edit action-edit" data-id="${row.id}" title="Editar Empleado">
                     <svg viewBox="0 0 39 7" class="pencil-cap" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <line y1="3.5" x2="39" y2="3.5" stroke-width="4"/>
@@ -123,6 +126,8 @@ $(document).ready(function () {
                 select.empty().append('<option value="">-- Seleccione cargo --</option>');
                 res.data.forEach(c => select.append(`<option value="${c.id}">${c.nombre}</option>`));
             }
+        }).fail(function() {
+            select.empty().append('<option value="">Error al mapear cargos</option>');
         });
     }
 
@@ -150,9 +155,57 @@ $(document).ready(function () {
         });
 
         $('#form').on('submit', function (e) { e.preventDefault(); guardarEmpleado(); });
+
+        // Delegación de eventos jQuery limpia para filas mutables
         $('#tabla').on('click', '.action-edit', function () { editarEmpleado($(this).data('id')); });
-        $('#tabla').on('click', '.action-status', function () { cambiarEstado($(this).data('id')); });
-        $('#tabla').on('click', '.action-delete', function () { eliminarEmpleado($(this).data('id')); });
+
+        $('#tabla').on('click', '.action-status', function () {
+            const id = $(this).data('id');
+            AppUtils.showConfirmationDialog(
+                { title: '¿Cambiar estado laboral?', text: 'Se alternará la disponibilidad del empleado en el sistema.', icon: 'question', confirmButtonColor: '#f59e0b' },
+                () => cambiarEstado(id)
+            );
+        });
+
+        $('#tabla').on('click', '.action-delete', function () {
+            const id = $(this).data('id');
+            eliminarEmpleado(id);
+        });
+
+        // =========================================================================
+        // 🛡️ ADUANA INTERACTIVA EN TIEMPO REAL (MUDADA TOTALMENTE DESDE EL HTML)
+        // =========================================================================
+
+        // 1. Nombre y Apellido: Bloquear números, símbolos y emojis en caliente mientras digitan
+        $('#nombre, #apellido').on('input', function() {
+            this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]/g, '');
+        });
+
+        // 2. DNI y Teléfono: Bloquear letras en caliente y forzar puros enteros peruanos
+        $('#dni, #telefono').on('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        // 3. Calendario Defensivo: Bloquear fechas futuras e irracionales anteriores a 1950
+        const inputFecha = document.getElementById('fechaIngreso');
+        if (inputFecha) {
+            const hoyIso = new Date().toISOString().split('T')[0];
+            inputFecha.setAttribute('max', hoyIso);
+            inputFecha.setAttribute('min', '1950-01-01');
+
+            inputFecha.addEventListener('change', function() {
+                const fechaSeleccionada = new Date(this.value);
+                const limiteHoy = new Date();
+                const limiteMinimo = new Date('1950-01-01');
+
+                if (fechaSeleccionada > limiteHoy || fechaSeleccionada < limiteMinimo) {
+                    $('#fechaIngreso-error').text('La fecha de ingreso no es válida. No puede ser futura ni anterior a 1950.');
+                    this.value = '';
+                } else {
+                    $('#fechaIngreso-error').text('');
+                }
+            });
+        }
     }
 
     function guardarEmpleado() {
@@ -174,9 +227,14 @@ $(document).ready(function () {
             usuario:      usuarioId ? { id: parseInt(usuarioId) } : null
         };
 
-        if (!payload.nombre) { mostrarError('nombre-error', 'El nombre es obligatorio'); return; }
-        if (!payload.apellido) { mostrarError('apellido-error', 'El apellido es obligatorio'); return; }
-        if (payload.dni && payload.dni.length !== 8) { mostrarError('dni-error', 'El DNI debe tener 8 dígitos'); return; }
+        // 🛡️ ADUANA FRONTEND UNIFICADA (Límites estrictos antes de viajar al servidor)
+        let hayError = false;
+        if (!payload.nombre) { mostrarError('nombre-error', 'El nombre es obligatorio.'); hayError = true; }
+        if (!payload.apellido) { mostrarError('apellido-error', 'El apellido es obligatorio.'); hayError = true; }
+        if (payload.dni && payload.dni.length !== 8) { mostrarError('dni-error', 'El DNI debe contener exactamente 8 dígitos.'); hayError = true; }
+        if (payload.telefono && payload.telefono.length !== 9) { mostrarError('telefono-error', 'El teléfono debe contener exactamente 9 dígitos.'); hayError = true; }
+
+        if (hayError) return;
 
         AppUtils.showLoading(true);
         $.ajax({
@@ -189,7 +247,12 @@ $(document).ready(function () {
                     AppUtils.showNotification(res.message, 'success');
                 } else { AppUtils.showNotification(res.message, 'error'); }
             },
-            error: function () { AppUtils.showLoading(false); AppUtils.showNotification('Error al guardar el empleado', 'error'); }
+            error: function (xhr) {
+                AppUtils.showLoading(false);
+                // 🌟 CAPTURA DEFENSIVA: Lee el mensaje 403 o 400 del servidor
+                const errorMsg = xhr.responseJSON?.message || 'Error de privilegios al procesar la operación.';
+                AppUtils.showNotification(errorMsg, 'error');
+            }
         });
     }
 
@@ -216,29 +279,53 @@ $(document).ready(function () {
             if (e.usuario) $('#id_usuario').val(e.usuario.id);
 
             modal.show();
-        }).fail(function () { AppUtils.showLoading(false); });
+        }).fail(function (xhr) {
+            AppUtils.showLoading(false);
+            const errorMsg = xhr.responseJSON?.message || 'No se pudo cargar la ficha del empleado.';
+            AppUtils.showNotification(errorMsg, 'error');
+        });
     }
 
     function cambiarEstado(id) {
         AppUtils.showLoading(true);
         $.post(ENDPOINTS.toggleStatus(id), function (res) {
             AppUtils.showLoading(false);
-            if (res.success) { dataTable.ajax.reload(null, false); AppUtils.showNotification(res.message, 'success'); }
-        }).fail(function () { AppUtils.showLoading(false); });
+            if (res.success) {
+                dataTable.ajax.reload(null, false);
+                AppUtils.showNotification(res.message, 'success');
+            } else {
+                AppUtils.showNotification(res.message, 'error');
+            }
+        }).fail(function (xhr) {
+            AppUtils.showLoading(false);
+            // 🌟 CAPTURA DEFENSIVA 403: Muestra la alerta de SweetAlert si el ADMIN intenta cambiar estado
+            const errorMsg = xhr.responseJSON?.message || 'Acceso denegado: Rango insuficiente para suspender personal.';
+            AppUtils.showNotification(errorMsg, 'error');
+        });
     }
 
     function eliminarEmpleado(id) {
         AppUtils.showConfirmationDialog(
-            { title: '¿Eliminar empleado?', text: 'Esta acción no se puede deshacer.', icon: 'warning' },
+            { title: '¿Remover empleado de planilla?', text: 'Esta acción purgará los registros de forma permanente.', icon: 'warning' },
             () => {
                 AppUtils.showLoading(true);
                 $.ajax({
                     url: ENDPOINTS.delete(id), method: 'DELETE',
                     success: function (res) {
                         AppUtils.showLoading(false);
-                        if (res.success) { dataTable.ajax.reload(null, false); AppUtils.showNotification(res.message, 'success'); }
+                        if (res.success) {
+                            dataTable.ajax.reload(null, false);
+                            AppUtils.showNotification(res.message, 'success');
+                        } else {
+                            AppUtils.showNotification(res.message, 'error');
+                        }
                     },
-                    error: function () { AppUtils.showLoading(false); }
+                    error: function (xhr) {
+                        AppUtils.showLoading(false);
+                        // 🌟 CAPTURA DEFENSIVA 403: Muestra la alerta si el ADMIN intenta borrar físicamente una fila
+                        const errorMsg = xhr.responseJSON?.message || 'Acceso denegado: Privilegio exclusivo de la cuenta SUPER_ADMIN.';
+                        AppUtils.showNotification(errorMsg, 'error');
+                    }
                 });
             }
         );

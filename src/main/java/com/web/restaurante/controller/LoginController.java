@@ -38,7 +38,6 @@ public class LoginController {
         return "login";
     }
 
-    // TODO: Los mensajes de error no se muestran
     @PostMapping("/login")
     public String procesarLogin(@RequestParam String usuario, @RequestParam String clave, HttpSession session,
                                 RedirectAttributes redirectAttributes) {
@@ -65,7 +64,10 @@ public class LoginController {
 
             String rolParaSesion = "INVITADO";
 
-            if (nombrePerfil.contains("ADMIN")) {
+            // 🛡️ ADUANA ORDENADA: Validamos primero SUPER_ADMIN para evitar falsos positivos con contains("ADMIN")
+            if (nombrePerfil.contains("SUPER_ADMIN")) {
+                rolParaSesion = "SUPER_ADMIN";
+            } else if (nombrePerfil.contains("ADMIN")) {
                 rolParaSesion = "ADMIN";
             } else if (empOpt.isPresent()) {
                 String nombreCargo = empOpt.get().getCargo().getNombre().toUpperCase();
@@ -86,24 +88,26 @@ public class LoginController {
             session.setAttribute("rol", rolParaSesion);
             empOpt.ifPresent(empleado -> session.setAttribute("empleadoLogueado", empleado));
 
+            // Carga inicial completa de opciones mapeadas en la BD
             List<Opcion> opcionesMenu = usuarioEncontrado.getPerfil().getOpciones().stream()
                     .sorted(Comparator.comparing(Opcion::getId))
                     .collect(Collectors.toList());
 
+            // Filtros de seguridad según el rol de la sesión
             if ("REPARTIDOR".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") || op.getRuta().contains("/entregas"))
                         .collect(Collectors.toList());
-                                } else if ("CAJERO".equals(rolParaSesion)) {
-                        opcionesMenu = opcionesMenu.stream()
-                                .filter(op -> op.getRuta().equals("/dashboard") ||
-                                        op.getRuta().contains("/caja") ||
-                                        op.getRuta().contains("/delivery") ||
-                                        op.getRuta().contains("/despacho") ||
-                                        op.getRuta().contains("/productos") ||
-                                        op.getRuta().contains("/pagos-digitales"))
-                                .collect(Collectors.toList());
-                    } else if ("MESERO".equals(rolParaSesion)) {
+            } else if ("CAJERO".equals(rolParaSesion)) {
+                opcionesMenu = opcionesMenu.stream()
+                        .filter(op -> op.getRuta().equals("/dashboard") ||
+                                op.getRuta().contains("/caja") ||
+                                op.getRuta().contains("/delivery") ||
+                                op.getRuta().contains("/despacho") ||
+                                op.getRuta().contains("/productos") ||
+                                op.getRuta().contains("/pagos-digitales"))
+                        .collect(Collectors.toList());
+            } else if ("MESERO".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") ||
                                 op.getRuta().equals("/admin/mesas") ||
@@ -111,20 +115,16 @@ public class LoginController {
                         .collect(Collectors.toList());
             } else if ("COCINA".equals(rolParaSesion) && empOpt.isPresent()) {
                 String cargoExacto = empOpt.get().getCargo().getNombre().toUpperCase();
-
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> {
                             if (op.getRuta().equals("/dashboard")) return true;
-                            if (cargoExacto.contains("FRÍO") || cargoExacto.contains("FRIO")) {
-                                return op.getRuta().equals("/admin/cocina/fria");
-                            }
-                            if (cargoExacto.contains("CALIENTE")) {
-                                return op.getRuta().equals("/admin/cocina/caliente");
-                            }
+                            if (cargoExacto.contains("FRÍO") || cargoExacto.contains("FRIO")) return op.getRuta().equals("/admin/cocina/fria");
+                            if (cargoExacto.contains("CALIENTE")) return op.getRuta().equals("/admin/cocina/caliente");
                             return false;
                         })
                         .collect(Collectors.toList());
-            } else if ("ADMIN".equals(rolParaSesion)) {
+            } else if ("ADMIN".equals(rolParaSesion) || "SUPER_ADMIN".equals(rolParaSesion)) {
+                // 🛡️ Tanto ADMIN como SUPER_ADMIN absorben la totalidad de sus colecciones sin podas
                 opcionesMenu = usuarioEncontrado.getPerfil().getOpciones().stream()
                         .sorted(Comparator.comparing(Opcion::getId))
                         .collect(Collectors.toList());
@@ -133,17 +133,18 @@ public class LoginController {
             Map<String, List<Opcion>> menuAgrupado = new LinkedHashMap<>();
             List<Opcion> opcionesIndependientes = new ArrayList<>();
 
+            // 🔄 SISTEMA DE AGRUPACIÓN ADAPTATIVO CON CAPTURA DE RUTAS MAESTRAS
             for (Opcion opcion : opcionesMenu) {
                 String ruta = opcion.getRuta();
                 String[] partesRuta = ruta.split("/");
 
                 if (partesRuta.length > 2) {
                     String grupo;
-                    if(ruta.contains("/cocina")) {
+                    if (ruta.contains("/cocina")) {
                         grupo = "cocina";
-                    } else if(ruta.contains("/mesero")) {
+                    } else if (ruta.contains("/mesero")) {
                         grupo = "mesero";
-                    } else if(ruta.contains("/productos")) {
+                    } else if (ruta.contains("/productos")) {
                         grupo = "almacen";
                     } else {
                         grupo = partesRuta[1];
@@ -152,34 +153,31 @@ public class LoginController {
                     String nombreGrupo = grupo.substring(0, 1).toUpperCase() + grupo.substring(1).toLowerCase();
                     menuAgrupado.computeIfAbsent(nombreGrupo, k -> new ArrayList<>()).add(opcion);
                 } else {
-                    opcionesIndependientes.add(opcion);
+                    // 🛡️ TRATAMIENTO DE RUTAS DE SEGUNDO NIVEL (/usuarios, /perfiles, /insumos)
+                    // Para que no se pierdan ni queden invisibles, si el rol es directivo, las agrupamos bajo el bloque "Seguridad"
+                    if (ruta.equals("/usuarios") || ruta.equals("/perfiles") || ruta.equals("/empleados")) {
+                        menuAgrupado.computeIfAbsent("Seguridad", k -> new ArrayList<>()).add(opcion);
+                    } else if (ruta.equals("/insumos")) {
+                        menuAgrupado.computeIfAbsent("Logística", k -> new ArrayList<>()).add(opcion);
+                    } else {
+                        opcionesIndependientes.add(opcion);
+                    }
                 }
             }
 
+            // Sincronizamos las variables del contexto HTTP para Thymeleaf
             session.setAttribute("menuAgrupado", menuAgrupado);
             session.setAttribute("opcionesIndependientes", opcionesIndependientes);
             session.setAttribute("menuOpciones", opcionesMenu);
 
-            if ("MESERO".equals(rolParaSesion)) {
-                return "redirect:/admin/mesas";
-            }
-
+            // Redirecciones dinámicas de entrada
+            if ("MESERO".equals(rolParaSesion)) return "redirect:/admin/mesas";
+            if ("REPARTIDOR".equals(rolParaSesion)) return "redirect:/admin/entregas/mis-pedidos";
+            if ("CAJERO".equals(rolParaSesion)) return "redirect:/admin/despacho";
             if ("COCINA".equals(rolParaSesion) && empOpt.isPresent()) {
                 String cargoExacto = empOpt.get().getCargo().getNombre().toUpperCase();
-                if (cargoExacto.contains("FRÍO") || cargoExacto.contains("FRIO")) {
-                    return "redirect:/admin/cocina/fria";
-                }
-                if (cargoExacto.contains("CALIENTE")) {
-                    return "redirect:/admin/cocina/caliente";
-                }
-            }
-
-            if ("REPARTIDOR".equals(rolParaSesion)) {
-                return "redirect:/admin/entregas/mis-pedidos";
-            }
-
-            if ("CAJERO".equals(rolParaSesion)) {
-                return "redirect:/admin/despacho";
+                if (cargoExacto.contains("FRÍO") || cargoExacto.contains("FRIO")) return "redirect:/admin/cocina/fria";
+                if (cargoExacto.contains("CALIENTE")) return "redirect:/admin/cocina/caliente";
             }
 
             return "redirect:/dashboard";

@@ -33,6 +33,7 @@ public class MesaController {
         model.addAttribute("activeUri", "/admin/mesas");
         model.addAttribute("titleHeader", "Plano de Distribución de Mesas");
 
+
         List<MesaDTO> mesasDTO = mesaService.obtenerMesasParaSalon();
         List<Pedido> pedidosActivos = mesaService.obtenerPedidosActivos();
 

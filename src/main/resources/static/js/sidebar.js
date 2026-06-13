@@ -102,3 +102,4 @@ $(document).ready(function () {
         localStorage.removeItem('menu_abierto_' + this.id);
     });
 });
+

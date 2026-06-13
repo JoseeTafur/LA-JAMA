@@ -5,13 +5,15 @@
 
 <div id="contenido">
     <div class="card rounded-lg card-color1">
-        <div class="card-body">
+        <div class="card-body p-4">
 
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                <h1 class="card-title h5 fw-bold">Lista de Empleados</h1>
+                <h1 class="card-title h5 fw-bold">
+                    <i class="bi bi-person-badge-fill me-2" style="color: var(--lajama-skin);"></i> Control de Empleados y Planillas
+                </h1>
 
                 <div class="d-flex align-items-center gap-3 w-sm-100 justify-content-end">
-                    <select id="filtroTurno" class="form-select filtro-jama" style="width:auto;">
+                    <select id="filtroTurno" class="form-select filtro-jama" style="width:auto; cursor: pointer;">
                         <option value="">Todos los turnos</option>
                         <option value="DIA">Turno Día</option>
                         <option value="NOCHE">Turno Noche</option>
@@ -32,13 +34,12 @@
                         <th>Apellidos y Nombres</th>
                         <th>DNI</th>
                         <th>Cargo</th>
-                        <th>Turno</th>
+                        <th>Turno Activo</th>
                         <th>Estado</th>
-                        <th>Acciones</th>
+                        <th class="text-center" style="width: 150px;">Acciones</th>
                     </tr>
                     </thead>
-                    <tbody>
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
 
@@ -57,67 +58,69 @@
                 <form id="form" novalidate>
                     <div class="modal-body p-4">
                         <input type="hidden" id="id" name="id" />
+
                         <div class="row g-3">
 
                             <div class="col-md-6">
-                                <label for="id_usuario" class="form-label">Cuenta de Usuario</label>
-                                <select id="id_usuario" class="form-select">
-                                    <option value="">-- Sin acceso (Solo personal) --</option>
+                                <label for="id_usuario" class="form-label fw-semibold small text-dark">Cuenta de Usuario Vinculada</label>
+                                <select id="id_usuario" name="usuario" class="form-select">
+                                    <option value="">-- Sin acceso (Solo personal de planilla) --</option>
                                 </select>
-                                <div id="id_usuario-error" class="invalid-feedback d-block"></div>
+                                <div id="id_usuario-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
                             </div>
 
                             <div class="col-md-6">
-                                <label for="nombre" class="form-label">Nombre</label>
-                                <input id="nombre" type="text" class="form-control" placeholder="Ej. Carlos" />
-                                <div id="nombre-error" class="invalid-feedback d-block"></div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="apellido" class="form-label">Apellido</label>
-                                <input id="apellido" type="text" class="form-control" placeholder="Ej. Mendoza" />
-                                <div id="apellido-error" class="invalid-feedback d-block"></div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="dni" class="form-label">DNI</label>
-                                <input id="dni" type="text" class="form-control" maxlength="8" placeholder="12345678" />
-                                <div id="dni-error" class="invalid-feedback d-block"></div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="telefono" class="form-label">Teléfono</label>
-                                <input id="telefono" type="text" class="form-control" maxlength="15" placeholder="999000111" />
-                                <div id="telefono-error" class="invalid-feedback d-block"></div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="id_cargo" class="form-label">Cargo</label>
-                                <select id="id_cargo" class="form-select">
-                                    <option value="">Cargando cargos...</option>
+                                <label for="id_cargo" class="form-label fw-semibold small text-dark">Cargo / Función Operativa</label>
+                                <select id="id_cargo" name="cargo" class="form-select" required>
+                                    <option value="">Cargando cargos de La Jama...</option>
                                 </select>
-                                <div id="id_cargo-error" class="invalid-feedback d-block"></div>
+                                <div id="id_cargo-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
                             </div>
 
                             <div class="col-md-6">
-                                <label for="turno" class="form-label">Turno</label>
-                                <select id="turno" class="form-select">
+                                <label for="nombre" class="form-label fw-semibold small text-dark">Nombres del Colaborador</label>
+                                <input id="nombre" name="nombre" type="text" class="form-control" placeholder="Ej. Carlos" maxlength="50" required />
+                                <div id="nombre-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="apellido" class="form-label fw-semibold small text-dark">Apellidos Completos</label>
+                                <input id="apellido" name="apellido" type="text" class="form-control" placeholder="Ej. Mendoza" maxlength="50" required />
+                                <div id="apellido-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="dni" class="form-label fw-semibold small text-dark">Documento de Identidad (DNI)</label>
+                                <input id="dni" name="dni" type="text" class="form-control" maxlength="8" placeholder="Escriba los 8 dígitos" required />
+                                <div id="dni-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="telefono" class="form-label fw-semibold small text-dark">Número de Teléfono Celular</label>
+                                <input id="telefono" name="telefono" type="text" class="form-control" maxlength="9" placeholder="Ej. 999111222" required />
+                                <div id="telefono-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="turno" class="form-label fw-semibold small text-dark">Turno Laboral Asignado</label>
+                                <select id="turno" name="turno" class="form-select" required>
                                     <option value="DIA">Turno Día (08:00 - 18:00)</option>
                                     <option value="NOCHE">Turno Noche (18:00 - 22:00)</option>
                                 </select>
                             </div>
 
                             <div class="col-md-6">
-                                <label for="tipoContrato" class="form-label">Tipo de Contrato</label>
-                                <select id="tipoContrato" class="form-select">
-                                    <option value="PLANILLA">Planilla</option>
-                                    <option value="EVENTUAL">Eventual</option>
+                                <label for="tipoContrato" class="form-label fw-semibold small text-dark">Régimen Contractual</label>
+                                <select id="tipoContrato" name="tipoContrato" class="form-select" required>
+                                    <option value="PLANILLA">Planilla Completa</option>
+                                    <option value="EVENTUAL">Personal Eventual / Intermitente</option>
                                 </select>
                             </div>
 
                             <div class="col-md-6">
-                                <label for="fechaIngreso" class="form-label">Fecha de Ingreso</label>
-                                <input id="fechaIngreso" type="date" class="form-control" />
+                                <label for="fechaIngreso" class="form-label fw-semibold small text-dark">Fecha de Ingreso de Labores</label>
+                                <input id="fechaIngreso" name="fechaIngreso" type="date" class="form-control" required />
+                                <div id="fechaIngreso-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
                             </div>
 
                         </div>

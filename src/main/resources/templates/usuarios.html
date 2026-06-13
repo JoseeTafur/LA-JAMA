@@ -1,72 +1,100 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout-gestion :: layout(title='Usuarios', content=~{::#contenido}, modals=~{::#modales}, js='/js/usuarios.js')}">
+      th:replace="~{layout-gestion :: layout(title='Gestión de Usuarios', content=~{::#contenido}, modals=~{::#modales}, js='/js/usuarios.js')}">
 <body>
 
 <div id="contenido">
     <div class="card rounded-lg card-color1">
-        <div class="card-body">
+        <div class="card-body p-4">
+
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="card-title h5 fw-bold">Lista de Usuarios</h1>
+                <h1 class="card-title h5 fw-bold">
+                    <i class="bi bi-people-fill me-2"></i> Usuarios del Sistema
+                </h1>
                 <button type="button" id="btnNuevoRegistro" class="btn-jama-kinetic">
                     <i class="bi bi-plus-lg"></i>
                     <span>Nuevo Registro</span>
                 </button>
             </div>
+
             <div class="table-responsive-jama">
                 <table id="tabla" class="table table-jama responsive" style="width: 100%">
                     <thead>
                     <tr>
                         <th>ID</th>
                         <th>Usuario</th>
-                        <th>Perfil</th>
-                        <th>Correo</th>
+                        <th>Perfil / Rol</th>
+                        <th>Correo Electrónico</th>
                         <th>Estado</th>
-                        <th>Acciones</th>
+                        <th class="text-center" style="width: 150px;">Acciones</th>
                     </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
             </div>
+
         </div>
     </div>
 </div>
 
 <div id="modales">
     <div class="modal fade" id="modal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="modalTitle">Agregar Usuario</h5>
+                    <h5 class="modal-title" id="modalTitle">
+                        <i class="bi bi-person-sliders me-2"></i> Agregar Usuario
+                    </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
+
                 <form id="form" novalidate>
                     <div class="modal-body p-4">
                         <input type="hidden" id="id" name="id" />
-                        <div class="mb-3">
-                            <label for="usuario" class="form-label">Nombre de Usuario</label>
-                            <input type="text" id="usuario" class="form-control" placeholder="Ej. juan.perez" required />
-                            <div id="usuario-error" class="invalid-feedback d-block"></div>
+
+                        <div class="row g-3">
+
+                            <div class="col-md-6">
+                                <label for="usuario" class="form-label fw-semibold small">Nombre de Usuario (Login)</label>
+                                <input type="text" id="usuario" name="usuario" class="form-control"
+                                       placeholder="Ej. juan.perez" maxlength="30" required />
+                                <div id="usuario-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="correo" class="form-label fw-semibold small">Correo Electrónico</label>
+                                <input type="email" id="correo" name="correo" class="form-control"
+                                       placeholder="ejemplo@lajama.com" maxlength="50" autocomplete="email" required />
+                                <div id="correo-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="id_perfil" class="form-label fw-semibold small">Perfil / Rol de Acceso</label>
+                                <select id="id_perfil" name="perfil" class="form-select" required>
+                                </select>
+                                <div id="id_perfil-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="clave" class="form-label fw-semibold small">Contraseña de Seguridad</label>
+                                <input type="password" id="clave" name="clave" class="form-control"
+                                       placeholder="Mínimo 6 caracteres" minlength="6" maxlength="30" />
+                                <div id="clave-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                            </div>
+
                         </div>
-                        <div class="mb-3">
-                            <label for="correo" class="form-label">Correo Electrónico</label>
-                            <input type="email" id="correo" class="form-control" placeholder="ejemplo@lajama.com" required />
-                            <div id="correo-error" class="invalid-feedback d-block"></div>
+
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <small class="text-muted d-block bg-light p-2 rounded" style="font-size: 0.75rem; border-left: 3px solid var(--lajama-green);">
+                                    <i class="bi bi-info-circle-fill me-1 text-primary"></i>
+                                    <strong>Nota de seguridad:</strong> Si está editando un usuario existente, deje el campo de contraseña completamente en blanco si no desea modificar la clave actual.
+                                </small>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="id_perfil" class="form-label">Perfil / Rol</label>
-                            <select id="id_perfil" class="form-select" required>
-                                <option value="" disabled selected>Selecciona un Perfil</option>
-                            </select>
-                            <div id="id_perfil-error" class="invalid-feedback d-block"></div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="clave" class="form-label">Contraseña</label>
-                            <input type="password" id="clave" class="form-control" placeholder="Mínimo 6 caracteres" />
-                            <div id="clave-error" class="invalid-feedback d-block"></div>
-                            <small class="text-muted d-block mt-1">Dejar en blanco si está editando y no desea cambiarla.</small>
-                        </div>
+
                     </div>
+
                     <div class="modal-footer border-0 px-4 pb-4">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-primary">Guardar Cambios</button>

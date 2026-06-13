@@ -3,6 +3,8 @@ package com.web.restaurante.controller;
 import com.web.restaurante.model.Empleado;
 import com.web.restaurante.service.EmpleadoService;
 import com.web.restaurante.service.UsuarioService;
+import com.web.restaurante.util.ValidationUtil;
+import jakarta.servlet.http.HttpSession; // 🌟 Control de sesiones nativo
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,11 +25,11 @@ public class EmpleadoController {
     private final UsuarioService usuarioService;
 
     @GetMapping
-    public String mostrarPagina(Model model) { // 💡 Agregamos el Model aquí
+    public String mostrarPagina(Model model) {
         // ========================================================
         // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
         // ========================================================
-        model.addAttribute("activeUri", "/empleados"); // Match idéntico con tu BD
+        model.addAttribute("activeUri", "/empleados");
         model.addAttribute("titleHeader", "Control de Empleados y Planillas");
 
         return "empleados";
@@ -93,9 +95,77 @@ public class EmpleadoController {
 
     @PostMapping("/api/guardar")
     @ResponseBody
-    public ResponseEntity<?> guardar(@RequestBody Empleado empleado) {
+    public ResponseEntity<?> guardar(@RequestBody Empleado empleado, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
+            // 🛡️ ADUANA JERÁRQUICA: Solo SUPER_ADMIN y ADMIN pueden modificar la planilla
+            String rol = session.getAttribute("rol") != null ? session.getAttribute("rol").toString().toUpperCase() : "";
+            if (!"SUPER_ADMIN".equals(rol) && !"ADMIN".equals(rol)) {
+                response.put("success", false);
+                response.put("message", "Acceso denegado: Rango insuficiente para alterar el registro de personal.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+            }
+
+            // ========================================================
+            // 🛡️ CONTROL DE VALIDACIONES EXCLUSIVAS (MÉTODO ESTRICTO)
+            // ========================================================
+
+            // 1. Nombre obligatorio y formato limpio
+            if (empleado.getNombre() == null || empleado.getNombre().isBlank()) {
+                response.put("success", false);
+                response.put("message", "El nombre del empleado es obligatorio.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (!ValidationUtil.soloLetras(empleado.getNombre())) {
+                response.put("success", false);
+                response.put("message", "El nombre solo puede contener letras, sin números ni caracteres especiales.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (!ValidationUtil.longitudValida(empleado.getNombre(), ValidationUtil.NOMBRE_MAX)) {
+                response.put("success", false);
+                response.put("message", "El nombre no puede superar los " + ValidationUtil.NOMBRE_MAX + " caracteres.");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // 2. Apellido obligatorio y formato limpio
+            if (empleado.getApellido() == null || empleado.getApellido().isBlank()) {
+                response.put("success", false);
+                response.put("message", "El apellido del empleado es obligatorio.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (!ValidationUtil.soloLetras(empleado.getApellido())) {
+                response.put("success", false);
+                response.put("message", "El apellido solo puede contener letras, sin números ni caracteres especiales.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (!ValidationUtil.longitudValida(empleado.getApellido(), ValidationUtil.APELLIDO_MAX)) {
+                response.put("success", false);
+                response.put("message", "El apellido no puede superar los " + ValidationUtil.APELLIDO_MAX + " caracteres.");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // 3. Teléfono: Celular peruano obligatorio de 9 dígitos
+            if (empleado.getTelefono() == null || empleado.getTelefono().isBlank()) {
+                response.put("success", false);
+                response.put("message", "El número de teléfono es obligatorio.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (!empleado.getTelefono().trim().matches("^[0-9]{" + ValidationUtil.TELEFONO_EXACTO + "}$")) {
+                response.put("success", false);
+                response.put("message", "El teléfono debe tener exactamente " + ValidationUtil.TELEFONO_EXACTO + " dígitos numéricos.");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // 4. Fecha de ingreso coherente con el negocio
+            if (empleado.getFechaIngreso() != null && !ValidationUtil.fechaDentroDeRango(empleado.getFechaIngreso())) {
+                response.put("success", false);
+                response.put("message", "La fecha de ingreso no es válida. No puede ser una fecha futura.");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // ========================================================
+            // 💾 PERSISTENCIA SEGURA EN BASE DE DATOS
+            // ========================================================
             Empleado guardado = empleadoService.guardar(empleado);
             response.put("success", true);
             response.put("data", guardado);
@@ -103,6 +173,7 @@ public class EmpleadoController {
                     ? "Empleado actualizado correctamente"
                     : "Empleado registrado correctamente");
             return ResponseEntity.ok(response);
+
         } catch (IllegalArgumentException e) {
             response.put("success", false);
             response.put("message", e.getMessage());
@@ -116,12 +187,20 @@ public class EmpleadoController {
 
     @PostMapping("/api/cambiar-estado/{id}")
     @ResponseBody
-    public ResponseEntity<?> cambiarEstado(@PathVariable Long id) {
+    public ResponseEntity<?> cambiarEstado(@PathVariable Long id, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
+            // 🛡️ ADUANA JERÁRQUICA: Solo el dueño (SUPER_ADMIN) puede dar de baja personal
+            String rol = session.getAttribute("rol") != null ? session.getAttribute("rol").toString().toUpperCase() : "";
+            if (!"SUPER_ADMIN".equals(rol)) {
+                response.put("success", false);
+                response.put("message", "Operación denegada: Solo el rango SUPER_ADMIN puede alterar la disponibilidad de personal.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+            }
+
             Empleado emp = empleadoService.alternarEstado(id);
             response.put("success", true);
-            response.put("message", "Estado actualizado correctamente");
+            response.put("message", "Estado del empleado actualizado correctamente");
             response.put("data", emp);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
@@ -137,12 +216,20 @@ public class EmpleadoController {
 
     @DeleteMapping("/api/eliminar/{id}")
     @ResponseBody
-    public ResponseEntity<?> eliminar(@PathVariable Long id) {
+    public ResponseEntity<?> eliminar(@PathVariable Long id, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
+            // 🛡️ ADUANA JERÁRQUICA ULTRA-ESTRICTA: Bloqueo de eliminación total salvo para SUPER_ADMIN
+            String rol = session.getAttribute("rol") != null ? session.getAttribute("rol").toString().toUpperCase() : "";
+            if (!"SUPER_ADMIN".equals(rol)) {
+                response.put("success", false);
+                response.put("message", "Operación denegada: Privilegio exclusivo de la cuenta maestra SUPER_ADMIN.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+            }
+
             empleadoService.eliminar(id);
             response.put("success", true);
-            response.put("message", "Empleado eliminado correctamente");
+            response.put("message", "Empleado purgado correctamente de los registros de planilla.");
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             response.put("success", false);

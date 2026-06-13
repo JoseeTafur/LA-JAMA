@@ -29,7 +29,7 @@ public class UsuarioController {
         // ========================================================
         // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
         // ========================================================
-        model.addAttribute("activeUri", "/usuarios"); // Match idéntico con tu BD
+        model.addAttribute("activeUri", "/usuarios");
         model.addAttribute("titleHeader", "Gestión de Usuarios de Sistema");
 
         List<Usuario> usuarios = usuarioService.listar();
@@ -57,27 +57,88 @@ public class UsuarioController {
         return ResponseEntity.ok(response);
     }
 
+    /** 🔑 API para que el Javascript del cliente conozca los límites del usuario en sesión */
+    @GetMapping("/api/rol-sesion")
+    @ResponseBody
+    public ResponseEntity<?> getRolSesion(HttpSession session) {
+        String rol = session.getAttribute("rol") != null
+                ? session.getAttribute("rol").toString().trim().toUpperCase() : "";
+        Map<String, Object> response = new HashMap<>();
+        response.put("rol", rol);
+        response.put("esSuperAdmin", "SUPER_ADMIN".equals(rol));
+        response.put("esAdmin", "ADMIN".equals(rol));
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/api/guardar")
     @ResponseBody
-    public ResponseEntity<?> guardarUsuarioAjax(@RequestBody Usuario usuario, BindingResult bindingResult) {
+    public ResponseEntity<?> guardarUsuarioAjax(@RequestBody Usuario usuario, BindingResult bindingResult, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
 
+        // 🛡️ 1. ADUANA DE DATOS ESTRUCTURALES (Spring Validation)
         if (bindingResult.hasErrors()) {
             Map<String, String> errores = new HashMap<>();
             bindingResult.getFieldErrors().forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
             response.put("success", false);
-            response.put("message", "Datos inválidos");
+            response.put("message", "Datos inválidos en el formulario.");
             response.put("errors", errores);
             return ResponseEntity.badRequest().body(response);
         }
 
         try {
+            // 🛡️ 2. ADUANA DE CONTROL DE ACCESOS (Seguridad del Restaurante)
+            String rol = session.getAttribute("rol") != null
+                    ? session.getAttribute("rol").toString().trim().toUpperCase() : "";
+            boolean esSuperAdmin = "SUPER_ADMIN".equals(rol);
+            boolean esAdmin = "ADMIN".equals(rol);
+
+            if (usuario.getId() != null) {
+                // Edición de usuario existente
+                Usuario existente = usuarioService.obtenerPorId(usuario.getId())
+                        .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado en el sistema."));
+
+                String perfilExistente = existente.getPerfil() != null
+                        ? existente.getPerfil().getNombre().toUpperCase().replace(" ", "_") : "";
+                boolean objetivoEsAdmin = perfilExistente.contains("ADMIN") || perfilExistente.contains("ADMINISTRADOR");
+
+                if (esSuperAdmin) {
+                    // El dueño o Super Admin tiene control total de los hilos
+                } else if (esAdmin) {
+                    if (objetivoEsAdmin) {
+                        // Un ADMIN no puede sabotear ni alterar a otro ADMIN o SUPER_ADMIN
+                        response.put("success", false);
+                        response.put("message", "Operación rechazada: No tienes permisos para modificar cuentas administradoras.");
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+                    }
+                    // Un ADMIN altera datos básicos de operarios, pero NO puede alterar claves ni degradar roles
+                    usuario.setClave(existente.getClave());
+                    usuario.setPerfil(existente.getPerfil());
+                } else {
+                    response.put("success", false);
+                    response.put("message", "Acceso denegado: Tu rango no permite realizar modificaciones.");
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+                }
+            }
+
+            // 🛡️ 3. BLOQUEO DE AUTO-ESCALACIÓN: Nadie inferior a SUPER_ADMIN puede crear o asignar roles de nivel de fábrica
+            if (!esSuperAdmin && usuario.getPerfil() != null) {
+                perfilService.obtenerPorId(Long.valueOf(usuario.getPerfil().getId())).ifPresent(p -> {
+                    if (p.getNombre().toUpperCase().replace(" ", "_").contains("SUPER_ADMIN")) {
+                        throw new IllegalArgumentException("Violación de seguridad: No puedes asignar rangos del tipo SUPER_ADMIN.");
+                    }
+                });
+            }
+
             Usuario usuarioGuardado = usuarioService.guardar(usuario);
             response.put("success", true);
             response.put("usuario", usuarioGuardado);
-            response.put("message",
-                    usuario.getId() != null ? "Usuario actualizado correctamente" : "Usuario creado correctamente");
+            response.put("message", usuario.getId() != null ? "Usuario actualizado correctamente" : "Usuario creado correctamente");
             return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Error interno del servidor: " + e.getMessage());
@@ -109,12 +170,27 @@ public class UsuarioController {
         Map<String, Object> response = new HashMap<>();
         try {
             Usuario usuarioLogueado = (Usuario) session.getAttribute("usuarioLogueado");
+            String rolSesion = session.getAttribute("rol") != null
+                    ? session.getAttribute("rol").toString().trim().toUpperCase() : "";
+
+            // 🛡️ Autoprotección: Bloquea el intento de apagarse a uno mismo
             if (Objects.equals(usuarioLogueado.getId(), id)) {
                 response.put("success", false);
-                response.put("message", "Operación no permitida: No puedes cambiar de estado tu propia cuenta.");
-                System.out.println("Self-deletion attempt blocked for user ID: " + id);
+                response.put("message", "Operación no permitida: No puedes desactivar tu propia cuenta.");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
             }
+
+            // 🛡️ Jerarquía: Bloquea si un Admin plano intenta tumbar a otro Administrador o SuperAdmin
+            Usuario objetivo = usuarioService.obtenerPorId(id).orElse(null);
+            if (objetivo != null && objetivo.getPerfil() != null) {
+                String perfilObjetivo = objetivo.getPerfil().getNombre().toUpperCase().replace(" ", "_");
+                if ((perfilObjetivo.contains("ADMIN") || perfilObjetivo.contains("ADMINISTRADOR")) && !"SUPER_ADMIN".equals(rolSesion)) {
+                    response.put("success", false);
+                    response.put("message", "Operación denegada: Solo el Super Admin del restaurante puede suspender cuentas administradoras.");
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+                }
+            }
+
             Usuario usuario = usuarioService.alternarEstado(id);
             if (usuario != null) {
                 response.put("success", true);
@@ -122,9 +198,13 @@ public class UsuarioController {
                 return ResponseEntity.ok(response);
             } else {
                 response.put("success", false);
-                response.put("message", "Usuario no encontrado o la operación no pudo realizarse");
+                response.put("message", "Usuario no encontrado en la base de datos.");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
+        } catch (IllegalArgumentException e) {
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Error al cambiar estado: " + e.getMessage());
@@ -136,36 +216,47 @@ public class UsuarioController {
     @ResponseBody
     public ResponseEntity<?> eliminarUsuarioAjax(@PathVariable Long id, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
-
         try {
             Usuario usuarioLogueado = (Usuario) session.getAttribute("usuarioLogueado");
+            String rolSesion = session.getAttribute("rol") != null
+                    ? session.getAttribute("rol").toString().trim().toUpperCase() : "";
+
             if (usuarioService.obtenerPorId(id).isEmpty()) {
                 response.put("success", false);
-                response.put("message", "Usuario no encontrado");
+                response.put("message", "Usuario no encontrado.");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
+
+            // 🛡️ Autoprotección: Bloquea el harakiri informático
             if (Objects.equals(usuarioLogueado.getId(), id)) {
                 response.put("success", false);
-                response.put("message", "Operación no permitida: No puedes eliminar tu propia cuenta.");
-                System.out.println("Self-deletion attempt blocked for user ID: " + id);
+                response.put("message", "Operación inválida: No puedes eliminar la cuenta con la que estás firmado.");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
             }
+
+            // 🛡️ Jerarquía: Un Admin no borra administradores
+            Usuario objetivo = usuarioService.obtenerPorId(id).orElse(null);
+            if (objetivo != null && objetivo.getPerfil() != null) {
+                String perfilObjetivo = objetivo.getPerfil().getNombre().toUpperCase().replace(" ", "_");
+                if ((perfilObjetivo.contains("ADMIN") || perfilObjetivo.contains("ADMINISTRADOR")) && !"SUPER_ADMIN".equals(rolSesion)) {
+                    response.put("success", false);
+                    response.put("message", "Operación denegada: Solo el Super Admin posee privilegios para purgar cuentas administradoras.");
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+                }
+            }
+
             usuarioService.eliminar(id);
             response.put("success", true);
-            response.put("message", "Usuario eliminado correctamente");
+            response.put("message", "Usuario eliminado correctamente de los registros.");
             return ResponseEntity.ok(response);
 
         } catch (IllegalArgumentException e) {
             response.put("success", false);
             response.put("message", e.getMessage());
-            System.err.println("Error deleting user (IllegalArgument): " + e.getMessage());
-            if (e.getMessage().contains("no encontrado")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-            } else {
-                return ResponseEntity.badRequest().body(response);
-            }
+            return e.getMessage().contains("no encontrado")
+                    ? ResponseEntity.status(HttpStatus.NOT_FOUND).body(response)
+                    : ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
-            System.err.println("Unexpected Error deleting user ID " + id + ": " + e.getMessage());
             response.put("success", false);
             response.put("message", "Error interno del servidor al eliminar el usuario.");
             return ResponseEntity.internalServerError().body(response);

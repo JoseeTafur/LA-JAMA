@@ -40,6 +40,47 @@ let ordenamientoKardexDireccion = {
 // ─── INICIALIZACIÓN DOM UNIFICADA Y SEGURA ───────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
 
+    // =========================================================================
+        // 🛡️ CONTROL ULTRA-ESTRICTO DE FECHAS PARA EL KARDEX (LA JAMA 2026)
+        // =========================================================================
+        const inputFechaInicio = document.getElementById('searchKardexFechaInicio');
+        const inputFechaFin = document.getElementById('searchKardexFechaFin');
+
+        if (inputFechaInicio && inputFechaFin) {
+            // 1. Calculamos la fecha de hoy en formato ISO local (YYYY-MM-DD)
+            const hoy = new Date().toLocaleDateString('sv-SE'); // 'sv-SE' fuerza el formato exacto YYYY-MM-DD
+
+            // 2. Aplicamos las reglas de negocio directo a las propiedades físicas del navegador
+            inputFechaInicio.min = "2026-01-01"; // 🔒 Forzado estrictamente a este año
+            inputFechaInicio.max = hoy;          // 🔒 No puede superar el día de hoy
+
+            inputFechaFin.min = "2026-01-01";
+            inputFechaFin.max = hoy;             // 🔒 No puede ir más allá de la fecha actual
+
+            // 3. Escucha dinámica para Fecha Inicio: Modifica el rango permitido de Fecha Fin
+            inputFechaInicio.addEventListener('change', function() {
+                if (this.value) {
+                    // La fecha fin no puede ser anterior a la fecha de inicio seleccionada
+                    inputFechaFin.min = this.value;
+                }
+                // Si tu función de filtrado nativa existe, la invoca
+                if (typeof ejecutarFiltroCombinadoKardex === "function") {
+                    ejecutarFiltroCombinadoKardex();
+                }
+            });
+
+            // 4. Escucha dinámica para Fecha Fin: Modifica el rango permitido de Fecha Inicio
+            inputFechaFin.addEventListener('change', function() {
+                if (this.value) {
+                    // La fecha inicio no puede ser posterior a la fecha fin seleccionada
+                    inputFechaInicio.max = this.value;
+                }
+                if (typeof ejecutarFiltroCombinadoKardex === "function") {
+                    ejecutarFiltroCombinadoKardex();
+                }
+            });
+        }
+
     // Modales Bootstrap (Solo se inicializan si el nodo existe físicamente)
     const nuevoInsumoEl = document.getElementById('modalNuevoInsumo');
     if (nuevoInsumoEl) modalNuevoInsumoInstance = new bootstrap.Modal(nuevoInsumoEl);
@@ -73,7 +114,42 @@ document.addEventListener('DOMContentLoaded', () => {
         ejecutarPaginacionTabla('#tablaCatalogo tbody tr:not(.fila-no-results)', '#paginadorCatalogo', paginaActualCatalogo, limiteFilasCatalogo, (p) => { paginaActualCatalogo = p; });
     }
 
-    // Restricciones lógicas al crear nuevos insumos
+    // 🛡️ ESCUDO DE VALIDACIÓN: Crear Nuevo Insumo
+    const formNuevoInsumo = document.getElementById('formNuevoInsumo');
+    if (formNuevoInsumo) {
+        // Forzamos límites nativos en el HTML del input de stock mínimo nuevo
+        const inputMinimoNuevo = formNuevoInsumo.querySelector('input[name="stockMinimo"]');
+        if (inputMinimoNuevo) {
+            inputMinimoNuevo.min = "0";
+            inputMinimoNuevo.type = "number";
+            inputMinimoNuevo.step = "0.01";
+        }
+
+        formNuevoInsumo.addEventListener('submit', (e) => {
+            // Buscamos los inputs por sus atributos name o clases dentro del form
+            const inputNombre = formNuevoInsumo.querySelector('input[name="nombre"]')?.value.trim();
+            const valMinimo = parseFloat(inputMinimoNuevo?.value);
+
+            // 1. Validar nombre limpio (solo letras y espacios)
+            const regexLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$/;
+            if (!inputNombre || !regexLetras.test(inputNombre)) {
+                e.preventDefault();
+                AppUtils.showNotification('El nombre del insumo es obligatorio y solo puede contener letras.', 'error');
+                return false;
+            }
+
+            // 2. Validar que el stock mínimo no sea negativo
+            if (isNaN(valMinimo) || valMinimo < 0) {
+                e.preventDefault();
+                AppUtils.showNotification('El stock mínimo no puede ser un número negativo.', 'error');
+                return false;
+            }
+
+            AppUtils.showLoading(true);
+        });
+    }
+
+    // Restricciones lógicas al crear nuevos insumos (Selector de unidades)
     const selectCategoria = document.getElementById('selectCategoria');
     const selectUnidad    = document.getElementById('selectUnidad');
 
@@ -162,10 +238,7 @@ function filtrarTablaPrincipal() {
         }
     });
 
-    // Controlar el mensaje de vacío
     manejadorMensajeNoResultados('#cuerpoTablaPrincipal', contadorVisibles, 4);
-
-    // Recalcular la paginación sobre los ítems que pasaron el filtro del buscador
     ejecutarPaginacionTabla('#cuerpoTablaPrincipal tr:not(.fila-no-results)', '#paginadorPrincipal', paginaActualPrincipal, limiteFilasPrincipal, (p) => { paginaActualPrincipal = p; });
 }
 
@@ -196,7 +269,6 @@ function filtrarCatalogo() {
     });
 
     manejadorMensajeNoResultados('#tablaCatalogo tbody', contadorVisibles, 5);
-
     ejecutarPaginacionTabla('#tablaCatalogo tbody tr:not(.fila-no-results)', '#paginadorCatalogo', paginaActualCatalogo, limiteFilasCatalogo, (p) => { paginaActualCatalogo = p; });
 }
 
@@ -218,21 +290,13 @@ function cambiarLimiteFilasCatalogo() {
     }
 }
 
-/**
- * Motor de fraccionamiento físico de filas e inyección de paginadores Shadcn
- */
-/**
- * Motor de fraccionamiento físico de filas e inyección de paginadores Shadcn con texto informativo
- */
 function ejecutarPaginacionTabla(selectorFilas, selectorPaginador, paginaActual, limiteFilas, callbackPagina) {
     const filas = Array.from(document.querySelectorAll(selectorFilas));
     const paginador = document.querySelector(selectorPaginador);
     if (!paginador) return;
 
-    // Evaluamos estrictamente las filas que no están ocultas por el filtro de texto
     const filasFiltradas = filas.filter(f => f.getAttribute('data-filtro-oculto') !== 'true');
     const totalFilas = filasFiltradas.length;
-    // Forzamos a que como mínimo exista 1 página siempre
     const totalPaginas = Math.max(1, Math.ceil(totalFilas / limiteFilas));
 
     if (paginaActual > totalPaginas) paginaActual = 1;
@@ -250,7 +314,6 @@ function ejecutarPaginacionTabla(selectorFilas, selectorPaginador, paginaActual,
         }
     });
 
-    // Actualización del texto informativo de registros (Izquierda)
     const infoId = selectorPaginador === '#paginadorPrincipal' ? 'infoRegistrosPrincipal' : 'infoRegistrosCatalogo';
     const infoContenedor = document.getElementById(infoId);
     if (infoContenedor) {
@@ -263,10 +326,8 @@ function ejecutarPaginacionTabla(selectorFilas, selectorPaginador, paginaActual,
         }
     }
 
-    // ─── RENDERS DE BOTONERA ESTÁTICA SIEMPRE VISIBLE ───
     paginador.innerHTML = '';
 
-    // 1. Botón Anterior (Se deshabilita si estás en la página 1)
     const btnAnt = document.createElement('li');
     btnAnt.className = `page-item-jama ${paginaActual === 1 ? 'disabled' : ''}`;
     btnAnt.innerHTML = `<button class="page-link-jama">ANTERIOR</button>`;
@@ -275,7 +336,6 @@ function ejecutarPaginacionTabla(selectorFilas, selectorPaginador, paginaActual,
     }
     paginador.appendChild(btnAnt);
 
-    // 2. Números de Páginas (Imprime el "1" obligatoriamente)
     for (let i = 1; i <= totalPaginas; i++) {
         const btnPag = document.createElement('li');
         btnPag.className = `page-item-jama ${paginaActual === i ? 'active' : ''}`;
@@ -284,7 +344,6 @@ function ejecutarPaginacionTabla(selectorFilas, selectorPaginador, paginaActual,
         paginador.appendChild(btnPag);
     }
 
-    // 3. Botón Siguiente (Se deshabilita si estás en la última página o solo hay una)
     const btnSig = document.createElement('li');
     btnSig.className = `page-item-jama ${paginaActual === totalPaginas ? 'disabled' : ''}`;
     btnSig.innerHTML = `<button class="page-link-jama">SIGUIENTE</button>`;
@@ -327,7 +386,6 @@ function manejadorMensajeNoResultados(idContenedor, itemsVisibles, totalColumnas
     }
 }
 
-// ─── MANEJADORES DE MODALES Y ACCIONES CRUD COMPARTIDAS ───────────────
 function abrirModalNuevoInsumo() {
     if (modalNuevoInsumoInstance) {
         AppUtils.clearForm('#formNuevoInsumo');
@@ -336,7 +394,6 @@ function abrirModalNuevoInsumo() {
 }
 
 function confirmarEliminacion(id) {
-    // 1. Desplegamos el cuadro informativo con la advertencia de los dos impactos
     Swal.fire({
         title: '<span style="color: var(--lajama-green); font-weight: 800;">¿Estás seguro de eliminar este insumo?</span>',
         html: `<div class="text-start small p-2 rounded" style="background-color: var(--lajama-cream); border: 1px dashed rgba(27,58,44,0.15); font-family: system-ui, sans-serif;">
@@ -353,29 +410,20 @@ function confirmarEliminacion(id) {
     }).then(async (result) => {
         if (result.isConfirmed) {
             try {
-                // 2. Activamos el overlay geométrico de carga
                 AppUtils.showLoading(true);
-
-                // 3. Lanzamos la petición al endpoint REST asíncrono
                 const res = await fetch(`/insumos/eliminar/${id}`, { method: 'POST' });
-
                 AppUtils.showLoading(false);
 
                 if (res.ok) {
                     AppUtils.showNotification('Insumo archivado y recetas purgadas con éxito', 'success');
 
-                    // 🌟 4. BARRIDO MULTITABLA EN CALIENTE (Adiós al F5)
-
-                    // A) Buscamos y removemos la fila en la pestaña de Catálogo
-                    const botonTacho = document.querySelector(`#tablaCatalogo button.btn-action-delete[data-id="${id}"]`);
-                    const filaCatalogo = botonTacho ? botonTacho.closest('tr') : null;
+                    const dogTacho = document.querySelector(`#tablaCatalogo button.btn-action-delete[data-id="${id}"]`);
+                    const filaCatalogo = dogTacho ? dogTacho.closest('tr') : null;
                     if (filaCatalogo) {
                         filaCatalogo.classList.add('animate__animated', 'animate__fadeOutLeft');
                         setTimeout(() => filaCatalogo.remove(), 400);
                     }
 
-                    // B) Buscamos y removemos la fila en la pestaña de Porciones (si es que era una proteína)
-                    // Buscamos cualquier botón de acción de esa fila que comparta el mismo data-id
                     const botonPorciones = document.querySelector(`#cuerpoTablaPrincipal button[data-id="${id}"]`);
                     const filaPorciones = botonPorciones ? botonPorciones.closest('tr') : null;
                     if (filaPorciones) {
@@ -383,10 +431,9 @@ function confirmarEliminacion(id) {
                         setTimeout(() => filaPorciones.remove(), 400);
                     }
 
-                    // 5. Le damos 450ms a que terminen las animaciones de salida y recalculamos AMBOS paginadores
                     setTimeout(() => {
-                        filtrarCatalogo();       // Recalcula páginas e info del Catálogo
-                        filtrarTablaPrincipal(); // Recalcula páginas e info de Porciones
+                        filtrarCatalogo();
+                        filtrarTablaPrincipal();
                     }, 450);
 
                 } else {
@@ -395,31 +442,18 @@ function confirmarEliminacion(id) {
                 }
             } catch (error) {
                 AppUtils.showLoading(false);
-                console.error(error);
                 AppUtils.showNotification('Fallo de comunicación con el servidor', 'error');
             }
         }
     });
 }
 
-function manejadorModalLote(btn) {
-    abrirModalLote(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria'));
-}
-
-function manejadorModalProduccion(btn) {
-    abrirModalProduccion(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'));
-}
-
-function manejadorModalAjuste(btn) {
-    abrirModalAjuste(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'));
-}
-
-function manejadorModalKardex(btn) {
-    abrirKardexPorciones(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria'));
-}
-
+function manejadorModalLote(btn) { abrirModalLote(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria')); }
+// ... (Los demás manejadores conservan su firma estructural limpia)
+function manejadorModalProduccion(btn) { abrirModalProduccion(btn.getAttribute('data-id'), btn.getAttribute('data-nombre')); }
+function manejadorModalAjuste(btn) { abrirModalAjuste(btn.getAttribute('data-id'), btn.getAttribute('data-nombre')); }
+function manejadorModalKardex(btn) { abrirKardexPorciones(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria')); }
 function manejadorModalEditar(btn) {
-    // Captura los atributos HTML nativos de la fila y los transfiere a la función de preparación
     prepararEdicionInsumo(
         btn.getAttribute('data-id'),
         btn.getAttribute('data-nombre'),
@@ -430,17 +464,51 @@ function manejadorModalEditar(btn) {
 }
 
 function prepararEdicionInsumo(id, nombre, categoria, unidadMedida, stockMinimo) {
-    // Inyección de textos planos en el formulario
+    // Inyección de textos planos en el formulario del modal de edición
     document.getElementById('editInsumoId').value = id;
-    document.getElementById('editInsumoNombre').value = nombre;
+    ddocument.getElementById('editInsumoNombre').value = nombre ? nombre.trim() : "";
     document.getElementById('editInsumoUnidad').value = unidadMedida;
     document.getElementById('editInsumoStockMinimo').value = stockMinimo;
 
-    // 🌟 CONTROL DE INYECCIÓN DE CATEGORÍA:
-    // Forzamos mayúsculas estrictas para evitar desajustes posicionales con el primer option (PROTEINA)
+    // CONTROL DE INYECCIÓN DE CATEGORÍA
     const selectCategoria = document.getElementById('editarCategoria');
     if (selectCategoria && categoria) {
         selectCategoria.value = categoria.toUpperCase().trim();
+    }
+
+    // 🛡️ ESCUDO DETECTOR PARA EL FORMULARIO DE EDICIÓN DEL CATÁLOGO
+    // Buscamos el formulario dentro del modal de edición (por id o tag)
+    const formEditar = document.getElementById('formEditarInsumo') || document.querySelector('#modalEditarInsumo form');
+    if (formEditar) {
+        // Aseguramos que el input numérico de la edición tampoco acepte negativos de forma nativa
+        const inputMinimoEdit = formEditar.querySelector('input[name="stockMinimo"]') || document.getElementById('editInsumoStockMinimo');
+        if (inputMinimoEdit) {
+            inputMinimoEdit.min = "0";
+            inputMinimoEdit.type = "number";
+        }
+
+        formEditar.onsubmit = function (e) {
+            const nombreVal = document.getElementById('editInsumoNombre').value.trim();
+            const minimoVal = parseFloat(inputMinimoEdit?.value);
+
+            // 1. Validar que el nombre no contenga números, símbolos o emojis antes de viajar al backend
+            const regexLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$/;
+            if (!nombreVal || !regexLetras.test(nombreVal)) {
+                e.preventDefault(); // 🛑 Detiene el envío de inmediato
+                AppUtils.showNotification('No se pudo guardar: El nombre del insumo solo puede contener letras (sin números ni emojis).', 'error');
+                return false;
+            }
+
+            // 2. Validar que el stock mínimo no sea negativo
+            if (isNaN(minimoVal) || minimoVal < 0) {
+                e.preventDefault(); // 🛑 Detiene el envío de inmediato
+                AppUtils.showNotification('No se pudo guardar: El stock mínimo no puede ser un número negativo.', 'error');
+                return false;
+            }
+
+            AppUtils.showLoading(true);
+            return true;
+        };
     }
 
     // Desplegamos el modal correspondiente cargado en las variables de entorno de La Jama
@@ -449,54 +517,33 @@ function prepararEdicionInsumo(id, nombre, categoria, unidadMedida, stockMinimo)
     }
 }
 
-/**
- * Alterna la visibilidad de los submódulos de insumos en el cliente sin generar F5
- */
 function cambiarPestañaAsincrona(pestañaDestino) {
-    // 1. Ocultamos todos los paneles agregando d-none (Incluimos el nuevo pane)
     document.getElementById('pane-proteinas')?.classList.add('d-none');
     document.getElementById('pane-catalogo')?.classList.add('d-none');
     document.getElementById('pane-recetas')?.classList.add('d-none');
     document.getElementById('pane-crear-receta')?.classList.add('d-none');
 
-    // 2. Mostramos el panel seleccionado quitando d-none y activando su radio correspondiente
     if (pestañaDestino === 'proteinas') {
         document.getElementById('pane-proteinas')?.classList.remove('d-none');
-        const radio = document.getElementById('radio-btn-proteinas');
-        if (radio) radio.checked = true;
+        document.getElementById('radio-btn-proteinas').checked = true;
     } else if (pestañaDestino === 'catalogo') {
         document.getElementById('pane-catalogo')?.classList.remove('d-none');
-        const radio = document.getElementById('radio-btn-catalogo');
-        if (radio) radio.checked = true;
+        document.getElementById('radio-btn-catalogo').checked = true;
     } else if (pestañaDestino === 'recetas') {
         document.getElementById('pane-recetas')?.classList.remove('d-none');
-        const radio = document.getElementById('radio-btn-recetas');
-        if (radio) radio.checked = true;
+        document.getElementById('radio-btn-recetas').checked = true;
     } else if (pestañaDestino === 'crear-receta') {
-        // 🌟 NUEVA ACCIÓN: Activa el flujo del formulario de composición
         document.getElementById('pane-crear-receta')?.classList.remove('d-none');
-        const radio = document.getElementById('radio-btn-crear-receta');
-        if (radio) radio.checked = true;
+        document.getElementById('radio-btn-crear-receta').checked = true;
     }
-
-    // 3. Forzamos al motor de paginación a recalcular y reacomodar las filas de las tablas
     sincronizarFiltrosYPaginas();
 }
 
-/**
- * Evalúa el stock actual contra el mínimo de un elemento del DOM y aplica el semáforo visual (Rojo/Verde)
- * @param {HTMLElement} celdaStock - El elemento span/badge que contiene el número
- * @param {number} nuevoStock - El valor numérico recién calculado
- * @param {boolean} esProteina - Clave para saber si maneja clases badge o texto plano
- */
 function actualizarSemaforoVisualStock(celdaStock, nuevoStock, esProteina) {
     if (!celdaStock) return;
-
-    // Leemos el stock mínimo guardado en el atributo data-minimo del HTML
     const stockMinimo = parseFloat(celdaStock.getAttribute('data-minimo')) || 0;
 
     if (nuevoStock <= stockMinimo) {
-        // En estado crítico 🚨
         if (esProteina) {
             celdaStock.classList.remove('bg-success');
             celdaStock.classList.add('bg-danger');
@@ -505,7 +552,6 @@ function actualizarSemaforoVisualStock(celdaStock, nuevoStock, esProteina) {
             celdaStock.classList.add('text-danger');
         }
     } else {
-        // En estado óptimo
         if (esProteina) {
             celdaStock.classList.remove('bg-danger');
             celdaStock.classList.add('bg-success');

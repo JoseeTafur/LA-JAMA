@@ -822,3 +822,35 @@ window.invertirSoloContenidoBloque = function() {
         AppUtils.showNotification('Historial interno del bloque invertido', 'success');
     }
 };
+
+// ========================================================
+// 🛡️ CONTROL DEFENSIVO DE FECHAS PARA EL KARDEX (LA JAMA)
+// ========================================================
+const inputFechaInicio = document.getElementById('searchKardexFechaInicio');
+const inputFechaFin = document.getElementById('searchKardexFechaFin');
+
+if (inputFechaInicio && inputFechaFin) {
+    // 1. Obtenemos la fecha de hoy en formato ISO (YYYY-MM-DD)
+    const hoy = new Date().toISOString().split('T')[0];
+
+    // 2. Establecemos los límites físicos en los calendarios del navegador
+    // Nadie puede buscar antes del inicio de este año (o pon 2024-01-01 si manejas histórico largo)
+    inputFechaInicio.min = "2026-01-01";
+    inputFechaInicio.max = hoy; // No puede ser mayor a hoy
+
+    inputFechaFin.min = "2026-01-01";
+    inputFechaFin.max = hoy; // 🔥 LA RESPUESTA: Bloqueamos la fecha límite para que no sea futura
+
+    // 3. Escuchas de cambio limpios
+    inputFechaInicio.addEventListener('change', function() {
+        // Validación dinámica: La fecha fin no puede ser menor a la fecha inicio seleccionada
+        inputFechaFin.min = this.value;
+        ejecutarFiltroCombinadoKardex();
+    });
+
+    inputFechaFin.addEventListener('change', function() {
+        // Validación dinámica: La fecha inicio no puede ser mayor a la fecha fin seleccionada
+        inputFechaInicio.max = this.value;
+        ejecutarFiltroCombinadoKardex();
+    });
+}
