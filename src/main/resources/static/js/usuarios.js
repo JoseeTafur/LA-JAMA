@@ -79,7 +79,7 @@ $(document).ready(function () {
 
                             <button type="button" class="action-jama-btn btn-action-status action-status ${row.estado === 1 ? 'is-active' : ''}" data-id="${row.id}" title="Alternar Estado">
                                 <svg class="eye-lid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7"/>
                                 </svg>
                                 <svg class="eye-pupil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                                     <circle cx="12" cy="12" r="3"/>
@@ -225,7 +225,11 @@ $(document).ready(function () {
                     } else { AppUtils.showNotification(data.message, 'error'); }
                 }
             })
-            .catch(error => AppUtils.showNotification('Error de comunicación con el servidor', 'error'))
+            // 🛡️ OPTIMIZADO: Filtro inteligente contra el Rate Limit (Evita pisar el mensaje premium)
+            .catch(error => {
+                if (error.isJamaSecure) return;
+                AppUtils.showNotification('Error de comunicación con el servidor', 'error');
+            })
             .finally(() => AppUtils.showLoading(false));
     }
 
@@ -237,7 +241,11 @@ $(document).ready(function () {
                 if (data.success) { openModalForEdit(data.data); }
                 else { AppUtils.showNotification('Error al cargar la ficha del usuario', 'error'); }
             })
-            .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
+            // 🛡️ OPTIMIZADO: Filtro inteligente contra el Rate Limit
+            .catch(error => {
+                if (error.isJamaSecure) return;
+                AppUtils.showNotification('Error de conexión', 'error');
+            })
             .finally(() => AppUtils.showLoading(false));
     }
 
@@ -249,7 +257,11 @@ $(document).ready(function () {
                 if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
                 else { AppUtils.showNotification(data.message, 'error'); }
             })
-            .catch(error => AppUtils.showNotification('Error de conexión remota', 'error'))
+            // 🛡️ OPTIMIZADO: Filtro inteligente contra el Rate Limit
+            .catch(error => {
+                if (error.isJamaSecure) return;
+                AppUtils.showNotification('Error de conexión remota', 'error');
+            })
             .finally(() => AppUtils.showLoading(false));
     }
 
@@ -268,7 +280,11 @@ $(document).ready(function () {
                         if (data.success) { AppUtils.showNotification(data.message, 'success'); reloadTable(); }
                         else { AppUtils.showNotification(data.message, 'error'); }
                     })
-                    .catch(error => AppUtils.showNotification('Error de conexión', 'error'))
+                    // 🛡️ OPTIMIZADO: Filtro inteligente contra el Rate Limit
+                    .catch(error => {
+                        if (error.isJamaSecure) return;
+                        AppUtils.showNotification('Error de conexión', 'error');
+                    })
                     .finally(() => AppUtils.showLoading(false));
             }
         });

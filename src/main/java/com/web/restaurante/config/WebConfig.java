@@ -32,7 +32,6 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(sessionInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns(
-                        "/login",
                         "/carta/**",
                         "/admin/pagos-digitales/api/guardar",
                         "/admin/pagos-digitales/api/actualizar-imagen/**",
@@ -42,8 +41,10 @@ public class WebConfig implements WebMvcConfigurer {
                         "/imagenes/**",
                         "/error",
                         "/favicon.png",
-                        // 🌟 SOLUCIÓN 2: Excluir los videos del control de sesión para el Login
-                        "/video/**"
+                        "/video/**",
+                        "/static/**",
+                        "/resources/**",
+                        "/webjars/**"
                 );
     }
 

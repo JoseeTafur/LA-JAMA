@@ -213,12 +213,16 @@ function editarProducto(id) {
     AppUtils.showLoading(true);
 
     fetch(`/admin/productos/api/${id}`)
-        .then(res => {
-            AppUtils.showLoading(false);
-            if (!res.ok) throw new Error("Error de comunicación remota");
-            return res.json();
-        })
+        .then(res => res.json()) // 🌟 DELEGADO: El escudo global ya devuelve un JSON válido con success:false si es 429
         .then(p => {
+            AppUtils.showLoading(false);
+
+            // Si la aduana global mutó la respuesta debido al Rate Limit (success: false)
+            if (p.hasOwnProperty('success') && !p.success) {
+                if (p.message) AppUtils.showNotification(p.message, 'error');
+                return;
+            }
+
             AppUtils.clearForm('#formProducto');
 
             document.getElementById('prodId').value = p.id;
@@ -239,25 +243,48 @@ function editarProducto(id) {
         .catch(err => {
             AppUtils.showLoading(false);
             console.error(err);
-            AppUtils.showNotification('No se pudo cargar el plato seleccionado', 'error');
+            // Si el error fue provocado por el escudo perimetral, evitamos pisar el mensaje premium
+            if (err.message !== "Rate Limit Alcanzado en La Jama") {
+                AppUtils.showNotification('No se pudo cargar el plato seleccionado', 'error');
+            }
         });
 }
 
 function cambiarEstado(id, checkbox) {
+    // Control elástico: Guardamos el estado en el DOM antes del cambio por si toca revertir
+    const estadoAnterior = !checkbox.checked;
     const nuevoEstado = checkbox.checked ? 1 : 0;
 
     fetch(`/admin/productos/estado/${id}?estado=${nuevoEstado}`, {
         method: 'POST'
-    }).then(res => {
-        if (res.ok) {
+    })
+    .then(res => {
+        // 🌟 EL TRUCO: Verificamos si la respuesta viene de nuestro escudo-global (que es JSON)
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            return res.json();
+        }
+
+        // Si no es JSON (es texto plano o respuesta vacía de Spring Boot), devolvemos un objeto simulado de éxito
+        return { success: res.ok, esTextoPlano: true };
+    })
+    .then(data => {
+        if (data.hasOwnProperty('isRateLimit') && data.isRateLimit) {
+            checkbox.checked = estadoAnterior;
+            return;
+        }
+
+        if (data.success) {
             AppUtils.showNotification('Disponibilidad en carta modificada', 'success');
         } else {
-            checkbox.checked = !checkbox.checked;
-            AppUtils.showNotification('No se pudo cambiar el estado del plato', 'error');
+            checkbox.checked = estadoAnterior;
+            AppUtils.showNotification(data.message || 'No se pudo cambiar el estado del plato', 'error');
         }
-    }).catch(() => {
-        checkbox.checked = !checkbox.checked;
-        AppUtils.showNotification('Fallo de conexión', 'error');
+    })
+    .catch((err) => {
+        checkbox.checked = estadoAnterior;
+        console.error("Error crítico de infraestructura:", err);
+        AppUtils.showNotification('Fallo de conexión real con el servidor', 'error');
     });
 }
 

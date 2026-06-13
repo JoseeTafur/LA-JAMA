@@ -1,18 +1,20 @@
 package com.web.restaurante.config;
 
+import io.github.bucket4j.Bucket;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-/**
- * LA JAMA — SessionInterceptor
- * Interceptor de sesión y control perimetral de accesos con jerarquía SUPER_ADMIN.
- */
+@RequiredArgsConstructor
 @Component
 public class SessionInterceptor implements HandlerInterceptor {
+
+    private final RateLimitManager rateLimitManager;
 
     @Override
     public boolean preHandle(
@@ -23,29 +25,56 @@ public class SessionInterceptor implements HandlerInterceptor {
         HttpSession session = request.getSession(false);
         String path = request.getServletPath();
 
-        // ── 1. ADUANA ESTRUCTURAL: Sin sesión activa → Redirección limpia al Login ─────────────────
+        // ── 0. MURO DE CONTENCIÓN EXCLUSIVO (LOGIN / LOGOUT) ────────────────────────────────
+        if ("/login".equals(path) || "/logout".equals(path)) {
+            String ip = request.getHeader("X-Forwarded-For");
+            String claveIP = "IP_" + (ip == null || ip.isEmpty() ? request.getRemoteAddr() : ip.split(",")[0].trim());
+
+            Bucket bucketAnonimo = rateLimitManager.obtenerBucket(claveIP, false);
+            if (!bucketAnonimo.tryConsume(1)) {
+                response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+                response.setContentType("text/plain;charset=UTF-8");
+                response.getWriter().write("🚨 Demasiadas solicitudes en el acceso de La Jama.");
+                return false;
+            }
+            return true; // Pasa directo al login/logout sin evaluar roles
+        }
+
+        String claveIdentificadora;
+        boolean esAutenticado = false;
+
+        // ── A. IDENTIFICACIÓN INTELIGENTE (IP VS USUARIO) ──────────────────────────────────
+        if (session != null && session.getAttribute("usuarioLogueado") != null) {
+            claveIdentificadora = "USER_" + session.getAttribute("usuarioLogueado").toString().trim();
+            esAutenticado = true;
+        } else {
+            String ip = request.getHeader("X-Forwarded-For");
+            claveIdentificadora = "IP_" + (ip == null || ip.isEmpty() ? request.getRemoteAddr() : ip.split(",")[0].trim());
+        }
+
+        // ── B. EVALUACIÓN DEL RATELIMIT ──────────────────────────────────────────────────
+        Bucket bucket = rateLimitManager.obtenerBucket(claveIdentificadora, esAutenticado);
+
+        if (!bucket.tryConsume(1)) {
+            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+            response.setContentType("text/plain;charset=UTF-8");
+            response.getWriter().write("🚨 Sistema saturado. Has excedido el límite de solicitudes permitido en La Jama.");
+            return false;
+        }
+
+        // ── C. CONTROL DE ACCESOS COMPILADO Y LIMPIO ─────────────────────────────────────
         if (session == null || session.getAttribute("usuarioLogueado") == null) {
             response.sendRedirect("/login");
             return false;
         }
 
-        // ── 2. EXTRACCIÓN DE PRIVILEGIOS DE LA SESIÓN ───────────────────────────────────────────
         String rol = session.getAttribute("rol") != null
                 ? session.getAttribute("rol").toString().trim().toUpperCase()
                 : "INVITADO";
 
-        // 🔥 PASAPORTE SUPREMO: El rango SUPER_ADMIN posee inmunidad total sobre cualquier recurso
-        if ("SUPER_ADMIN".equals(rol)) {
-            return true;
-        }
-
-        // 🔥 PASAPORTE ADMINISTRATIVO: El rango ADMIN hereda acceso total sobre todo el ecosistema
-        if ("ADMIN".equals(rol)) {
-            return true;
-        }
-
-        // ── 3. MATRIZ DE PERMISOS PARA ROLES OPERATIVOS MENORES ───────────────────────────
-        // (Al haber escapado SUPER_ADMIN y ADMIN arriba, aquí solo evalúa operarios estrictos)
+        // Pasaportes Supremos
+        if ("SUPER_ADMIN".equals(rol)) return true;
+        if ("ADMIN".equals(rol)) return true;
 
         // — Módulos de Caja, Despacho, Delivery y Catálogo de Productos
         if (path.startsWith("/admin/caja") ||
@@ -73,8 +102,6 @@ public class SessionInterceptor implements HandlerInterceptor {
         }
 
         // ── 4. MURO DE CONTENCIÓN JERÁRQUICO DIRECTIVO ─────────────────────────────────────────
-        // Si la petición llegó hasta aquí y es de rango menor (Cajero, Mozo, Cocinero),
-        // se le deniega el acceso inmediato a planillas, configuraciones de sistema o insumos de almacén.
         if (path.startsWith("/usuarios") ||
                 path.startsWith("/empleados") ||
                 path.startsWith("/perfiles") ||
@@ -84,14 +111,9 @@ public class SessionInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // ── 5. RUTAS GENERALES LIBRES (Dashboard, APIs informativas de sesión, etc.) ───────────────
         return true;
     }
 
-    /**
-     * Valida si el operario estricto en sesión coincide con la ruta requerida.
-     * Si no cumple la firma, efectúa el rebote preventivo al panel de control.
-     */
     private boolean verificar(String rolActual, HttpServletResponse response, String rolRequerido) throws Exception {
         if (rolRequerido.equals(rolActual)) {
             return true;

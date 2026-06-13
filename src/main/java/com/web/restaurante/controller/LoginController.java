@@ -8,6 +8,7 @@ import com.web.restaurante.service.UsuarioService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -40,20 +41,22 @@ public class LoginController {
 
     @PostMapping("/login")
     public String procesarLogin(@RequestParam String usuario, @RequestParam String clave, HttpSession session,
-                                RedirectAttributes redirectAttributes) {
+                                Model model, RedirectAttributes redirectAttributes) {
 
         Optional<Usuario> existente = usuarioService.encontrarPorUsuario(usuario);
 
+        // 🟩 OPTIMIZADO: Retorno directo de vista con error (Evita el Status 302 y duplicación de tokens)
         if (existente.isEmpty()) {
-            redirectAttributes.addFlashAttribute("error", "Usuario no encontrado.");
-            return "redirect:/login";
+            model.addAttribute("error", "Usuario no encontrado.");
+            return "login";
         }
 
         Usuario usuarioEncontrado = existente.get();
 
+        // 🟩 OPTIMIZADO: Retorno directo sin redirección externa
         if (usuarioEncontrado.getEstado() != 1) {
-            redirectAttributes.addFlashAttribute("error", "Este usuario se encuentra inactivo.");
-            return "redirect:/login";
+            model.addAttribute("error", "Este usuario se encuentra inactivo.");
+            return "login";
         }
 
         if (usuarioService.verificarClave(clave, usuarioEncontrado.getClave())) {
@@ -124,7 +127,6 @@ public class LoginController {
                         })
                         .collect(Collectors.toList());
             } else if ("ADMIN".equals(rolParaSesion) || "SUPER_ADMIN".equals(rolParaSesion)) {
-                // 🛡️ Tanto ADMIN como SUPER_ADMIN absorben la totalidad de sus colecciones sin podas
                 opcionesMenu = usuarioEncontrado.getPerfil().getOpciones().stream()
                         .sorted(Comparator.comparing(Opcion::getId))
                         .collect(Collectors.toList());
@@ -153,8 +155,6 @@ public class LoginController {
                     String nombreGrupo = grupo.substring(0, 1).toUpperCase() + grupo.substring(1).toLowerCase();
                     menuAgrupado.computeIfAbsent(nombreGrupo, k -> new ArrayList<>()).add(opcion);
                 } else {
-                    // 🛡️ TRATAMIENTO DE RUTAS DE SEGUNDO NIVEL (/usuarios, /perfiles, /insumos)
-                    // Para que no se pierdan ni queden invisibles, si el rol es directivo, las agrupamos bajo el bloque "Seguridad"
                     if (ruta.equals("/usuarios") || ruta.equals("/perfiles") || ruta.equals("/empleados")) {
                         menuAgrupado.computeIfAbsent("Seguridad", k -> new ArrayList<>()).add(opcion);
                     } else if (ruta.equals("/insumos")) {
@@ -165,12 +165,11 @@ public class LoginController {
                 }
             }
 
-            // Sincronizamos las variables del contexto HTTP para Thymeleaf
             session.setAttribute("menuAgrupado", menuAgrupado);
             session.setAttribute("opcionesIndependientes", opcionesIndependientes);
             session.setAttribute("menuOpciones", opcionesMenu);
 
-            // Redirecciones dinámicas de entrada
+            // Redirecciones dinámicas lícitas de entrada
             if ("MESERO".equals(rolParaSesion)) return "redirect:/admin/mesas";
             if ("REPARTIDOR".equals(rolParaSesion)) return "redirect:/admin/entregas/mis-pedidos";
             if ("CAJERO".equals(rolParaSesion)) return "redirect:/admin/despacho";
@@ -183,8 +182,9 @@ public class LoginController {
             return "redirect:/dashboard";
 
         } else {
-            redirectAttributes.addFlashAttribute("error", "Contraseña incorrecta.");
-            return "redirect:/login";
+            // 🟩 OPTIMIZADO: Contraseña incorrecta controlada en el mismo hilo de petición
+            model.addAttribute("error", "Contraseña incorrecta.");
+            return "login";
         }
     }
 }

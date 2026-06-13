@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const grid = document.getElementById("ripple-grid");
     if (grid) {
         const cellSize = 50;
-        let rows = cols = 0;
+        let rows = 0, cols = 0;
         function createGrid() {
             grid.innerHTML = "";
             cols = Math.ceil(window.innerWidth / cellSize);
@@ -61,52 +61,82 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function showPremiumVideoLoader(texto, videoSrc = '/video/loader_lajama.webm') {
-            if (overlay && video) {
-                const textElement = overlay.querySelector('.premium-loading-text');
-                if (textElement) textElement.textContent = texto;
+        if (overlay && video) {
+            const textElement = overlay.querySelector('.premium-loading-text');
+            if (textElement) textElement.textContent = texto;
 
-                video.muted = true;
-                video.defaultMuted = true;
-                video.load();
+            video.muted = true;
+            video.defaultMuted = true;
+            video.load();
 
-                overlay.classList.add("active");
-                video.play().catch(() => {});
-            }
+            overlay.classList.add("active");
+            video.play().catch(() => {});
         }
-
-        if (loginForm) {
-            loginForm.addEventListener("submit", function (e) {
-                const username = document.getElementById("usuario").value;
-                const password = document.getElementById("clave").value;
-
-                if (username && password) {
-                    e.preventDefault();
-                    const videoUrl = this.getAttribute("data-video-src") || "/video/loader_lajama.webm";
-                    showPremiumVideoLoader("Validando credenciales...", videoUrl);
-
-                    setTimeout(() => {
-                        loginForm.submit();
-                    }, 1000);
-                }
-            });
-        }
-    });
+    }
 
     // ========================================================
-    // 🛡️ REPARACIÓN DEL HISTORIAL: Apaga el loader al retroceder
+    // 🛡️ CONTROL DE LOGIN OPTIMIZADO: ANTI-RÁFAGAS EN PRODUCCIÓN
     // ========================================================
-    window.addEventListener("pageshow", function (event) {
-        // Si event.persisted es true, la página revivió desde el caché de retroceso
-        if (event.persisted) {
-            const overlay = document.getElementById("loading-overlay");
-            const video = document.getElementById("premium-video");
+    if (loginForm) {
+        loginForm.addEventListener("submit", function (e) {
+            const username = document.getElementById("usuario").value;
+            const password = document.getElementById("clave").value;
 
-            if (overlay) {
-                overlay.classList.remove("active"); // Esconde el velo negro
+            if (username && password) {
+                // Frenamos el flujo por defecto para evaluar las aduanas perimetrales primero
+                e.preventDefault();
+
+                // Disparamos la validación asíncrona controlada
+                fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        'usuario': username,
+                        'clave': password
+                    })
+                }).then(response => {
+                    // 🚨 CASO 1: El usuario o bot agotó el balde de tokens (Rate Limit Activo)
+                    if (response.status === 429) {
+                        if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+                            AppUtils.showNotification("🚨 Demasiados intentos. Acceso bloqueado temporalmente.", "error");
+                        } else {
+                            alert("🚨 Sistema saturado. Has excedido el límite de solicitudes.");
+                        }
+                        return;
+                    }
+
+                    // 🟩 CASO 2: El backend procesó las credenciales con éxito y devolvió una redirección (Dashboard)
+                    if (response.redirected) {
+                        const videoUrl = loginForm.getAttribute("data-video-src") || "/video/loader_lajama.webm";
+                        showPremiumVideoLoader("Validando credenciales...", videoUrl);
+
+                        setTimeout(() => {
+                            window.location.href = response.url; // Saltamos limpio al panel correspondiente
+                        }, 1000);
+                    } else {
+                        // ❌ CASO 3: Credenciales incorrectas. Recargamos la vista para pintar el fragmento de error de Thymeleaf
+                        window.location.reload();
+                    }
+                }).catch(err => {
+                    console.error("Error en la aduana perimetral:", err);
+                    // Fallback clásico en caso de caída extrema de red
+                    loginForm.submit();
+                });
             }
-            if (video) {
-                video.pause(); // Detiene el hilo multimedia
-            }
-            console.log("🧼 [HISTORIAL] Loader del Login desinfectado correctamente.");
-        }
-    });
+        });
+    }
+});
+
+// ========================================================
+// 🛡️ REPARACIÓN DEL HISTORIAL
+// ========================================================
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        const overlay = document.getElementById("loading-overlay");
+        const video = document.getElementById("premium-video");
+
+        if (overlay) overlay.classList.remove("active");
+        if (video) video.pause();
+        console.log("🧼 [HISTORIAL] Loader desinfectado correctamente.");
+    }
+});
