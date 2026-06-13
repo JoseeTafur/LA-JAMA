@@ -42,8 +42,9 @@
                 </span>
                                 </div>
 
-                                <img th:src="${prod.imagen != null ? '/imagenes/' + prod.imagen : 'https://placehold.co/400x300?text=Sin+Foto'}"
-                                     class="card-img-top" alt="Plato"
+                                <img th:src="${prod.imagen != null and prod.imagen != '' ? prod.imagen : 'https://placehold.co/400x300?text=Sin+Foto'}"
+                                     class="card-img-top"
+                                     alt="Plato"
                                      th:style="${agotado} ? 'filter: grayscale(100%);' : ''">
 
                                 <div class="card-body p-3">

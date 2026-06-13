@@ -249,17 +249,33 @@ public class ProteinaService {
 
     @Transactional
     public void registrarKardexPorVenta(Long insumoId, double cantidad, Long pedidoId) {
+        // 🚀 BLOQUEO EXCLUSIVO: Traemos el insumo maestro directamente de la BD
         Insumo insumo = insumoRepository.findById(insumoId)
                 .orElseThrow(() -> new RuntimeException("Insumo no encontrado"));
 
+        int stockActual = insumo.getStockActual() != null ? insumo.getStockActual().intValue() : 0;
+        int cantidadResta = (int) cantidad;
+        int nuevoStock = stockActual - cantidadResta;
+
+        if (nuevoStock < 0) {
+            System.out.println("[La Jama - Alerta] Procesando venta en negativo para control de comandas.");
+        }
+
+        // Seteamos y persistimos de inmediato en la tabla madre
+        insumo.setStockActual((double) nuevoStock);
+        insumoRepository.saveAndFlush(insumo);
+
+        // 🛡️ Guardamos en la tabla de porciones que lee tu Kardex de Proteínas
         MovimientoPorciones mov = new MovimientoPorciones();
         mov.setInsumo(insumo);
-        mov.setCantidadPorciones((int) cantidad);
+        mov.setCantidadPorciones(cantidadResta);
         mov.setTipo("EGRESO");
         mov.setMotivo("VENTA_SALA - Despacho de comanda Pedido N° " + pedidoId);
-        mov.setStockResultante((int) Math.round(insumo.getStockActual()));
-        mov.setMermaKg(0.0); // Una venta no genera merma física de porcionamiento
+        mov.setStockResultante(nuevoStock);
+        mov.setMermaKg(0.0);
+        mov.setFecha(LocalDateTime.now());
 
-        movimientoPorcionesRepository.save(mov);
+        movimientoPorcionesRepository.saveAndFlush(mov);
+        System.out.println("[La Jama - Logística] Venta procesada unitariamente de 1 en 1 para el Insumo ID: " + insumoId);
     }
 }

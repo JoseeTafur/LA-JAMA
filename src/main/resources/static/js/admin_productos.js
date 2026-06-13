@@ -57,33 +57,44 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 🛡️ Filtro Ultra-Estricto para subida de archivos (Usa la notificación del sistema)
+    // 🛡️ Aduana Ultra-Estricta Unificada para la subida de imágenes (Evita PDFs/silenciosos)
     if (inputArchivo) {
         inputArchivo.addEventListener('change', function(e) {
             const archivo = e.target.files[0];
+            const imgPrevia = document.getElementById('imgPrevia');
 
             if (archivo) {
-                // 1. Validar peso máximo (2MB)
-                const limitePeso = 2 * 1024 * 1024;
-                if (archivo.size > limitePeso) {
-                    // 🌟 Reemplazado alert por tu notificación nativa
-                    AppUtils.showNotification('¡Archivo muy pesado! La imagen no debe superar los 2MB.', 'error');
-                    this.value = '';
-                    const imgPrevia = document.getElementById('imgPrevia');
+                // A. Validación de extensión por nombre (Filtro perimetral contra PDFs, ZIPs, etc.)
+                const nombreArchivo = archivo.name.toLowerCase();
+                const extensionesValidas = ['.jpg', '.jpeg', '.png', '.webp'];
+                const tieneExtensionValida = extensionesValidas.some(ext => nombreArchivo.endsWith(ext));
+
+                // B. Validación de tipo MIME real del sistema operativo
+                const formatosMimePermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+                const tieneMimeValido = formatosMimePermitidos.includes(archivo.type);
+
+                if (!tieneExtensionValida || !tieneMimeValido) {
+                    AppUtils.showNotification('❌ Formato no soportado. Solo se permiten imágenes JPG, PNG o WEBP.', 'error');
+                    this.value = ''; // Resetea el input para bloquear el envío del PDF
                     if (imgPrevia) imgPrevia.src = '/img/not-found.png';
                     return;
                 }
 
-                // 2. Validar extensiones permitidas
-                const formatosPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-                if (!formatosPermitidos.includes(archivo.type)) {
-                    // 🌟 Reemplazado alert por tu notificación nativa
-                    AppUtils.showNotification('Formato no soportado. Selecciona una imagen JPG, PNG o WEBP.', 'error');
+                // C. Validar peso máximo (2MB)
+                const limitePeso = 2 * 1024 * 1024;
+                if (archivo.size > limitePeso) {
+                    AppUtils.showNotification('⚖️ ¡Archivo muy pesado! La imagen no debe superar los 2MB.', 'error');
                     this.value = '';
-                    const imgPrevia = document.getElementById('imgPrevia');
                     if (imgPrevia) imgPrevia.src = '/img/not-found.png';
                     return;
                 }
+
+                // 🚀 CARGA DE VISTA PREVIA SEGURA: Ocurre únicamente si pasó todos los filtros anteriores
+                const reader = new FileReader();
+                reader.onload = function() {
+                    if (imgPrevia) imgPrevia.src = reader.result;
+                };
+                reader.readAsDataURL(archivo);
             }
         });
     }
@@ -198,16 +209,6 @@ function abrirModalNuevo() {
     if (modalProductoInstance) modalProductoInstance.show();
 }
 
-function previewImage(event) {
-    const reader = new FileReader();
-    reader.onload = function() {
-        document.getElementById('imgPrevia').src = reader.result;
-    };
-    if (event.target.files[0]) {
-        reader.readAsDataURL(event.target.files[0]);
-    }
-}
-
 function editarProducto(id) {
     AppUtils.showLoading(true);
 
@@ -230,7 +231,7 @@ function editarProducto(id) {
             }
 
             const img = document.getElementById('imgPrevia');
-            img.src = p.imagen ? `/uploads/productos/${p.imagen}` : '/img/not-found.png';
+            img.src = p.imagen ? p.imagen : '/img/not-found.png';
 
             document.getElementById('modalTitulo').innerText = 'Editar Producto';
             if (modalProductoInstance) modalProductoInstance.show();

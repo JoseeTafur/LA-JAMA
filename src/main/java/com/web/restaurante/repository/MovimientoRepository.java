@@ -7,4 +7,5 @@ import java.util.List;
 public interface MovimientoRepository extends JpaRepository<MovimientoInsumo, Long> {
     // 🔥 Agregado Top50 para proteger el historial de insumos generales
     List<MovimientoInsumo> findTop50ByInsumoIdOrderByFechaDesc(Long insumoId);
+    void deleteByInsumoId(Long insumoId);
 }

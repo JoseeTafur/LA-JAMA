@@ -4,8 +4,14 @@
  * Depende de: insumos-core.js
  */
 
+let idProductoActivo = null; // 🚀 Almacenamos el contexto del plato actual para refrescos dinámicos
+let nombreProductoActivo = "";
+
 // ─── 1. CONTROL DE DETALLES (Insumosgestion.html) ───────────────────
 async function cargarDetalleReceta(idProducto, nombreProducto) {
+    idProductoActivo = idProducto;
+    nombreProductoActivo = nombreProducto;
+
     document.getElementById('tituloModalReceta').innerHTML =
         `<i class="bi bi-journal-text me-2"></i>Receta: ${nombreProducto}`;
 
@@ -34,12 +40,11 @@ async function cargarDetalleReceta(idProducto, nombreProducto) {
                 <td class="text-muted">${item.unidadMedida}</td>
                 <td class="text-end fw-bold">${item.cantidadUsada.toFixed(3)}</td>
                 <td class="text-center pe-3">
-                    <form action="/insumos/producto/receta/eliminar/${item.id}" method="post" class="m-0"
-                          onsubmit="confirmarQuitarInsumo(event, ${item.id})">
-                        <button type="submit" class="btn btn-sm text-danger p-1" title="Quitar de la receta">
-                            <i class="bi bi-x-circle-fill fs-5"></i>
-                        </button>
-                    </form>
+                    <!-- 🌟 OPTIMIZADO: Manejo por AJAX directo para evitar recargas completas -->
+                    <button type="button" class="btn btn-sm text-danger p-1" title="Quitar de la receta"
+                            onclick="confirmarQuitarInsumo(${item.id}, '${item.nombreInsumo}')">
+                        <i class="bi bi-x-circle-fill fs-5"></i>
+                    </button>
                 </td>
             </tr>`).join('');
 
@@ -48,18 +53,36 @@ async function cargarDetalleReceta(idProducto, nombreProducto) {
     }
 }
 
-function confirmarQuitarInsumo(event, id) {
-    event.preventDefault();
-    const form = event.target;
+// 🚀 BORRADO ASÍNCRONO SIN RECARGAR PÁGINA (LA JAMA LOGÍSTICA)
+function confirmarQuitarInsumo(idInsumoProducto, nombreInsumo) {
     AppUtils.showConfirmationDialog({
         title: '¿Quitar de la receta?',
-        text: 'El insumo dejará de descontarse al preparar este plato.',
+        text: `El insumo [${nombreInsumo}] dejará de descontarse al preparar este plato.`,
         icon: 'warning',
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Quitar'
-    }, function () {
+    }, async function () {
         AppUtils.showLoading(true);
-        form.submit();
+
+        try {
+            const response = await fetch(`/admin/insumos/receta/eliminar/${idInsumoProducto}`, {
+                method: 'POST'
+            });
+
+            AppUtils.showLoading(false);
+
+            if (response.ok) {
+                AppUtils.showNotification('Ingrediente removido de la receta con éxito', 'success');
+                // Refrescamos dinámicamente la tabla sin cerrar el modal
+                cargarDetalleReceta(idProductoActivo, nombreProductoActivo);
+            } else {
+                AppUtils.showNotification('No se pudo quitar el insumo del recetario', 'error');
+            }
+        } catch (error) {
+            AppUtils.showLoading(false);
+            console.error("Error al remover de la receta:", error);
+            AppUtils.showNotification('Fallo de comunicación con el servidor', 'error');
+        }
     });
 }
 
@@ -76,7 +99,7 @@ function prepararEdicionInsumo(id, nombre, categoria, unidad, actual, minimo) {
     if (inputMinimo) inputMinimo.value = minimo || 0;
 
     // 🛡️ ADUANA DEL FORMULARIO DE EDICIÓN: Escuchamos el submit para interceptar datos corruptos
-    const formEditar = document.getElementById('formEditarInsumo') || inputMinimo.closest('form');
+    const formEditar = document.getElementById('formEditarInsumo') || (inputMinimo ? inputMinimo.closest('form') : null);
     if (formEditar) {
         formEditar.onsubmit = function (e) {
             const nombreVal = document.getElementById('editInsumoNombre').value.trim();
@@ -129,11 +152,26 @@ function actualizarPlaceholderReceta(select) {
         input.placeholder = "Cantidad requerida";
     }
 
-    // 🛡️ Escudo dinámico: Si el usuario escribe un valor menor o igual a cero a la fuerza, lo rebotamos
-    input.onchange = function() {
-        if (parseFloat(this.value) <= 0 || isNaN(parseFloat(this.value))) {
-            AppUtils.showNotification('La cantidad requerida en la receta debe ser mayor a cero.', 'error');
+    // 🛡️ Escudo en caliente (Evita el bypass si presionan submit rápido)
+    input.oninput = function() {
+        if (parseFloat(this.value) < 0) {
             this.value = '';
         }
     };
+
+    const formAgregarIngrediente = input.closest('form');
+    if (formAgregarIngrediente) {
+        formAgregarIngrediente.onsubmit = function(e) {
+            const cantidadVal = parseFloat(input.value);
+            if (isNaN(cantidadVal) || cantidadVal <= 0) {
+                e.preventDefault();
+                AppUtils.showNotification('La cantidad de ingrediente en la receta debe ser mayor a cero.', 'error');
+                return false;
+            }
+            AppUtils.showLoading(true);
+            return true;
+        };
+    }
 }
+
+window.cargarDetalleReceta = cargarDetalleReceta;

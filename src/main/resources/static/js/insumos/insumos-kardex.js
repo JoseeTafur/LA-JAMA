@@ -76,66 +76,92 @@ function filtrarKardex(filtro) {
 }
 
 function ejecutarFiltroCombinadoKardex() {
-    const texto = (document.getElementById('searchKardexTexto')?.value || '').toLowerCase().trim();
+    const texto          = (document.getElementById('searchKardexTexto')?.value || '').toLowerCase().trim();
     const fechaInicioStr = document.getElementById('searchKardexFechaInicio')?.value || '';
-    const fechaFinStr = document.getElementById('searchKardexFechaFin')?.value || '';
-    const btnActivo = document.querySelector('.btn-filtro.active');
+    const fechaFinStr    = document.getElementById('searchKardexFechaFin')?.value || '';
+
+    const btnActivo    = document.querySelector('.btn-filtro.active');
     const filtroOrigen = btnActivo ? btnActivo.getAttribute('data-filtro') : 'TODOS';
 
     const timeInicio = fechaInicioStr ? new Date(fechaInicioStr + 'T00:00:00').getTime() : null;
-    const timeFin = fechaFinStr ? new Date(fechaFinStr + 'T23:59:59').getTime() : null;
+    const timeFin    = fechaFinStr    ? new Date(fechaFinStr    + 'T23:59:59').getTime() : null;
 
     kardexDataFiltrada = kardexData.filter(mov => {
+        // 🚀 MEJORA: Si busca VENTA o EGRESO, lee el tipo del DTO de Spring
         const origenMv = (mov.origen || mov.tipo || '').toUpperCase();
-        if (filtroOrigen !== 'TODOS' && !origenMv.includes(filtroOrigen)) return false;
+        if (filtroOrigen !== 'TODOS') {
+            if (filtroOrigen === 'VENTA' && origenMv !== 'EGRESO' && origenMv !== 'VENTA') return false;
+            if (filtroOrigen === 'LOTE' && origenMv !== 'INGRESO' && !origenMv.includes('LOTE')) return false;
+            if (filtroOrigen !== 'VENTA' && filtroOrigen !== 'LOTE' && !origenMv.includes(filtroOrigen)) return false;
+        }
 
         if (mov.fecha) {
             const timeMov = new Date(mov.fecha).getTime();
             if (timeInicio && timeMov < timeInicio) return false;
-            if (timeFin && timeMov > timeFin) return false;
+            if (timeFin    && timeMov > timeFin)    return false;
         }
 
         if (texto) {
-            const detalle = (mov.detalle || mov.motivo || '').toLowerCase();
-            const origenStr = (mov.origen || mov.tipo || '').toLowerCase();
-            if (!detalle.includes(texto) && !origenStr.includes(texto)) return false;
+            const detalle     = (mov.detalle || mov.motivo || '').toLowerCase();
+            const origenStr   = (mov.origen  || mov.tipo || '').toLowerCase();
+            const cantidadStr = (mov.cantidad || '').toString();
+            if (!detalle.includes(texto) && !origenStr.includes(texto) && !cantidadStr.includes(texto)) return false;
         }
         return true;
     });
 
-    procesarYRenderizarBloquesKardex();
+    paginaActualKardex = 1;
+    procesarYRenderizarBloquesKardex(kardexDataFiltrada, categoriaKardexActual);
 }
 
-function procesarYRenderizarBloquesKardex() {
+function procesarYRenderizarBloquesKardex(movimientos, categoria) {
     let bloquesTemporales = [];
-    let bloqueActual = null;
-    const esProteina = (categoriaKardexActual === 'PROTEINA');
+    let bloqueActual      = null;
 
-    movimientosLimpios.forEach(mov => {
-            const origen = (mov.origen || mov.tipo || '').toUpperCase();
-            const motivo = (mov.motivo || mov.detalle || '').toUpperCase();
+    // Filtrar ajustes duplicados automáticos
+    let movimientosLimpios = [];
+    for (let i = 0; i < movimientos.length; i++) {
+        const movActual = movimientos[i];
+        const origenMv  = (movActual.origen || movActual.tipo || '').toUpperCase();
+        const motivoMv  = (movActual.motivo || movActual.detalle || '').toUpperCase();
 
-            // 🌟 CONDICIONAL INTEGRADO: Agrupa por lote de forma inteligente
-            const esNuevoLote = esProteina
-                ? (origen.includes('LOTE') || origen.includes('ENTRADA') || origen.includes('INGRESO'))
-                : (origen === 'INGRESO' || motivo.includes('LOTE') || motivo.includes('COMPRA') || motivo.includes('APERTURA'));
-
-            if (esNuevoLote || !bloqueActual) {
-                if (bloqueActual) bloquesTemporales.push(bloqueActual);
-                bloqueActual = {
-                    id: bloquesTemporales.length + 1,
-                    fechaLote: mov.fecha,
-                    movimientos: []
-                };
+        if (origenMv === 'AJUSTE' && i > 0) {
+            const movPrevio = movimientos[i - 1];
+            const previoEsProduccion = (movPrevio.origen || movPrevio.tipo || '').toUpperCase() === 'PRODUCCION';
+            if (previoEsProduccion && Math.abs(movActual.cantidad) === Math.abs(movPrevio.cantidad)) {
+                console.warn(`[La Jama - Auditoría] Removido registro duplicado: ${movActual.cantidad}`);
+                continue;
             }
-            bloqueActual.movimientos.push(mov);
-        });
-
-        if (bloqueActual) bloquesTemporales.push(bloqueActual);
-        bloquesKardexPaginados = bloquesTemporales.reverse();
-        renderizarFilaPaginada(categoria);
+        }
+        movimientosLimpios.push(movActual);
     }
 
+    // Agrupar cronológicamente por lote
+    movimientosLimpios.forEach(mov => {
+        const origen = (mov.origen || mov.tipo || '').toUpperCase();
+        const motivo = (mov.motivo || mov.detalle || '').toUpperCase();
+
+        // Un lote abre bloque si es INGRESO de lote o si no hay bloque abierto
+        const esRecargaAdmin = origen.includes('LOTE') || (origen === 'INGRESO' && !motivo.includes('AJUSTE'));
+
+        if (esRecargaAdmin || !bloqueActual) {
+            if (bloqueActual) bloquesTemporales.push(bloqueActual);
+            bloqueActual = {
+                id: bloquesTemporales.length + 1,
+                fechaLote: mov.fecha,
+                movimientos: []
+            };
+        }
+        bloqueActual.movimientos.push(mov);
+    });
+
+    if (bloqueActual) bloquesTemporales.push(bloqueActual);
+
+    // El lote más reciente aparece primero
+    bloquesKardexPaginados = bloquesTemporales.reverse();
+
+    renderizarFilaPaginada(categoria);
+}
 function renderizarKardexPorFilas() {
     const cuerpo = document.getElementById('cuerpoKardexPorciones');
     if (!cuerpo) return;
@@ -536,8 +562,11 @@ function construirFilaMovimiento(mov) {
     const detalle      = mov.detalle || mov.motivo || '-';
     const origen       = mov.origen  || 'LOGÍSTICA';
     const esIngreso    = mov.signo === '+' || mov.tipo === 'INGRESO' || (mov.motivo && mov.motivo.toUpperCase().includes('INGRESO'));
-    const signo        = esIngreso ? '+' : '-';
-    const colorCantidad = esIngreso ? 'text-success' : 'text-danger';
+
+    // 📊 CONTROL DE SIGNOS PARA KPIS:
+    // Si es proteína usa (+/-). Si es abarroto general, el egreso se muestra como consumo informativo (📋)
+    const signo        = esIngreso ? '+' : (categoriaKardexActual === 'PROTEINA' ? '-' : '📋 ');
+    const colorCantidad = esIngreso ? 'text-success' : (categoriaKardexActual === 'PROTEINA' ? 'text-danger' : 'text-warning');
 
     let stockFinal = mov.stockResultante !== undefined && mov.stockResultante !== null ? mov.stockResultante : (mov.stockFinal || '-');
 
@@ -585,9 +614,11 @@ function construirFilaMovimiento(mov) {
 function badgeOrigen(origen) {
     const map = {
         'LOTE':       '<span class="badge bg-light-success text-success border px-2 py-1 rounded-pill small fw-bold">🛒 Lote</span>',
+        'INGRESO':    '<span class="badge bg-light-success text-success border px-2 py-1 rounded-pill small fw-bold">🛒 Lote</span>',
         'PRODUCCION': '<span class="badge bg-light-warning border px-2 py-1 rounded-pill small fw-bold" style="color:#94600E">🔥 Producción</span>',
         'AJUSTE':     '<span class="badge bg-light-secondary text-secondary border px-2 py-1 rounded-pill small fw-bold">⚙️ Ajuste</span>',
         'VENTA':      '<span class="badge bg-light-danger text-danger border px-2 py-1 rounded-pill small fw-bold">📦 Venta</span>',
+        'EGRESO': '<span class="badge bg-light-danger text-danger border px-2 py-1 rounded-pill small fw-bold">📦 Venta</span>',
         'LOGÍSTICA':  '<span class="badge bg-light border px-2 py-1 rounded-pill small text-dark">📦 Logística</span>'
     };
     const key = (origen || '').toUpperCase().trim();

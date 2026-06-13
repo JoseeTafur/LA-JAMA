@@ -33,11 +33,12 @@ body {
 .main-content {
     flex-grow: 1;
     min-height: 100vh;
-    height: auto;            /* Crece a la par de la tabla */
+    height: auto;
     display: flex;
     flex-direction: column;
-    width: calc(100% - var(--sidebar-width));
+    width: 100%;
     background-color: var(--lajama-cream);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ========================================================
@@ -57,9 +58,7 @@ body {
     display: flex;
     flex-direction: column;
     z-index: 1050;
-    transition: transform 0.3s ease;
-
-    /* 🌟 REPARADO: El sidebar como bloque maestro ya no hace scroll completo */
+    transition: transform 0.3s ease, width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
 }
 
@@ -832,8 +831,43 @@ body {
     .sidebar-overlay.active { opacity: 1; pointer-events: auto; }
 }
 
+/* ========================================================
+   🔥 LA MAGIA DEL DESPLIEGUE FLUIDO EN ESCRITORIO (LA JAMA)
+   ======================================================== */
 @media (min-width: 768px) {
-    .sidebar-overlay { display: none !important; }
+    /* 1. Encogemos el menú a modo de barra de iconos minimalista */
+    body.sidebar-collapsed .sidebar {
+        width: 80px !important;
+        min-width: 80px !important;
+    }
+
+    /* 2. Ocultamos los textos, flechas, líneas y submenús abiertos */
+    body.sidebar-collapsed .jama-uiverse-text,
+    body.sidebar-collapsed .jama-uiverse-arrow,
+    body.sidebar-collapsed hr,
+    body.sidebar-collapsed .submenu-list-uiverse,
+    body.sidebar-collapsed .sidebar-scrollable-menu .collapse.show {
+        display: none !important;
+    }
+
+    /* 3. Ocultamos el logo de La Jama de forma fluida */
+    body.sidebar-collapsed #sidebar-logo {
+        opacity: 0;
+        width: 0px !important;
+        pointer-events: none;
+    }
+
+    /* 4. Centramos perfectamente las cápsulas de los iconos */
+    body.sidebar-collapsed .jama-uiverse-item {
+        justify-content: center;
+        padding: 0.75rem !important;
+        gap: 0 !important;
+    }
+
+    body.sidebar-collapsed .jama-uiverse-icon {
+        font-size: 1.35rem !important;
+        margin: 0 !important;
+    }
 }
 
 /* ========================================================
@@ -1131,3 +1165,13 @@ body {
     .btn-nuevo-jama::after { animation: none; }
 }
 
+/* 🌟 NUEVO: RUTA REPARADA PARA EL BRILLO DEL LOGO */
+#sidebar-logo {
+    filter: drop-shadow(0 0 8px rgba(254, 215, 170, 0.35));
+    transition: filter 0.3s ease, opacity 0.3s ease, width 0.3s ease; /* ➔ Fusiona brillo y colapso */
+}
+
+#sidebar-logo:hover {
+    filter: drop-shadow(0 0 14px rgba(254, 215, 170, 0.65))
+            drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
+}

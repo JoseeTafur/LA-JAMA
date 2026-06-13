@@ -41,54 +41,37 @@ let ordenamientoKardexDireccion = {
 document.addEventListener('DOMContentLoaded', () => {
 
     // =========================================================================
-        // 🛡️ CONTROL ULTRA-ESTRICTO DE FECHAS PARA EL KARDEX (LA JAMA 2026)
-        // =========================================================================
-        const inputFechaInicio = document.getElementById('searchKardexFechaInicio');
-        const inputFechaFin = document.getElementById('searchKardexFechaFin');
+    // 🛡️ CONTROL ULTRA-ESTRICTO DE FECHAS PARA EL KARDEX (LA JAMA 2026)
+    // =========================================================================
+    const inputFechaInicio = document.getElementById('searchKardexFechaInicio');
+    const inputFechaFin = document.getElementById('searchKardexFechaFin');
 
-        if (inputFechaInicio && inputFechaFin) {
-            // 1. Calculamos la fecha de hoy en formato ISO local (YYYY-MM-DD)
-            const hoy = new Date().toLocaleDateString('sv-SE'); // 'sv-SE' fuerza el formato exacto YYYY-MM-DD
+    if (inputFechaInicio && inputFechaFin) {
+        const hoy = new Date().toLocaleDateString('sv-SE');
+        inputFechaInicio.min = "2026-01-01";
+        inputFechaInicio.max = hoy;
+        inputFechaFin.min = "2026-01-01";
+        inputFechaFin.max = hoy;
 
-            // 2. Aplicamos las reglas de negocio directo a las propiedades físicas del navegador
-            inputFechaInicio.min = "2026-01-01"; // 🔒 Forzado estrictamente a este año
-            inputFechaInicio.max = hoy;          // 🔒 No puede superar el día de hoy
+        inputFechaInicio.addEventListener('change', function() {
+            if (this.value) inputFechaFin.min = this.value;
+            if (typeof ejecutarFiltroCombinadoKardex === "function") ejecutarFiltroCombinadoKardex();
+        });
 
-            inputFechaFin.min = "2026-01-01";
-            inputFechaFin.max = hoy;             // 🔒 No puede ir más allá de la fecha actual
+        inputFechaFin.addEventListener('change', function() {
+            if (this.value) inputFechaInicio.max = this.value;
+            if (typeof ejecutarFiltroCombinadoKardex === "function") ejecutarFiltroCombinadoKardex();
+        });
+    }
 
-            // 3. Escucha dinámica para Fecha Inicio: Modifica el rango permitido de Fecha Fin
-            inputFechaInicio.addEventListener('change', function() {
-                if (this.value) {
-                    // La fecha fin no puede ser anterior a la fecha de inicio seleccionada
-                    inputFechaFin.min = this.value;
-                }
-                // Si tu función de filtrado nativa existe, la invoca
-                if (typeof ejecutarFiltroCombinadoKardex === "function") {
-                    ejecutarFiltroCombinadoKardex();
-                }
-            });
-
-            // 4. Escucha dinámica para Fecha Fin: Modifica el rango permitido de Fecha Inicio
-            inputFechaFin.addEventListener('change', function() {
-                if (this.value) {
-                    // La fecha inicio no puede ser posterior a la fecha fin seleccionada
-                    inputFechaInicio.max = this.value;
-                }
-                if (typeof ejecutarFiltroCombinadoKardex === "function") {
-                    ejecutarFiltroCombinadoKardex();
-                }
-            });
-        }
-
-    // Modales Bootstrap (Solo se inicializan si el nodo existe físicamente)
+    // Inicializar Modales
     const nuevoInsumoEl = document.getElementById('modalNuevoInsumo');
     if (nuevoInsumoEl) modalNuevoInsumoInstance = new bootstrap.Modal(nuevoInsumoEl);
 
     const editarInsumoEl = document.getElementById('modalEditarInsumo');
     if (editarInsumoEl) {
         modalEditarInsumoInstance = new bootstrap.Modal(editarInsumoEl);
-        modalEditarInstance       = modalEditarInsumoInstance;
+        modalEditarInstance = modalEditarInsumoInstance;
     }
 
     const detalleRecetaEl = document.getElementById('modalDetalleReceta');
@@ -106,138 +89,76 @@ document.addEventListener('DOMContentLoaded', () => {
     const kardexEl = document.getElementById('modalKardexPorciones');
     if (kardexEl) modalKardexPorcionesInstance = new bootstrap.Modal(kardexEl);
 
-    // Inicializar corte de paginación física al cargar la pestaña
-    if (document.getElementById('cuerpoTablaPrincipal')) {
-        ejecutarPaginacionTabla('#cuerpoTablaPrincipal tr:not(.fila-no-results)', '#paginadorPrincipal', paginaActualPrincipal, limiteFilasPrincipal, (p) => { paginaActualPrincipal = p; });
-    }
-    if (document.getElementById('tablaCatalogo')) {
-        ejecutarPaginacionTabla('#tablaCatalogo tbody tr:not(.fila-no-results)', '#paginadorCatalogo', paginaActualCatalogo, limiteFilasCatalogo, (p) => { paginaActualCatalogo = p; });
-    }
+    sincronizarFiltrosYPaginas();
 
-    // 🛡️ ESCUDO DE VALIDACIÓN: Crear Nuevo Insumo
+    // Validador nativo
     const formNuevoInsumo = document.getElementById('formNuevoInsumo');
     if (formNuevoInsumo) {
-        // Forzamos límites nativos en el HTML del input de stock mínimo nuevo
         const inputMinimoNuevo = formNuevoInsumo.querySelector('input[name="stockMinimo"]');
         if (inputMinimoNuevo) {
             inputMinimoNuevo.min = "0";
             inputMinimoNuevo.type = "number";
-            inputMinimoNuevo.step = "0.01";
         }
-
         formNuevoInsumo.addEventListener('submit', (e) => {
-            // Buscamos los inputs por sus atributos name o clases dentro del form
             const inputNombre = formNuevoInsumo.querySelector('input[name="nombre"]')?.value.trim();
             const valMinimo = parseFloat(inputMinimoNuevo?.value);
-
-            // 1. Validar nombre limpio (solo letras y espacios)
             const regexLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$/;
             if (!inputNombre || !regexLetras.test(inputNombre)) {
                 e.preventDefault();
-                AppUtils.showNotification('El nombre del insumo es obligatorio y solo puede contener letras.', 'error');
+                AppUtils.showNotification('El nombre solo debe contener letras.', 'error');
                 return false;
             }
-
-            // 2. Validar que el stock mínimo no sea negativo
-            if (isNaN(valMinimo) || valMinimo < 0) {
+            if (valMinimo < 0) {
                 e.preventDefault();
-                AppUtils.showNotification('El stock mínimo no puede ser un número negativo.', 'error');
+                AppUtils.showNotification('El stock mínimo no puede ser negativo.', 'error');
                 return false;
             }
-
             AppUtils.showLoading(true);
         });
     }
 
-    // Restricciones lógicas al crear nuevos insumos (Selector de unidades)
-    const selectCategoria = document.getElementById('selectCategoria');
-    const selectUnidad    = document.getElementById('selectUnidad');
+    // =========================================================================
+        // 🚀 DELEGACIÓN DE EVENTOS PARA ESCUCHAR CLICS EN CARTAS DE RECETAS (LA JAMA 2026)
+        // =========================================================================
+        document.body.addEventListener('click', (e) => {
+            // Buscamos si el clic ocurrió dentro o sobre el botón de ver receta
+            const botonReceta = e.target.closest('.btn-ver-receta');
 
-    if (selectCategoria && selectUnidad) {
-        selectCategoria.addEventListener('change', function () {
-            const categoria = this.value;
-            Array.from(selectUnidad.options).forEach(opt => opt.disabled = false);
-            if (categoria === 'PROTEINA') {
-                selectUnidad.value = 'Kg';
-                Array.from(selectUnidad.options).forEach(opt => {
-                    if (opt.value !== '' && opt.value !== 'Kg' && opt.value !== 'Gr') {
-                        opt.disabled = true;
-                    }
-                });
-            } else {
-                selectUnidad.value = '';
-            }
-        });
-    }
-
-    // Validación al armar recetas
-    const formAsignar = document.getElementById('formAsignar');
-    if (formAsignar) {
-        formAsignar.addEventListener('submit', (e) => {
-            const selectPlato = document.getElementById('selectProducto')?.value;
-            if (!selectPlato) {
+            if (botonReceta) {
                 e.preventDefault();
-                AppUtils.showNotification('Debe seleccionar un plato base para la receta', 'error');
-            } else {
-                AppUtils.showLoading(true);
+                const idProducto = botonReceta.getAttribute('data-id');
+                const nombreProducto = botonReceta.getAttribute('data-nombre');
+
+                // Verificamos si el script de recetas ya expuso la función en la ventana global
+                if (typeof window.cargarDetalleReceta === 'function') {
+                    window.cargarDetalleReceta(idProducto, nombreProducto);
+                } else {
+                    console.error("⚠️ Error: 'cargarDetalleReceta' no está disponible en el alcance global.");
+                    AppUtils.showNotification('Error interno al abrir la receta. Intente recargar.', 'error');
+                }
             }
         });
-    }
 
-    // Delegación de eventos para recetarios
-    document.body.addEventListener('click', function (e) {
-        if (e.target.closest('.btn-ver-receta')) {
-            const btn = e.target.closest('.btn-ver-receta');
-            cargarDetalleReceta(btn.dataset.id, btn.dataset.nombre);
-        }
-    });
-
-    // Listener del select de lote en producción
-    const selectLote = document.getElementById('prodSelectLote');
-    if (selectLote) {
-        selectLote.addEventListener('change', actualizarPorcionesEsperadas);
-    }
-
-    // Buscador rápido interno de ingredientes (Matriz de Recetas)
-    const buscadorMatriz = document.getElementById('buscarInsumoMatriz');
-    if (buscadorMatriz) {
-        buscadorMatriz.addEventListener('keyup', function() {
-            const textoBusqueda = this.value.toLowerCase().trim();
-            document.querySelectorAll('.recipe-matrix-item').forEach(fila => {
-                const label = fila.querySelector('label');
-                if (label) {
-                    const nombreInsumo = label.textContent.toLowerCase();
-                    fila.style.display = nombreInsumo.includes(textoBusqueda) ? '' : 'none';
-                }
-            });
-        });
-    }
 });
 
 // ─── LÓGICA DE FILTRADO Y PAGINACIÓN INTEGRADA ───────────────────────
-
 function filtrarTablaPrincipal() {
     const buscador = document.getElementById('buscadorPrincipal');
     if (!buscador) return;
-
     const textoBuscado = buscador.value.toLowerCase().trim();
     const filas = document.querySelectorAll('#cuerpoTablaPrincipal tr:not(.fila-no-results)');
     let contadorVisibles = 0;
 
     filas.forEach(fila => {
-        const primeraCelda = fila.querySelector('td:first-child');
-        if (primeraCelda) {
-            const nombre = primeraCelda.textContent.toLowerCase();
-            if (nombre.includes(textoBuscado)) {
-                fila.removeAttribute('data-filtro-oculto');
-                contadorVisibles++;
-            } else {
-                fila.setAttribute('data-filtro-oculto', 'true');
-                fila.style.display = 'none';
-            }
+        const tdInsumo = fila.querySelector('td:first-child');
+        if (tdInsumo && tdInsumo.textContent.toLowerCase().includes(textoBuscado)) {
+            fila.removeAttribute('data-filtro-oculto');
+            contadorVisibles++;
+        } else {
+            fila.setAttribute('data-filtro-oculto', 'true');
+            fila.style.display = 'none';
         }
     });
-
     manejadorMensajeNoResultados('#cuerpoTablaPrincipal', contadorVisibles, 4);
     ejecutarPaginacionTabla('#cuerpoTablaPrincipal tr:not(.fila-no-results)', '#paginadorPrincipal', paginaActualPrincipal, limiteFilasPrincipal, (p) => { paginaActualPrincipal = p; });
 }
@@ -245,7 +166,6 @@ function filtrarTablaPrincipal() {
 function filtrarCatalogo() {
     const buscador = document.getElementById('buscadorInsumos');
     if (!buscador) return;
-
     const input = buscador.value.toLowerCase().trim();
     const filas = document.querySelectorAll('#tablaCatalogo tbody tr:not(.fila-no-results)');
     let contadorVisibles = 0;
@@ -253,12 +173,9 @@ function filtrarCatalogo() {
     filas.forEach(fila => {
         const celdaNombre = fila.querySelector('td:nth-child(1)');
         const celdaCategoria = fila.querySelector('td:nth-child(2)');
-
         if (celdaNombre) {
-            const nombre = celdaNombre.textContent.toLowerCase();
-            const categoria = celdaCategoria ? celdaCategoria.textContent.toLowerCase() : '';
-
-            if (nombre.includes(input) || categoria.includes(input)) {
+            const match = celdaNombre.textContent.toLowerCase().includes(input) || (celdaCategoria && celdaCategoria.textContent.toLowerCase().includes(input));
+            if (match) {
                 fila.removeAttribute('data-filtro-oculto');
                 contadorVisibles++;
             } else {
@@ -267,27 +184,18 @@ function filtrarCatalogo() {
             }
         }
     });
-
     manejadorMensajeNoResultados('#tablaCatalogo tbody', contadorVisibles, 5);
     ejecutarPaginacionTabla('#tablaCatalogo tbody tr:not(.fila-no-results)', '#paginadorCatalogo', paginaActualCatalogo, limiteFilasCatalogo, (p) => { paginaActualCatalogo = p; });
 }
 
 function cambiarLimiteFilasPrincipal() {
     const selector = document.getElementById('registrosPorPaginaPrincipal');
-    if (selector) {
-        limiteFilasPrincipal = parseInt(selector.value);
-        paginaActualPrincipal = 1;
-        filtrarTablaPrincipal();
-    }
+    if (selector) { limiteFilasPrincipal = parseInt(selector.value); paginaActualPrincipal = 1; filtrarTablaPrincipal(); }
 }
 
 function cambiarLimiteFilasCatalogo() {
     const selector = document.getElementById('registrosPorPaginaCatalogo');
-    if (selector) {
-        limiteFilasCatalogo = parseInt(selector.value);
-        paginaActualCatalogo = 1;
-        filtrarCatalogo();
-    }
+    if (selector) { limiteFilasCatalogo = parseInt(selector.value); paginaActualCatalogo = 1; filtrarCatalogo(); }
 }
 
 function ejecutarPaginacionTabla(selectorFilas, selectorPaginador, paginaActual, limiteFilas, callbackPagina) {
@@ -300,40 +208,26 @@ function ejecutarPaginacionTabla(selectorFilas, selectorPaginador, paginaActual,
     const totalPaginas = Math.max(1, Math.ceil(totalFilas / limiteFilas));
 
     if (paginaActual > totalPaginas) paginaActual = 1;
-    if (totalPaginas === 0) paginaActual = 1;
     callbackPagina(paginaActual);
 
     const inicio = (paginaActual - 1) * limiteFilas;
     const fin = inicio + limiteFilas;
 
-    filasFiltradas.forEach((fila, indice) => {
-        if (indice >= inicio && indice < fin) {
-            fila.style.display = '';
-        } else {
-            fila.style.display = 'none';
-        }
+    filasFiltradas.forEach((fila, idx) => {
+        fila.style.display = (idx >= inicio && idx < fin) ? '' : 'none';
     });
 
     const infoId = selectorPaginador === '#paginadorPrincipal' ? 'infoRegistrosPrincipal' : 'infoRegistrosCatalogo';
     const infoContenedor = document.getElementById(infoId);
     if (infoContenedor) {
-        if (totalFilas === 0) {
-            infoContenedor.textContent = "Mostrando registros del 0 al 0 de un total de 0 registros";
-        } else {
-            const registroInicio = inicio + 1;
-            const registroFin = Math.min(fin, totalFilas);
-            infoContenedor.textContent = `Mostrando registros del ${registroInicio} al ${registroFin} de un total de ${totalFilas} registros`;
-        }
+        infoContenedor.textContent = totalFilas === 0 ? "Mostrando registros del 0 al 0 de un total de 0 registros" : `Mostrando registros del ${inicio + 1} al ${Math.min(fin, totalFilas)} de un total de ${totalFilas} registros`;
     }
 
     paginador.innerHTML = '';
-
     const btnAnt = document.createElement('li');
     btnAnt.className = `page-item-jama ${paginaActual === 1 ? 'disabled' : ''}`;
     btnAnt.innerHTML = `<button class="page-link-jama">ANTERIOR</button>`;
-    if (paginaActual > 1) {
-        btnAnt.onclick = () => { callbackPagina(paginaActual - 1); sincronizarFiltrosYPaginas(); };
-    }
+    if (paginaActual > 1) btnAnt.onclick = () => { callbackPagina(paginaActual - 1); sincronizarFiltrosYPaginas(); };
     paginador.appendChild(btnAnt);
 
     for (let i = 1; i <= totalPaginas; i++) {
@@ -347,109 +241,17 @@ function ejecutarPaginacionTabla(selectorFilas, selectorPaginador, paginaActual,
     const btnSig = document.createElement('li');
     btnSig.className = `page-item-jama ${paginaActual === totalPaginas ? 'disabled' : ''}`;
     btnSig.innerHTML = `<button class="page-link-jama">SIGUIENTE</button>`;
-    if (paginaActual < totalPaginas) {
-        btnSig.onclick = () => { callbackPagina(paginaActual + 1); sincronizarFiltrosYPaginas(); };
-    }
+    if (paginaActual < totalPaginas) btnSig.onclick = () => { callbackPagina(paginaActual + 1); sincronizarFiltrosYPaginas(); };
     paginador.appendChild(btnSig);
 }
 
 function sincronizarFiltrosYPaginas() {
-    if (document.getElementById('cuerpoTablaPrincipal')) {
-        ejecutarPaginacionTabla('#cuerpoTablaPrincipal tr:not(.fila-no-results)', '#paginadorPrincipal', paginaActualPrincipal, limiteFilasPrincipal, (p) => { paginaActualPrincipal = p; });
-    }
-    if (document.getElementById('tablaCatalogo')) {
-        ejecutarPaginacionTabla('#tablaCatalogo tbody tr:not(.fila-no-results)', '#paginadorCatalogo', paginaActualCatalogo, limiteFilasCatalogo, (p) => { paginaActualCatalogo = p; });
-    }
+    if (document.getElementById('cuerpoTablaPrincipal')) filtrarTablaPrincipal();
+    if (document.getElementById('tablaCatalogo')) filtrarCatalogo();
 }
 
-function manejadorMensajeNoResultados(idContenedor, itemsVisibles, totalColumnas) {
-    const contenedor = document.querySelector(idContenedor);
-    if (!contenedor) return;
-
-    let filaMensaje = contenedor.querySelector('.fila-no-results');
-
-    if (itemsVisibles === 0) {
-        if (!filaMensaje) {
-            filaMensaje = document.createElement('tr');
-            filaMensaje.className = 'fila-no-results animate__animated animate__fadeIn';
-            filaMensaje.innerHTML = `
-                <td colspan="${totalColumnas}" class="text-center py-5 text-muted bg-light-jama">
-                    <div class="d-flex flex-column align-items-center justify-content-center gap-2">
-                        <i class="bi bi-folder-x fs-2" style="color: var(--lajama-skin);"></i>
-                        <span class="fw-semibold small" style="color: var(--lajama-green);">No se encontraron insumos que coincidan con la búsqueda</span>
-                    </div>
-                </td>`;
-            contenedor.appendChild(filaMensaje);
-        }
-    } else {
-        if (filaMensaje) filaMensaje.remove();
-    }
-}
-
-function abrirModalNuevoInsumo() {
-    if (modalNuevoInsumoInstance) {
-        AppUtils.clearForm('#formNuevoInsumo');
-        modalNuevoInsumoInstance.show();
-    }
-}
-
-function confirmarEliminacion(id) {
-    Swal.fire({
-        title: '<span style="color: var(--lajama-green); font-weight: 800;">¿Estás seguro de eliminar este insumo?</span>',
-        html: `<div class="text-start small p-2 rounded" style="background-color: var(--lajama-cream); border: 1px dashed rgba(27,58,44,0.15); font-family: system-ui, sans-serif;">
-                <p class="mb-2">⚠️ <strong>Impacto en Recetas:</strong> Se desvinculará automáticamente de todas las fórmulas de platos donde esté asignado actualmente.</p>
-                <p class="mb-0">📊 <strong>Impacto en Almacén:</strong> El insumo desaparecerá de las listas operativas, pero su historial (Kardex) quedará archivado de forma segura.</p>
-               </div>`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Sí, archivar e inactivar',
-        cancelButtonText: 'Cancelar',
-        reverseButtons: true
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            try {
-                AppUtils.showLoading(true);
-                const res = await fetch(`/insumos/eliminar/${id}`, { method: 'POST' });
-                AppUtils.showLoading(false);
-
-                if (res.ok) {
-                    AppUtils.showNotification('Insumo archivado y recetas purgadas con éxito', 'success');
-
-                    const dogTacho = document.querySelector(`#tablaCatalogo button.btn-action-delete[data-id="${id}"]`);
-                    const filaCatalogo = dogTacho ? dogTacho.closest('tr') : null;
-                    if (filaCatalogo) {
-                        filaCatalogo.classList.add('animate__animated', 'animate__fadeOutLeft');
-                        setTimeout(() => filaCatalogo.remove(), 400);
-                    }
-
-                    const botonPorciones = document.querySelector(`#cuerpoTablaPrincipal button[data-id="${id}"]`);
-                    const filaPorciones = botonPorciones ? botonPorciones.closest('tr') : null;
-                    if (filaPorciones) {
-                        filaPorciones.classList.add('animate__animated', 'animate__fadeOutLeft');
-                        setTimeout(() => filaPorciones.remove(), 400);
-                    }
-
-                    setTimeout(() => {
-                        filtrarCatalogo();
-                        filtrarTablaPrincipal();
-                    }, 450);
-
-                } else {
-                    const errText = await res.text();
-                    AppUtils.showNotification('No se pudo procesar la baja: ' + errText, 'error');
-                }
-            } catch (error) {
-                AppUtils.showLoading(false);
-                AppUtils.showNotification('Fallo de comunicación con el servidor', 'error');
-            }
-        }
-    });
-}
-
+// ─── MANEJADORES DE APERTURA DE MODALES DESDE EL HTML ────────────────
 function manejadorModalLote(btn) { abrirModalLote(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria')); }
-// ... (Los demás manejadores conservan su firma estructural limpia)
 function manejadorModalProduccion(btn) { abrirModalProduccion(btn.getAttribute('data-id'), btn.getAttribute('data-nombre')); }
 function manejadorModalAjuste(btn) { abrirModalAjuste(btn.getAttribute('data-id'), btn.getAttribute('data-nombre')); }
 function manejadorModalKardex(btn) { abrirKardexPorciones(btn.getAttribute('data-id'), btn.getAttribute('data-nombre'), btn.getAttribute('data-categoria')); }
@@ -463,24 +265,26 @@ function manejadorModalEditar(btn) {
     );
 }
 
+function abrirModalNuevoInsumo() {
+    if (modalNuevoInsumoInstance) {
+        AppUtils.clearForm('#formNuevoInsumo');
+        modalNuevoInsumoInstance.show();
+    }
+}
+
 function prepararEdicionInsumo(id, nombre, categoria, unidadMedida, stockMinimo) {
-    // Inyección de textos planos en el formulario del modal de edición
     document.getElementById('editInsumoId').value = id;
-    ddocument.getElementById('editInsumoNombre').value = nombre ? nombre.trim() : "";
+    document.getElementById('editInsumoNombre').value = nombre ? nombre.trim() : "";
     document.getElementById('editInsumoUnidad').value = unidadMedida;
     document.getElementById('editInsumoStockMinimo').value = stockMinimo;
 
-    // CONTROL DE INYECCIÓN DE CATEGORÍA
     const selectCategoria = document.getElementById('editarCategoria');
     if (selectCategoria && categoria) {
         selectCategoria.value = categoria.toUpperCase().trim();
     }
 
-    // 🛡️ ESCUDO DETECTOR PARA EL FORMULARIO DE EDICIÓN DEL CATÁLOGO
-    // Buscamos el formulario dentro del modal de edición (por id o tag)
     const formEditar = document.getElementById('formEditarInsumo') || document.querySelector('#modalEditarInsumo form');
     if (formEditar) {
-        // Aseguramos que el input numérico de la edición tampoco acepte negativos de forma nativa
         const inputMinimoEdit = formEditar.querySelector('input[name="stockMinimo"]') || document.getElementById('editInsumoStockMinimo');
         if (inputMinimoEdit) {
             inputMinimoEdit.min = "0";
@@ -491,17 +295,15 @@ function prepararEdicionInsumo(id, nombre, categoria, unidadMedida, stockMinimo)
             const nombreVal = document.getElementById('editInsumoNombre').value.trim();
             const minimoVal = parseFloat(inputMinimoEdit?.value);
 
-            // 1. Validar que el nombre no contenga números, símbolos o emojis antes de viajar al backend
             const regexLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$/;
             if (!nombreVal || !regexLetras.test(nombreVal)) {
-                e.preventDefault(); // 🛑 Detiene el envío de inmediato
-                AppUtils.showNotification('No se pudo guardar: El nombre del insumo solo puede contener letras (sin números ni emojis).', 'error');
+                e.preventDefault();
+                AppUtils.showNotification('No se pudo guardar: El nombre del insumo solo puede contener letras.', 'error');
                 return false;
             }
 
-            // 2. Validar que el stock mínimo no sea negativo
             if (isNaN(minimoVal) || minimoVal < 0) {
-                e.preventDefault(); // 🛑 Detiene el envío de inmediato
+                e.preventDefault();
                 AppUtils.showNotification('No se pudo guardar: El stock mínimo no puede ser un número negativo.', 'error');
                 return false;
             }
@@ -511,10 +313,182 @@ function prepararEdicionInsumo(id, nombre, categoria, unidadMedida, stockMinimo)
         };
     }
 
-    // Desplegamos el modal correspondiente cargado en las variables de entorno de La Jama
     if (modalEditarInsumoInstance) {
         modalEditarInsumoInstance.show();
     }
+}
+
+function manejadorMensajeNoResultados(idContenedor, itemsVisibles, totalColumnas) {
+    const contenedor = document.querySelector(idContenedor);
+    if (!contenedor) return;
+    let filaMensaje = contenedor.querySelector('.fila-no-results');
+    if (itemsVisibles === 0) {
+        if (!filaMensaje) {
+            filaMensaje = document.createElement('tr');
+            filaMensaje.className = 'fila-no-results animate__animated animate__fadeIn';
+            filaMensaje.innerHTML = `<td colspan="${totalColumnas}" class="text-center py-5 text-muted bg-light-jama"><span class="fw-semibold small">No se encontraron insumos</span></td>`;
+            contenedor.appendChild(filaMensaje);
+        }
+    } else if (filaMensaje) {
+        filaMensaje.remove();
+    }
+}
+
+function confirmarEliminacion(id) {
+    Swal.fire({
+        title: '<span style="color: var(--lajama-green); font-weight: 800;">¿Estás seguro de inactivar este insumo?</span>',
+        html: `<div class="text-start small p-2 rounded" style="background-color: var(--lajama-cream); border: 1px dashed rgba(27,58,44,0.15);">
+                <p class="mb-2">⚠️ <strong>Impacto en Recetas:</strong> Se desvinculará de las fórmulas de platos.</p>
+                <p class="mb-0">📊 <strong>Impacto en Almacén:</strong> Cambiará a estado INACTIVO en producción y pasará al panel de respaldos.</p>
+               </div>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, archivar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                AppUtils.showLoading(true);
+                const res = await fetch(`/insumos/eliminar/${id}`, { method: 'POST' });
+                AppUtils.showLoading(false);
+
+                if (res.ok) {
+                    AppUtils.showNotification('Insumo archivado correctamente', 'success');
+
+// 1. MUTACIÓN EN TABLA CATÁLOGO (Pasar a modo Inactivo en caliente)
+                    const botonDelete = document.querySelector(`#tablaCatalogo button.btn-action-delete[data-id="${id}"]`);
+                    let nombreInsumo = "Insumo", categoriaInsumo = "GENERAL", unidadMedida = "Kg", stockMinimo = "0";
+                    let tienePermisoPurga = false;
+
+                    if (botonDelete) {
+                        const fila = botonDelete.closest('tr');
+
+                        // 🛡️ Detección híbrida corregida y encapsulada estrictamente dentro del contenedor histórico
+                        const esSuperAdminPorInput = (document.getElementById('sessionRolHidden')?.value === 'SUPER_ADMIN');
+                        const tablaArchivados = document.getElementById('tablaArchivados');
+                        const tieneTachoRojoInstanciado = tablaArchivados ? !!tablaArchivados.querySelector('button.btn-danger, button[onclick*="confirmarPurgaDefinitiva"]') : false;
+
+                        if (esSuperAdminPorInput || tieneTachoRojoInstanciado) {
+                            tienePermisoPurga = true;
+                        }
+
+                        const celdaNombre = fila.querySelector('td:nth-child(1) span:first-child');
+                        celdaNombre.classList.add('text-muted', 'text-decoration-line-through');
+
+                        if (!fila.querySelector('td:nth-child(1) .bg-danger')) {
+                            const badgeInactivo = document.createElement('span');
+                            badgeInactivo.className = 'badge bg-danger ms-2';
+                            badgeInactivo.style.fontSize = '0.65rem';
+                            badgeInactivo.textContent = 'INACTIVO';
+                            fila.querySelector('td:nth-child(1)').appendChild(badgeInactivo);
+                        }
+
+                        nombreInsumo = celdaNombre.textContent.trim();
+                        categoriaInsumo = fila.querySelector('td:nth-child(2)')?.textContent.trim() || 'GENERAL';
+                        unidadMedida = fila.querySelector('td:nth-child(3)')?.textContent.trim() || 'Kg';
+                        stockMinimo = fila.querySelector('td:nth-child(4)')?.textContent.trim() || '0';
+
+                        if (fila.querySelector('.btn-action-edit')) {
+                            fila.querySelector('.btn-action-edit').disabled = true;
+                        }
+
+                        const wrapper = botonDelete.parentElement;
+                        wrapper.innerHTML = `
+                            <button type="button" class="btn btn-sm btn-action-status is-active rounded-pill"
+                                    data-id="${id}" data-nombre="${nombreInsumo}"
+                                    onclick="window.confirmarRestauracion(this.getAttribute('data-id'), this.getAttribute('data-nombre'))"
+                                    title="Reactivar Insumo">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                        `;
+                    }
+
+// 2. MUTACIÓN EN TABLA PORCIONES/PROTEÍNAS (CORREGIDO)
+                    const botonesVivos = document.querySelectorAll(`#cuerpoTablaPrincipal button[data-id="${id}"]`);
+                    let stockActualStr = "0";
+
+                    botonesVivos.forEach(btn => {
+                        const filaP = btn.closest('tr');
+
+                        // Buscamos el texto del nombre del insumo en la primera celda
+                        const spanTxt = filaP.querySelector('td:first-child span:first-child');
+                        if (spanTxt) {
+                            spanTxt.classList.remove('text-dark', 'text-secondary');
+                            spanTxt.classList.add('text-muted', 'text-decoration-line-through');
+                        }
+
+                        // Inyectamos el badge rojo de INACTIVO al lado del nombre si no existe ya
+                        if (!filaP.querySelector('td:first-child .bg-danger')) {
+                            const bInactivo = document.createElement('span');
+                            bInactivo.className = 'badge bg-danger ms-1';
+                            bInactivo.style.fontSize = '0.65rem';
+                            bInactivo.textContent = 'INACTIVO';
+                            filaP.querySelector('td:first-child').appendChild(bInactivo);
+                        }
+
+                        // Capturamos el valor real del stock actual para clonarlo en la vista de archivados
+                        const badgeStock = filaP.querySelector('.badge-stock-dinamico') || filaP.querySelector('td:nth-child(2) span:first-child');
+                        if (badgeStock) {
+                            stockActualStr = badgeStock.textContent.trim();
+                        }
+
+                        // Apagamos físicamente todos los botones operativos (Lote, Cocina, Ajuste) excepto el historial del Kardex
+                        filaP.querySelectorAll('button:not([onclick*="manejadorModalKardex"])').forEach(b => {
+                            b.disabled = true;
+                        });
+                    });
+
+                    // 3. INYECTAR EN LA PESTAÑA DE ARCHIVADOS AUTOMÁTICAMENTE
+                    const tablaArchivadosCuerpo = document.querySelector('#tablaArchivados tbody');
+                    if (tablaArchivadosCuerpo) {
+                        let botoneraRespaldo = `
+                            <button type="button" class="btn btn-sm btn-action-status is-active border rounded-pill px-3"
+                                    data-id="${id}" data-nombre="${nombreInsumo}"
+                                    onclick="window.confirmarRestauracion(this.getAttribute('data-id'), this.getAttribute('data-nombre'))"><i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar</button>
+                        `;
+
+                        // 💣 Inyecta la purga asíncronamente en el acto si se verificó el rol superior
+                        if (tienePermisoPurga) {
+                            botoneraRespaldo += `
+                                <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 ms-2"
+                                        data-id="${id}" data-nombre="${nombreInsumo}"
+                                        onclick="window.confirmarPurgaDefinitiva(this.getAttribute('data-id'), this.getAttribute('data-nombre'))" style="font-size: 0.75rem; font-weight: bold;"><i class="bi bi-trash3-fill me-1"></i> Purgar</button>
+                            `;
+                        }
+
+                        const nuevaFilaArchivos = document.createElement('tr');
+                        nuevaFilaArchivos.setAttribute('data-archivado-id', id);
+                        nuevaFilaArchivos.className = 'animate__animated animate__fadeIn';
+                        nuevaFilaArchivos.innerHTML = `
+                            <td class="ps-4 fw-semibold text-muted text-decoration-line-through">${nombreInsumo}</td>
+                            <td><span class="badge bg-light text-secondary border px-2 py-1 rounded-pill small">${categoriaInsumo}</span></td>
+                            <td class="fw-bold text-secondary">${stockActualStr}</td>
+                            <td class="text-muted">${unidadMedida}</td>
+                            <td class="text-center pe-4" style="width: 1%; white-space: nowrap;"><div class="d-flex align-items-center justify-content-center">${botoneraRespaldo}</div></td>
+                        `;
+                        const fNoRes = tablaArchivadosCuerpo.querySelector('.fila-no-results');
+                        if (fNoRes) fNoRes.remove();
+
+                        tablaArchivadosCuerpo.appendChild(nuevaFilaArchivos);
+                    }
+
+                    setTimeout(() => {
+                        sincronizarFiltrosYPaginas();
+                        if (typeof window.filtrarTablaArchivados === "function") window.filtrarTablaArchivados();
+                    }, 100);
+
+                } else {
+                    AppUtils.showNotification('No se pudo procesar el archivado', 'error');
+                }
+            } catch (error) {
+                AppUtils.showLoading(false);
+                AppUtils.showNotification('Error de conexión', 'error');
+            }
+        }
+    });
 }
 
 function cambiarPestañaAsincrona(pestañaDestino) {
@@ -522,19 +496,16 @@ function cambiarPestañaAsincrona(pestañaDestino) {
     document.getElementById('pane-catalogo')?.classList.add('d-none');
     document.getElementById('pane-recetas')?.classList.add('d-none');
     document.getElementById('pane-crear-receta')?.classList.add('d-none');
+    document.getElementById('pane-archivados')?.classList.add('d-none');
 
-    if (pestañaDestino === 'proteinas') {
-        document.getElementById('pane-proteinas')?.classList.remove('d-none');
-        document.getElementById('radio-btn-proteinas').checked = true;
-    } else if (pestañaDestino === 'catalogo') {
-        document.getElementById('pane-catalogo')?.classList.remove('d-none');
-        document.getElementById('radio-btn-catalogo').checked = true;
-    } else if (pestañaDestino === 'recetas') {
-        document.getElementById('pane-recetas')?.classList.remove('d-none');
-        document.getElementById('radio-btn-recetas').checked = true;
-    } else if (pestañaDestino === 'crear-receta') {
-        document.getElementById('pane-crear-receta')?.classList.remove('d-none');
-        document.getElementById('radio-btn-crear-receta').checked = true;
+    if (pestañaDestino === 'proteinas') { document.getElementById('pane-proteinas')?.classList.remove('d-none'); document.getElementById('radio-btn-proteinas').checked = true; }
+    else if (pestañaDestino === 'catalogo') { document.getElementById('pane-catalogo')?.classList.remove('d-none'); document.getElementById('radio-btn-catalogo').checked = true; }
+    else if (pestañaDestino === 'recetas') { document.getElementById('pane-recetas')?.classList.remove('d-none'); document.getElementById('radio-btn-recetas').checked = true; }
+    else if (pestañaDestino === 'crear-receta') { document.getElementById('pane-crear-receta')?.classList.remove('d-none'); document.getElementById('radio-btn-crear-receta').checked = true; }
+    else if (pestañaDestino === 'archivados') {
+        document.getElementById('pane-archivados')?.classList.remove('d-none');
+        document.getElementById('radio-btn-archivados').checked = true;
+        if (typeof window.filtrarTablaArchivados === "function") window.filtrarTablaArchivados();
     }
     sincronizarFiltrosYPaginas();
 }
@@ -542,22 +513,20 @@ function cambiarPestañaAsincrona(pestañaDestino) {
 function actualizarSemaforoVisualStock(celdaStock, nuevoStock, esProteina) {
     if (!celdaStock) return;
     const stockMinimo = parseFloat(celdaStock.getAttribute('data-minimo')) || 0;
-
     if (nuevoStock <= stockMinimo) {
-        if (esProteina) {
-            celdaStock.classList.remove('bg-success');
-            celdaStock.classList.add('bg-danger');
-        } else {
-            celdaStock.classList.remove('text-dark');
-            celdaStock.classList.add('text-danger');
-        }
+        if (esProteina) { celdaStock.classList.remove('bg-success'); celdaStock.classList.add('bg-danger'); }
+        else { celdaStock.classList.remove('text-dark'); celdaStock.classList.add('text-danger'); }
     } else {
-        if (esProteina) {
-            celdaStock.classList.remove('bg-danger');
-            celdaStock.classList.add('bg-success');
-        } else {
-            celdaStock.classList.remove('text-danger');
-            celdaStock.classList.add('text-dark');
-        }
+        if (esProteina) { celdaStock.classList.remove('bg-danger'); celdaStock.classList.add('bg-success'); }
+        else { celdaStock.classList.remove('text-danger'); celdaStock.classList.add('text-dark'); }
     }
 }
+
+// ─── EXPORTACIÓN GLOBAL DE MANEJADORES PARA EL HTML (LA JAMA 2026) ───
+window.manejadorModalLote        = manejadorModalLote;
+window.manejadorModalProduccion  = manejadorModalProduccion;
+window.manejadorModalAjuste      = manejadorModalAjuste;
+window.manejadorModalKardex      = manejadorModalKardex;
+window.manejadorModalEditar      = manejadorModalEditar;
+window.manejadorModalNuevoInsumo = abrirModalNuevoInsumo;
+window.confirmarEliminacion      = confirmarEliminacion;

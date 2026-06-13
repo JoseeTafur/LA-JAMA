@@ -95,10 +95,10 @@
                                     <button th:if="${!d.canceladoPorCliente && d.impresoEnCocina}"
                                             type="button"
                                             class="btn btn-sm btn-outline-success"
-                                            th:onclick="despacharItemCocina([[${p.id}]], [[${d.id}]], '[[${d.producto.nombre}]]')"
+                                            th:onclick="despacharItemCocina([[${p.id}]], [[${d.id}]], '[[${d.producto.nombre}]]', this)"
                                             title="Despachar este plato a barra"
                                             style="padding: 2px 8px; font-weight: bold;">
-                                        <i class="bi bi-check2-all"></i>
+                                        <i class="bi bi-check2-all"></i> Despachar
                                     </button>
 
                                     <button th:if="${!d.canceladoPorCliente && !d.impresoEnCocina}"

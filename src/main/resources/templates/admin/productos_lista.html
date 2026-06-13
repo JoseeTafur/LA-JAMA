@@ -54,8 +54,10 @@
                     <tbody>
                     <tr th:each="p : ${productos}" th:id="'prod-row-' + ${p.id}" class="producto-fila">
                         <td>
-                            <img th:src="${p.imagen != null and p.imagen != '' ? '/uploads/productos/' + p.imagen : '/img/not-found.png'}"
-                                 class="img-thumbnail rounded-3 shadow-sm" style="width: 50px; height: 50px; object-fit: cover; border: 1px solid var(--border-color);">
+                            <img th:src="${p.imagen != null and p.imagen != '' ? p.imagen : '/img/not-found.png'}"
+                                 class="img-thumbnail rounded-3 shadow-sm"
+                                 style="width: 50px; height: 50px; object-fit: cover; border: 1px solid var(--border-color);"
+                                 alt="Imagen del plato">
                         </td>
                         <td>
                             <span class="d-block fw-bold text-dark target-busqueda-nombre">[[${p.nombre}]]</span>
@@ -171,7 +173,7 @@
                                         <div class="back-side cover"></div>
                                     </div>
                                     <label class="custom-file-upload">
-                                        <input class="title" type="file" name="archivoImagen" accept="image/*" onchange="previewImage(event)" />
+                                        <input class="title" type="file" name="archivoImagen" accept="image/jpeg, image/png, image/webp" />
                                         <i class="bi bi-cloud-arrow-up-fill me-1"></i> Seleccionar Imagen
                                     </label>
                                 </div>

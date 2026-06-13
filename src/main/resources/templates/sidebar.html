@@ -10,11 +10,15 @@
         <div class="bg-cursor-glow header-bg-glow" id="sidebar-glow"></div>
         <div class="pattern-bg ripple-container header-ripple-grid" id="sidebar-ripple"></div>
 
-        <div class="text-center mb-4 px-3 pt-4 position-relative z-2">
-            <a th:href="@{/dashboard}" class="text-decoration-none d-inline-block">
-                <img th:src="@{/img/logo.png}" alt="Logo La Jama"
-                     style="width: 180px; max-width: 100%; height: auto; object-fit: contain;">
+        <div class="d-flex align-items-center justify-content-between mb-4 px-2 pt-4 position-relative z-2">
+            <a th:href="@{/dashboard}" class="text-decoration-none d-inline-block brand-logo-wrapper">
+                <img th:src="@{/img/logo.png}" alt="Logo La Jama" id="sidebar-logo"
+                     style="width: 150px; max-width: 100%; height: auto; object-fit: contain; transition: all 0.3s ease;">
             </a>
+
+            <button id="toggle-sidebar-desktop" class="btn text-white d-none d-md-inline-block p-1 border-0 bg-transparent" type="button" title="Contraer menú">
+                <i class="bi bi-list fs-4"></i>
+            </button>
 
             <button id="close-sidebar" class="btn text-white d-md-none p-0 position-absolute" style="top: 15px; right: 15px;">
                 <i class="bi bi-x-lg" style="font-size: 1.2rem;"></i>
@@ -80,10 +84,8 @@
                                        th:checked="${isGroupActive}" />
 
                                 <div class="d-flex align-items-center gap-3">
-                                    <i class="bi jama-uiverse-icon"
+                                    <i class="bi bi-folder-fill jama-uiverse-icon"
                                        th:classappend="${isGroupActive} ? 'bi-folder2-open' : 'bi-folder-fill'"></i>
-
-                                    <!-- 🌟 SOLUCIÓN VISUAL: Interceptamos lo que se dibuja en el HTML de forma interactiva -->
                                     <span class="jama-uiverse-text"
                                           th:text="${grupo.key == 'Admin' || folder == 'admin' ? 'Cajero' : grupo.key}">Grupo</span>
                                 </div>
@@ -107,15 +109,17 @@
                         </th:block>
                     </div>
                 </article>
-            </div> <label for="radio-logout" class="jama-uiverse-item btn-logout-uiverse mt-auto fallback-logout-fixed">
-            <input class="jama-radio-hidden"
-                   type="radio"
-                   name="sidebar_path"
-                   id="radio-logout"
-                   onclick="sessionStorage.removeItem('jama_sesion_activa'); window.location.href='/logout';" />
-            <i class="bi bi-box-arrow-right jama-uiverse-icon"></i>
-            <span class="jama-uiverse-text">Cerrar Sesión</span>
-        </label>
+            </div>
+
+            <label for="radio-logout" class="jama-uiverse-item btn-logout-uiverse mt-auto fallback-logout-fixed">
+                <input class="jama-radio-hidden"
+                       type="radio"
+                       name="sidebar_path"
+                       id="radio-logout"
+                       onclick="sessionStorage.removeItem('jama_sesion_activa'); window.location.href='/logout';" />
+                <i class="bi bi-box-arrow-right jama-uiverse-icon"></i>
+                <span class="jama-uiverse-text">Cerrar Sesión</span>
+            </label>
         </div>
     </nav>
 </div>

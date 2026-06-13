@@ -3,7 +3,9 @@ package com.web.restaurante.controller;
 import com.web.restaurante.model.Producto;
 import com.web.restaurante.repository.CategoriaRepository;
 import com.web.restaurante.repository.ProductoRepository;
-import com.web.restaurante.util.ValidationUtil; // 🌟 Conexión directa con constantes globales
+import com.web.restaurante.service.InsumoService;
+import com.web.restaurante.service.CloudinaryService; // 🚀 Conexión con la nube
+import com.web.restaurante.util.ValidationUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -13,12 +15,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Controller
 @RequestMapping("/admin/productos")
@@ -27,8 +25,8 @@ public class ProductoController {
 
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
-
-    private final String RUTA_IMAGENES = "C://restaurante//imagenes";
+    private final InsumoService insumoService;
+    private final CloudinaryService cloudinaryService; // 🚀 Inyectado de forma limpia
 
     @GetMapping
     public String listar(Model model) {
@@ -54,7 +52,7 @@ public class ProductoController {
     @PostMapping("/guardar")
     public String guardar(@ModelAttribute Producto producto,
                           @RequestParam("archivoImagen") MultipartFile archivo,
-                          RedirectAttributes redirectAttrs) { // 🌟 Mensajes flash integrados
+                          RedirectAttributes redirectAttrs) {
 
         // ========================================================
         // 🛡️ ADUANA DE VALIDACIONES DEL MENÚ (LA JAMA)
@@ -88,17 +86,17 @@ public class ProductoController {
         }
 
         // ========================================================
-        // 💾 ALMACENAMIENTO FÍSICO DE LA IMAGEN DEL PLATO
+        // ☁️ ALMACENAMIENTO DE IMÁGENES RE-DIRECCIONADO A CLOUDINARY
         // ========================================================
         if (!archivo.isEmpty()) {
-            // 🛡️ REGLA A: Validar Peso Máximo (Ejemplo: 2 Megabytes = 2 * 1024 * 1024 bytes)
+            // 🛡️ REGLA A: Validar Peso Máximo (2MB)
             long pesoMaximo = 2 * 1024 * 1024;
             if (archivo.getSize() > pesoMaximo) {
                 redirectAttrs.addFlashAttribute("errorProducto", "La imagen es muy pesada. El tamaño máximo permitido es de 2MB.");
                 return "redirect:/admin/productos?error";
             }
 
-            // 🛡️ REGLA B: Validar Formatos Permitidos (Content-Type original del archivo)
+            // 🛡️ REGLA B: Validar Formatos Permitidos
             String tipoArchivo = archivo.getContentType();
             if (tipoArchivo == null ||
                     (!tipoArchivo.equals("image/jpeg") &&
@@ -110,22 +108,18 @@ public class ProductoController {
             }
 
             try {
-                String nombreImagen = UUID.randomUUID().toString() + "_" + archivo.getOriginalFilename();
-                byte[] bytesImg = archivo.getBytes();
-                Path rutaCompleta = Paths.get(RUTA_IMAGENES + "//" + nombreImagen);
+                // ➔ Mandamos los bytes directo a la nube y guardamos la URL HTTP segura en la BD
+                String urlSeguraNube = cloudinaryService.subirImagen(archivo);
+                producto.setImagen(urlSeguraNube);
+                System.out.println("[La Jama - Media] Imagen subida de manera conforme a Cloudinary: " + urlSeguraNube);
 
-                if (!Files.exists(Paths.get(RUTA_IMAGENES))) {
-                    Files.createDirectories(Paths.get(RUTA_IMAGENES));
-                }
-
-                Files.write(rutaCompleta, bytesImg);
-                producto.setImagen(nombreImagen);
             } catch (IOException e) {
                 e.printStackTrace();
-                redirectAttrs.addFlashAttribute("errorProducto", "Error interno al guardar la imagen. Inténtelo de nuevo.");
+                redirectAttrs.addFlashAttribute("errorProducto", "Error al conectar con los servidores de Cloudinary. Inténtelo de nuevo.");
                 return "redirect:/admin/productos?error";
             }
         } else if (producto.getId() != null) {
+            // Si no se sube un nuevo archivo al editar, mantenemos la URL actual en la BD
             productoRepository.findById(producto.getId()).ifPresent(p -> producto.setImagen(p.getImagen()));
         }
 
@@ -147,7 +141,8 @@ public class ProductoController {
 
     @GetMapping("/eliminar/{id}")
     public String eliminar(@PathVariable Long id) {
-        productoRepository.deleteById(id);
+        // Ejecuta la cascada manual que armamos para no dejar registros huérfanos
+        insumoService.eliminarProductoYDesvincularInsumos(id);
         return "redirect:/admin/productos?deleted";
     }
 

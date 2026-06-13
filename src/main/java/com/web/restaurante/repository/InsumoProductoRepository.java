@@ -13,6 +13,8 @@ public interface InsumoProductoRepository extends JpaRepository<InsumoProducto, 
 
     List<InsumoProducto> findByProductoId(Long productoId);
 
+    @Modifying
+    @org.springframework.transaction.annotation.Transactional
     void deleteByProductoId(Long productoId);
 
     @Modifying

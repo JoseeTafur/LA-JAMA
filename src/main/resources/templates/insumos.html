@@ -11,7 +11,7 @@
 <body>
 
 <div id="contenido">
-
+    <input type="hidden" id="sessionRolHidden" th:value="${session.rol}">
     <div class="card card-color1 p-4 shadow-sm">
 
         <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
@@ -19,7 +19,7 @@
                 <h4 class="fw-bold text-dark mb-0">Control de Almacén</h4>
                 <p class="text-muted mb-0 small">Gestiona tus proteínas, insumos generales y recetarios</p>
             </div>
-            <a th:if="${session.rol == 'ADMIN'}"
+            <a th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}"
                href="#" onclick="abrirModalNuevoInsumo()"
                class="btn btn-jama-kinetic px-4">
                 <i class="bi bi-plus-circle me-2"></i> Nuevo Insumo
@@ -42,17 +42,24 @@
                 </span>
             </label>
 
-            <label th:if="${session.rol == 'ADMIN'}" class="radio-jama" onclick="cambiarPestañaAsincrona('recetas')">
+            <label th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}" class="radio-jama" onclick="cambiarPestañaAsincrona('recetas')">
                 <input type="radio" name="moduloInsumos" id="radio-btn-recetas">
                 <span class="name-jama">
                     <i class="bi bi-journal-check"></i> Recetas
                 </span>
             </label>
 
-            <label th:if="${session.rol == 'ADMIN'}" class="radio-jama" onclick="cambiarPestañaAsincrona('crear-receta')">
+            <label th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}" class="radio-jama" onclick="cambiarPestañaAsincrona('crear-receta')">
                 <input type="radio" name="moduloInsumos" id="radio-btn-crear-receta">
                 <span class="name-jama">
                     <i class="bi bi-journal-plus"></i> Crear Receta
+                </span>
+            </label>
+
+            <label th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}" class="radio-jama" onclick="cambiarPestañaAsincrona('archivados')">
+                <input type="radio" name="moduloInsumos" id="radio-btn-archivados">
+                <span class="name-jama">
+                    <i class="bi bi-archive-fill"></i> Archivados
                 </span>
             </label>
         </div>
@@ -67,21 +74,27 @@
                 <th:block th:replace="~{Insumoscatalogo :: #contenido_submodulo}"></th:block>
             </div>
 
-            <div id="pane-recetas" class="tab-pane-jama d-none" th:if="${session.rol == 'ADMIN'}">
+            <div id="pane-recetas" class="tab-pane-jama d-none" th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}">
                 <th:block th:replace="~{Insumosgestion :: #contenido_submodulo}"></th:block>
             </div>
 
-            <div id="pane-crear-receta" class="tab-pane-jama d-none" th:if="${session.rol == 'ADMIN'}">
+            <div id="pane-crear-receta" class="tab-pane-jama d-none" th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}">
                 <th:block th:replace="~{Insumosrecetas :: #contenido_submodulo}"></th:block>
+            </div>
+
+            <div id="pane-archivados" class="tab-pane-jama d-none" th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}">
+                <th:block th:replace="~{Insumosarchivados :: #contenido_submodulo}"></th:block>
             </div>
 
         </div>
 
-    </div> <script th:src="@{/js/insumos/insumos-ajuste.js}"></script>
+    </div>
+    <script th:src="@{/js/insumos/insumos-ajuste.js}"></script>
     <script th:src="@{/js/insumos/insumos-kardex.js}"></script>
     <script th:src="@{/js/insumos/insumos-lote.js}"></script>
     <script th:src="@{/js/insumos/insumos-produccion.js}"></script>
     <script th:src="@{/js/insumos/insumos-recetas.js}"></script>
+    <script th:src="@{/js/insumos/insumos-kardex-archivado.js}"></script>
 
 </div>
 

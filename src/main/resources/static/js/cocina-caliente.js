@@ -107,7 +107,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 45000);
 });
 
-function despacharItemCocina(pedidoId, detalleId, nombrePlato) {
+function despacharItemCocina(pedidoId, detalleId, nombrePlato, elementoBoton) {
+    // 🛡️ CANDADO DE SEGURIDAD EN CALIENTE: Si el botón ya está procesando, bloqueamos la ejecución
+    if (elementoBoton && (elementoBoton.disabled || elementoBoton.classList.contains('processing-jama'))) {
+        return;
+    }
+
     AppUtils.showConfirmationDialog({
         title: '¿Plato Listo?',
         text: `¿Enviar "${nombrePlato}" a la barra para que el mesero lo recoja?`,
@@ -116,9 +121,17 @@ function despacharItemCocina(pedidoId, detalleId, nombrePlato) {
         confirmButtonText: 'Sí, despachar'
     }, async function() {
         AppUtils.showLoading(true);
+
+        // 🔒 Congelamos físicamente el botón en pantalla para evitar el doble clic accidental
+        if (elementoBoton) {
+            elementoBoton.disabled = true;
+            elementoBoton.classList.add('processing-jama');
+            elementoBoton.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        }
+
         const params = new URLSearchParams();
         params.append("pedidoId", pedidoId);
-        params.append("detalleId", detalleId); // <-- Ahora mandamos el ID único de la fila
+        params.append("detalleId", detalleId);
         params.append("tipoEstacion", "caliente");
 
         try {
@@ -127,14 +140,27 @@ function despacharItemCocina(pedidoId, detalleId, nombrePlato) {
                 body: params
             });
             if (res.ok) {
-                window.location.reload();
+                // 🚀 SOLUCIÓN: Le damos un respiro al hilo del navegador para que la BD consolide el commit
+                setTimeout(() => {
+                    window.location.reload();
+                }, 300);
             } else {
+                // Si el servidor falla, liberamos el botón para que el chef pueda reintentar
+                if (elementoBoton) {
+                    elementoBoton.disabled = false;
+                    elementoBoton.classList.remove('processing-jama');
+                    elementoBoton.innerHTML = '<i class="bi bi-check-lg"></i> Despachar';
+                }
                 AppUtils.showLoading(false);
                 AppUtils.showNotification("Error al despachar el plato", "error");
             }
         } catch (error) {
+            if (elementoBoton) {
+                elementoBoton.disabled = false;
+                elementoBoton.classList.remove('processing-jama');
+            }
             AppUtils.showLoading(false);
-              console.error(error);
+            console.error("Error en la petición asíncrona de cocina:", error);
         }
     });
 }

@@ -116,7 +116,7 @@ public class PedidoService {
     }
 
     // =========================================================================
-    // 🔥 CONTROL MICROSCOPIO: DESPACHAR PLATO INDIVIDUAL EN COCINA
+    // 🔥 CONTROL MICROSCOPIO: DESPACHAR PLATO INDIVIDUAL EN COCINA (UNIFICADO)
     // =========================================================================
     @Transactional
     public void despacharPlatoIndividual(Long pedidoId, Long detalleId) {
@@ -132,29 +132,31 @@ public class PedidoService {
 
         if (!detalleTarget.isImpresoEnCocina()) {
             throw new IllegalStateException("¡Bloqueado! No puedes despachar '"
-                    + detalleTarget.getProducto().getNombre() + "' porque aún no ha sido impreso en el ticket.");
+                    + detalleTarget.getProducto().getNombre() + "' porque aún no ha sido impreso del ticket.");
         }
 
-        // EL CAMBIO ESTÁ AQUÍ: Solo ejecutamos el descuento general de la receta
         if (!detalleTarget.isCocinado()) {
             detalleTarget.setCocinado(true);
 
-            // 1. Descuenta el inventario físico (la receta)
-            insumoService.descontarInsumosPorPedido(detalleTarget.getProducto().getId(), detalleTarget.getCantidad());
+            // 🚀 RECORRIDO INTEGRAL DE LA RECETA PARA AUDITORÍA DOBLE FLUJO
+            insumoProductoRepository.findByProductoId(detalleTarget.getProducto().getId()).forEach(ip -> {
+                if (ip.getInsumo() != null && ip.getInsumo().getCategoria() != null) {
 
-            // 2. REGISTRO EN KARDEX: Buscamos si es una proteína para dejar la auditoría histórica
-            insumoProductoRepository.findByProductoId(detalleTarget.getProducto().getId()).stream()
-                    .filter(ip -> ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria()))
-                    .findFirst()
-                    .ifPresent(ip -> {
-                        // Aquí llamamos a un método que SOLO guarde el registro en el Kardex.
-                        // Si tu proteinaService.descontarPorcionesPorVenta restaba stock además de grabar,
-                        // puedes crear un método alternativo como 'registrarKardexPorVenta' que solo haga el insert en la tabla de movimientos.
+                    if (ip.getInsumo().getCategoria().toUpperCase().contains("PROTEIN")) {
+                        // 🥩 CASO PROTEÍNA: Al canal de porciones (Resta stock + Kardex Porciones)
                         proteinaService.registrarKardexPorVenta(ip.getInsumo().getId(), detalleTarget.getCantidad(), p.getId());
-                    });
+                    } else {
+                        // 🛒 CASO GENERAL: Al canal de abarrotes (Stock INTACTO + Kardex General)
+                        double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
+                        double totalTeorico = cantidadUsada * detalleTarget.getCantidad();
+                        String detalleVenta = "Despacho a cocina: " + detalleTarget.getCantidad() + "x " + detalleTarget.getProducto().getNombre();
+
+                        insumoService.registrarMovimientoPorId(ip.getInsumo().getId(), totalTeorico, "EGRESO", detalleVenta);
+                    }
+                }
+            });
         }
 
-        // LÓGICA DE SEMÁFORO GLOBAL RECALCULADA... (El resto queda exactamente igual)
         boolean tieneFrioPendiente = p.getListaDetalles().stream()
                 .anyMatch(d -> !d.isCocinado() && (d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRI")
                         || d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRÍ")));
@@ -246,6 +248,9 @@ public class PedidoService {
         }
     }
 
+    // =========================================================================
+    // 🔥 CONTROL MACROSCOPIO: COMPLETAR ESTACIÓN ENTERA (UNIFICADO)
+    // =========================================================================
     @Transactional
     public void completarEstacion(Long pedidoId, String tipoEstacion) {
         Pedido p = pedidoRepository.findById(pedidoId)
@@ -255,25 +260,30 @@ public class PedidoService {
             for (DetallePedido d : p.getListaDetalles()) {
                 if (d.getProducto() != null && d.getProducto().getCategoria() != null) {
                     String catNombre = d.getProducto().getCategoria().getNombre().toUpperCase();
-                    if ("fria".equalsIgnoreCase(tipoEstacion) && (catNombre.contains("FRI") || catNombre.contains("FRÍ"))) {
-                        d.setCocinado(true);
-                        insumoService.descontarInsumosPorPedido(d.getProducto().getId(), d.getCantidad());
 
-                        // Graba el movimiento en el Kardex de porciones
-                        insumoProductoRepository.findByProductoId(d.getProducto().getId()).stream()
-                                .filter(ip -> ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria()))
-                                .findFirst()
-                                .ifPresent(ip -> proteinaService.registrarKardexPorVenta(ip.getInsumo().getId(), d.getCantidad(), p.getId()));
-                    }
-                    if ("caliente".equalsIgnoreCase(tipoEstacion) && catNombre.contains("CALIENTE")) {
-                        d.setCocinado(true);
-                        insumoService.descontarInsumosPorPedido(d.getProducto().getId(), d.getCantidad());
+                    boolean esFriaCorrespondiente = "fria".equalsIgnoreCase(tipoEstacion) && (catNombre.contains("FRI") || catNombre.contains("FRÍ"));
+                    boolean esCalienteCorrespondiente = "caliente".equalsIgnoreCase(tipoEstacion) && catNombre.contains("CALIENTE");
 
-                        // Graba el movimiento en el Kardex de porciones
-                        insumoProductoRepository.findByProductoId(d.getProducto().getId()).stream()
-                                .filter(ip -> ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria()))
-                                .findFirst()
-                                .ifPresent(ip -> proteinaService.registrarKardexPorVenta(ip.getInsumo().getId(), d.getCantidad(), p.getId()));
+                    if ((esFriaCorrespondiente || esCalienteCorrespondiente) && !d.isCocinado()) {
+                        d.setCocinado(true);
+
+                        // 🚀 RECORRIDO INTEGRAL PARA EL DESPACHO MASIVO DE LA ESTACIÓN
+                        insumoProductoRepository.findByProductoId(d.getProducto().getId()).forEach(ip -> {
+                            if (ip.getInsumo() != null && ip.getInsumo().getCategoria() != null) {
+
+                                if (ip.getInsumo().getCategoria().toUpperCase().contains("PROTEIN")) {
+                                    // 🥩 CASO PROTEÍNA
+                                    proteinaService.registrarKardexPorVenta(ip.getInsumo().getId(), d.getCantidad(), p.getId());
+                                } else {
+                                    // 🛒 CASO GENERAL (Arroz/Verduras)
+                                    double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
+                                    double totalTeorico = cantidadUsada * d.getCantidad();
+                                    String detalleVenta = "Despacho a cocina: " + d.getCantidad() + "x " + d.getProducto().getNombre();
+
+                                    insumoService.registrarMovimientoPorId(ip.getInsumo().getId(), totalTeorico, "EGRESO", detalleVenta);
+                                }
+                            }
+                        });
                     }
                 }
             }

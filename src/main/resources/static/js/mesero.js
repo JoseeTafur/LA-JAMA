@@ -15,53 +15,71 @@ async function abrirModalInsumos(elemento) {
     const nombre = elemento.getAttribute('data-nombre');
     const precio = parseFloat(elemento.getAttribute('data-precio'));
 
+    // Guardamos el estado temporal del plato por si pasa la aduana
     productoTemporal = { id, nombre, precio };
 
+    // ─── 🛡️ ADUANA RECTIFICADORA: CONTROL DE PLATOS SIN RECETA ───
+    try {
+        // Bloqueamos la UI un milisegundo para la consulta ligera
+        document.body.style.cursor = 'wait';
+
+        const res = await fetch('/insumos/producto/' + id);
+        insumosProductoActual = await res.json();
+
+        document.body.style.cursor = 'default';
+
+        // 🔥 REG DE NEGOCIO: Si el array viene vacío, el plato está "Húfano" (Sin insumos asignados)
+        if (!insumosProductoActual || insumosProductoActual.length === 0) {
+            AppUtils.showNotification(`⚠️ El plato [${nombre}] no tiene insumos configurados en el recetario. Avisa al Administrador.`, 'error');
+            productoTemporal = null;
+            insumosProductoActual = [];
+            return; // 🛑 Frenamos en seco, no abre modal ni entra al carrito
+        }
+
+    } catch (e) {
+        document.body.style.cursor = 'default';
+        console.error("Error al validar receta del plato:", e);
+        AppUtils.showNotification('No se pudo verificar la composición del plato.', 'error');
+        return;
+    }
+    // ─────────────────────────────────────────────────────────────
+
+    // Si pasó el escudo de arriba, el flujo original continúa con total normalidad...
     document.getElementById('modalNombrePlato').innerText = nombre;
     document.getElementById('listaInsumosModal').innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>';
 
     if (bsModalInsumos) bsModalInsumos.show();
 
-    try {
-        const res = await fetch('/insumos/producto/' + id);
-        insumosProductoActual = await res.json();
+    // 🔥 PALABRAS CLAVE DE PROTEÍNAS EN LA JAMA:
+    const palabrasClaveProteina = ["PESCADO", "CARNE", "POLLO", "LOMO", "CHANCHO", "MARISCO", "RES", "PATO"];
 
-        // 🔥 PALABRAS CLAVE DE PROTEÍNAS EN LA JAMA:
-        // Agrega aquí las palabras que identifiquen a tus proteínas en el Kardex (en mayúsculas)
-        const palabrasClaveProteina = ["PESCADO", "CARNE", "POLLO", "LOMO", "CHANCHO", "MARISCO", "RES", "PATO"];
+    // Filtramos los insumos para el modal de exclusión
+    const insumosModificables = insumosProductoActual.filter(ins => {
+        if (!ins.nombreInsumo) return true;
+        const nombreInsumoUpper = ins.nombreInsumo.toUpperCase();
+        return !palabrasClaveProteina.some(palabra => nombreInsumoUpper.includes(palabra));
+    });
 
-        // Filtramos los insumos: Si el nombre contiene alguna de las palabras clave, se oculta del modal
-        const insumosModificables = insumosProductoActual.filter(ins => {
-            if (!ins.nombreInsumo) return true;
-            const nombreInsumoUpper = ins.nombreInsumo.toUpperCase();
-
-            // Si el nombre del insumo contiene alguna palabra clave de proteína, devuelve false (lo saca del modal)
-            return !palabrasClaveProteina.some(palabra => nombreInsumoUpper.includes(palabra));
+    if (insumosModificables.length === 0) {
+        // Si solo tiene su proteína base fija (ej. Lomo), va directo al carrito
+        if (bsModalInsumos) bsModalInsumos.hide();
+        agregarAlCarrito(id, nombre, precio, [], []);
+    } else {
+        let html = '';
+        insumosModificables.forEach(ins => {
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox"
+                           id="ins_${ins.idInsumo}"
+                           value="${ins.idInsumo}"
+                           data-nombre="${ins.nombreInsumo}"
+                           checked>
+                    <label class="form-check-label small cursor-pointer" for="ins_${ins.idInsumo}">
+                        ${ins.nombreInsumo} <span class="text-muted">(${ins.cantidadUsada} ${ins.unidadMedida})</span>
+                    </label>
+                </div>`;
         });
-
-        if (insumosModificables.length === 0) {
-            // Si solo tiene la proteína (como el Ceviche que solo registra el Pescado en su receta), va directo al carrito
-            if (bsModalInsumos) bsModalInsumos.hide();
-            agregarAlCarrito(id, nombre, precio, [], []);
-        } else {
-            let html = '';
-            insumosModificables.forEach(ins => {
-                html += `
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox"
-                               id="ins_${ins.idInsumo}"
-                               value="${ins.idInsumo}"
-                               data-nombre="${ins.nombreInsumo}"
-                               checked>
-                        <label class="form-check-label small cursor-pointer" for="ins_${ins.idInsumo}">
-                            ${ins.nombreInsumo} <span class="text-muted">(${ins.cantidadUsada} ${ins.unidadMedida})</span>
-                        </label>
-                    </div>`;
-            });
-            document.getElementById('listaInsumosModal').innerHTML = html;
-        }
-    } catch (e) {
-        document.getElementById('listaInsumosModal').innerHTML = '<p class="text-danger small mb-0">No se pudieron cargar los insumos.</p>';
+        document.getElementById('listaInsumosModal').innerHTML = html;
     }
 }
 
