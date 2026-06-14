@@ -1,6 +1,7 @@
 package com.web.restaurante.controller;
 
 import com.web.restaurante.dto.mesas.MesaDTO;
+import com.web.restaurante.dto.mesas.TicketDTO;
 import com.web.restaurante.model.Mesa;
 import com.web.restaurante.model.Pedido;
 import com.web.restaurante.repository.MesaRepository;
@@ -12,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
@@ -25,14 +28,11 @@ public class MesaController {
     private final PedidoService pedidoService;
     private final MesaRepository mesaRepository;
     private final PedidoRepository pedidoRepository;
+
     @GetMapping
     public String verPlanoMesas(Model model) {
-        // ========================================================
-        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
-        // ========================================================
         model.addAttribute("activeUri", "/admin/mesas");
         model.addAttribute("titleHeader", "Plano de Distribución de Mesas");
-
 
         List<MesaDTO> mesasDTO = mesaService.obtenerMesasParaSalon();
         List<Pedido> pedidosActivos = mesaService.obtenerPedidosActivos();
@@ -81,14 +81,11 @@ public class MesaController {
     @ResponseBody
     public ResponseEntity<String> eliminarItemComanda(@RequestParam Long pedidoId, @RequestParam Long detalleId) {
         try {
-            // 1. Ejecuta la eliminación o conversión a merma original
             mesaService.eliminarDetallePedido(pedidoId, detalleId);
 
-            // 2. Recuperamos el estado actual del pedido inmediatamente después del cambio
             Pedido pedidoActualizado = pedidoRepository.findById(pedidoId)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
-            // 3. Contamos cuántos platos VÁLIDOS (no mermados) quedan en la comanda
             long platosActivos = 0;
             if (pedidoActualizado.getListaDetalles() != null) {
                 platosActivos = pedidoActualizado.getListaDetalles().stream()
@@ -96,19 +93,15 @@ public class MesaController {
                         .count();
             }
 
-            // 4. INGENIERÍA DE ESTADOS: Si ya no quedan platos reales en la mesa, la limpiamos por completo
             if (platosActivos == 0) {
-                // Buscamos la mesa usando el número grabado en el pedido
                 Mesa mesaAsociada = mesaRepository.findByNumero(pedidoActualizado.getNumeroMesa())
                         .orElse(null);
 
                 if (mesaAsociada != null) {
-                    // Cambiamos el estado de la mesa física a LIBRE para limpiar el plano
                     mesaAsociada.setEstado("LIBRE");
                     mesaRepository.save(mesaAsociada);
                 }
 
-                // Cambiamos el estado del pedido a CANCELADO para que no altere las estadísticas de sala
                 pedidoActualizado.setEstado(com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
                 pedidoRepository.save(pedidoActualizado);
 
@@ -157,25 +150,37 @@ public class MesaController {
         }
     }
 
-    /**
-     * CIERRE MASIVO MULTITICKET — llamado desde caja-movil.js al presionar "PROCESAR CIERRE MASIVO"
-     * Cobra el pedido, libera la mesa y sus hijas.
-     */
+    // Reemplaza tu método actual por este en MesaController.java
     @PostMapping("/comanda/liquidar-bloque-multiticket/{pedidoId}")
     @ResponseBody
     public ResponseEntity<String> liquidarBloqueMultiticket(
             @PathVariable Long pedidoId,
             @RequestParam Long mesaId,
             @RequestParam String matrizTickets,
-            @RequestParam(required = false) List<Long> idsDetallesPagados) { // 🌟 NUEVO PARAMETRO
+            @RequestParam(required = false) List<Long> idsDetallesPagados) {
         try {
-            // Ya no llamamos a liberarMesaForzado, usamos el nuevo servicio inteligente
-            mesaService.procesarCobro(pedidoId, mesaId, idsDetallesPagados);
-            return ResponseEntity.ok("Cobro procesado correctamente");
+            // 1. Parsear la matriz de tickets dinámicos enviados por el carrusel móvil
+            ObjectMapper mapper = new ObjectMapper();
+            List<TicketDTO> listaTickets;
+            try {
+                listaTickets = mapper.readValue(matrizTickets,
+                        new com.fasterxml.jackson.core.type.TypeReference<List<TicketDTO>>() {});
+            } catch (Exception jsonEx) {
+                System.err.println("❌ Error crítico al parsear matrizTickets JSON: " + jsonEx.getMessage());
+                return ResponseEntity.badRequest().body("Error en formato de tickets: " + jsonEx.getMessage());
+            }
+
+            // 2. Delegar la fragmentación y liquidación contable al Service
+            mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, idsDetallesPagados);
+
+            return ResponseEntity.ok("Cobro multiticket procesado e independizado correctamente");
+
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
+
     @PostMapping("/trasladar")
     @ResponseBody
     public ResponseEntity<String> trasladarMesa(
@@ -193,10 +198,9 @@ public class MesaController {
     @ResponseBody
     public ResponseEntity<String> dividirYTrasladarPlatosPorNumero(
             @RequestParam Long idMesaOrigen,
-            @RequestParam Integer numeroMesaDestino, // 🌟 Recibe el número directo (Ej: 5)
+            @RequestParam Integer numeroMesaDestino,
             @RequestParam List<Long> idsDetalles) {
         try {
-            // Buscamos la mesa destino por su número en la base de datos antes de operar
             Mesa mesaDestino = mesaRepository.findByNumero(numeroMesaDestino)
                     .orElseThrow(() -> new RuntimeException("La mesa N° " + numeroMesaDestino + " no existe en el plano."));
 
@@ -206,5 +210,4 @@ public class MesaController {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
-
 }

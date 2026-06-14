@@ -1,5 +1,6 @@
 package com.web.restaurante.model;
 
+import com.web.restaurante.model.enums.MetodoPago;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,6 +36,10 @@ public class MovimientoCaja {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_turno")
     private TurnoCaja turno;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metodo_pago")
+    private MetodoPago metodoPago;
 
     @PrePersist
     public void prePersist() {

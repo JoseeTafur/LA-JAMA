@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 public class CloudinaryConfig {
 
     // 🚀 Inyectamos la propiedad unificada que pusiste en el application.properties
-    @Value("${CLOUDINARY_URL}")
+    @Value("${app.cloudinary.url}")
     private String cloudinaryUrl;
 
     @Bean

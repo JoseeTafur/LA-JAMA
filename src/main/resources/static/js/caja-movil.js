@@ -4,16 +4,43 @@ let platosDisponibles = [];
 let ticketsDeCobro = [];
 const TASA_IGV = 0.18;
 
-function inicializarFlujoCaja(montoTotal, numeroMesa) {
+// ============================================================================
+// CORE CONTABLE: CAJA CENTRALIZADA MULTITICKET (CON PREFERENCIA DE SALÓN)
+// ============================================================================
+
+// 🟩 Cambia la cabecera del archivo por esta versión que recibe el documento real:
+function inicializarFlujoCaja(montoTotal, numeroMesa, preferenciaComprobante = 'BOLETA', documentoCliente = '') {
     currentMesaNumero = numeroMesa;
     platosSeleccionadosParaCobro = [];
     totalConsumoMesa = 0;
     document.getElementById('cobroNumMesa').innerText = numeroMesa;
     document.getElementById('cobroTotalBase').innerText = totalConsumoMesa.toFixed(2);
 
+    // Motor de inyección de la indicación en el HTML (Mantiene tu lógica intacta)
+    const contenedorAviso = document.getElementById('cobroIndicacionCliente');
+    if (contenedorAviso) {
+        if (preferenciaComprobante === 'FACTURA') {
+            contenedorAviso.innerHTML = `
+                <div class="d-flex align-items-center gap-2 p-2 rounded-3"
+                     style="background-color: var(--lajama-skin); color: var(--lajama-green); border: 2px solid var(--lajama-peach); font-weight: 800; font-size: 0.8rem;">
+                    <i class="bi bi-building-fill-check fs-5"></i>
+                    <span>ALERTA: EL CLIENTE SOLICITA FACTURA</span>
+                </div>`;
+        } else {
+            contenedorAviso.innerHTML = `
+                <div class="d-flex align-items-center gap-2 p-2 rounded-3"
+                     style="background-color: var(--lajama-cream); color: var(--lajama-green); border: 2px solid var(--lajama-peach); font-weight: 700; font-size: 0.8rem;">
+                    <i class="bi bi-file-earmark-text-fill fs-5"></i>
+                    <span>ALERTA: EL CLIENTE SOLICITA BOLETA</span>
+                </div>`;
+        }
+    }
+
     extraerPlatosDelModal();
     configurarSelectorPersonas();
-    reconstruirCanastas();
+
+    // 🚀 Pasamos tanto el tipo como el RUC/DNI a la construcción estructural
+    reconstruirCanastas(preferenciaComprobante, documentoCliente);
 }
 
 // =======================================================
@@ -100,21 +127,28 @@ function configurarSelectorPersonas() {
     select.disabled = false;
 }
 
-function reconstruirCanastas() {
+function reconstruirCanastas(preferenciaComprobante = 'BOLETA', documentoCliente = '') {
     const numTickets = parseInt(document.getElementById('selectNumTickets').value);
+
+    // Guardamos temporalmente los documentos ya seleccionados para no perder la memoria del clic
+    const estadosPrevios = ticketsDeCobro.map(t => ({ id: t.id, tipoDoc: t.tipoDoc, numDoc: t.numDoc, metodoPago: t.metodoPago }));
 
     platosDisponibles.forEach(p => p.idTicketAsignado = -1);
     ticketsDeCobro = [];
 
     for (let i = 0; i < numTickets; i++) {
+        // Buscamos si ya existía una configuración para esta tarjeta antes del refresco
+        const previo = estadosPrevios.find(e => e.id === i);
+
         ticketsDeCobro.push({
             id: i,
             montoPlatos: 0,
             montoLibre: numTickets === 1 ? totalConsumoMesa : 0,
             propina: 0,
-            tipoDoc: 'BOLETA',
-            numDoc: '',
-            metodoPago: 'EFECTIVO'
+            tipoDoc: previo ? previo.tipoDoc : (i === 0 ? preferenciaComprobante : 'BOLETA'),
+            // 🚀 CONTROL INTEGRADO: Si es el Ticket #1 (i === 0) y no hay previo, inyecta el RUC/DNI de salón
+            numDoc: previo ? previo.numDoc : (i === 0 ? documentoCliente : ''),
+            metodoPago: previo ? previo.metodoPago : 'EFECTIVO'
         });
     }
 
@@ -516,13 +550,24 @@ function renderizarTickets() {
 }
 
 function actualizarDatoTicket(idTicket, llave, valor) {
-    if (llave === 'propina') {
-        ticketsDeCobro[idTicket][llave] = parseFloat(valor) || 0;
-    } else if (llave === 'numDoc') {
-        ticketsDeCobro[idTicket][llave] = valor.replace(/[^0-9]/g, '');
-    } else {
-        ticketsDeCobro[idTicket][llave] = valor;
+    // Validamos que el ticket solicitado exista en el ecosistema contable
+    if (ticketsDeCobro[idTicket]) {
+        if (llave === 'propina') {
+            ticketsDeCobro[idTicket][llave] = parseFloat(valor) || 0;
+        } else if (llave === 'numDoc') {
+            ticketsDeCobro[idTicket][llave] = valor.replace(/[^0-9]/g, '');
+        } else {
+            ticketsDeCobro[idTicket][llave] = valor;
+
+            // 🚀 CONTROL DE UI: Si el cajero cambia manualmente el tipo de documento en caliente,
+            // limpiamos el número de documento viejo para evitar que un DNI se quede grabado como RUC.
+            if (llave === 'tipoDoc') {
+                ticketsDeCobro[idTicket]['numDoc'] = '';
+            }
+        }
     }
+
+    // Volvemos a computar balances y redibujar el carrusel con el toggle actualizado
     actualizarVista();
 }
 
@@ -530,6 +575,32 @@ function actualizarVista() {
     renderizarPlatos();
     renderizarTickets();
 
+    // 🚀 NUEVO: MOTOR DINÁMICO PARA EL CARTEL DE ALERTA (IZQUIERDA)
+    // Escucha en tiempo real lo que tiene seleccionado el Ticket #1 (índice 0)
+    const contenedorAviso = document.getElementById('cobroIndicacionCliente');
+    if (contenedorAviso && ticketsDeCobro.length > 0) {
+        const preferenciaActual = ticketsDeCobro[0].tipoDoc; // Lee el estado vivo del Ticket #1
+
+        if (preferenciaActual === 'FACTURA') {
+            contenedorAviso.innerHTML = `
+                <div class="d-flex align-items-center gap-2 p-2 rounded-3 animate__animated animate__fadeIn"
+                     style="background-color: var(--lajama-skin); color: var(--lajama-green); border: 2px solid var(--lajama-peach); font-weight: 800; font-size: 0.8rem;">
+                    <i class="bi bi-building-fill-check fs-5"></i>
+                    <span>ALERTA: EL CLIENTE SOLICITA FACTURA</span>
+                </div>`;
+        } else {
+            contenedorAviso.innerHTML = `
+                <div class="d-flex align-items-center gap-2 p-2 rounded-3 animate__animated animate__fadeIn"
+                     style="background-color: var(--lajama-cream); color: var(--lajama-green); border: 2px solid var(--lajama-peach); font-weight: 700; font-size: 0.8rem;">
+                    <i class="bi bi-file-earmark-text-fill fs-5"></i>
+                    <span>ALERTA: EL CLIENTE SOLICITA BOLETA</span>
+                </div>`;
+        }
+    }
+
+    // =========================================================================
+    // (El resto de tu lógica de control de saldos y botones se queda exactamente igual)
+    // =========================================================================
     const sumaConsumos = ticketsDeCobro.reduce((acc, t) => {
         const totalTicket = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
         return acc + totalTicket;

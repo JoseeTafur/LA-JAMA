@@ -437,6 +437,12 @@ function irAMenu() {
     if (currentMesaId) {
         let url = '/admin/mesero/nuevo?mesaId=' + currentMesaId;
         if (currentPedidoId) url += '&pedidoId=' + currentPedidoId;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('embed') === 'true') {
+            url += '&embed=true';
+        }
+
         window.location.href = url;
     }
 }
@@ -697,16 +703,20 @@ async function validarDesocupar() {
     AppUtils.showLoading(true);
     try {
         const res = await fetch('/admin/mesas/precuenta/' + currentMesaNumero);
-        AppUtils.showLoading(false);
-        if (!res.ok) return;
+                AppUtils.showLoading(false);
+                if (!res.ok) return;
 
-        const data = await res.json();
-        inicializarFlujoCaja(data.montoTotal, currentMesaNumero);
+                const data = await res.json();
 
-        if (mesaModal)       mesaModal.hide();
-        if (facturacionModal) facturacionModal.show();
+                const preferencia = data.preferenciaComprobante || 'BOLETA';
+                const documento = data.documentoCliente || '';
 
-    } catch (error) {
+                inicializarFlujoCaja(data.montoTotal, currentMesaNumero, preferencia, documento);
+
+                if (mesaModal)       mesaModal.hide();
+                if (facturacionModal) facturacionModal.show();
+
+            } catch (error) {
         AppUtils.showLoading(false);
         console.error("Error al transferir control al módulo de cobros:", error);
     }

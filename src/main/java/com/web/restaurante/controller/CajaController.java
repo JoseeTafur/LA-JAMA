@@ -1,9 +1,12 @@
 package com.web.restaurante.controller;
 
+import com.web.restaurante.dto.facturacion.FacturaResponse;
 import com.web.restaurante.model.MovimientoCaja;
 import com.web.restaurante.model.Pedido;
 import com.web.restaurante.model.TurnoCaja;
 import com.web.restaurante.repository.PedidoRepository;
+import com.web.restaurante.repository.TurnoCajaRepository;
+import com.web.restaurante.service.FacturacionService;
 import com.web.restaurante.service.MesaService;
 import com.web.restaurante.service.PedidoService;
 import com.web.restaurante.service.TurnoCajaService;
@@ -13,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,39 +29,69 @@ import java.util.stream.Collectors;
 public class CajaController {
 
     private final PedidoService pedidoService;
-    private final MesaService mesaService; // 🌟 Inyectamos tu ingeniería de mesas
+    private final MesaService mesaService;
     private final TurnoCajaService turnoCajaService;
+    private final TurnoCajaRepository turnoCajaRepository;
     private final PedidoRepository pedidoRepository;
+    private final FacturacionService facturacionService;
+
+    private LocalTime obtenerHoraActualSistema() {
+        //return LocalTime.of(7, 45);
+
+        // 🟩 ESCENARIO DE PRUEBA 2: Quita el comentario para simular que ya abrimos el restaurante
+        //return LocalTime.of(8, 15);
+        // Cuando pases el proyecto a producción, simplemente dejas esta línea:
+        return LocalTime.now();
+    }
+
 
     @GetMapping
     public String verCaja(Model model) {
         Optional<TurnoCaja> turnoOpt = turnoCajaService.obtenerTurnoActivo();
+        LocalTime horaActual = obtenerHoraActualSistema();
 
-        // ── CANDADO DE APERTURA ──
         if (turnoOpt.isEmpty()) {
             model.addAttribute("montoSugerido", turnoCajaService.obtenerMontoAperturaSugerido());
-            return "admin/caja_apertura";
+            model.addAttribute("activeUri", "/admin/caja");
+
+            // 🚨 EVALUACIÓN DE HORARIO ESTRICTO:
+            if (horaActual.isBefore(LocalTime.of(8, 0))) {
+                model.addAttribute("horarioBloqueado", true);
+                model.addAttribute("horaAperturaPermitida", "08:00 AM");
+                model.addAttribute("horaActualSimulada", horaActual.toString());
+            } else {
+                model.addAttribute("horarioBloqueado", false);
+            }
+
+            return "admin/caja_apertura"; // Te manda a la pantalla del botón de abrir
         }
 
         TurnoCaja turnoActivo = turnoOpt.get();
         List<MovimientoCaja> movimientos = turnoCajaService.obtenerMovimientosDelTurnoActivo();
 
-        // Calcular saldos al vuelo para el dashboard de recaudación
+        // Calcular saldos reales al vuelo protegiendo operaciones
         double totalVentas = movimientos.stream().filter(m -> "VENTA".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
         double totalIngresos = movimientos.stream().filter(m -> "INGRESO".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
         double totalEgresos = movimientos.stream().filter(m -> "EGRESO".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
+
+        // El saldo teórico suma ingresos (ventas/manuales) y resta egresos (guardados nativamente en negativo)
         double saldoTeorico = turnoActivo.getMontoApertura() + totalVentas + totalIngresos + totalEgresos;
 
         model.addAttribute("turno", turnoActivo);
         model.addAttribute("movimientos", movimientos);
         model.addAttribute("saldoTeorico", saldoTeorico);
 
+        // 🟩 OPERACIÓN CENTRAL: Recuperamos la lista de control para la primera pestaña (Bandeja Operativa)
         List<Pedido> pedidosParaCaja = pedidoService.listarPedidosPorCobrar();
-        model.addAttribute("pedidos", pedidosParaCaja);
-        model.addAttribute("pedidosPendientes", pedidoService.listarPendientesDeCarta());
 
-        // 🌟 LA LÍNEA QUE FALTABA: Enviamos las mesas al ecosistema visual de Thymeleaf
-        model.addAttribute("mesas", mesaService.obtenerMesasParaSalon()); // o el método que uses para traer tu lista de mesas
+        model.addAttribute("pedidos", pedidosParaCaja);
+        model.addAttribute("pedidosDiario", pedidosParaCaja);
+
+        model.addAttribute("pedidosPendientes", pedidoService.listarPendientesDeCarta());
+        model.addAttribute("mesas", mesaService.obtenerMesasParaSalon());
+
+        // 🚀 SEGUNDO CANDADO: Para cuando la caja ya está abierta y carga el panel principal
+        model.addAttribute("activeUri", "/admin/caja");
 
         return "admin/caja";
     }
@@ -72,9 +106,9 @@ public class CajaController {
     public String registrarMovimientoManual(@RequestParam String tipo,
                                             @RequestParam String concepto,
                                             @RequestParam Double monto) {
+        // CORREGIDO: Enrutamiento semántico lícito del flujo monetario
         if ("INGRESO".equalsIgnoreCase(tipo)) {
-            // Reutiliza el helper transaccional mapeando la inyección manual
-            turnoCajaService.registrarEgreso(concepto, -Math.abs(monto)); // Los egresos van en negativo
+            turnoCajaService.registrarVenta("Manual: " + concepto, Math.abs(monto));
         } else {
             turnoCajaService.registrarEgreso(concepto, monto);
         }
@@ -83,8 +117,22 @@ public class CajaController {
 
     @PostMapping("/cerrar")
     public String cerrarCaja(@RequestParam Double montoCierre, @RequestParam(required = false) String observaciones) {
+
+        // 🟩 PASO SEGURO DIRECTO A BASE DE DATOS (Bypass a la caché del Service)
+        // Buscamos directamente en el repositorio mapeado si quedan registros en el limbo fiscal
+        List<Pedido> pendientesDeTimbradoReal = pedidoRepository.findAll().stream()
+                .filter(p -> com.web.restaurante.model.enums.EstadoPedido.PAGADO.equals(p.getEstado())
+                        && (p.getComprobanteNumero() == null || p.getComprobanteNumero().isEmpty()))
+                .toList();
+
+        // Si la lista física en base de datos de verdad tiene elementos, rebotamos
+        if (!pendientesDeTimbradoReal.isEmpty()) {
+            return "redirect:/admin/caja?error=ComprobantesPendientes";
+        }
+
+        // Si está vacía de verdad, ejecutamos el cierre de caja limpio
         turnoCajaService.cerrarTurno(montoCierre, observaciones);
-        return "redirect:/admin/caja";
+        return "redirect:/admin/caja?cierreOk";
     }
 
     @PostMapping("/aprobar/{id}")
@@ -104,203 +152,177 @@ public class CajaController {
                                            @RequestParam Long mesaId,
                                            @RequestParam(required = false) List<Long> idsDetallesPagados,
                                            @RequestParam Double montoAPagar) {
-
-        // 1. Ejecutamos tu lógica multiticket premium en MesaService
-        // Esto cambia los estados de los platos a PAGADO y libera la mesa si ya no quedan consumos
         mesaService.procesarCobro(pedidoId, mesaId, idsDetallesPagados);
-
-        // 2. Recuperamos el pedido para armar un concepto de auditoría limpio
-        // (Asegúrate de tener este método en tu pedidoService o usa tu repositorio)
-        com.web.restaurante.model.Pedido pedido = pedidoService.obtenerPorId(pedidoId);
+        Pedido pedido = pedidoService.obtenerPorId(pedidoId);
 
         String nroMesaStr = (pedido.getNumeroMesa() != null) ? String.valueOf(pedido.getNumeroMesa()) : "N/A";
         String concepto = "Cobro Orden #" + pedidoId + " - Mesa N° " + nroMesaStr;
 
-        // 3. Impactamos el libro contable de la caja registradora en vivo
         turnoCajaService.registrarVenta(concepto, montoAPagar);
-
-        // Redirigimos al dashboard con el parámetro de éxito para activar la notificación de AppUtils
         return "redirect:/admin/caja?success";
     }
 
-    @GetMapping("/admin/mesas/precuenta/{numeroMesa}")
+    @GetMapping("/precuenta/{numeroMesa}") // CORREGIDO: Removido prefijo redundante anti-404
     @ResponseBody
     public ResponseEntity<?> obtenerPrecuentaMesaDebug(@PathVariable Integer numeroMesa) {
-        System.out.println("\n===== 🐛 [DEBUGGER CAJA: EXTRACCIÓN DE CONSUMOS] =====");
-        System.out.println("Buscando comanda activa para la Mesa N°: " + numeroMesa);
-
         try {
-            // Buscamos el pedido activo de la mesa usando tu repositorio nativo
-            // (Ajusta la llamada según la firma exacta de tu service/repository)
             List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesaAndEstado(
                     numeroMesa, com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
 
             if (pedidosActivos.isEmpty()) {
-                // Intento B: Si ya cambió de estado, buscar el primero que no esté pagado
                 pedidosActivos = pedidoRepository.findByNumeroMesa(numeroMesa).stream()
                         .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.PAGADO)
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
             }
 
             if (pedidosActivos.isEmpty()) {
-                System.out.println("❌ ERROR: No se encontró ningún pedido activo en BD para la mesa " + numeroMesa);
                 return ResponseEntity.badRequest().body("No hay comanda activa para esta mesa.");
             }
 
             Pedido pedidoTarget = pedidosActivos.get(0);
-            System.out.println("📦 Pedido ID #" + pedidoTarget.getId() + " recuperado con éxito.");
-            System.out.println("📊 Cantidad de platos en la comanda: " +
-                    (pedidoTarget.getListaDetalles() != null ? pedidoTarget.getListaDetalles().size() : 0));
 
-            // 🌟 INGENIERÍA DE BLINDAJE CONSOLIDADORA CONTRA NULOS
             if (pedidoTarget.getListaDetalles() != null) {
                 for (com.web.restaurante.model.DetallePedido d : pedidoTarget.getListaDetalles()) {
-                    System.out.print(" -> Plato: " + (d.getProducto() != null ? d.getProducto().getNombre() : "Desconocido"));
-                    System.out.print(" | Cantidad: " + d.getCantidad());
-                    System.out.print(" | Precio U.: S/. " + d.getPrecioUnitario());
-
-                    // Si el subtotal de la base de datos es NULL, el debugger lo repara al vuelo aquí mismo
                     if (d.getSubtotal() == null || d.getSubtotal() == 0) {
                         double subtotalCalculado = d.getCantidad() * (d.getPrecioUnitario() != null ? d.getPrecioUnitario() : 0.0);
                         d.setSubtotal(subtotalCalculado);
-                        System.out.print(" | 🚨 REPARADO NULL -> Nuevo Subtotal: S/. " + subtotalCalculado);
-                    } else {
-                        System.out.print(" | Subtotal: S/. " + d.getSubtotal());
                     }
-                    System.out.println(" | ¿Pagado?: " + d.isPagado());
                 }
             }
-
-            System.out.println("===== 🐛 [FIN DE LOGS DEBUGGER CAJA] =====\n");
             return ResponseEntity.ok(pedidoTarget);
-
         } catch (Exception e) {
-            System.out.println("💥 COLAPSO EN DEBUGGER: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.internalServerError().body("Error interno: " + e.getMessage());
         }
     }
+
     @GetMapping("/api/pedido/{id}")
     @ResponseBody
     public ResponseEntity<?> obtenerDetallesParaAuditoria(@PathVariable Long id) {
         try {
             Pedido pedido = pedidoService.obtenerPorId(id);
-            if (pedido == null) {
-                return ResponseEntity.notFound().build();
-            }
+            if (pedido == null) return ResponseEntity.notFound().build();
 
-            // 🎯 CORREGIDO: Usamos .put() en lugar de .add()
             Map<String, Object> response = new HashMap<>();
             response.put("id", pedido.getId());
             response.put("tipoPedido", pedido.getTipoPedido() != null ? pedido.getTipoPedido().name() : "LOCAL");
             response.put("numeroMesa", pedido.getNumeroMesa());
             response.put("montoTotal", pedido.getMontoTotal() != null ? pedido.getMontoTotal() : 0.0);
+            response.put("montoPropina", 0.0);
 
-            // 💰 SOPORTE DE PROPINA AUTOMÁTICO:
-            // Si tu entidad 'Pedido' ya tiene un campo para propina, cámbialo aquí.
-            // Si aún no lo creas en tu entidad, el backend enviará 0.0 por defecto y no romperá tu JS.
-            double propina = 0.0;
-            /* try { propina = pedido.getMontoPropina() != null ? pedido.getMontoPropina() : 0.0; }
-               catch(Exception e) {}
-            */
-            response.put("montoPropina", propina);
-
-            // Estructura limpia para la lista de platos (Evita recursión infinita de JPA)
             List<Map<String, Object>> detallesDTO = pedido.getListaDetalles().stream()
                     .map(d -> {
                         Map<String, Object> item = new HashMap<>();
                         item.put("cantidad", d.getCantidad());
                         item.put("canceladoPorCliente", d.isCanceladoPorCliente());
-
-                        // Aseguramos que jale el nombre del producto de forma segura
                         String nombrePlato = (d.getProducto() != null) ? d.getProducto().getNombre() : "Plato Desconocido";
                         item.put("producto", Map.of("nombre", nombrePlato));
-
-                        // Calculamos el subtotal curado en memoria protegiendo nulos
                         double precio = d.getPrecioUnitario() != null ? d.getPrecioUnitario() : 0.0;
                         item.put("subtotal", precio * d.getCantidad());
-
                         return item;
                     }).collect(Collectors.toList());
 
             response.put("detalles", detallesDTO);
-
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.out.println("💥 ERROR EN ENDPOINT AUDITORÍA: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error interno: " + e.getMessage());
+            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
         }
     }
 
     @PostMapping("/emitir-comprobante")
-    public String emitirComprobante(@RequestParam Long pedidoId,
-                                    @RequestParam String tipo,
-                                    @RequestParam(required = false) String documento) {
-        try {
-            // 1. Recuperamos el pedido de la base de datos
-            Pedido pedido = pedidoService.obtenerPorId(pedidoId);
-            if (pedido == null) {
-                return "redirect:/admin/caja?error=PedidoNoEncontrado";
-            }
+    public String emitirComprobanteFiscal(
+            @RequestParam Long pedidoId,
+            @RequestParam(required = false, defaultValue = "") String documento,
+            @RequestParam String tipo) {
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
-            // 2. Candado de seguridad: Evitar doble emisión si ya tiene número asignado
-            if (pedido.getComprobanteNumero() != null) {
-                return "redirect:/admin/caja?error=YaFacturado";
-            }
+        pedido.setPreferenciaComprobante(tipo);
+        pedido.setDocumentoCliente(documento);
 
-            // 3. Simulación de Correlativo Oficial
-            // Generamos un número aleatorio simulando el formato de serie de la SUNAT
-            // Ej: B001-0001245 para Boletas o F001-0004512 para Facturas
-            String prefijo = "BOLETA".equalsIgnoreCase(tipo) ? "B001-" : "F001-";
-            int numeroAleatorio = (int) (Math.random() * 90000) + 10000;
-            String correlativoSimulado = prefijo + numeroAleatorio;
+        // 🚀 MANDAMOS EL PEDIDO A MIAPI.CLOUD
+        FacturaResponse.RespuestaData sunatResult = facturacionService.emitirComprobanteSunat(pedido);
 
-            // 4. Inyectamos los datos fiscales en la entidad
-            pedido.setComprobanteTipo(tipo.toUpperCase());
-            pedido.setComprobanteNumero(correlativoSimulado);
-            pedido.setDocumentoCliente(documento != null && !documento.isBlank() ? documento : "CLIENTE VARIOS");
+        if (sunatResult != null && sunatResult.isSuccess()) {
+            System.out.println("🔗 PDF A4: " + sunatResult.getPdfA4());
+            System.out.println("🔗 PDF Ticket: " + sunatResult.getPdfTicket());
+            System.out.println("🔗 XML Firmado: " + sunatResult.getXmlFirmado());
 
-            // 5. Guardamos los cambios usando tu repositorio inyectado
+            pedido.setComprobanteNumero(String.valueOf(pedidoId));
+            pedido.setComprobanteTipo(tipo);
+
+            // 🟩 PERSISTENCIA PARALELA DE AMBOS FORMATOS FISCALES
+            pedido.setComprobantePdfUrl(sunatResult.getPdfTicket()); // Ticket Térmico
+            pedido.setComprobanteA4Url(sunatResult.getPdfA4());     // Hoja Estándar A4
+
             pedidoRepository.save(pedido);
-
-            return "redirect:/admin/caja?comprobanteOk";
-        } catch (Exception e) {
-            System.out.println("💥 ERROR AL EMITIR COMPROBANTE: " + e.getMessage());
-            e.printStackTrace();
-            return "redirect:/admin/caja?error=InternalError";
+            return "redirect:/admin/caja?param-success";
+        } else {
+            return "redirect:/admin/caja?error-sunat";
         }
     }
 
-    @GetMapping("/admin/caja/anular-comprobante")
+    @GetMapping("/anular-comprobante")
     public String anularComprobante(@RequestParam Long pedidoId) {
         try {
             Pedido ticket = pedidoService.obtenerPorId(pedidoId);
-            if (ticket == null) {
-                return "redirect:/admin/caja?error=TicketNoEncontrado";
-            }
+            if (ticket == null) return "redirect:/admin/caja?error=TicketNoEncontrado";
 
-            // 1. Simulación o disparo de Nota de Crédito legal ante SUNAT
-            System.out.println("⚠️ Anulando " + ticket.getComprobanteTipo() + " " + ticket.getComprobanteNumero());
-
-            // 2. Liberamos los campos fiscales para permitir la refacturación express
+            // 🟩 LIMPIEZA ABSOLUTA: Reseteamos los campos fiscales y las rutas de los archivos
             ticket.setComprobanteTipo(null);
             ticket.setComprobanteNumero(null);
             ticket.setDocumentoCliente(null);
+            ticket.setComprobantePdfUrl(null);
+            ticket.setComprobanteA4Url(null);
 
             pedidoRepository.save(ticket);
 
             return "redirect:/admin/caja?anulacionExito";
         } catch (Exception e) {
-            System.out.println("💥 Error en anulación: " + e.getMessage());
             return "redirect:/admin/caja?error=ErrorProcesamiento";
         }
     }
-
 
     @GetMapping("/delivery/nuevo")
     public String nuevoDelivery(Model model) {
         return "admin/cajero_delivery";
     }
+
+    // ── ENDPOINT ASÍNCRONO PARA EL HISTORIAL DE CAJAS POR RANGO DE FECHAS ──
+    @GetMapping("/historial-datos")
+    @ResponseBody
+    public ResponseEntity<?> obtenerHistorialCajas(
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fechaInicio,
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fechaFin) {
+        try {
+            // Recuperamos todos los turnos cerrados
+            List<TurnoCaja> turnos = turnoCajaRepository.findTurnosCerradosOrdenados();
+
+            // Filtramos en memoria por el rango de fechas seleccionado por el usuario
+            List<Map<String, Object>> mapeoHistorial = turnos.stream()
+                    .filter(t -> {
+                        if (t.getFechaApertura() == null) return false;
+                        java.time.LocalDate fApertura = t.getFechaApertura().toLocalDate();
+                        return (!fApertura.isBefore(fechaInicio) && !fApertura.isAfter(fechaFin));
+                    })
+                    .map(t -> {
+                        Map<String, Object> dto = new HashMap<>();
+                        dto.put("id", t.getId());
+                        dto.put("fechaApertura", t.getFechaApertura() != null ? t.getFechaApertura().toString() : "N/A");
+                        dto.put("fechaCierre", t.getFechaCierre() != null ? t.getFechaCierre().toString() : "N/A");
+                        dto.put("montoApertura", t.getMontoApertura());
+                        dto.put("montoCierre", t.getMontoCierre() != null ? t.getMontoCierre() : 0.0);
+                        dto.put("totalVendido", t.getTotalVendido() != null ? t.getTotalVendido() : 0.0);
+                        dto.put("diferencia", t.getDiferencia() != null ? t.getDiferencia() : 0.0);
+                        dto.put("observaciones", t.getObservaciones() != null ? t.getObservaciones() : "");
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(mapeoHistorial);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error al extraer historial: " + e.getMessage());
+        }
+    }
+
 
 }

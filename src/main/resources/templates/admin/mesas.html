@@ -6,6 +6,8 @@
           modals=~{::#modales-mesas},
           js='/js/mesas.js'
       )}">
+
+
 <head>
 </head>
 <body>
@@ -320,6 +322,56 @@
                 if (vistaSalon) vistaSalon.classList.add('d-none');
             }
         }
+
+        // =======================================================
+// ONDAS DE CONTROL PARA VISTA EMPOTRADA (MODO MONITOR)
+// =======================================================
+document.addEventListener('DOMContentLoaded', function () {
+    // Leemos los parámetros de la URL actual
+    const urlParams = new URLSearchParams(window.location.search);
+
+    if (urlParams.get('embed') === 'true') {
+        // 1. Buscamos y removemos el Sidebar de navegación lateral
+        const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar');
+        if (sidebar) sidebar.remove();
+
+        // 2. Buscamos y removemos el header superior de logística
+        const header = document.querySelector('.main-content header') || document.querySelector('.header-jama') || document.querySelector('div[th\:replace*="logistica_header"]');
+        if (header) header.remove();
+
+        // 3. 🚨 BLINDAJE EXTRA: Removemos las restricciones del Layout Padre en caliente
+        // Esto elimina los paddings y transformaciones heredadas de 'layout-gestion'
+        const wrapper = document.querySelector('.wrapper');
+        if (wrapper) {
+            wrapper.style.display = "block";
+            wrapper.style.width = "100%";
+        }
+
+        const mainContent = document.getElementById('main-content') || document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.style.marginLeft = "0px";
+            mainContent.style.padding = "0px";
+            mainContent.style.width = "100%";
+            mainContent.style.minHeight = "auto";
+            mainContent.style.backgroundColor = "transparent"; // Se acopla al fondo del modal de la caja
+        }
+
+        // 4. Forzamos que el container use el 100% real del espacio del modal de la caja
+        const container = document.querySelector('.container-fluid');
+        if (container) {
+            container.style.padding = "10px";
+            container.style.maxWidth = "100%";
+        }
+
+        // 5. Ocultamos el banner superior de recaudación para ganar espacio vertical en el modal
+        const banner = document.querySelector('.recaudacion-banner');
+        if (banner) {
+            banner.style.padding = "12px";
+            banner.querySelector('p')?.remove(); // Quitamos el subtítulo para compactar la UI
+        }
+    }
+});
+
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>

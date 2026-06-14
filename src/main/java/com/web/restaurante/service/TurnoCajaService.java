@@ -73,20 +73,35 @@ public class TurnoCajaService {
         TurnoCaja turno = turnoCajaRepository.findByActivoTrue()
                 .orElseThrow(() -> new IllegalStateException("No hay ningún turno de caja abierto."));
 
-        double totalVendido = movimientoCajaRepository.findVentasByTurnoId(turno.getId())
-                .stream().mapToDouble(m -> m.getMonto() != null ? m.getMonto() : 0.0).sum();
+        // 1. Recuperamos TODOS los movimientos asociados a este turno para no perder un solo sol
+        List<MovimientoCaja> movimientos = movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(turno.getId());
 
-        double saldoTeorico = turno.getMontoApertura() + totalVendido;
-        double diferencia   = montoCierre - saldoTeorico;
+        double totalVendido = movimientos.stream().filter(m -> "VENTA".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
+        double totalIngresos = movimientos.stream().filter(m -> "INGRESO".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
+        double totalEgresos = movimientos.stream().filter(m -> "EGRESO".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
 
+        // 2. FÓRMULA DE RECAUDACIÓN EXACTA: Fondo inicial + Ventas + Inyecciones Manuales - Egresos de pánico
+        // (Nota: totalEgresos ya se guarda en negativo en la aduana de persistencia)
+        double saldoTeorico = turno.getMontoApertura() + totalVendido + totalIngresos + totalEgresos;
+        double diferencia = montoCierre - saldoTeorico;
+
+        // 3. Persistimos los datos del arqueo de auditoría
         turno.setMontoCierre(montoCierre);
         turno.setTotalVendido(totalVendido);
         turno.setDiferencia(diferencia);
         turno.setObservaciones(observaciones);
         turno.setFechaCierre(LocalDateTime.now());
-        turno.setActivo(false);
+        turno.setActivo(false); // Clausura del turno en memoria
 
-        registrarMovimiento(turno, "CIERRE", "Cierre de caja", montoCierre, null);
+        registrarMovimiento(turno, "CIERRE", "Cierre estricto de caja por el operador", montoCierre, null);
+
+        // 🚨 REGISTRO DE ALERTA DE SEGURIDAD EN BITÁCORA
+        if (Math.abs(diferencia) > 0.1) {
+            System.out.println("⚠️ [ALERTA DE SEGURIDAD CONTABLE - LA JAMA]");
+            System.out.println("Se ha detectado un descuadre en el arqueo del turno ID #" + turno.getId());
+            System.out.println("Diferencia registrada: S/. " + diferencia);
+            // Aquí puedes inyectar luego el envío de tu notificación o bandera al administrador
+        }
 
         return turnoCajaRepository.save(turno);
     }

@@ -1,6 +1,7 @@
 package com.web.restaurante.service;
 
 import com.web.restaurante.dto.mesas.MesaDTO;
+import com.web.restaurante.dto.mesas.TicketDTO;
 import com.web.restaurante.mapper.MesaMapper;
 import com.web.restaurante.model.DetallePedido;
 import com.web.restaurante.model.Mesa;
@@ -28,6 +29,7 @@ public class MesaService {
     private final MesaMapper mesaMapper;
     private final SimpMessagingTemplate messagingTemplate;
     private final TurnoCajaService turnoCajaService;
+
 
     public List<MesaDTO> obtenerMesasParaSalon() {
         List<Mesa> mesasEntidad = mesaRepository.findAll();
@@ -438,5 +440,114 @@ public class MesaService {
 
         messagingTemplate.convertAndSend("/topic/notificaciones",
                 "✂️ SPLIT DE COMANDA: Platos movidos de la Mesa " + origen.getNumero() + " a la Mesa " + destino.getNumero());
+    }
+
+    // =========================================================================
+    // 🌟 LIQUIDACIÓN MULTITICKET SIN ERRORES DE DEREFERENCIACIÓN DE HIBERNATE
+    // =========================================================================
+    @Transactional
+    public void procesarLiquidacionMultiticket(Long pedidoId, Long mesaId, List<TicketDTO> tickets, List<Long> idsDetallesPagados) {
+
+        Pedido pedidoPadre = pedidoRepository.findById(pedidoId)
+                .orElseThrow(() -> new RuntimeException("Pedido original N° " + pedidoId + " no encontrado"));
+
+        Mesa mesa = mesaRepository.findById(mesaId)
+                .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
+
+        Mesa mesaPrincipal = (mesa.getMesaPadre() != null) ? mesa.getMesaPadre() : mesa;
+
+        // Extraemos una lista mutable de trabajo con las referencias de los platos
+        List<DetallePedido> platosDisponibles = new ArrayList<>(
+                pedidoPadre.getListaDetalles().stream()
+                        .filter(d -> !d.isCanceladoPorCliente())
+                        .toList()
+        );
+
+        // 2. Procesar cada ticket del carrusel de forma independiente
+        for (int i = 0; i < tickets.size(); i++) {
+            TicketDTO t = tickets.get(i);
+
+            if (t.getConsumoFinal() <= 0) continue;
+
+            Pedido pedidoDestino;
+            String conceptoCobro;
+
+            if (i == 0) {
+                pedidoDestino = pedidoPadre;
+                conceptoCobro = "Liquidación Comanda #" + pedidoId + " (Ticket 1) - Mesa N° " + mesaPrincipal.getNumero();
+
+                // 🟩 TRUCO SEGURO: Usamos .clear() en vez de instanciar un 'new ArrayList()'
+                // Esto mantiene intacto el proxy interno de Hibernate y evita el JpaSystemException
+                pedidoDestino.getListaDetalles().clear();
+            } else {
+                pedidoDestino = new Pedido();
+                pedidoDestino.setCliente("Mesa " + mesaPrincipal.getNumero() + " - Ticket " + (i + 1));
+                pedidoDestino.setDireccion("Salón");
+                pedidoDestino.setTipoPedido(pedidoPadre.getTipoPedido());
+                pedidoDestino.setNumeroMesa(mesaPrincipal.getNumero());
+                pedidoDestino.setFechaCreacion(pedidoPadre.getFechaCreacion());
+
+                // Como es una entidad nueva que no está en la base de datos, aquí sí inicializamos la lista
+                pedidoDestino.setListaDetalles(new ArrayList<>());
+
+                conceptoCobro = "Liquidación Comanda #" + pedidoId + " (Ticket " + (i + 1) + ") - Mesa N° " + mesaPrincipal.getNumero();
+            }
+
+            pedidoDestino.setPreferenciaComprobante(t.getTipoDoc().toUpperCase());
+            pedidoDestino.setDocumentoCliente(t.getNumDoc() != null ? t.getNumDoc().trim() : "");
+            pedidoDestino.setMontoTotal(t.getConsumoFinal());
+            pedidoDestino.setEstado(EstadoPedido.PAGADO);
+            pedidoDestino.setFechaEntrega(LocalDateTime.now());
+            if (t.getMetodoPago() != null && !t.getMetodoPago().isEmpty()) {
+                // Si desde el JS te llega "YAPE_PLIN" pero tu Enum se llama "YAPE", mapeamos el caso:
+                String metodoStr = t.getMetodoPago().toUpperCase();
+                if (metodoStr.contains("YAPE") || metodoStr.contains("PLIN")) {
+                    pedidoDestino.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.YAPE); // o YAPE_PLIN según el nombre en tu Enum
+                } else if (metodoStr.contains("TARJETA")) {
+                    pedidoDestino.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.TARJETA);
+                } else {
+                    pedidoDestino.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.EFECTIVO);
+                }
+            } else {
+                pedidoDestino.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.EFECTIVO);
+            }
+
+            // Distribución física de platos por montos
+            double acumuladoTicket = 0.0;
+            List<DetallePedido> platosAsignadosATicket = new ArrayList<>();
+
+            for (int j = platosDisponibles.size() - 1; j >= 0; j--) {
+                DetallePedido plato = platosDisponibles.get(j);
+                double precioPlato = plato.getSubtotal() != null ? plato.getSubtotal() : 0.0;
+
+                if (acumuladoTicket + precioPlato <= t.getConsumoFinal() + 0.1) {
+                    plato.setPedido(pedidoDestino);
+                    plato.setPagado(true);
+                    platosAsignadosATicket.add(plato);
+                    acumuladoTicket += precioPlato;
+                    platosDisponibles.remove(j);
+                }
+            }
+
+            // Poblamos de forma segura mediante .addAll()
+            pedidoDestino.getListaDetalles().addAll(platosAsignadosATicket);
+
+            // Guardar el pedido correspondiente con su subgrupo mapeado
+            pedidoRepository.save(pedidoDestino);
+
+            turnoCajaService.registrarVenta(conceptoCobro, t.getConsumoFinal());
+        }
+
+        // 4. Liberar la mesa físicamente en el plano del salón
+        mesaPrincipal.setEstado("DISPONIBLE");
+        if (mesaPrincipal.getMesasHijas() != null) {
+            for (Mesa hija : mesaPrincipal.getMesasHijas()) {
+                hija.setMesaPadre(null);
+                hija.setEstado("DISPONIBLE");
+                mesaRepository.save(hija);
+            }
+            mesaPrincipal.getMesasHijas().clear();
+        }
+        mesaRepository.save(mesaPrincipal);
     }
 }

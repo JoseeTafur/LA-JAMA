@@ -2,6 +2,7 @@ package com.web.restaurante.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.web.restaurante.model.enums.EstadoPedido;
+import com.web.restaurante.model.enums.MetodoPago;
 import com.web.restaurante.model.enums.TipoPedido;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -75,6 +76,14 @@ public class Pedido {
     @Column(name = "documento_cliente", length = 15)
     private String documentoCliente;
 
+    private String preferenciaComprobante;
+
+    private String comprobantePdfUrl;
+    private String comprobanteA4Url;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metodo_pago")
+    private MetodoPago metodoPago;
 
     // =========================================================================
     // ⚙️ LÓGICA ORIGINAL CONSERVADA (Módulos de Delivery, Despacho y Reparto)

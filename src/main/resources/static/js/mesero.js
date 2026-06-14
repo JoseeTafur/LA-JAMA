@@ -254,8 +254,12 @@ function enviarPedido() {
                     text: 'La orden ha sido distribuida a las estaciones de cocina de La Jama.',
                     confirmButtonColor: '#1B3A2C'
                 }).then(() => {
-                    window.location.href = '/admin/mesas';
-                });
+                                    if (urlParams.get('embed') === 'true') {
+                                        window.location.href = '/admin/mesas?embed=true';
+                                    } else {
+                                        window.location.href = '/admin/mesas';
+                                    }
+                                });
             } else {
                 AppUtils.showNotification("Error al procesar el pedido: " + resultadoTexto, "error");
             }

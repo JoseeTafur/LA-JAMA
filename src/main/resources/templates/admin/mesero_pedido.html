@@ -6,6 +6,18 @@
     <title>La Jama - Nueva Comanda</title>
     <th:block th:replace="~{links :: headLinks}"></th:block>
     <link rel="stylesheet" th:href="@{/css/mesero.css}">
+    <style th:if="${param.embed != null and param.embed[0] == 'true'}">
+        /* Escondemos el sidebar y el header por CSS puro antes de que se pinten */
+        .sidebar, #sidebar, .main-content header, .header-jama {
+            display: none !important;
+        }
+        /* Estiramos el contenido principal inmediatamente */
+        .main-content {
+            margin-left: 0 !important;
+            padding: 10px !important;
+            width: 100% !important;
+        }
+    </style>
 </head>
 <body>
 <div class="d-flex">
@@ -133,6 +145,41 @@
     function notificarAgotado() {
         AppUtils.showNotification('Plato agotado. No hay suficientes porciones.', 'error');
     }
+
+    // =======================================================
+// ONDAS DE CONTROL PARA COMANDERO EMBEDIDO EN MONITOR
+// =======================================================
+document.addEventListener('DOMContentLoaded', function () {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    if (urlParams.get('embed') === 'true') {
+        // 1. Desintegrar componentes de navegación global
+        const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar');
+        if (sidebar) sidebar.remove();
+
+        const header = document.querySelector('.main-content header') || document.querySelector('.header-jama');
+        if (header) header.remove();
+
+        // 2. Destruir los márgenes forzados del Layout de Gestión
+        const wrapper = document.querySelector('.wrapper');
+        if (wrapper) {
+            wrapper.style.display = "block";
+            wrapper.style.width = "100%";
+        }
+
+        const mainContent = document.getElementById('main-content') || document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.style.marginLeft = "0px";
+            mainContent.style.padding = "10px";
+            mainContent.style.width = "100%";
+            mainContent.style.minHeight = "auto";
+            mainContent.style.backgroundColor = "transparent";
+        }
+
+        // 💡 CONSEJO DE UX: Si tu comandero tiene un botón de "Regresar al Salón",
+        // asegúrate de mapearle también el '+ "&embed=true"' a su href en su respectivo JS.
+    }
+});
 </script>
 </body>
 </html>

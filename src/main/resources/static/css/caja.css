@@ -1,8 +1,10 @@
 /* ==========================================================================
-   LA JAMA - ECO-SISTEMA VISUAL COMPLETO PARA MÓDULO DE CAJA (2026)
+   LA JAMA - MÓDULO DE CONTROL DE CAJA Y FACTURACIÓN NATIVA (2026)
+   Arquitectura Visual Saneada y Unificada (0% Bootstrap)
    ========================================================================== */
 
 :root {
+    /* Paleta Orgánica Identitaria de La Jama */
     --lajama-green: #1B3A2C;
     --lajama-green-hover: #11251C;
     --lajama-cream: #FBF9F4;
@@ -11,357 +13,824 @@
     --lajama-gold: #D4A373;
     --lajama-white: #FFFFFF;
 
+    /* Semántica Financiera y de Turnos */
     --lajama-success: #2A7B4C;
     --lajama-success-bg: rgba(42, 123, 76, 0.08);
     --lajama-danger: #B83A3A;
     --lajama-danger-bg: rgba(184, 58, 58, 0.08);
     --lajama-warning: #DE9E36;
+    --lajama-warning-bg: rgba(222, 158, 54, 0.12);
     --lajama-secondary: #5C677D;
 
+    /* Efectos Elevados */
     --shadow-sm: 0 2px 8px rgba(27, 58, 44, 0.04);
     --shadow-md: 0 6px 18px rgba(27, 58, 44, 0.08);
     --shadow-lg: 0 12px 36px rgba(27, 58, 44, 0.15);
 }
 
-.caja-body {
+/* ─── BASE Y CONFIGURACIÓN ESTRUCTURAL ───────────────────────────── */
+body {
     background-color: #F5F2EA !important;
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #2D312E;
+    margin: 0;
 }
 
-/* ─── CARDS KPI DE CONTROL SUPERIOR ──────────────────────────────── */
-.card-kpi-jama {
-    border-radius: 1rem;
+.jama-caja-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Helpers Utilitarios Compatibles con Layout-Gestion */
+.d-flex { display: flex !important; align-items: center !important; }
+.justify-content-between { justify-content: space-between !important; }
+.flex-wrap { flex-wrap: wrap !important; }
+.gap-2 { gap: 0.5rem !important; }
+.mb-0 { margin-bottom: 0 !important; }
+.mb-1 { margin-bottom: 0.25rem !important; }
+.mb-3 { margin-bottom: 1rem !important; }
+.mb-4 { margin-bottom: 1.5rem !important; }
+.mt-1 { margin-top: 0.25rem !important; }
+.p-0 { padding: 0 !important; }
+.p-3 { padding: 1rem !important; }
+.p-4 { padding: 1.25rem 1.5rem !important; }
+.ps-4 { padding-left: 1.5rem !important; }
+.pe-4 { padding-right: 1.5rem !important; }
+.fw-bold { font-weight: 700 !important; }
+.text-dark { color: #2D312E !important; }
+.text-white { color: var(--lajama-white) !important; }
+.text-white-50 { color: rgba(255, 255, 255, 0.5) !important; }
+.text-success { color: var(--lajama-success) !important; }
+.text-danger { color: var(--lajama-danger) !important; }
+.text-muted { color: var(--lajama-secondary) !important; }
+.text-uppercase { text-transform: uppercase !important; }
+.text-centro { text-align: center !important; }
+.text-derecha { text-align: right !important; }
+.small { font-size: 0.8rem !important; }
+.fs-3 { font-size: 1.75rem !important; }
+.fs-5 { font-size: 1.25rem !important; }
+.italic { font-style: italic !important; }
+
+/* SVGs e Iconografía Vectorial */
+.svg-icon {
+    flex-shrink: 0;
+}
+
+/* ─── ALERTAS NATIVAS LA JAMA ────────────────────────────────────── */
+.jama-alerta {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: 0.75rem;
     box-shadow: var(--shadow-sm);
+    animation: fadeIn 0.2s ease;
+}
+.alerta-error {
+    background-color: #FFF5F5;
+    border-left: 5px solid var(--lajama-danger);
+    color: #742A2A;
+}
+.alerta-advertencia {
+    background-color: #FFFDF5;
+    border-left: 5px solid var(--lajama-warning);
+    color: #744210;
+}
+.alerta-icono {
+    font-size: 1.3rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+.alerta-titulo {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+.alerta-texto {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+
+/* ─── DASHBOARD SUPERIOR (GRID DE KPIS) ────────────────────────── */
+.jama-dashboard-top {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+@media (min-width: 992px) {
+    .jama-dashboard-top {
+        flex-direction: row;
+        align-items: stretch;
+    }
+}
+
+.jama-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    flex-grow: 1;
+}
+.kpi-tarjeta {
+    background-color: var(--lajama-white);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--lajama-skin);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     transition: transform 0.2s ease;
 }
-.card-kpi-jama:hover {
+.kpi-tarjeta:hover {
     transform: translateY(-2px);
 }
-.label-kpi {
+.kpi-apertura { background-color: var(--lajama-green); color: var(--lajama-white); border: none; }
+.kpi-ventas { background-color: var(--lajama-success); color: var(--lajama-white); border: none; }
+.kpi-etiqueta {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
     letter-spacing: 0.5px;
-    font-size: 0.65rem;
+    opacity: 0.8;
 }
-.btn-action-caja {
-    border-radius: 1rem;
-    font-size: 0.8rem;
+.kpi-monto {
+    margin: 0.35rem 0 0 0;
+    font-size: 1.6rem;
+    font-weight: 800;
+}
+.monto-destacado { color: var(--lajama-success) !important; }
+
+/* Panel Lateral de Acciones Rápidas */
+.jama-acciones-rapidas {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+@media (min-width: 992px) {
+    .jama-acciones-rapidas {
+        min-width: 340px;
+    }
+}
+
+.jama-btn {
+    flex: 1;
+    min-width: 100px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0.5rem;
+    padding: 0.75rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
 }
+.btn-movimiento { background-color: transparent; border: 2px solid var(--lajama-danger); color: var(--lajama-danger); }
+.btn-movimiento:hover { background-color: #FFF5F5; transform: scale(1.02); }
+.btn-salon { background-color: #2D3748; border: 2px solid #2D3748; color: var(--lajama-white); }
+.btn-salon:hover { background-color: #1A202C; border-color: #1A202C; transform: scale(1.02); }
+.btn-cierre { background-color: var(--lajama-danger); border: 2px solid var(--lajama-danger); color: var(--lajama-white); box-shadow: var(--shadow-sm); }
+.btn-cierre:hover { background-color: #A52A2A; border-color: #A52A2A; transform: scale(1.02); box-shadow: var(--shadow-md); }
 
-/* ─── COMPONENTE ALERT PEDIDOS DELIVERY (WHATSAPP) ──────────────── */
-.card-alert-jama {
-    background-color: #FFF8E8;
-    border-radius: 1.25rem;
-    border: 1px solid #EAD29A;
+/* ─── AUDITORÍA DE PEDIDOS POR CARTA (VOUCHERS) ──────────────────── */
+.jama-panel-vouchers {
+    background-color: #FFFDF9;
+    border: 1px solid var(--lajama-gold);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
 }
-.card-header-alert {
-    background-color: #FDF1D3;
-    border-bottom: 1px solid #EAD29A;
+.panel-vouchers-cabecera {
+    background-color: var(--lajama-skin);
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--lajama-peach);
 }
-.text-alert-title {
-    color: #7A5C1E;
-    font-size: 1rem;
+.vouchers-titulo-grupo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
-.id-alert {
-    color: #7A5C1E;
+.vouchers-titulo-grupo h5 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--lajama-green);
 }
-.thead-alert tr th {
-    background-color: #F8ECD0 !important;
-    color: #7A5C1E !important;
-    font-size: 0.75rem;
+.voucher-adjunto-tag {
+    color: var(--lajama-success);
+    font-weight: 600;
+    display: block;
+    margin-top: 0.2rem;
+}
+.icono-animado { display: flex; align-items: center; }
+
+/* ─── MODULO CONTABLE (PESTAÑAS DE CONTROL) ─────────────────────── */
+.jama-modulo-contable {
+    background-color: var(--lajama-white);
+    border: 1px solid var(--lajama-peach);
+    border-radius: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.jama-tabs-navegacion {
+    display: flex;
+    padding: 0 1rem;
+    background-color: var(--lajama-white);
+    border-bottom: 2px solid var(--lajama-peach);
+    gap: 0.5rem;
+}
+.jama-tab-link {
+    background: none;
+    border: none;
+    color: var(--lajama-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.85rem 1.25rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    border-bottom: 3px solid transparent;
+}
+.jama-tab-link:hover {
+    color: var(--lajama-green);
+    background-color: var(--lajama-skin);
+}
+.jama-tab-link.activo {
+    color: var(--lajama-green) !important;
+    background-color: var(--lajama-white) !important;
+    border-bottom: 3px solid var(--lajama-green) !important;
     font-weight: 700;
 }
-.fila-pendiente {
-    border-left: 5px solid #DE9E36;
+.jama-tabs-contenido { padding: 0; }
+
+/* Subbarra Superior de Pestaña y Buscador */
+.panel-subbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    background-color: var(--lajama-white);
+    border-bottom: 1px solid var(--lajama-skin);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.subbar-leyenda {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--lajama-secondary);
+    letter-spacing: 0.5px;
+}
+.jama-buscador-box {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--lajama-peach);
+    border-radius: 2rem;
+    background-color: var(--lajama-cream);
+    overflow: hidden;
+    width: 100%;
+    max-width: 280px;
+}
+.buscar-icono {
+    padding: 0.4rem 0.6rem;
+    display: flex;
+    align-items: center;
+    color: var(--lajama-secondary);
+}
+.jama-buscador-box input {
+    border: none;
+    background: transparent;
+    padding: 0.4rem 0.5rem 0.4rem 0;
+    width: 100%;
+    outline: none;
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: #2D312E;
 }
 
-/* ─── TABLA PRINCIPAL DE COMANDAS ────────────────────────────────── */
-.card-main-caja {
-    background-color: var(--lajama-white);
-    border-radius: 1.25rem;
-    border: 1px solid var(--lajama-peach);
+/* ─── MATRIZ DE TABLAS COMPACTAS DE LA JAMA ─────────────────────── */
+.jama-tabla-contenedor {
+    width: 100%;
+    overflow-x: auto;
 }
-.search-container-jama input {
-    border-radius: 0 2rem 2rem 0 !important;
-    font-size: 0.85rem;
+.jama-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
 }
-.search-container-jama span {
-    border-radius: 2rem 0 0 2rem !important;
-}
-.thead-jama-caja tr th {
+.jama-tabla th {
     background-color: var(--lajama-skin) !important;
     color: var(--lajama-green) !important;
     font-weight: 700;
     font-size: 0.78rem;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
     padding: 1rem 0.75rem;
     border-bottom: 2px solid var(--lajama-peach) !important;
 }
-.id-comanda-text {
-    color: var(--lajama-green);
+.jama-tabla td {
+    padding: 0.85rem 1rem;
+    font-size: 0.88rem;
+    border-bottom: 1px solid var(--lajama-skin);
+    vertical-align: middle;
+}
+.jama-tabla tbody tr { transition: background-color 0.15s ease; }
+.jama-tabla tbody tr:hover {
+    background-color: rgba(251, 249, 244, 0.85) !important;
+}
+.cabecera-oscura th {
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-cream) !important;
+    border-bottom: 2px solid var(--lajama-gold) !important;
 }
 
-/* Iconos de tipo de servicio */
-.icon-service-jama {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-}
-.bg-delivery { background-color: rgba(42, 123, 76, 0.12); color: var(--lajama-success); }
-.bg-local { background-color: rgba(212, 163, 115, 0.15); color: #A06D3B; }
+.col-id { width: 95px; }
+.id-resaltado { color: var(--lajama-green); font-weight: 700; font-family: monospace; }
+.texto-negrita { font-weight: 700; }
+.texto-servicio { font-weight: 600; color: #4A5568; }
+.cliente-nombre { font-weight: 700; color: #1A202C; }
+.cliente-meta-detalles { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.15rem; flex-wrap: wrap; }
+.texto-atenuado { color: var(--lajama-secondary); }
+.monto-exito { color: var(--lajama-success); font-weight: 700; }
 
-.badge-time-jama {
-    background-color: #EAECEE;
-    color: var(--lajama-secondary);
-    padding: 0.4rem 0.6rem;
-    border-radius: 0.5rem;
-    font-weight: 600;
-}
-.btn-jama-cobrar {
-    background-color: var(--lajama-green);
-    color: var(--lajama-peach);
-    border: none;
-    transition: all 0.2s ease;
-}
-.btn-jama-cobrar:hover {
-    background-color: var(--lajama-green-hover);
-    color: var(--lajama-white);
-}
-
-/* ─── ARQUITECTURA CRÍTICA: MODAL FACTURACIÓN MULTI-TICKET ───────── */
-.modal-content-facturacion {
-    border-radius: 1.5rem !important;
-    overflow: hidden;
-}
-.header-jama-caja-dark {
-    background-color: var(--lajama-green);
-    border-bottom: 3px solid var(--lajama-gold);
-    padding: 1rem 1.5rem;
-}
-
-/* Filas de items/platos seleccionables (Táctil) */
-.jama-item-row-btn {
-    background-color: var(--lajama-white);
-    border: 1px solid var(--lajama-peach);
-    border-radius: 0.75rem;
-    padding: 0.65rem 0.85rem;
-    margin-bottom: 0.5rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-.jama-item-row-btn:hover {
-    background-color: var(--lajama-cream);
-    border-color: var(--lajama-gold);
-}
-.jama-item-row-btn.assigned {
-    background-color: rgba(212, 163, 115, 0.06);
-    border-color: var(--lajama-gold);
-}
-.jama-btn-del-owner {
-    background: rgba(0,0,0,0.1);
-    color: var(--lajama-danger);
-    border-radius: 50%;
-    width: 14px;
-    height: 14px;
+/* Badges de Operación */
+.jama-badge {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    cursor: pointer;
-    margin-left: 2px;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
 }
+.badge-alerta { background-color: var(--lajama-danger); color: var(--lajama-white); }
+.badge-gris { background-color: #E2E8F0; color: #4A5157; }
+.badge-tiempo { background-color: var(--lajama-cream); border: 1px solid var(--lajama-peach); color: var(--lajama-secondary); }
+.badge-boleta { background-color: var(--lajama-cream); color: var(--lajama-green); border: 1px solid var(--lajama-peach); }
+.badge-factura { background-color: var(--lajama-skin); color: var(--lajama-green); border: 1px solid var(--lajama-peach); }
+.badge-pago { background-color: #EAECEE; color: #2D312E; border: 1px solid rgba(0,0,0,0.05); }
+.badge-cpe { background-color: #212529; color: var(--lajama-warning); font-family: monospace; }
+.status-ingreso { background-color: var(--lajama-success-bg); color: var(--lajama-success); }
+.status-egreso { background-color: var(--lajama-danger-bg); color: var(--lajama-danger); }
 
-/* Grid de canastas de cobro */
-.style-grid-tickets {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    align-content: start;
+/* Acciones de Tabla */
+.jama-btn-circular {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid var(--lajama-peach); background: white;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease; color: var(--lajama-green);
 }
+.jama-btn-circular:hover { background-color: var(--lajama-skin); border-color: var(--lajama-gold); }
+.jama-btn-link { color: var(--lajama-secondary); text-decoration: none; padding: 0 0.25rem; display: inline-flex; align-items: center; transition: color 0.15s; background: none; border: none; cursor: pointer; }
+.jama-btn-link:hover { color: var(--lajama-green); }
+.jama-btn-link.btn-anular:hover { color: var(--lajama-danger); }
 
-/* Tarjetas individuales de Tickets */
-.jama-ticket-card {
-    background-color: var(--lajama-white);
-    border: 2px solid var(--lajama-peach);
-    border-radius: 1rem;
-    padding: 1rem;
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    display: flex;
-    flex-direction: column;
+.jama-grupo-botones, .jama-grupo-botones-fin { display: inline-flex; gap: 0.4rem; }
+.jama-btn-accion {
+    border: none; border-radius: 0.5rem; padding: 0.4rem 0.85rem;
+    font-size: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s ease;
 }
-.jama-ticket-header-badge {
-    background-color: var(--lajama-gold);
-    color: var(--lajama-green);
-    font-weight: 800;
-    font-size: 0.7rem;
-    padding: 0.2rem 0.6rem;
-    border-radius: 0.5rem;
-    align-self: start;
-    margin-bottom: 0.5rem;
-    letter-spacing: 0.5px;
-}
-.jama-finance-box {
-    background-color: var(--lajama-cream);
-    border-radius: 0.5rem;
-    padding: 0.5rem;
-    font-size: 0.85rem;
-}
-.jama-finance-line {
+.btn-aprobar { background-color: var(--lajama-success-bg); color: var(--lajama-success); border: 1px solid rgba(42, 123, 76, 0.15); }
+.btn-aprobar:hover { background-color: var(--lajama-success); color: white; }
+.btn-rechazar { background-color: var(--lajama-danger-bg); color: var(--lajama-danger); border: 1px solid rgba(184, 58, 58, 0.15); }
+.btn-rechazar:hover { background-color: var(--lajama-danger); color: white; }
+.btn-emitir-boleta { background-color: #3182CE; color: white; }
+.btn-emitir-boleta:hover { background-color: #235E93; }
+.btn-emitir-factura { background-color: var(--lajama-green); color: white; }
+.btn-emitir-factura:hover { background-color: var(--lajama-green-hover); }
+.btn-editar-cpe { background-color: white; color: var(--lajama-green); border: 1px solid var(--lajama-peach); display: inline-flex; align-items: center; justify-content: center; }
+.btn-editar-cpe:hover { background-color: var(--lajama-skin); }
+
+/* ─── MOTOR DE PAGINACIÓN LOCAL NATIVA ──────────────────────────── */
+.jama-paginacion {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.2rem;
-    color: var(--lajama-secondary);
-}
-.jama-finance-line.total {
-    border-top: 1px dashed var(--lajama-peach);
-    margin-top: 0.3rem;
-    padding-top: 0.3rem;
-    font-weight: 700;
-    color: var(--lajama-green);
-}
-
-/* Switches de Tipo de Documento CPE */
-.jama-toggle-row {
-    display: flex;
-    background-color: #EAECEE;
-    padding: 0.2rem;
-    border-radius: 0.5rem;
-    gap: 0.2rem;
-}
-.jama-toggle-btn {
-    flex: 1;
-    border: none;
-    background: none;
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 0.35rem;
-    border-radius: 0.35rem;
-    color: var(--lajama-secondary);
-    transition: all 0.15s ease;
-}
-.jama-toggle-btn.active {
-    background-color: var(--lajama-green);
-    color: var(--lajama-white);
-}
-
-.jama-input-text {
-    width: 100%;
-    border: 1px solid var(--lajama-peach);
-    border-radius: 0.5rem;
-    padding: 0.35rem;
-    font-size: 0.8rem;
-    background-color: var(--lajama-cream);
-}
-.jama-select {
-    width: 100%;
-    border: 1px solid var(--lajama-peach);
-    border-radius: 0.5rem;
-    padding: 0.4rem;
-    font-size: 0.85rem;
-    font-weight: 600;
+    align-items: center;
+    padding: 1rem 1.25rem;
     background-color: var(--lajama-white);
-    color: var(--lajama-green);
-}
-.jama-pos-alert {
-    margin-top: auto;
     border-top: 1px solid var(--lajama-skin);
-    padding-top: 0.4rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.paginacion-info { font-size: 0.78rem; color: var(--lajama-secondary); font-weight: 700; text-transform: uppercase; }
+.paginacion-controles { display: flex; align-items: center; gap: 6px; }
+.pag-btn {
+    background-color: var(--lajama-white) !important;
+    color: var(--lajama-green) !important;
+    border: 1px solid var(--lajama-peach) !important;
+    padding: 6px 14px !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    border-radius: 8px !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none !important;
+}
+.pag-btn:hover {
+    background-color: var(--lajama-skin) !important;
+    border-color: var(--lajama-gold) !important;
+}
+.pag-numeros { display: flex; gap: 6px; }
+.pag-numero {
+    background-color: var(--lajama-white) !important;
+    color: var(--lajama-green) !important;
+    border: 1px solid var(--lajama-peach) !important;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.pag-numero:hover {
+    background-color: var(--lajama-skin) !important;
+}
+.pag-numero.activo {
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-cream) !important;
+    border-color: var(--lajama-green) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Historial Filtro por Fechas */
+.jama-filtro-fechas {
+    display: flex; align-items: center; gap: 1rem; padding: 1rem;
+    background-color: var(--lajama-cream); border-bottom: 1px solid var(--lajama-skin); flex-wrap: wrap;
+}
+.campo-fecha { display: flex; align-items: center; gap: 0.5rem; }
+.campo-fecha label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--lajama-green); letter-spacing: 0.5px; }
+.jama-input {
+    border: 1px solid var(--lajama-peach); border-radius: 0.65rem; padding: 0.45rem 0.75rem;
+    background-color: var(--lajama-white); color: #2D312E; font-size: 0.85rem; font-family: inherit; outline: none;
+}
+.btn-filtro {
+    background-color: var(--lajama-green); color: var(--lajama-peach); font-weight: 600; border: 1px solid var(--lajama-green);
+    padding: 0.5rem 1.25rem; border-radius: 20px; cursor: pointer; font-size: 0.8rem; display: inline-flex; align-items: center; transition: all 0.2s ease;
+}
+.btn-filtro:hover { background-color: var(--lajama-green-hover); color: var(--lajama-white); transform: translateY(-1px); }
+
+/* ─── ARQUITECTURA CRÍTICA: MODALES SEMÁNTICOS CON FLEX CENTER ───── */
+/* 🚨 Frena por completo el desborde y centra de manera matemática las cajas */
+.jama-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(27, 58, 44, 0.45) !important;
+    display: none !important;
+    align-items: center !important;     /* Centrado vertical estricto */
+    justify-content: center !important;  /* Centrado horizontal estricto */
+    z-index: 9999 !important;
+    backdrop-filter: blur(2px) !important;
+    box-sizing: border-box !important;
+}
+.jama-modal-overlay.mostrar-modal {
+    display: flex !important; /* Despierta el contenedor Flex */
+}
+
+.jama-modal-caja {
+    background: var(--lajama-white) !important;
+    border-radius: 1.25rem !important;
+    box-shadow: var(--shadow-lg) !important;
+    width: 90% !important;
+    max-width: 480px !important;
+    margin: 0 !important; /* Elimina márgenes de Bootstrap que empujan hacia abajo */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box !important;
+    animation: slideUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Modificación para marcos de gran escala (Monitor Espejo) */
+.jama-modal-overlay.large .jama-modal-caja.large {
+    max-width: 95vw !important;
+    width: 1300px !important;
+    height: 85vh !important;
+}
+
+.jama-modal-header {
+    background-color: var(--lajama-cream);
+    border-bottom: 1px solid var(--lajama-peach);
+    color: var(--lajama-green);
+    padding: 1.25rem 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
+.header-modal-danger {
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-peach) !important;
+    border-bottom: 3px solid var(--lajama-danger) !important;
+}
+.jama-modal-titulo { margin: 0; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.jama-modal-cerrar { background: none; border: none; color: var(--lajama-secondary); font-size: 1.2rem; cursor: pointer; padding: 0; }
+.jama-modal-header.bg-white .jama-modal-cerrar, .text-dark { color: #2D312E !important; }
+.header-modal-danger .jama-modal-cerrar { color: white !important; }
 
-/* Footer de Control Base */
-.footer-jama-caja {
+.jama-modal-body {
+    padding: 1.5rem;
+    background-color: var(--lajama-white);
+    overflow-y: auto;
+}
+.jama-modal-body.iframe-container {
+    padding: 0 !important;
+    flex: 1;
+}
+#iframePlanoMesas { width: 100%; height: 100%; border: none; display: block; }
+
+.jama-modal-footer {
     background-color: var(--lajama-skin);
-    border-top: 2px solid var(--lajama-peach);
-    padding: 0.75rem 1.5rem;
-}
-.jama-txt-status {
-    font-weight: 700;
-    padding: 0.35rem 0.85rem;
-    border-radius: 2rem;
-    font-size: 0.85rem;
-}
-.status-success { background-color: var(--lajama-success-bg); color: var(--lajama-success); }
-.status-danger { background-color: var(--lajama-danger-bg); color: var(--lajama-danger); animation: pulseEffect 2s infinite; }
-
-@keyframes pulseEffect {
-    0% { opacity: 1; }
-    50% { opacity: 0.6; }
-    100% { opacity: 1; }
+    border-top: 1px solid var(--lajama-peach) !important;
+    padding: 0.9rem 1.5rem !important;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
 }
 
-.btn-jama-liquidar-final {
-    background-color: var(--lajama-success);
-    color: white;
-    border: none;
-}
-.btn-jama-liquidar-final:hover:not(:disabled) {
-    background-color: #215F3A;
-}
-
-/* Formularios Generales */
-.form-label-jama {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--lajama-green);
+/* Reajuste de Botonería de Control Interna de Bloques */
+.jama-modal-footer .btn-pag-jama-block {
+    border: 1px solid var(--lajama-peach) !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
     text-transform: uppercase;
-    margin-bottom: 0.3rem;
+    cursor: pointer;
+    font-family: inherit;
+    background-color: var(--lajama-white);
+    color: var(--lajama-green);
+    transition: all 0.2s ease;
 }
-.form-control-jama, .form-select-jama {
+.jama-modal-footer .btn-pag-jama-block:hover {
+    background-color: var(--lajama-skin) !important;
+}
+.jama-modal-footer .btn-pag-jama-active {
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-cream) !important;
+    border-color: var(--lajama-green) !important;
+}
+.jama-btn-danger-solid {
+    background-color: var(--lajama-danger) !important;
+    color: white !important;
+    border: 1px solid var(--lajama-danger) !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+.jama-btn-danger-solid:hover { background-color: #932828 !important; border-color: #932828 !important; }
+
+/* Formularios Internos de Entrada */
+.jama-form-control {
     width: 100%;
     border: 1px solid var(--lajama-peach);
     border-radius: 0.65rem;
-    padding: 0.5rem 0.75rem;
+    padding: 0.55rem 0.75rem;
     background-color: var(--lajama-cream);
+    color: #2D312E;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+    outline: none;
+}
+.jama-form-control:focus {
+    background-color: var(--lajama-white);
+    border-color: var(--lajama-green);
+    box-shadow: 0 0 0 0.25rem rgba(27, 58, 44, 0.1);
+}
+.entry-monto { font-size: 1.4rem !important; font-weight: 700 !important; text-align: center !important; color: var(--lajama-success) !important; }
+
+/* Switch CPE */
+.btn-fiscal-switch { display: flex; gap: 0.5rem; }
+.jama-btn-selector {
+    flex: 1; background: white; border: 2px solid var(--lajama-peach);
+    border-radius: 8px; padding: 0.55rem; font-weight: 700; cursor: pointer;
+    color: var(--lajama-green); font-family: inherit; transition: all 0.15s;
+}
+.jama-btn-selector.activo { background-color: var(--lajama-green); color: white; border-color: var(--lajama-green); }
+
+/* Detalle de Auditoría de Platos */
+.jama-detalle-item {
+    display: flex; justify-content: space-between; background-color: var(--lajama-cream);
+    padding: 0.55rem 0.75rem; border-radius: 6px; font-size: 0.88rem; border-left: 3px solid var(--lajama-gold); margin-bottom: 0.4rem;
+}
+.detalle-qty { font-weight: 700; color: var(--lajama-gold); }
+.detalle-nombre { flex-grow: 1; padding-left: 0.5rem; font-weight: 600; color: #2D312E; }
+.detalle-monto { font-weight: 700; color: var(--lajama-green); }
+
+/* Animaciones de Entrada */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(15px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ─── PESTAÑAS (UNIFICACIÓN DE CLASES NATIVAS LA JAMA) ───────────── */
+.jama-tabs-contenido {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-/* --- MONITOREO DE SALA TÁCTIL --- */
-
-.fw-black {
-    font-weight: 900 !important;
+/* Ocultamos todos los paneles nativos por defecto usando tu clase exacta 🚫 */
+.jama-tab-panel {
+    display: none !important;
 }
 
-/* El botón base de la mesa */
-.btn-mesa-tactil {
-    background-color: #ffffff;
-    color: #1B3A2C;
-    border: 2px solid #e5e7eb !important;
+/* Tu JS inyecta la clase .activo (con tilde), forzamos su visualización 👁️ */
+.jama-tab-panel.activo,
+.jama-tab-panel.active {
+    display: block !important;
+    animation: fadeInTab 0.25s ease-edge;
 }
 
-/* Efecto cuando pasas el dedo o haces clic (Feedback táctil) */
-.btn-mesa-tactil:active, .btn-mesa-tactil:focus {
-    transform: scale(0.96);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+/* Animación de desvanecimiento para el cambio de pestañas */
+@keyframes fadeInTab {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-/* Variación: Mesa Ocupada / Por Cobrar (Tono claro pero llamativo) */
-.btn-mesa-tactil.estado-por-cobrar {
-    background-color: #FFF7ED !important; /* Melocotón muy suave */
-    border-color: #FED7AA !important;
-    color: #C2410C !important;
+
+
+
+
+
+
+/* ==========================================================================
+   LA JAMA - COMPONENTES ESPECÍFICOS PARA PANTALLA DE APERTURA DE CAJA
+   ========================================================================== */
+
+.jama-wrapper-apertura {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
 }
 
-/* Variación: Mesa Libre (Verde claro relajante) */
-.btn-mesa-tactil.estado-libre {
-    background-color: #F0FDF4 !important;
-    border-color: #BBF7D0 !important;
-    color: #166534 !important;
+.main-content-apertura {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
 }
 
-/* Animación sutil al pasar el mouse si se usa computadora */
-@media (min-width: 992px) {
-    .btn-mesa-tactil:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-        border-color: #1B3A2C !important;
-    }
+.jama-container-apertura {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+/* Tarjeta Contenedora de Apertura */
+.card-jama-apertura {
+    background-color: var(--lajama-white);
+    border-radius: 1.25rem;
+    border: 1px solid var(--lajama-peach);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 460px;
+    overflow: hidden;
+}
+
+.card-header-apertura {
+    background: linear-gradient(135deg, var(--lajama-green) 0%, #254F3C 100%);
+    padding: 2rem;
+    text-center: center;
+    text-align: center;
+}
+
+.icon-circle-apertura {
+    width: 56px;
+    height: 56px;
+    background-color: var(--lajama-white);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.card-body-apertura {
+    padding: 2rem;
+}
+
+/* Alerta de Monto Sugerido Anterior */
+.jama-alerta-sugerido {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: var(--lajama-success-bg);
+    color: #1E4620;
+    border-radius: 0.65rem;
+    border: 1px solid rgba(42, 123, 76, 0.15);
+    margin-bottom: 1.5rem;
+}
+
+/* Grupo de Entrada Monetaria */
+.jama-input-group {
+    display: flex;
+    align-items: stretch;
+    border: 2px solid var(--lajama-peach);
+    border-radius: 0.65rem;
+    background-color: var(--lajama-cream);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s;
+}
+.jama-input-group:focus-within {
+    border-color: var(--lajama-green);
+    background-color: var(--lajama-white);
+}
+
+.jama-input-group-text {
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    background-color: transparent;
+    font-weight: 700;
+    color: var(--lajama-secondary);
+    border-right: 1px solid var(--lajama-peach);
+}
+
+.jama-input-group .entry-monto {
+    border: none !important;
+    background: transparent !important;
+    font-size: 1.5rem !important;
+    padding: 0.75rem !important;
+    text-align: left !important;
+    width: 100%;
+}
+
+/* Botón de Confirmación de Apertura */
+.btn-jama-apertura {
+    width: 100%;
+    border: none;
+    border-radius: 2rem;
+    padding: 0.85rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-jama-apertura.habilitado {
+    background-color: var(--lajama-green);
+    color: var(--lajama-peach);
+}
+.btn-jama-apertura.habilitado:hover {
+    background-color: var(--lajama-green-hover);
+    color: var(--lajama-white);
+    transform: translateY(-1px);
+}
+.btn-jama-apertura.inhabilitado {
+    background-color: #E2E8F0;
+    color: #94A3B8;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Alerta de Bloqueo por Horario Estricto */
+.jama-card-bloqueo {
+    background-color: #FFF5F5;
+    border-left: 5px solid var(--lajama-danger);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    text-align: center;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1.25rem;
+    box-sizing: border-box;
+}
+
+.alerta-icono-bloqueo {
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.jama-badge-reloj {
+    display: inline-block;
+    background-color: #1E1E24;
+    color: var(--lajama-white);
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-top: 1rem;
 }

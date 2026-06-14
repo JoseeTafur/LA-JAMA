@@ -43,9 +43,8 @@ public class SessionInterceptor implements HandlerInterceptor {
         String claveIdentificadora;
         boolean esAutenticado = false;
 
-        // ── A. IDENTIFICACIÓN INTELIGENTE (IP VS USUARIO) ──────────────────────────────────
         if (session != null && session.getAttribute("usuarioLogueado") != null) {
-            claveIdentificadora = "USER_" + session.getAttribute("usuarioLogueado").toString().trim();
+            claveIdentificadora = "SESSION_" + session.getId();
             esAutenticado = true;
         } else {
             String ip = request.getHeader("X-Forwarded-For");
