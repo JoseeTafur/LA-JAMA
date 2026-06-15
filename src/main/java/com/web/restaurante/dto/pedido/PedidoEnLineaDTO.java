@@ -1,7 +1,6 @@
 package com.web.restaurante.dto.pedido;
 
 import com.web.restaurante.model.enums.TipoPedido;
-
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -12,6 +11,8 @@ public record PedidoEnLineaDTO(
         Float longitud,
         BigDecimal montoTotal,
         TipoPedido tipoPedido,
-        List<DetallePedidoEnLineaDTO> listaDetalles
+        List<DetallePedidoEnLineaDTO> listaDetalles,
+        String clienteCorreo,
+        String preferenciaComprobante
 ) {
 }

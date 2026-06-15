@@ -6,10 +6,7 @@ import com.web.restaurante.model.Pedido;
 import com.web.restaurante.model.TurnoCaja;
 import com.web.restaurante.repository.PedidoRepository;
 import com.web.restaurante.repository.TurnoCajaRepository;
-import com.web.restaurante.service.FacturacionService;
-import com.web.restaurante.service.MesaService;
-import com.web.restaurante.service.PedidoService;
-import com.web.restaurante.service.TurnoCajaService;
+import com.web.restaurante.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -34,16 +31,11 @@ public class CajaController {
     private final TurnoCajaRepository turnoCajaRepository;
     private final PedidoRepository pedidoRepository;
     private final FacturacionService facturacionService;
+    private final EmailService emailService;
 
     private LocalTime obtenerHoraActualSistema() {
-        //return LocalTime.of(7, 45);
-
-        // 🟩 ESCENARIO DE PRUEBA 2: Quita el comentario para simular que ya abrimos el restaurante
-        //return LocalTime.of(8, 15);
-        // Cuando pases el proyecto a producción, simplemente dejas esta línea:
         return LocalTime.now();
     }
-
 
     @GetMapping
     public String verCaja(Model model) {
@@ -54,7 +46,6 @@ public class CajaController {
             model.addAttribute("montoSugerido", turnoCajaService.obtenerMontoAperturaSugerido());
             model.addAttribute("activeUri", "/admin/caja");
 
-            // 🚨 EVALUACIÓN DE HORARIO ESTRICTO:
             if (horaActual.isBefore(LocalTime.of(8, 0))) {
                 model.addAttribute("horarioBloqueado", true);
                 model.addAttribute("horaAperturaPermitida", "08:00 AM");
@@ -63,34 +54,34 @@ public class CajaController {
                 model.addAttribute("horarioBloqueado", false);
             }
 
-            return "admin/caja_apertura"; // Te manda a la pantalla del botón de abrir
+            return "admin/caja_apertura";
         }
 
         TurnoCaja turnoActivo = turnoOpt.get();
         List<MovimientoCaja> movimientos = turnoCajaService.obtenerMovimientosDelTurnoActivo();
 
-        // Calcular saldos reales al vuelo protegiendo operaciones
         double totalVentas = movimientos.stream().filter(m -> "VENTA".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
         double totalIngresos = movimientos.stream().filter(m -> "INGRESO".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
         double totalEgresos = movimientos.stream().filter(m -> "EGRESO".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
 
-        // El saldo teórico suma ingresos (ventas/manuales) y resta egresos (guardados nativamente en negativo)
         double saldoTeorico = turnoActivo.getMontoApertura() + totalVentas + totalIngresos + totalEgresos;
 
         model.addAttribute("turno", turnoActivo);
         model.addAttribute("movimientos", movimientos);
         model.addAttribute("saldoTeorico", saldoTeorico);
 
-        // 🟩 OPERACIÓN CENTRAL: Recuperamos la lista de control para la primera pestaña (Bandeja Operativa)
+        // 🟩 BANDEJA OPERATIVA: Sigue filtrando solo lo que está por cobrar
         List<Pedido> pedidosParaCaja = pedidoService.listarPedidosPorCobrar();
-
         model.addAttribute("pedidos", pedidosParaCaja);
-        model.addAttribute("pedidosDiario", pedidosParaCaja);
+
+        // 🚀 REPARADO INTEGRAL PARA EL LIBRO DIARIO:
+        // Cargamos absolutamente todos los pedidos para que los registros contables estables de la comanda
+        // no se queden vacíos o desaparezcan al cambiar su estado a PAGADO.
+        List<Pedido> todosLosPedidosHistorial = pedidoRepository.findAll();
+        model.addAttribute("pedidosDiario", todosLosPedidosHistorial);
 
         model.addAttribute("pedidosPendientes", pedidoService.listarPendientesDeCarta());
         model.addAttribute("mesas", mesaService.obtenerMesasParaSalon());
-
-        // 🚀 SEGUNDO CANDADO: Para cuando la caja ya está abierta y carga el panel principal
         model.addAttribute("activeUri", "/admin/caja");
 
         return "admin/caja";
@@ -106,7 +97,6 @@ public class CajaController {
     public String registrarMovimientoManual(@RequestParam String tipo,
                                             @RequestParam String concepto,
                                             @RequestParam Double monto) {
-        // CORREGIDO: Enrutamiento semántico lícito del flujo monetario
         if ("INGRESO".equalsIgnoreCase(tipo)) {
             turnoCajaService.registrarVenta("Manual: " + concepto, Math.abs(monto));
         } else {
@@ -117,20 +107,15 @@ public class CajaController {
 
     @PostMapping("/cerrar")
     public String cerrarCaja(@RequestParam Double montoCierre, @RequestParam(required = false) String observaciones) {
-
-        // 🟩 PASO SEGURO DIRECTO A BASE DE DATOS (Bypass a la caché del Service)
-        // Buscamos directamente en el repositorio mapeado si quedan registros en el limbo fiscal
         List<Pedido> pendientesDeTimbradoReal = pedidoRepository.findAll().stream()
                 .filter(p -> com.web.restaurante.model.enums.EstadoPedido.PAGADO.equals(p.getEstado())
                         && (p.getComprobanteNumero() == null || p.getComprobanteNumero().isEmpty()))
                 .toList();
 
-        // Si la lista física en base de datos de verdad tiene elementos, rebotamos
         if (!pendientesDeTimbradoReal.isEmpty()) {
             return "redirect:/admin/caja?error=ComprobantesPendientes";
         }
 
-        // Si está vacía de verdad, ejecutamos el cierre de caja limpio
         turnoCajaService.cerrarTurno(montoCierre, observaciones);
         return "redirect:/admin/caja?cierreOk";
     }
@@ -152,17 +137,16 @@ public class CajaController {
                                            @RequestParam Long mesaId,
                                            @RequestParam(required = false) List<Long> idsDetallesPagados,
                                            @RequestParam Double montoAPagar) {
+        // 🚀 Cambia el estado del pedido a PAGADO y libera la mesa físicamente
         mesaService.procesarCobro(pedidoId, mesaId, idsDetallesPagados);
-        Pedido pedido = pedidoService.obtenerPorId(pedidoId);
 
-        String nroMesaStr = (pedido.getNumeroMesa() != null) ? String.valueOf(pedido.getNumeroMesa()) : "N/A";
-        String concepto = "Cobro Orden #" + pedidoId + " - Mesa N° " + nroMesaStr;
+        // ⚙️ REMOVIDO: Ya no registramos el movimiento aquí de forma prematura.
+        // Esto evita que aparezca en el Libro Diario antes de ser timbrado en SUNAT.
 
-        turnoCajaService.registrarVenta(concepto, montoAPagar);
         return "redirect:/admin/caja?success";
     }
 
-    @GetMapping("/precuenta/{numeroMesa}") // CORREGIDO: Removido prefijo redundante anti-404
+    @GetMapping("/precuenta/{numeroMesa}")
     @ResponseBody
     public ResponseEntity<?> obtenerPrecuentaMesaDebug(@PathVariable Integer numeroMesa) {
         try {
@@ -233,28 +217,50 @@ public class CajaController {
             @RequestParam Long pedidoId,
             @RequestParam(required = false, defaultValue = "") String documento,
             @RequestParam String tipo) {
+
         Pedido pedido = pedidoRepository.findById(pedidoId)
-                .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado con ID: " + pedidoId));
 
         pedido.setPreferenciaComprobante(tipo);
-        pedido.setDocumentoCliente(documento);
 
-        // 🚀 MANDAMOS EL PEDIDO A MIAPI.CLOUD
+        if (documento != null && !documento.trim().isEmpty()) {
+            pedido.setDocumentoCliente(documento.trim());
+        } else if (pedido.getDocumentoCliente() == null || pedido.getDocumentoCliente().trim().isEmpty()) {
+            pedido.setDocumentoCliente("");
+        }
+
+        System.out.println("🪪 [AUDITORÍA SUNAT] Procesando Comprobante " + tipo + " para el Documento: " + pedido.getDocumentoCliente());
+
         FacturaResponse.RespuestaData sunatResult = facturacionService.emitirComprobanteSunat(pedido);
 
         if (sunatResult != null && sunatResult.isSuccess()) {
-            System.out.println("🔗 PDF A4: " + sunatResult.getPdfA4());
-            System.out.println("🔗 PDF Ticket: " + sunatResult.getPdfTicket());
-            System.out.println("🔗 XML Firmado: " + sunatResult.getXmlFirmado());
-
             pedido.setComprobanteNumero(String.valueOf(pedidoId));
             pedido.setComprobanteTipo(tipo);
+            pedido.setComprobantePdfUrl(sunatResult.getPdfTicket());
+            pedido.setComprobanteA4Url(sunatResult.getPdfA4());
 
-            // 🟩 PERSISTENCIA PARALELA DE AMBOS FORMATOS FISCALES
-            pedido.setComprobantePdfUrl(sunatResult.getPdfTicket()); // Ticket Térmico
-            pedido.setComprobanteA4Url(sunatResult.getPdfA4());     // Hoja Estándar A4
-
+            pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.PAGADO);
             pedidoRepository.save(pedido);
+
+            if (pedido.getClienteCorreo() != null && !pedido.getClienteCorreo().isEmpty()) {
+                emailService.enviarComprobante(pedido.getClienteCorreo(), pedido);
+                System.out.println("📧 Correo de comprobante enviado con éxito a: " + pedido.getClienteCorreo());
+            }
+
+            // ⚙️ UNIFICADO INTELIGENTE: Registra el asiento contable oficial en el Libro Diario
+            // Funciona tanto para Delivery como para el Salón (LOCAL)
+            String conceptoContable;
+            if (com.web.restaurante.model.enums.TipoPedido.DELIVERY.equals(pedido.getTipoPedido())) {
+                conceptoContable = "Venta Online de la Carta — Pedido #" + pedido.getId() + " (" + tipo + ")";
+            } else {
+                String nroMesaStr = (pedido.getNumeroMesa() != null) ? String.valueOf(pedido.getNumeroMesa()) : "N/A";
+                conceptoContable = "Liquidación Comanda #" + pedido.getId() + " — Mesa N° " + nroMesaStr + " (" + tipo + ")";
+            }
+
+            double montoVenta = pedido.getMontoTotal() != null ? pedido.getMontoTotal() : 0.0;
+            turnoCajaService.registrarVenta(conceptoContable, montoVenta);
+            System.out.println("💰 [CAJA] Venta registrada en el libro diario de caja: S/ " + montoVenta);
+
             return "redirect:/admin/caja?param-success";
         } else {
             return "redirect:/admin/caja?error-sunat";
@@ -267,17 +273,35 @@ public class CajaController {
             Pedido ticket = pedidoService.obtenerPorId(pedidoId);
             if (ticket == null) return "redirect:/admin/caja?error=TicketNoEncontrado";
 
-            // 🟩 LIMPIEZA ABSOLUTA: Reseteamos los campos fiscales y las rutas de los archivos
+            // 1. Extraemos el concepto exacto que generó este pedido para buscarlo en el libro diario
+            String conceptoBusquedaWeb = "Pedido #" + ticket.getId();
+            String conceptoBusquedaLocal = "Comanda #" + ticket.getId();
+
+            // 2. Buscamos y purgamos el movimiento contable del turno activo para que desaparezca de la grilla
+            List<MovimientoCaja> movimientosTurno = turnoCajaService.obtenerMovimientosDelTurnoActivo();
+            for (MovimientoCaja m : movimientosTurno) {
+                if (m.getConcepto() != null && (m.getConcepto().contains(conceptoBusquedaWeb) || m.getConcepto().contains(conceptoBusquedaLocal))) {
+                    // 🚀 EJECUCIÓN SEGURA: Borrado físico del asiento del Libro Diario
+                    turnoCajaRepository.deleteMovimientoById(m.getId());
+                }
+            }
+
+            // 3. Limpiamos los metadatos fiscales de la SUNAT
             ticket.setComprobanteTipo(null);
             ticket.setComprobanteNumero(null);
             ticket.setDocumentoCliente(null);
             ticket.setComprobantePdfUrl(null);
             ticket.setComprobanteA4Url(null);
 
+            // 🚀 CLAVE LOGÍSTICA: Regresamos el pedido a estado PREPARADO.
+            // Esto hace que la bandeja intermedia de la caja lo vuelva a listar de inmediato como pendiente de CPE.
+            ticket.setEstado(com.web.restaurante.model.enums.EstadoPedido.PREPARADO);
+
             pedidoRepository.save(ticket);
 
             return "redirect:/admin/caja?anulacionExito";
         } catch (Exception e) {
+            e.printStackTrace();
             return "redirect:/admin/caja?error=ErrorProcesamiento";
         }
     }
@@ -287,17 +311,14 @@ public class CajaController {
         return "admin/cajero_delivery";
     }
 
-    // ── ENDPOINT ASÍNCRONO PARA EL HISTORIAL DE CAJAS POR RANGO DE FECHAS ──
     @GetMapping("/historial-datos")
     @ResponseBody
     public ResponseEntity<?> obtenerHistorialCajas(
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fechaInicio,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fechaFin) {
         try {
-            // Recuperamos todos los turnos cerrados
             List<TurnoCaja> turnos = turnoCajaRepository.findTurnosCerradosOrdenados();
 
-            // Filtramos en memoria por el rango de fechas seleccionado por el usuario
             List<Map<String, Object>> mapeoHistorial = turnos.stream()
                     .filter(t -> {
                         if (t.getFechaApertura() == null) return false;
@@ -323,6 +344,4 @@ public class CajaController {
             return ResponseEntity.internalServerError().body("Error al extraer historial: " + e.getMessage());
         }
     }
-
-
 }

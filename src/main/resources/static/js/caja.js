@@ -1,9 +1,11 @@
-// =======================================================
+// =========================================================================
 // ENRUTAMIENTO DINÁMICO Y AUDITORÍA EN VIVO PARA LA CAJA (LA JAMA)
-// =======================================================
+// =========================================================================
 let selectedPedidoId = null;
+let paginaActual = 1;
+const registrosPorPagina = 8;
 
-// ── Helpers nativos de apertura y cierre de modales (Reemplazo de Bootstrap) ──
+// ── Helpers nativos de apertura y cierre de modales ──────────────────────
 function abrirModal(id) {
     const modal = document.getElementById(id);
     if (modal) modal.classList.add('mostrar-modal');
@@ -19,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('param-aprobado')) AppUtils.showNotification("Pedido enviado a cocina.", "success");
     if (document.getElementById('param-success')) AppUtils.showNotification("¡Cobro cuadrado e ingreso registrado!", "success");
 
-    // Buscador en caliente de comandas de salón
+    // Buscador en caliente de comandas de salón (Optimizado para el motor de paginación)
     const buscador = document.getElementById('buscadorPedido');
     const tabla = document.getElementById('tablaCaja')?.getElementsByTagName('tbody')[0];
 
@@ -29,17 +31,21 @@ document.addEventListener('DOMContentLoaded', function() {
             const filas = tabla.getElementsByTagName('tr');
 
             Array.from(filas).forEach(fila => {
-                // Evaluamos contra la clase específica del pedido para no alterar otros elementos
                 if(fila.classList.contains('fila-pedido-caja')) {
-                    fila.style.display = fila.textContent.toLowerCase().includes(texto) ? '' : 'none';
+                    const coincide = fila.textContent.toLowerCase().includes(texto);
+                    if (coincide) {
+                        fila.classList.remove('excluido-por-busqueda');
+                    } else {
+                        fila.classList.add('excluido-por-busqueda');
+                    }
                 }
             });
-            // Cada vez que se busca, recalculamos la paginación local sobre los elementos visibles
+            paginaActual = 1;
             inicializarPaginacionLocal();
         });
     }
 
-    // Ejecución inicial de paginación
+    // Ejecución inicial de paginación al cargar la vista
     inicializarPaginacionLocal();
 });
 
@@ -82,28 +88,7 @@ function verDetallesComandaAuditoria(btn) {
         });
 }
 
-// ── Control de Emisión CPE ─────────────────────────────────────────────
-function abrirModalFiscalUnificado(pedidoId, tipoOriginal, documentoOriginal = '', esModificable = false) {
-    document.getElementById('fiscalPedidoId').value = pedidoId;
-    document.getElementById('fiscalIdOrdenTexto').innerText = pedidoId;
-
-    const tipoSeguro = (tipoOriginal && tipoOriginal !== 'null' && tipoOriginal !== '') ? tipoOriginal.toUpperCase() : 'BOLETA';
-    const docSeguro = (documentoOriginal && documentoOriginal !== 'null' && documentoOriginal !== 'undefined') ? documentoOriginal : '';
-
-    const inputDoc = document.getElementById('fiscalInputDoc');
-    inputDoc.value = docSeguro;
-    inputDoc.readOnly = !esModificable;
-
-    if (!esModificable) {
-        inputDoc.style.backgroundColor = "var(--caja-skin)";
-    } else {
-        inputDoc.style.backgroundColor = "var(--caja-white)";
-    }
-
-    cambiarTipoEnModal(tipoSeguro, esModificable);
-    abrirModal('modalEmisionFiscal');
-}
-
+// ── Control de Emisión CPE (Mapeo de UI) ─────────────────────────────────
 function cambiarTipoEnModal(tipo, esModificable = false) {
     document.getElementById('fiscalTipoDoc').value = tipo;
 
@@ -112,20 +97,38 @@ function cambiarTipoEnModal(tipo, esModificable = false) {
     const labelDoc = document.getElementById('labelDocumentoFiscal');
     const inputDoc = document.getElementById('fiscalInputDoc');
 
-    btnBoleta.disabled = !esModificable;
-    btnFactura.disabled = !esModificable;
+    if (btnBoleta) btnBoleta.disabled = !esModificable;
+    if (btnFactura) btnFactura.disabled = !esModificable;
 
     if (tipo === 'FACTURA') {
-        btnFactura.className = "jama-btn-selector activo";
-        btnBoleta.className = "jama-btn-selector";
-        labelDoc.innerText = esModificable ? "Paso 2: Corregir RUC de la Empresa (11 dígitos) *" : "Paso 2: RUC de la Empresa (Validado en Mesa)";
-        inputDoc.placeholder = "Ingrese RUC corporativo";
+        if (btnFactura) btnFactura.className = "jama-btn-selector activo";
+        if (btnBoleta) btnBoleta.className = "jama-btn-selector";
+        if (labelDoc) labelDoc.innerText = esModificable ? "Paso 2: Corregir RUC de la Empresa (11 dígitos) *" : "Paso 2: RUC de la Empresa (Validado en Mesa)";
+        if (inputDoc) inputDoc.placeholder = "Ingrese RUC corporativo";
     } else {
-        btnBoleta.className = "jama-btn-selector activo";
-        btnFactura.className = "jama-btn-selector";
-        labelDoc.innerText = esModificable ? "Paso 2: Corregir DNI / Identificación *" : "Paso 2: DNI del Cliente (Asignado en Mesa)";
-        inputDoc.placeholder = "Clientes Varios / DNI";
+        if (btnBoleta) btnBoleta.className = "jama-btn-selector activo";
+        if (btnFactura) btnFactura.className = "jama-btn-selector";
+        if (labelDoc) labelDoc.innerText = esModificable ? "Paso 2: Corregir DNI / Identificación *" : "Paso 2: DNI del Cliente (Asignado en Mesa)";
+        if (inputDoc) inputDoc.placeholder = "Clientes Varios / DNI";
     }
+}
+
+function abrirModalFiscalUnificado(pedidoId, tipoOriginal, documentoOriginal = '', esModificable = false) {
+    document.getElementById('fiscalPedidoId').value = pedidoId;
+    document.getElementById('fiscalIdOrdenTexto').innerText = pedidoId;
+
+    const tipoSeguro = (tipoOriginal && tipoOriginal !== 'null' && tipoOriginal !== '') ? tipoOriginal.toUpperCase() : 'BOLETA';
+    const docSeguro = (documentoOriginal && documentoOriginal !== 'null' && documentoOriginal !== 'undefined') ? documentoOriginal : '';
+
+    const inputDoc = document.getElementById('fiscalInputDoc');
+    if (inputDoc) {
+        inputDoc.value = docSeguro;
+        inputDoc.readOnly = !esModificable;
+        inputDoc.style.backgroundColor = !esModificable ? "var(--caja-skin)" : "var(--caja-white)";
+    }
+
+    cambiarTipoEnModal(tipoSeguro, esModificable);
+    abrirModal('modalEmisionFiscal');
 }
 
 // ── Notas de Crédito / Bajas Asíncronas ─────────────────────────────────
@@ -162,6 +165,7 @@ function prepararModalDesdeTabla(btn, esModificable) {
     abrirModalFiscalUnificado(id, tipo, doc, esModificable);
 }
 
+// ── Historial Asíncrono por rangos ─────────────────────────────────────
 function prepararAnulacionDesdeTabla(btn) {
     const id = btn.getAttribute('data-id');
     const tipo = btn.getAttribute('data-tipo');
@@ -169,7 +173,6 @@ function prepararAnulacionDesdeTabla(btn) {
     anularYCorregirComprobante(id, tipo, doc);
 }
 
-// ── Historial Asíncrono por rangos ─────────────────────────────────────
 function inicializarHistorialFechas() {
     const inputInicio = document.getElementById('historialFechaInicio');
     const inputFin = document.getElementById('historialFechaFin');
@@ -248,69 +251,84 @@ function cambiarPestañaCaja(idPanel, boton) {
     boton.classList.add('activo');
 }
 
-// ── Motor de Paginación Local Integrado ────────────────────────────────
-let paginaActual = 1;
-const registrosPorPagina = 8;
-
+// =========================================================================
+// 🎛️ MOTOR DE PAGINACIÓN LOCAL (SÓLO APLICA A LA TABLA DE COMANDAS)
+// =========================================================================
 function inicializarPaginacionLocal() {
     const tabla = document.getElementById('tablaCaja');
+    const infoStart = document.getElementById('pagStart');
+    const infoEnd = document.getElementById('pagEnd');
+
     if (!tabla) {
-            const info = document.getElementById('pagStart');
-            // Si tienes textos informativos de paginación fuera, los reseteamos a 0
-            if (info) {
-                document.getElementById('pagStart').innerText = "0";
-                document.getElementById('pagEnd').innerText = "0";
-            }
-            return;
-        }
+        if (infoStart) infoStart.innerText = "0";
+        if (infoEnd) infoEnd.innerText = "0";
+        return;
+    }
 
-    // Capturamos las filas de comandas exclusivamente
+    if (typeof $ !== 'undefined' && $.fn.DataTable && $.fn.DataTable.isDataTable('#tablaCaja')) {
+        try {
+            $('#tablaCaja').DataTable().destroy();
+        } catch(err) { console.log("Limpieza preventiva de DataTables realizada."); }
+    }
+
     const filas = Array.from(tabla.querySelectorAll('tbody tr.fila-pedido-caja'));
-
-    // Filtramos solo las que pasaron la prueba del buscador (es decir, display != none de forma previa)
-    const filasVisibles = filas.filter(f => f.style.getPropertyValue('display') !== 'none');
+    const filasVisibles = filas.filter(f => !f.classList.contains('excluido-por-busqueda'));
 
     const totalRegistros = filasVisibles.length;
     const totalPaginas = Math.ceil(totalRegistros / registrosPorPagina) || 1;
 
     if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+    if (paginaActual < 1) paginaActual = 1;
 
-    // Ocultamos temporalmente todas las filas base
-    filas.forEach(f => f.style.setProperty('display', 'none', 'important'));
+    filas.forEach(f => {
+        f.style.removeProperty('display');
+        f.style.display = 'none';
+    });
 
-    // Calculamos índices límites
     const inicio = (paginaActual - 1) * registrosPorPagina;
     const fin = Math.min(inicio + registrosPorPagina, totalRegistros);
 
-    // Encendemos solo las del rango activo
     for (let i = inicio; i < fin; i++) {
         if (filasVisibles[i]) {
-            filasVisibles[i].style.removeProperty('display');
+            filasVisibles[i].style.display = '';
         }
     }
 
-    // Actualizamos textos informativos
-    document.getElementById('pagStart').innerText = totalRegistros === 0 ? 0 : inicio + 1;
-    document.getElementById('pagEnd').innerText = fin;
+    if (infoStart) infoStart.innerText = totalRegistros === 0 ? 0 : inicio + 1;
+    if (infoEnd) infoEnd.innerText = fin;
 
-    // Dibujamos botones numéricos de forma interactiva
     const contenedorPaginas = document.getElementById('contenedorPaginas');
     if (contenedorPaginas) {
         contenedorPaginas.innerHTML = "";
         for (let p = 1; p <= totalPaginas; p++) {
-            contenedorPaginas.innerHTML += `<span class="pag-numero ${p === paginaActual ? 'activo' : ''}" onclick="irAPaginaLocal(${p})">${p}</span>`;
+            const span = document.createElement('span');
+            span.className = `pag-numero ${p === paginaActual ? 'activo' : ''}`;
+            span.innerText = p;
+            span.onclick = function() { irAPaginaLocal(p); };
+            contenedorPaginas.appendChild(span);
         }
     }
 
-    // Vinculamos acciones a los botones Previo / Siguiente
     const btnAnt = document.getElementById('btnPagAnterior');
     const btnSig = document.getElementById('btnPagSiguiente');
 
     if (btnAnt) {
-        btnAnt.onclick = () => { if (paginaActual > 1) { paginaActual--; inicializarPaginacionLocal(); } };
+        btnAnt.onclick = null;
+        btnAnt.onclick = function() {
+            if (paginaActual > 1) {
+                paginaActual--;
+                inicializarPaginacionLocal();
+            }
+        };
     }
     if (btnSig) {
-        btnSig.onclick = () => { if (paginaActual < totalPaginas) { paginaActual++; inicializarPaginacionLocal(); } };
+        btnSig.onclick = null;
+        btnSig.onclick = function() {
+            if (paginaActual < totalPaginas) {
+                paginaActual++;
+                inicializarPaginacionLocal();
+            }
+        };
     }
 }
 

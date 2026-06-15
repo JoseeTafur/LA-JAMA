@@ -34,7 +34,7 @@ public class UsuarioService {
     
     @Transactional(readOnly = true)
     public Optional<Usuario> encontrarPorUsuario(String usuario) {
-        return usuarioRepository.findByUsuarioIgnoreCase(usuario);
+        return usuarioRepository.findByUsuario(usuario);
     }
 
     
@@ -121,18 +121,25 @@ public class UsuarioService {
         return passwordEncoder.matches(claveTextoPlano, claveEncriptada);
     }
 
-    private boolean esUsuarioDuplicado(String usuario, Long id) {
-        return usuarioRepository.findByUsuarioIgnoreCase(usuario)
+    private boolean esUsuarioDuplicado(String username, Long id) {
+        // Buscamos todos los usuarios activos que coincidan con el login
+        List<Usuario> coincidencias = usuarioRepository.findByUsuarioIgnoreCase(username);
+
+        // Es un duplicado real si hay coincidencia, no está eliminado (estado != 2)
+        // y pertenece a un ID diferente al que estamos editando actualmente
+        return coincidencias.stream()
                 .filter(u -> u.getEstado() != 2)
-                .filter(u -> !u.getId().equals(id))
-                .isPresent();
+                .anyMatch(u -> !u.getId().equals(id));
     }
 
     private boolean esCorreoDuplicado(String correo, Long id) {
-        return usuarioRepository.findByCorreoIgnoreCase(correo)
+        // Buscamos todas las coincidencias de correo en la base de datos
+        List<Usuario> coincidencias = usuarioRepository.findByCorreoIgnoreCase(correo);
+
+        // Es duplicado si el correo ya existe en una cuenta viva que no sea la nuestra
+        return coincidencias.stream()
                 .filter(u -> u.getEstado() != 2)
-                .filter(u -> !u.getId().equals(id))
-                .isPresent();
+                .anyMatch(u -> !u.getId().equals(id));
     }
 
     private void validarDuplicados(Usuario usuario) {

@@ -11,6 +11,7 @@ public record PagoDigitalDTO(
         LocalDateTime fechaPago,
         SituacionPagoDigital situacion,
         String observacion,
-        String imgUrl
+        String imgUrl,
+        String clienteCorreo
 ) {
 }

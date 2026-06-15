@@ -26,11 +26,17 @@
 
 <th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
 
+<script th:inline="javascript">
+    window.APP_CONFIG = {
+        imageBaseUrl: /*[[${imageBaseUrl}]]*/ 'https://res.cloudinary.com/dyjnbddit/image/upload/'
+    };
+</script>
+
 <script th:src="@{/js/utiles-comunes.js}"></script>
 <script th:src="@{/js/seguridad-global.js}"></script>
 <script th:src="@{/js/sidebar.js}"></script>
 <script th:src="@{/js/main.js}"></script>
-
+<script th:src="@{/js/validation.js}"></script>
 <script th:src="@{{path}(path=${js})}"></script>
 </body>
 </html>

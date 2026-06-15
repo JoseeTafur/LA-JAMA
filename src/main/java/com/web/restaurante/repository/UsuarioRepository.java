@@ -17,11 +17,13 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     long countByPerfil_Id(Long idPerfil);
     long countByPerfil_NombreIgnoreCaseAndEstadoNot(String nombrePerfil, Integer estado);
 
+    // 🔒 MÉTODOS TRADICIONALES DE AUTENTICACIÓN (LOGIN DE SESIÓN NATIVA)
     Optional<Usuario> findByUsuario(String usuario);
-    Optional<Usuario> findByUsuarioIgnoreCase(String usuario);
-
     Optional<Usuario> findByCorreo(String correo);
-    Optional<Usuario> findByCorreoIgnoreCase(String correo);
+
+    // 🚀 CAMBIADOS A LIST PARA PREVENIR EL COLAPSO DEL ERROR 500 AL EDITAR/VALIDAR DUPLICADOS
+    List<Usuario> findByUsuarioIgnoreCase(String usuario);
+    List<Usuario> findByCorreoIgnoreCase(String correo);
 
     boolean existsByUsuario(String usuario);
     boolean existsByCorreo(String correo);

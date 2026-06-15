@@ -14,6 +14,7 @@
     <input type="hidden" id="sessionRolHidden" th:value="${session.rol}">
     <div class="card card-color1 p-4 shadow-sm">
 
+        <!-- ── CABECERA DE CONTROL DE ACCESOS ─────────────────────────────────────────── -->
         <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
             <div>
                 <h4 class="fw-bold text-dark mb-0">Control de Almacén</h4>
@@ -26,7 +27,7 @@
             </a>
         </div>
 
-
+        <!-- ── 🔄 SELECTORES PREMIUM DE PESTAÑAS (RADIO INPUTS) ────────────────────────── -->
         <div class="radio-inputs-jama mb-4">
             <label class="radio-jama" onclick="cambiarPestañaAsincrona('proteinas')">
                 <input type="radio" name="moduloInsumos" id="radio-btn-proteinas" checked>
@@ -42,13 +43,15 @@
                 </span>
             </label>
 
-            <label th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}" class="radio-jama" onclick="cambiarPestañaAsincrona('recetas')">
+            <!-- 🚀 REPARADO: Se le da pasaporte visual al COCINERO para leer el libro de recetas -->
+            <label th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN' or session.rol == 'COCINA'}" class="radio-jama" onclick="cambiarPestañaAsincrona('recetas')">
                 <input type="radio" name="moduloInsumos" id="radio-btn-recetas">
                 <span class="name-jama">
                     <i class="bi bi-journal-check"></i> Recetas
                 </span>
             </label>
 
+            <!-- 🔒 RESTRINGIDO: La creación de recetas se mantiene blindada para administradores -->
             <label th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}" class="radio-jama" onclick="cambiarPestañaAsincrona('crear-receta')">
                 <input type="radio" name="moduloInsumos" id="radio-btn-crear-receta">
                 <span class="name-jama">
@@ -56,6 +59,7 @@
                 </span>
             </label>
 
+            <!-- 🔒 RESTRINGIDO: El archivo de mermas e históricos muertos queda exclusivo para jefaturas -->
             <label th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}" class="radio-jama" onclick="cambiarPestañaAsincrona('archivados')">
                 <input type="radio" name="moduloInsumos" id="radio-btn-archivados">
                 <span class="name-jama">
@@ -64,6 +68,7 @@
             </label>
         </div>
 
+        <!-- ── 📊 CONTENEDORES ASÍNCRONOS DE CADA SUBMÓDULO ──────────────────────────── -->
         <div class="tab-content">
 
             <div id="pane-proteinas" class="tab-pane-jama">
@@ -74,7 +79,8 @@
                 <th:block th:replace="~{Insumoscatalogo :: #contenido_submodulo}"></th:block>
             </div>
 
-            <div id="pane-recetas" class="tab-pane-jama d-none" th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN'}">
+            <!-- 🚀 REPARADO: El panel de lectura de recetas se renderiza si el usuario es Cocinero -->
+            <div id="pane-recetas" class="tab-pane-jama d-none" th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN' or session.rol == 'COCINA'}">
                 <th:block th:replace="~{Insumosgestion :: #contenido_submodulo}"></th:block>
             </div>
 
@@ -89,6 +95,8 @@
         </div>
 
     </div>
+
+    <!-- Scripts de Control Cinético de La Jama -->
     <script th:src="@{/js/insumos/insumos-ajuste.js}"></script>
     <script th:src="@{/js/insumos/insumos-kardex.js}"></script>
     <script th:src="@{/js/insumos/insumos-lote.js}"></script>

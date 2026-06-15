@@ -3,6 +3,8 @@ package com.web.restaurante.dto.mesas;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import java.util.List;
+
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TicketDTO {
@@ -12,4 +14,6 @@ public class TicketDTO {
     private String tipoDoc;
     private String numDoc;
     private String metodoPago;
+
+    private List<DetalleTicketDTO> listaDetalles;
 }

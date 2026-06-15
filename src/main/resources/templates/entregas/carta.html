@@ -10,11 +10,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
     <link th:href="@{/css/carta.css}" rel="stylesheet" />
-
 </head>
 <body>
 
-<!-- NAVBAR -->
 <nav class="navbar-carta">
     <div class="logo-wrap">
         <img th:src="@{/img/logo.png}" alt="La Jama" onerror="this.style.display='none'">
@@ -25,7 +23,6 @@
     </div>
 </nav>
 
-<!-- HERO -->
 <div class="hero">
     <div class="hero-content">
         <div class="hero-badge"> Delivery en Chiclayo</div>
@@ -37,8 +34,7 @@
         </a>
     </div>
 </div>
-    
-<!-- BUSCADOR -->
+
 <div class="buscador-wrap">
     <div class="buscador-inner">
         <div class="buscador-input-wrap">
@@ -54,13 +50,11 @@
     </div>
 </div>
 
-<!-- Mensaje sin resultados -->
 <div class="sin-resultados" id="sinResultados" style="max-width:1100px; margin:0 auto; padding: 4rem 1rem;">
     <i class="bi bi-search"></i>
     No encontramos "<strong id="txtSinResultados"></strong>" en la carta
 </div>
 
-<!-- MENÚ -->
 <div style="max-width: 1100px; margin: 0 auto; padding: 0 1rem 6rem;">
 
     <div th:each="cat : ${categorias}"
@@ -74,52 +68,62 @@
                 <span th:if="${!#strings.containsIgnoreCase(cat.nombre, 'fría') and !#strings.containsIgnoreCase(cat.nombre, 'fria') and !#strings.containsIgnoreCase(cat.nombre, 'cevich') and !#strings.containsIgnoreCase(cat.nombre, 'causa') and !#strings.containsIgnoreCase(cat.nombre, 'caliente') and !#strings.containsIgnoreCase(cat.nombre, 'fondo') and !#strings.containsIgnoreCase(cat.nombre, 'lomo') and !#strings.containsIgnoreCase(cat.nombre, 'pollo')}"></span>
             </div>
             <h2 class="cat-nombre"
-                th:text="${#strings.containsIgnoreCase(cat.nombre, 'fría') or #strings.containsIgnoreCase(cat.nombre, 'fria') ? 'Entradas  Frescos' : (#strings.containsIgnoreCase(cat.nombre, 'caliente') ? 'Platos de Fondo' : cat.nombre)}">
+                th:text="${#strings.containsIgnoreCase(cat.nombre, 'fría') or #strings.containsIgnoreCase(cat.nombre, 'fria') ? 'Entradas Frescos' : (#strings.containsIgnoreCase(cat.nombre, 'caliente') ? 'Platos de Fondo' : cat.nombre)}">
             </h2>
             <div class="cat-linea"></div>
         </div>
 
         <div class="grid-productos">
+
             <div th:each="p : ${productos}"
                  th:if="${p.categoria != null and p.categoria.id == cat.id}"
-                 class="card-prod"
+                 th:with="agotado=${productosAgotados.get(p.id)}"
+                 class="card-prod position-relative"
+                 th:classappend="${agotado} ? 'border-secondary opacity-50' : ''"
+                 th:style="${agotado} ? 'cursor: not-allowed;' : 'cursor: pointer;'"
                  th:id="'prod-' + ${p.id}"
                  th:data-id="${p.id}"
                  th:data-nombre="${p.nombre}"
                  th:data-precio="${p.precio}"
-                 onclick="agregarDesdeCard(this)">
+                 th:onclick="${agotado} ? 'Swal.fire({icon: `error`, title: `Plato Agotado`, text: `Lo sentimos, no quedan porciones disponibles de este plato por hoy.`, confirmButtonColor: `#1B3A2C`})' : 'agregarDesdeCard(this)'">
+
+                <div th:if="${agotado}" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-25 z-3" style="border-radius: inherit; pointer-events: none;">
+                    <span class="badge bg-danger fs-6 px-3 py-2 shadow text-uppercase" style="font-family: 'Inter', sans-serif; font-weight: 600;">
+                        <i class="bi bi-x-octagon-fill me-1"></i> Porciones Acabadas
+                    </span>
+                </div>
 
                 <div class="prod-img-wrap">
                     <img th:if="${p.imagen != null and !#strings.isEmpty(p.imagen)}"
-                         th:src="'/imagenes/' + ${p.imagen}"
+                         th:src="${#strings.startsWith(p.imagen, 'http') ? p.imagen : 'https://res.cloudinary.com/dyjnbddit/image/upload/' + p.imagen}"
                          th:alt="${p.nombre}"
+                         loading="lazy"
+                         th:style="${agotado} ? 'filter: grayscale(100%);' : ''"
                          onerror="this.parentElement.innerHTML='<div class=\'prod-img-placeholder\'>🍽️</div>'">
+
                     <div th:if="${p.imagen == null or #strings.isEmpty(p.imagen)}"
                          class="prod-img-placeholder">🍽️</div>
                 </div>
 
                 <div class="prod-body">
-                    <div class="prod-nombre" th:text="${p.nombre}">Plato</div>
+                    <div class="prod-nombre" th:classappend="${agotado} ? 'text-muted text-decoration-line-through' : ''" th:text="${p.nombre}">Plato</div>
                     <div class="prod-desc" th:text="${p.descripcion}">Descripción</div>
                     <div class="prod-footer">
                         <div class="prod-precio">S/ <span th:text="${p.precio}"></span></div>
-                        <button class="btn-add" onclick="event.stopPropagation(); agregarDesdeCard(this.closest('.card-prod'))">+</button>
+
+                        <button th:if="${!agotado}" class="btn-add" onclick="event.stopPropagation(); agregarDesdeCard(this.closest('.card-prod'))">+</button>
+                        <button th:if="${agotado}" class="btn-add bg-secondary text-white border-0" style="cursor: not-allowed;" disabled>×</button>
                     </div>
                 </div>
 
-            </div>
-        </div>
-    </div>
-</div>
+            </div> </div> </div> </div>
 
-<!-- BOTÓN FLOTANTE -->
 <button class="btn-carrito-float" id="btnCarrito" onclick="abrirCarrito()">
     <i class="bi bi-bag-fill"></i>
     Ver mi pedido
     <span class="badge-count" id="badgeCount">0</span>
 </button>
 
-<!-- MODAL CARRITO -->
 <div class="modal fade modal-carrito" id="modalCarrito" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
@@ -142,7 +146,6 @@
                     <label><i class="bi bi-person-fill me-1"></i>Tu nombre</label>
                     <input type="text" id="nombreCliente" class="input-entrega" placeholder="Ej: María García">
 
-                    <!-- ✅ BOTONES TIPO ENTREGA -->
                     <label><i class="bi bi-send me-1"></i>¿Cómo lo recibes?</label>
                     <div class="d-flex gap-2 mb-3">
                         <button class="btn-tipo" id="btnRecoger" onclick="seleccionarTipo('RECOGER')">
@@ -153,7 +156,26 @@
                         </button>
                     </div>
 
-                    <!-- Sección dirección: solo visible si elige Delivery -->
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label for="preferenciaComprobante"><i class="bi bi-file-earmark-text-fill me-1"></i>Tipo de Comprobante</label>
+                            <select name="preferenciaComprobante" id="preferenciaComprobante" class="form-control" onchange="conmutarTipoDocumento()">
+                                <option value="BOLETA">Boleta</option>
+                                <option value="FACTURA">Factura</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label id="labelDocumento" for="numeroDocumento"><i class="bi bi-card-id me-1"></i>DNI (Opcional):</label>
+                            <input type="text" id="numeroDocumento" class="form-control" placeholder="Ej: 74589632" maxlength="8">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="clienteCorreo"><i class="bi bi-envelope-fill me-1"></i>Correo Electrónico (Para recibir ticket):</label>
+                            <input type="email" name="clienteCorreo" id="clienteCorreo" class="form-control" placeholder="ejemplo@correo.com">
+                        </div>
+                    </div>
+
                     <div id="seccionDireccion" class="mb-3">
                         <label><i class="bi bi-geo-alt-fill me-1"></i>¿Dónde te entregamos?</label>
                         <div class="direccion-wrap">
@@ -181,14 +203,11 @@
                         </button>
                     </div>
 
-                    <!-- QR YAPE -->
                     <div id="seccionYape" style="display:none;">
                         <div class="qr-img-wrap">
-                            <img
-                                    src="http://localhost:3000/uploads/qr/qr-yape.jpeg"
-                                    alt="QR Yape"
-                                    class="img-fluid rounded mb-2 w-full"
-                            >
+                            <img src="https://res.cloudinary.com/dyjnbddit/image/upload/v1781449212/QR_vezbxv.png"
+                                 alt="QR Yape"
+                                 class="img-fluid rounded mb-2 w-full">
                         </div>
                         <p class="mb-3">Escanea el QR y realiza el pago por Yape. O yapea directamente al:
                             <span class="fw-bold">971566216</span>
@@ -197,13 +216,11 @@
                         <input type="file" id="yapeImgInput" accept="image/*">
                     </div>
 
-                    <!-- QR PLIN -->
                     <div id="seccionPlin" style="display:none;">
                         <div class="qr-img-wrap">
-                            <img src="http://localhost:3000/uploads/qr/qr-yape.jpeg"
+                            <img src="https://res.cloudinary.com/dyjnbddit/image/upload/v1781449329/QRPlin_s9ycit.png"
                                  alt="QR Plin"
-                                 class="img-fluid rounded mb-2 w-100"
-                            >
+                                 class="img-fluid rounded mb-2 w-100">
                         </div>
                         <p class="mb-3">Escanea el QR y realiza el pago por Plin. O plinea directamente al:
                             <span class="fw-bold">999888777</span>
@@ -228,7 +245,6 @@
     </div>
 </div>
 
-<!-- FOOTER -->
 <div class="footer-carta">
     <div class="f-logo">La Jama</div>
     <div class="f-sub">COMIDA PERUANA · CHICLAYO</div>
@@ -239,7 +255,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+<script th:src="@{/js/validation.js}"></script>
 <script th:src="@{/js/carta.js}"></script>
 
 </body>

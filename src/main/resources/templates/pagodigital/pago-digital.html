@@ -1,21 +1,39 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout-gestion :: layout(
+          title='La Jama - Pagos en Línea',
+          activeUri='/admin/pagos-digitales',
+          titleHeader='Lista de Pagos en Línea',
+          content=~{::#contenido-pagos},
+          modals=~{::#modales-pagos},
+          js='/js/pago-digital.js'
+      )}">
+<head>
+</head>
+<body>
 
-<th:block th:fragment="content">
-
+<div id="contenido-pagos">
     <div class="container-fluid p-4">
-        <div class="card rounded-lg card-color1">
+
+        <div class="jama-tabs-navegacion mb-3" style="display: flex; gap: 10px; border-bottom: 2px solid #e0e0e0; padding-bottom: 0px;">
+            <button class="jama-tab-link activo" id="tab-pendientes" onclick="filtrarVistaPagos('PENDIENTE', this)"
+                    style="background: none; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; border-bottom: 3px solid #198754; color: #198754;">
+                Vouchers por Verificar
+            </button>
+            <button class="jama-tab-link" id="tab-historial" onclick="filtrarVistaPagos('HISTORIAL', this)"
+                    style="background: none; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; color: #6c757d;">
+                Historial de Auditoría
+            </button>
+        </div>
+
+        <div class="card rounded-lg card-color1 shadow-sm border-0">
             <div class="card-body">
-
-                <h1 class="card-title h5 mb-4 fw-bold">
-                    Lista de Pagos en Línea
-                </h1>
-
-                <table id="tabla" class="table table-hover responsive" style="width: 100%">
+                <table id="tabla" class="table table-hover responsive align-middle" style="width: 100%">
                     <thead>
                     <tr>
                         <th>ID</th>
                         <th>Cliente</th>
+                        <th>Correo</th>
                         <th>Fecha Pago</th>
                         <th>Situación</th>
                         <th>Observación</th>
@@ -24,38 +42,30 @@
                     </thead>
                     <tbody></tbody>
                 </table>
-
             </div>
         </div>
     </div>
+</div>
 
-</th:block>
 
-<th:block th:fragment="modals">
+<div id="modales-pagos">
+
     <div class="modal fade" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true" id="modal">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header text-white">
-                    <h5 class="modal-title fw-bold" id="modalTitle">
-                    </h5>
+                    <h5 class="modal-title fw-bold" id="modalTitle"></h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
                     <form id="form" novalidate>
                         <input type="hidden" id="id" name="id" />
                         <div class="row g-3">
-
                             <div class="col-md-12">
                                 <label for="observacion" class="form-label fw-bold">Observacion:</label>
-                                <textarea
-                                        name="observacion"
-                                        id="observacion"
-                                        cols="30" rows="10"
-                                        class="form-control no-resize"
-                                ></textarea>
+                                <textarea name="observacion" id="observacion" cols="30" rows="5" class="form-control no-resize"></textarea>
                                 <div id="observacion-error" class="invalid-feedback d-block"></div>
                             </div>
-
                         </div>
                     </form>
                 </div>
@@ -68,19 +78,51 @@
         </div>
     </div>
 
+    <div class="modal fade" tabindex="-1" id="modalEditarPago" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-warning text-dark fw-bold">
+                    <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Datos del Pago</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formEditarPago" novalidate>
+                        <input type="hidden" id="editPagoId" name="id" />
+                        <div class="mb-3">
+                            <label for="editCorreo" class="form-label fw-bold">Correo Electrónico:</label>
+                            <input type="email" id="editCorreo" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editNumDocumento" class="form-label fw-bold">Número de Documento (DNI/RUC):</label>
+                            <input type="text" id="editNumDocumento" class="form-control" maxlength="11">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editArchivoVoucher" class="form-label fw-bold">Subir Nuevo Voucher:</label>
+                            <input type="file" id="editArchivoVoucher" class="form-control" accept="image/*">
+                            <small class="text-muted d-block mt-1">Selecciona la nueva imagen o captura enviada por el cliente.</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-dark rounded-pill px-4" onclick="guardarCambiosPago()">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" tabindex="-1" aria-labelledby="modalImgTitle" aria-hidden="true" id="modalImg">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header text-white">
-                    <h5 class="modal-title fw-bold" id="modalImgTitle">
-                    </h5>
+                    <h5 class="modal-title fw-bold" id="modalImgTitle"></h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4 d-flex flex-column align-items-center user-select-none">
                     <div class="col-9">
-                        <img id="pagoImg" class="img-fluid w-100" src="" alt="Imagen de pago realizado" draggable="false">
+                        <img id="pagoImg" class="img-fluid w-100 rounded shadow-sm" src="" alt="Imagen de pago realizado" draggable="false">
                     </div>
-                    <div id="imagen-error"></div>
+                    <div id="imagen-error" class="mt-3 text-danger fw-bold"></div>
                 </div>
                 <div class="modal-footer bg-light border-0">
                     <button type="button" class="btn btn-outline-jama rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
@@ -89,6 +131,7 @@
         </div>
     </div>
 
-</th:block>
+</div>
 
+</body>
 </html>

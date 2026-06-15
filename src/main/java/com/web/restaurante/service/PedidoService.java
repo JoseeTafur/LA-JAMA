@@ -97,15 +97,13 @@ public class PedidoService {
     @Transactional
     public Long guardarPedidoCarta(Pedido pedido) {
         if (pedido.getId() == null) {
-            pedido.setEstado(EstadoPedido.EN_REVISION);
+            pedido.setEstado(EstadoPedido.PENDIENTE); // 🚀 Cambiado para entrar directo al scope de cobranza/revisión
             pedido.setFechaCreacion(LocalDateTime.now());
         }
 
         if (pedido.getListaDetalles() != null) {
             for (DetallePedido detalle : pedido.getListaDetalles()) {
                 detalle.setPedido(pedido);
-
-                // Inicialización limpia usando los setters normales
                 detalle.setCocinado(false);
                 detalle.setEntregado(false);
                 detalle.setCanceladoPorCliente(false);
@@ -348,8 +346,10 @@ public class PedidoService {
 
     @Transactional
     public void aprobarPedidoACocina(Long pedidoId) {
-        Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow();
-        pedido.setEstado(EstadoPedido.EN_COCINA);
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado con ID: " + pedidoId));
+
+        pedido.setEstado(EstadoPedido.EN_COCINA); // 🚀 Pasa directo a producción
         pedidoRepository.save(pedido);
     }
 

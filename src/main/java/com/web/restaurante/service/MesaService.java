@@ -176,7 +176,6 @@ public class MesaService {
             pedido.setFechaEntrega(LocalDateTime.now());
             pedidoRepository.save(pedido);
 
-            // 🛠️ REPARADO: Recuperamos la entidad física de la mesa principal antes de usarla
             Mesa mesaPrincipal = mesaRepository.findById(mesaId)
                     .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
 
@@ -184,9 +183,9 @@ public class MesaService {
                 mesaPrincipal = mesaPrincipal.getMesaPadre();
             }
 
-            // 🌟 ENLACE DE AUDITORÍA CONTABLE: Ahora sí, registramos el ingreso real de forma segura
-            String conceptoCobro = "Liquidación Comanda #" + pedidoId + " - Mesa N° " + mesaPrincipal.getNumero();
-            turnoCajaService.registrarVenta(conceptoCobro, pedido.getMontoTotal());
+            // ⚙️ REPARADO: Removemos el registro prematuro para que la mesa espere su comprobante fiscal en la caja
+            // String conceptoCobro = "Liquidación Comanda #" + pedidoId + " - Mesa N° " + mesaPrincipal.getNumero();
+            // turnoCajaService.registrarVenta(conceptoCobro, pedido.getMontoTotal());
 
             // Tu lógica de liberación de salón se mantiene intacta abajo
             mesaPrincipal.setEstado("DISPONIBLE");
@@ -456,29 +455,20 @@ public class MesaService {
 
         Mesa mesaPrincipal = (mesa.getMesaPadre() != null) ? mesa.getMesaPadre() : mesa;
 
-        // Extraemos una lista mutable de trabajo con las referencias de los platos
-        List<DetallePedido> platosDisponibles = new ArrayList<>(
-                pedidoPadre.getListaDetalles().stream()
-                        .filter(d -> !d.isCanceladoPorCliente())
-                        .toList()
-        );
+        // 1. Desvinculamos o limpiamos de forma segura las referencias físicas viejas del pedido padre
+        // para evitar conflictos de claves primarias duplicadas si Jackson intenta sobrescribir
+        List<DetallePedido> detallesOriginalesGuardados = new ArrayList<>(pedidoPadre.getListaDetalles());
 
-        // 2. Procesar cada ticket del carrusel de forma independiente
+        // 2. Procesamos secuencialmente cada ticket enviado por la caja móvil
         for (int i = 0; i < tickets.size(); i++) {
             TicketDTO t = tickets.get(i);
 
             if (t.getConsumoFinal() <= 0) continue;
 
             Pedido pedidoDestino;
-            String conceptoCobro;
-
             if (i == 0) {
                 pedidoDestino = pedidoPadre;
-                conceptoCobro = "Liquidación Comanda #" + pedidoId + " (Ticket 1) - Mesa N° " + mesaPrincipal.getNumero();
-
-                // 🟩 TRUCO SEGURO: Usamos .clear() en vez de instanciar un 'new ArrayList()'
-                // Esto mantiene intacto el proxy interno de Hibernate y evita el JpaSystemException
-                pedidoDestino.getListaDetalles().clear();
+                pedidoDestino.getListaDetalles().clear(); // Mantiene el proxy de Hibernate intacto
             } else {
                 pedidoDestino = new Pedido();
                 pedidoDestino.setCliente("Mesa " + mesaPrincipal.getNumero() + " - Ticket " + (i + 1));
@@ -486,11 +476,7 @@ public class MesaService {
                 pedidoDestino.setTipoPedido(pedidoPadre.getTipoPedido());
                 pedidoDestino.setNumeroMesa(mesaPrincipal.getNumero());
                 pedidoDestino.setFechaCreacion(pedidoPadre.getFechaCreacion());
-
-                // Como es una entidad nueva que no está en la base de datos, aquí sí inicializamos la lista
                 pedidoDestino.setListaDetalles(new ArrayList<>());
-
-                conceptoCobro = "Liquidación Comanda #" + pedidoId + " (Ticket " + (i + 1) + ") - Mesa N° " + mesaPrincipal.getNumero();
             }
 
             pedidoDestino.setPreferenciaComprobante(t.getTipoDoc().toUpperCase());
@@ -498,47 +484,53 @@ public class MesaService {
             pedidoDestino.setMontoTotal(t.getConsumoFinal());
             pedidoDestino.setEstado(EstadoPedido.PAGADO);
             pedidoDestino.setFechaEntrega(LocalDateTime.now());
-            if (t.getMetodoPago() != null && !t.getMetodoPago().isEmpty()) {
-                // Si desde el JS te llega "YAPE_PLIN" pero tu Enum se llama "YAPE", mapeamos el caso:
-                String metodoStr = t.getMetodoPago().toUpperCase();
-                if (metodoStr.contains("YAPE") || metodoStr.contains("PLIN")) {
-                    pedidoDestino.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.YAPE); // o YAPE_PLIN según el nombre en tu Enum
-                } else if (metodoStr.contains("TARJETA")) {
-                    pedidoDestino.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.TARJETA);
-                } else {
-                    pedidoDestino.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.EFECTIVO);
-                }
+
+            // Asignación de métodos de pago homologados
+            String metodoStr = t.getMetodoPago() != null ? t.getMetodoPago().toUpperCase() : "EFECTIVO";
+            if (metodoStr.contains("YAPE") || metodoStr.contains("PLIN")) {
+                pedidoDestino.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.YAPE);
+            } else if (metodoStr.contains("TARJETA")) {
+                pedidoDestino.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.TARJETA);
             } else {
                 pedidoDestino.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.EFECTIVO);
             }
 
-            // Distribución física de platos por montos
-            double acumuladoTicket = 0.0;
-            List<DetallePedido> platosAsignadosATicket = new ArrayList<>();
+            // 🚀 LA INYECCIÓN CLAVE: Leemos la 'listaDetalles' procesada por el JS dentro del TicketDTO
+            if (t.getListaDetalles() != null && !t.getListaDetalles().isEmpty()) {
+                for (var detalleDTO : t.getListaDetalles()) {
 
-            for (int j = platosDisponibles.size() - 1; j >= 0; j--) {
-                DetallePedido plato = platosDisponibles.get(j);
-                double precioPlato = plato.getSubtotal() != null ? plato.getSubtotal() : 0.0;
+                    // Buscamos cuál era el plato original en la comanda de la mesa para heredar sus datos core
+                    DetallePedido nuevoDetalle = new DetallePedido();
+                    nuevoDetalle.setPedido(pedidoDestino);
+                    nuevoDetalle.setCantidad(detalleDTO.getCantidad());
+                    nuevoDetalle.setPagado(true);
+                    nuevoDetalle.setEntregado(true);
+                    nuevoDetalle.setCocinado(true);
 
-                if (acumuladoTicket + precioPlato <= t.getConsumoFinal() + 0.1) {
-                    plato.setPedido(pedidoDestino);
-                    plato.setPagado(true);
-                    platosAsignadosATicket.add(plato);
-                    acumuladoTicket += precioPlato;
-                    platosDisponibles.remove(j);
+                    // Recuperamos la entidad Producto real mapeando el ID
+                    DetallePedido coincidenciaOriginal = detallesOriginalesGuardados.stream()
+                            .filter(d -> d.getId().equals(detalleDTO.getProductoId()) ||
+                                    (d.getProducto() != null && d.getProducto().getId().equals(detalleDTO.getProductoId())))
+                            .findFirst().orElse(null);
+
+                    if (coincidenciaOriginal != null) {
+                        nuevoDetalle.setProducto(coincidenciaOriginal.getProducto());
+                    }
+
+                    // Seteamos el precio prorrateado o individual real calculado en JS
+                    nuevoDetalle.setPrecioUnitario(detalleDTO.getPrecioUnitario());
+                    nuevoDetalle.setSubtotal(detalleDTO.getSubtotal());
+
+                    // Lo insertamos físicamente en la comanda procesada
+                    pedidoDestino.getListaDetalles().add(nuevoDetalle);
                 }
             }
 
-            // Poblamos de forma segura mediante .addAll()
-            pedidoDestino.getListaDetalles().addAll(platosAsignadosATicket);
-
-            // Guardar el pedido correspondiente con su subgrupo mapeado
+            // Guardamos el pedido con sus filas reales mapeadas en la tabla 'pedido_detalle'
             pedidoRepository.save(pedidoDestino);
-
-            turnoCajaService.registrarVenta(conceptoCobro, t.getConsumoFinal());
         }
 
-        // 4. Liberar la mesa físicamente en el plano del salón
+        // 4. Liberar la mesa en el salón
         mesaPrincipal.setEstado("DISPONIBLE");
         if (mesaPrincipal.getMesasHijas() != null) {
             for (Mesa hija : mesaPrincipal.getMesasHijas()) {

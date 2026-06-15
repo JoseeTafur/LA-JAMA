@@ -169,17 +169,12 @@ async function distribuirSaldos(metodo) {
 
     if (metodo === 'EQUITATIVO') {
         const baseCalculo = saldoSobrante <= 0 ? totalConsumoMesa : saldoSobrante;
+        const totalTickets = ticketsDeCobro.length;
 
-        let tIndex = 0;
-        platosDisponibles.forEach(p => {
-            if (p.idTicketAsignado === -1 && platosSeleccionadosParaCobro.includes(p.id)) {
-                p.idTicketAsignado = tIndex % ticketsDeCobro.length;
-                tIndex++;
-            }
-        });
+        // Factor de división exacto
+        const factorParticipacion = 1 / totalTickets;
 
         let centimosTotales = Math.round(baseCalculo * 100);
-        const totalTickets = ticketsDeCobro.length;
         const porcionBaseCentimos = Math.floor(centimosTotales / totalTickets);
         let acumuladoCentimos = 0;
 
@@ -191,6 +186,15 @@ async function distribuirSaldos(metodo) {
                 acumuladoCentimos += porcionBaseCentimos;
             }
             t.montoPlatos = 0;
+
+            // Registramos el flag de prorrateo para la aduana de envío
+            t.esCompartidoPorMonto = true;
+            t.factorProrrateo = factorParticipacion;
+        });
+
+        // Dejamos la asignación individual en -1 para activar el diseño visual de cuenta compartida
+        platosDisponibles.forEach(p => {
+            if (platosSeleccionadosParaCobro.includes(p.id)) p.idTicketAsignado = -1;
         });
 
         document.getElementById('selectNumTickets').disabled = false;
@@ -252,12 +256,8 @@ async function distribuirSaldos(metodo) {
         });
 
         if (formValues) {
-            let tIndex = 0;
             platosDisponibles.forEach(p => {
-                if (p.idTicketAsignado === -1 && platosSeleccionadosParaCobro.includes(p.id)) {
-                    p.idTicketAsignado = tIndex % ticketsDeCobro.length;
-                    tIndex++;
-                }
+                if (platosSeleccionadosParaCobro.includes(p.id)) p.idTicketAsignado = -1;
             });
 
             let centimosTotales = Math.round(dineroADividir * 100);
@@ -265,10 +265,15 @@ async function distribuirSaldos(metodo) {
             const totalTickets = ticketsDeCobro.length;
 
             ticketsDeCobro.forEach((t, idx) => {
+                const porcentajeDeseado = formValues[idx];
+
+                t.esCompartidoPorMonto = true;
+                t.factorProrrateo = porcentajeDeseado / 100;
+
                 if (idx === totalTickets - 1) {
                     t.montoLibre = (centimosTotales - acumuladoCentimos) / 100;
                 } else {
-                    const porcionPctCentimos = Math.round(centimosTotales * (formValues[idx] / 100));
+                    const porcionPctCentimos = Math.round(centimosTotales * (porcentajeDeseado / 100));
                     t.montoLibre = porcionPctCentimos / 100;
                     acumuladoCentimos += porcionPctCentimos;
                 }
@@ -427,11 +432,27 @@ function renderizarPlatos() {
 
 function renderizarTickets() {
     const contenedor = document.getElementById('contenedor-tickets-dinamicos');
+    if (!contenedor) return;
+
+    // 🕵️‍♂️ CAPTURA DE MEMORIA OPERATIVA: Guardamos qué input tenía el foco antes de borrar el DOM
+    const elementoActivo = document.activeElement;
+    let idTicketEnFoco = null;
+    let esInputDoc = false;
+    let posicionCursor = 0;
+
+    if (elementoActivo && elementoActivo.tagName === 'INPUT') {
+        posicionCursor = elementoActivo.selectionStart || 0;
+        // Si estábamos escribiendo en el documento de identidad
+        if (elementoActivo.classList.contains('input-documento-fiscal')) {
+            idTicketEnFoco = parseInt(elementoActivo.getAttribute('data-ticket-id'));
+            esInputDoc = true;
+        }
+    }
+
     contenedor.innerHTML = '';
 
     ticketsDeCobro.forEach(t => {
         const consumoTotal = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
-
         const subtotalBase = Math.round((consumoTotal / (1 + TASA_IGV)) * 100) / 100;
         const igv = Math.round((consumoTotal - subtotalBase) * 100) / 100;
 
@@ -445,34 +466,22 @@ function renderizarTickets() {
         if (t.montoLibre > 0) {
             const totalTickets = ticketsDeCobro.length;
             const porcentajeParticipacion = totalConsumoMesa > 0 ? Math.round((consumoTotal / totalConsumoMesa) * 100) : 0;
-
-            const esEquitativo = ticketsDeCobro.every(tick =>
-                Math.abs((tick.montoPlatos + tick.montoLibre) - consumoTotal) < 0.05
-            );
-
-            const textoParticipacion = esEquitativo
-                ? `1/${totalTickets} de la mesa`
-                : `${porcentajeParticipacion}% de la mesa`;
+            const esEquitativo = ticketsDeCobro.every(tick => Math.abs((tick.montoPlatos + tick.montoLibre) - consumoTotal) < 0.05);
+            const textoParticipacion = esEquitativo ? `1/${totalTickets} de la mesa` : `${porcentajeParticipacion}% de la mesa`;
 
             htmlPlatosAsignados = `
                 <div class="jama-ticket-items-list" style="margin-bottom: 15px; border-bottom: 2px dashed var(--lajama-peach); padding-bottom: 12px;">
-                    <div style="font-size: 0.85rem; font-weight: 800; color: var(--lajama-green); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
-                        🔄 Cuenta Compartida
+                    <div style="font-size: 0.85rem; font-weight: 800; color: var(--lajama-green); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">🔄 Cuenta Compartida</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-muted); margin-bottom: 4px;">
+                        <span>Total Mesa:</span><span class="fw-semibold">S/. ${totalConsumoMesa.toFixed(2)}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-muted); margin-bottom: 4px;">
-                        <span>Total Parcial:</span>
-                        <span style="font-weight: 600;">S/. ${totalConsumoMesa.toFixed(2)}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-muted); margin-bottom: 4px;">
-                        <span>Participación:</span>
-                        <span style="font-weight: 700; color: var(--lajama-green);">${textoParticipacion}</span>
+                        <span>Participación:</span><span style="font-weight: 700; color: var(--lajama-green);">${textoParticipacion}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--jama-text-main); margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(27, 58, 44, 0.1);">
-                        <span class="fw-semibold">Monto Consumo:</span>
-                        <span style="font-weight: 800; color: var(--lajama-green);">S/. ${consumoTotal.toFixed(2)}</span>
+                        <span class="fw-semibold">Monto Consumo:</span><span style="font-weight: 800; color: var(--lajama-green);">S/. ${consumoTotal.toFixed(2)}</span>
                     </div>
-                </div>
-            `;
+                </div>`;
         } else if (platosDelTicket.length > 0) {
             htmlPlatosAsignados = `<div class="jama-ticket-items-list" style="margin-bottom: 12px; border-bottom: 1px dashed var(--lajama-peach); padding-bottom: 8px;">`;
             platosDelTicket.forEach(p => {
@@ -480,29 +489,23 @@ function renderizarTickets() {
                     <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-main); margin-bottom: 4px;">
                         <span style="max-width: 70%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${p.cantidad}x ${p.nombre}</span>
                         <span style="font-weight: 600;">S/. ${p.subtotal.toFixed(2)}</span>
-                    </div>
-                `;
+                    </div>`;
             });
             htmlPlatosAsignados += `</div>`;
         } else {
             htmlPlatosAsignados = `
                 <div class="jama-ticket-items-list" style="margin-bottom: 12px; border-bottom: 1px dashed var(--lajama-peach); padding-bottom: 8px;">
                     <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-main);">
-                        <span>1x Consumo de Alimentos</span>
-                        <span style="font-weight: 600;">S/. ${consumoTotal.toFixed(2)}</span>
+                        <span>1x Consumo de Alimentos</span><span style="font-weight: 600;">S/. ${consumoTotal.toFixed(2)}</span>
                     </div>
-                </div>
-            `;
+                </div>`;
         }
 
         contenedor.innerHTML += `
             <div class="jama-ticket-card">
                 <div class="jama-ticket-header-badge">TICKET #${t.id + 1}</div>
-
                 <div class="jama-finance-box">
-
                     ${htmlPlatosAsignados}
-
                     <div class="jama-finance-line"><span>Subtotal:</span><span>S/. ${subtotalBase.toFixed(2)}</span></div>
                     <div class="jama-finance-line"><span>IGV (18%):</span><span>S/. ${igv.toFixed(2)}</span></div>
                     <div class="jama-finance-line total"><span>Total CPE:</span><span>S/. ${consumoTotal.toFixed(2)}</span></div>
@@ -510,15 +513,13 @@ function renderizarTickets() {
                     <div class="d-flex justify-content-between align-items-center mt-2">
                         <span class="small fw-bold text-info">Propina Extra:</span>
                         <input type="number" class="form-control form-control-sm text-end fw-bold w-50 bg-white text-info border-info"
-                               style="border-radius:6px;"
-                               value="${propinaNum.toFixed(2)}"
+                               style="border-radius:6px;" value="${propinaNum.toFixed(2)}"
                                onchange="actualizarDatoTicket(${t.id}, 'propina', parseFloat(this.value) || 0)">
                     </div>
                     <div class="d-flex justify-content-between align-items-center mt-2">
                         <span class="small fw-bold text-muted">Consumo (SUNAT):</span>
                         <input type="text" class="jama-input-text text-end fw-bold w-50 input-consumo-manual"
-                               value="${consumoTotal.toFixed(2)}"
-                               data-ticket-id="${t.id}"
+                               value="${consumoTotal.toFixed(2)}" data-ticket-id="${t.id}"
                                oninput="this.value = this.value.replace(/[^0-9.]/g, '')"
                                onchange="manoFijarMontoTicket(${t.id}, parseFloat(this.value) || 0)">
                     </div>
@@ -530,8 +531,14 @@ function renderizarTickets() {
                 </div>
 
                 <div class="mb-3">
-                    <input type="text" class="jama-input-text text-center form-control-sm" placeholder="${t.tipoDoc === 'FACTURA' ? 'RUC Obligatorio' : 'DNI Opcional'}" value="${t.numDoc}" oninput="actualizarDatoTicket(${t.id}, 'numDoc', this.value)" maxlength="11">
-                    ${requiereDNI ? `<small class="text-danger fw-bold mt-1 d-block text-center" style="font-size:0.7rem;">DNI Obligatorio >= S/. 700</small>` : ''}
+                    <input type="text" id="doc_ticket_${t.id}"
+                           class="jama-input-text text-center form-control-sm input-documento-fiscal"
+                           data-ticket-id="${t.id}"
+                           placeholder="${t.tipoDoc === 'FACTURA' ? 'RUC Obligatorio (11 dígitos)' : 'DNI Opcional (8 dígitos)'}"
+                           value="${t.numDoc}"
+                           oninput="actualizarDatoTicket(${t.id}, 'numDoc', this.value)"
+                           maxlength="11">
+                    ${requiereDNI ? `<small class="text-danger fw-bold mt-1 d-block text-center animate__animated animate__pulse animate__infinite" style="font-size:0.7rem; color: #dc3545 !important;">⚠️ DNI Obligatorio >= S/. 700.00</small>` : ''}
                 </div>
 
                 <select class="jama-select mb-3" onchange="actualizarDatoTicket(${t.id}, 'metodoPago', this.value)">
@@ -544,9 +551,17 @@ function renderizarTickets() {
                     <span class="small text-muted d-block" style="font-size:0.75rem;">Monto POS:</span>
                     <strong class="text-jama-gold fs-5">S/. ${totalPOS.toFixed(2)}</strong>
                 </div>
-            </div>
-        `;
+            </div>`;
     });
+
+    // 🚀 RETORNO FOCAL EN CALIENTE: Reinyectamos el cursor exactamente en el mismo string donde escribía el cajero
+    if (esInputDoc && idTicketEnFoco !== null) {
+        const inputRestaurado = document.getElementById(`doc_ticket_${idTicketEnFoco}`);
+        if (inputRestaurado) {
+            inputRestaurado.focus();
+            inputRestaurado.setSelectionRange(posicionCursor, posicionCursor);
+        }
+    }
 }
 
 function actualizarDatoTicket(idTicket, llave, valor) {
@@ -643,9 +658,43 @@ function limpiarInstanciaCaja() {
 }
 
 function procesarLiquidacion() {
+    // 🛡️ ADUANA FISCAL DE CONTROL: Evaluamos cada ticket antes de abrir el SweetAlert
+    for (let i = 0; i < ticketsDeCobro.length; i++) {
+        const t = ticketsDeCobro[i];
+        const totalCPE = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
+        const documento = t.numDoc ? t.numDoc.trim() : '';
+
+        if (t.tipoDoc === 'FACTURA') {
+            if (!documento) {
+                AppUtils.showNotification(`🚨 Ticket #${i + 1}: El número de RUC es obligatorio para Facturas.`, 'error');
+                return;
+            }
+            if (documento.length !== 11 || !Validation.soloNumeros(documento)) {
+                AppUtils.showNotification(`🚨 Ticket #${i + 1}: El RUC comercial debe contener exactamente 11 dígitos numéricos.`, 'error');
+                return;
+            }
+        } else if (t.tipoDoc === 'BOLETA') {
+            if (totalCPE >= 700) {
+                if (!documento) {
+                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: Por ley SUNAT, montos ≥ S/. 700.00 exigen DNI obligatorio.`, 'error');
+                    return;
+                }
+                if (documento.length !== 8 || !Validation.soloNumeros(documento)) {
+                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: El DNI civil debe contener exactamente 8 dígitos numéricos.`, 'error');
+                    return;
+                }
+            } else {
+                if (documento && (documento.length !== 8 || !Validation.soloNumeros(documento))) {
+                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: Si registras un DNI opcional, debe tener 8 dígitos válidos.`, 'error');
+                    return;
+                }
+            }
+        }
+    }
+
     AppUtils.showConfirmationDialog({
         title: '¿Confirmar Pago de Consumos?',
-        text: `Procesando ${ticketsDeCobro.length} tickets tributarios con IGV.`,
+        text: `Procesando ${ticketsDeCobro.length} tickets tributarios con IGV de forma segura.`,
         icon: 'warning',
         confirmButtonColor: '#ffc107',
         confirmButtonText: 'Sí, Facturar'
@@ -656,13 +705,59 @@ function procesarLiquidacion() {
         const urlParams = new URLSearchParams();
         urlParams.append("mesaId", currentMesaId);
 
-        const payloadTickets = ticketsDeCobro.map(t => ({
-            ...t,
-            consumoFinal: Math.round((t.montoPlatos + t.montoLibre) * 100) / 100
-        }));
+        const payloadTickets = ticketsDeCobro.map(t => {
+            const consumoFinalTicket = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
+            let listaPlatosModificados = [];
+
+            const ratioRealTicket = totalConsumoMesa > 0 ? (consumoFinalTicket / totalConsumoMesa) : 0;
+
+            // 🚀 REPARACIÓN ABSOLUTA DE CRUCE DE FLUJOS:
+            // Un ticket es puramente cuenta compartida por dinero SOLO si se activó el flag desde
+            // distribuirSaldos (esCompartidoPorMonto) o si no tiene ningún plato físico enlazado a su ID.
+            const esFlujoCompartidoDinero = t.esCompartidoPorMonto || !platosDisponibles.some(p => p.idTicketAsignado === t.id);
+
+            if (esFlujoCompartidoDinero && ratioRealTicket > 0) {
+                // 📊 CASO A: CUENTA COMPARTIDA (Equitativo o Porcentual)
+                // Metemos todos los platos de la mesa pero reducidos al porcentaje que le toca pagar
+                listaPlatosModificados = platosDisponibles
+                    .filter(p => platosSeleccionadosParaCobro.includes(p.id))
+                    .map(p => {
+                        const subtotalProrrateado = Math.round(p.subtotal * ratioRealTicket * 100) / 100;
+                        return {
+                            productoId: p.productoId || p.id,
+                            nombre: p.nombre,
+                            cantidad: p.cantidad,
+                            precioUnitario: Math.round((subtotalProrrateado / p.cantidad) * 100) / 100,
+                            subtotal: subtotalProrrateado
+                        };
+                    });
+            } else {
+                // 💵 CASO B: DIVISIÓN POR ÍTEMS INDIVIDUALES (Cada uno paga lo suyo)
+                // Mapea única y exclusivamente los platos que el mozo arrastró a este Ticket específico
+                listaPlatosModificados = platosDisponibles
+                    .filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id))
+                    .map(p => ({
+                        productoId: p.productoId || p.id,
+                        nombre: p.nombre,
+                        cantidad: p.cantidad,
+                        precioUnitario: Math.round((p.subtotal / p.cantidad) * 100) / 100,
+                        subtotal: p.subtotal
+                    }));
+            }
+
+            return {
+                id: t.id,
+                consumoFinal: consumoFinalTicket,
+                propina: t.propina,
+                tipoDoc: t.tipoDoc,
+                numDoc: t.numDoc,
+                metodoPago: t.metodoPago,
+                listaDetalles: listaPlatosModificados
+            };
+        });
+
         urlParams.append("matrizTickets", JSON.stringify(payloadTickets));
 
-        // 🌟 NUEVO: Recolectar los IDs reales de los platos marcados en el modal principal y enviarlos al Java
         const idsPagados = Array.from(document.querySelectorAll('.chk-mesa-confirmar:checked')).map(cb => cb.value);
         urlParams.append("idsDetallesPagados", idsPagados.join(','));
 
@@ -680,6 +775,7 @@ function procesarLiquidacion() {
                 Swal.fire({
                     icon: 'success',
                     title: '¡Cobro Procesado!',
+                    text: 'Los comprobantes fiscales han sido enviados a cola de timbrado.',
                     confirmButtonColor: '#1B3A2C'
                 }).then(() => window.location.reload());
             } else {
@@ -751,9 +847,6 @@ function removerClienteDePlato(event, platoId) {
     }
 }
 
-// =================================================================
-// EVALUACIÓN DINÁMICA DE CONFIRMACIÓN DE PAGO (EXCLUSIVIDAD TOTAL)
-// =================================================================
 function evaluarBotonConfirmarPago() {
     const btnDesocupar = document.getElementById('btnDesocupar');
     if (!btnDesocupar) return;
@@ -806,9 +899,6 @@ function evaluarBotonConfirmarPago() {
     }
 }
 
-// =======================================================
-// RECALCULAR EL MONTO CONSOLIDADO (UNIFICADO EN CAJA-MOVIL)
-// =======================================================
 function recalcularSubtotalElegido() {
     const txtElegido = document.getElementById('txt-subtotal-elegido');
     if (!txtElegido) return;

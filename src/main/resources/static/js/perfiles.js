@@ -367,6 +367,7 @@ $(document).ready(function () {
         }
         isEditing = false;
         AppUtils.clearForm(formid);
+        if (typeof Validation !== 'undefined') Validation.aplicarGlobal();
         $('#modalTitle').text('Agregar Perfil');
         modal.show();
     }
@@ -378,6 +379,7 @@ $(document).ready(function () {
         $('#id').val(perfil.id);
         $('#nombre').val(perfil.nombre);
         $('#descripcion').val(perfil.descripcion);
+        if (typeof Validation !== 'undefined') Validation.aplicarGlobal();
         modal.show();
     }
 });

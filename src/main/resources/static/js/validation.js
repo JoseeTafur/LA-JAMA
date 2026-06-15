@@ -10,7 +10,7 @@ const Validation = {
         NOMBRE_MAX: 50,
         DESCRIPCION_MAX: 150,
         CORREO_MAX: 50,
-        USUARIO_MAX: 30,
+        USUARIO_MAX: 25,
         CLAVE_MIN: 6,
         CLAVE_MAX: 30,
         TELEFONO_EXACTO: 9,
@@ -39,11 +39,11 @@ const Validation = {
     },
 
     telefonoValido(texto) {
-        return texto != null && new RegExp(^[0-9]{${this.LIMITES.TELEFONO_EXACTO}}$).test(texto.trim());
+        return texto != null && new RegExp(`^[0-9]{${this.LIMITES.TELEFONO_EXACTO}}$`).test(texto.trim());
     },
 
     dniValido(texto) {
-        return texto != null && new RegExp(^[0-9]{${this.LIMITES.DNI_EXACTO}}$).test(texto.trim());
+        return texto != null && new RegExp(`^[0-9]{${this.LIMITES.DNI_EXACTO}}$`).test(texto.trim());
     },
 
     correoValido(texto) {
@@ -72,7 +72,6 @@ const Validation = {
         return this.fechaDentroDeRango(fechaStr);
     },
 
-    // Quitar emojis de un texto
     quitarEmojis(texto) {
         return texto.replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27FF}]|[\u{FE00}-\u{FEFF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA9F}]|[\u{2300}-\u{23FF}]|[\u{2B00}-\u{2BFF}]|[\u{1F300}-\u{1F5FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1F77F}]/gu, '');
     },
@@ -118,10 +117,8 @@ const Validation = {
         el.setAttribute('maxlength', this.LIMITES.DESCRIPCION_MAX);
     },
 
-    // Aplicar automáticamente a todos los formularios
     aplicarGlobal() {
-
-        // ── Bloquear emojis en TODOS los campos de texto y textarea ──────────
+        // ── Bloquear emojis en TODOS los campos ──────────────────────────
         document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], textarea').forEach(el => {
             el.addEventListener('input', function () {
                 const sinEmojis = Validation.quitarEmojis(this.value);
@@ -131,15 +128,15 @@ const Validation = {
             });
         });
 
-        // ── Nombres → solo letras, max 50 ───────────────────────────────────
-        document.querySelectorAll('input[name="nombre"]').forEach(el => {
+        // ── Nombres ──────────────────────────────────────────────────────────
+        document.querySelectorAll('input[name="nombre"], #nombreCliente').forEach(el => {
             el.setAttribute('maxlength', this.LIMITES.NOMBRE_MAX);
             el.addEventListener('input', function () {
                 this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]/g, '');
             });
         });
 
-        // ── Apellidos → solo letras, max 50 ─────────────────────────────────
+        // ── Apellidos ────────────────────────────────────────────────────────
         document.querySelectorAll('input[name="apellido"]').forEach(el => {
             el.setAttribute('maxlength', this.LIMITES.NOMBRE_MAX);
             el.addEventListener('input', function () {
@@ -147,7 +144,7 @@ const Validation = {
             });
         });
 
-        // ── Teléfono → solo números, exactamente 9 ──────────────────────────
+        // ── Teléfono ─────────────────────────────────────────────────────────
         document.querySelectorAll('input[name="telefono"]').forEach(el => {
             el.setAttribute('maxlength', this.LIMITES.TELEFONO_EXACTO);
             el.addEventListener('input', function () {
@@ -155,39 +152,46 @@ const Validation = {
             });
         });
 
-        // ── DNI → solo números, exactamente 8 ───────────────────────────────
-        document.querySelectorAll('input[name="dni"]').forEach(el => {
-            el.setAttribute('maxlength', this.LIMITES.DNI_EXACTO);
+        // ── DNI / RUC ────────────────────────────────────────────────────────
+        document.querySelectorAll('input[name="dni"], #numeroDocumento').forEach(el => {
+            if (el.id !== 'numeroDocumento') {
+                el.setAttribute('maxlength', this.LIMITES.DNI_EXACTO);
+            }
             el.addEventListener('input', function () {
                 this.value = this.value.replace(/[^0-9]/g, '');
             });
         });
 
-        // ── Descripciones → max 150 ──────────────────────────────────────────
+        // ── Descripciones ────────────────────────────────────────────────────
         document.querySelectorAll('textarea[name="descripcion"], input[name="descripcion"]').forEach(el => {
             el.setAttribute('maxlength', this.LIMITES.DESCRIPCION_MAX);
         });
 
-        // ── Usuario → sin espacios ni emojis, max 30 ────────────────────────
+        // ── Usuario ──────────────────────────────────────────────────────────
         document.querySelectorAll('input[name="usuario"]').forEach(el => {
+            // 🚀 REPARADO: Cambiado de Validation.LIMITES a this.LIMITES para evitar el SyntaxError
             el.setAttribute('maxlength', this.LIMITES.USUARIO_MAX);
             el.addEventListener('input', function () {
-                this.value = this.value.replace(/[^a-zA-Z0-9._-]/g, '');
+                let limpio = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/g, '');
+                limpio = Validation.quitarEmojis(limpio);
+                if (this.value !== limpio) {
+                    this.value = limpio;
+                }
             });
         });
 
-        // ── Correo → max 50 ──────────────────────────────────────────────────
-        document.querySelectorAll('input[name="correo"], input[type="email"]').forEach(el => {
+        // ── Correo ───────────────────────────────────────────────────────────
+        document.querySelectorAll('input[name="correo"], input[type="email"], #clienteCorreo').forEach(el => {
             el.setAttribute('maxlength', this.LIMITES.CORREO_MAX);
         });
 
-        // ── Clave → min 6, max 30 ────────────────────────────────────────────
+        // ── Clave ────────────────────────────────────────────────────────────
         document.querySelectorAll('input[name="clave"], input[type="password"]').forEach(el => {
             el.setAttribute('maxlength', this.LIMITES.CLAVE_MAX);
             el.setAttribute('minlength', this.LIMITES.CLAVE_MIN);
         });
 
-        // ── Fechas → max hoy, min 1950 ───────────────────────────────────────
+        // ── Fechas ───────────────────────────────────────────────────────────
         const hoy = new Date().toISOString().split('T')[0];
         document.querySelectorAll('input[type="date"]').forEach(el => {
             el.setAttribute('max', hoy);
@@ -200,18 +204,29 @@ const Validation = {
             });
         });
 
-        // ── Precios → entre 10 y 70 ──────────────────────────────────────────
+        // ── Precios ──────────────────────────────────────────────────────────
         document.querySelectorAll('input[name="precio"]').forEach(el => {
             el.setAttribute('min', this.LIMITES.PRECIO_MIN);
             el.setAttribute('max', this.LIMITES.PRECIO_MAX);
             el.addEventListener('blur', function () {
                 const val = parseFloat(this.value);
-                if (this.value && (isNaN(val) || val < Validation.LIMITES.PRECIO_MIN || val > Validation.LIMITES.PRECIO_MAX)) {
-                    Validation.mostrarError(El precio debe estar entre S/ ${Validation.LIMITES.PRECIO_MIN}.00 y S/ ${Validation.LIMITES.PRECIO_MAX}.00.);
+                if (this.value && (isNaN(val) || val < this.LIMITES.PRECIO_MIN || val > this.LIMITES.PRECIO_MAX)) {
+                    Validation.mostrarError(`El precio debe estar entre S/ ${this.LIMITES.PRECIO_MIN}.00 y S/ ${this.LIMITES.PRECIO_MAX}.00.`);
                     this.value = '';
                 }
             });
         });
+
+        // ── Dirección Cliente ────────────────────────────────────────────────
+        const inputDirCarta = document.getElementById('direccionCliente');
+        if (inputDirCarta) {
+            inputDirCarta.addEventListener('input', function () {
+                let filtrado = this.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ #\-\.]/g, '');
+                if (this.value !== filtrado) {
+                    this.value = filtrado;
+                }
+            });
+        }
     }
 };
 

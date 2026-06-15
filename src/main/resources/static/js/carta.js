@@ -1,4 +1,4 @@
-let carrito = JSON.parse(localStorage.getItem("carrito") || "{}");
+let carrito = JSON.parse(localStorage.getItem("carrito") || "[]");
 actualizarUI();
 let mapa = null;
 let marcador = null;
@@ -6,7 +6,7 @@ let modalCarrito = null;
 let tipoEntrega = 'DELIVERY'; // por defecto
 let metodoPago = 'YAPE';
 
-const BASE_IMG_URL = 'http://localhost:3000'
+const BASE_IMG_URL = '';
 
 /* ── TIPO ENTREGA ── */
 function seleccionarTipo(tipo) {
@@ -25,7 +25,6 @@ function seleccionarPago(metodo) {
     document.getElementById('seccionPlin').style.display = metodo === 'PLIN' ? 'block' : 'none';
 }
 
-
 /* ── CARRITO ── */
 function agregarDesdeCard(el) {
     const id     = el.getAttribute('data-id');
@@ -38,45 +37,40 @@ function agregarDesdeCard(el) {
 }
 
 function agregarProducto(id, nombre, precio) {
-    if (carrito[id]) {
-        carrito[id].cantidad++;
-    } else {
-        carrito[id] = { id, nombre, precio, cantidad: 1 };
-    }
-    localStorage.setItem("carrito", JSON.stringify(carrito));
-    actualizarUI();
-}
+    const timestampUnico = Date.now() + Math.random();
 
-function cambiarCantidad(id, delta) {
-    if (!carrito[id]) return;
-    carrito[id].cantidad += delta;
-    if (carrito[id].cantidad <= 0) delete carrito[id];
+    carrito.push({
+        idTemporal: timestampUnico,
+        id: id,
+        nombre: nombre,
+        precio: precio,
+        cantidad: 1
+    });
+
     localStorage.setItem("carrito", JSON.stringify(carrito));
     actualizarUI();
-    renderCarrito();
 }
 
 function actualizarUI() {
-    const total = Object.values(carrito).reduce((s, i) => s + i.cantidad, 0);
+    const total = carrito.length;
     document.getElementById('badgeCount').textContent = total;
     const btn = document.getElementById('btnCarrito');
-    btn.style.display = total > 0 ? 'flex' : 'none';
+    if (btn) btn.style.display = total > 0 ? 'flex' : 'none';
 }
 
 function renderCarrito() {
     const lista = document.getElementById('listaCarrito');
-    const items = Object.values(carrito);
+    if (!lista) return;
 
-    if (items.length === 0) {
+    if (carrito.length === 0) {
         lista.innerHTML = '<p class="text-muted text-center py-3" style="font-size:0.9rem;">Tu carrito está vacío</p>';
         document.getElementById('totalCarrito').textContent = '0.00';
         return;
     }
 
     let total = 0;
-    lista.innerHTML = items.map(item => {
-        const sub = item.precio * item.cantidad;
-        total += sub;
+    lista.innerHTML = carrito.map((item, index) => {
+        total += item.precio;
         return `
             <div class="item-carrito">
                 <div style="flex:1; min-width:0;">
@@ -84,14 +78,21 @@ function renderCarrito() {
                     <div class="item-precio">S/ ${item.precio.toFixed(2)} c/u</div>
                 </div>
                 <div class="controles-cant">
-                    <button class="btn-cant" onclick="cambiarCantidad(${item.id}, -1)">−</button>
-                    <span style="font-weight:700; min-width:18px; text-align:center;">${item.cantidad}</span>
-                    <button class="btn-cant" onclick="cambiarCantidad(${item.id}, 1)">+</button>
+                    <button class="btn-cant text-danger" onclick="removerItemCarta(${index})">
+                        <i class="bi bi-trash3-fill"></i>
+                    </button>
                 </div>
             </div>`;
     }).join('');
 
     document.getElementById('totalCarrito').textContent = total.toFixed(2);
+}
+
+function removerItemCarta(index) {
+    carrito.splice(index, 1);
+    localStorage.setItem("carrito", JSON.stringify(carrito));
+    actualizarUI();
+    renderCarrito();
 }
 
 function abrirCarrito() {
@@ -162,20 +163,39 @@ function fijarPunto(lat, lng) {
     marcador = L.marker([lat, lng]).addTo(mapa).bindPopup('<b>Tu ubicación</b>').openPopup();
 }
 
-async function subirImagen(tipo, id, file) {
+async function subirImagen(file) {
+    const cloudName = "dyjnbddit";
+    const unsignedUploadPreset = "vouchers_preset";
+
     const formData = new FormData();
-    formData.append("image", file);
+    formData.append("file", file);
+    formData.append("upload_preset", unsignedUploadPreset);
 
-    const res = await fetch(`${BASE_IMG_URL}/upload/${tipo}/${id}`, {
-        method: "POST",
-        body: formData
-    });
+    console.log("📷 [CLOUDINARY] Intentando subir archivo desde la carta...");
 
-    const data = await res.json();
-    return data.uploaded?.[0];
+    try {
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+            method: "POST",
+            body: formData
+        });
+
+        if (!res.ok) {
+            const errorTxt = await res.text();
+            console.error("❌ [CLOUDINARY] El servidor rechazó la imagen:", errorTxt);
+            return null;
+        }
+
+        const data = await res.json();
+        console.log("✅ [CLOUDINARY] Subida exitosa. Objeto de retorno:", data);
+        return data.public_id;
+
+    } catch (err) {
+        console.error("❌ [CLOUDINARY] Error de red al intentar subir:", err);
+        return null;
+    }
 }
 
-/* ── ENVIAR PEDIDO ── */
+/* ── ENVIAR PEDIDO MODIFICADO CON LOADING Y SWEETALERT DE ÉXITO ── */
 async function enviarPedido() {
     const nombre    = document.getElementById('nombreCliente').value.trim();
     const direccion = tipoEntrega === 'RECOGER'
@@ -183,8 +203,10 @@ async function enviarPedido() {
         : document.getElementById('direccionCliente').value.trim();
     const lat       = document.getElementById('latCliente').value;
     const lng       = document.getElementById('lngCliente').value;
-    const items     = Object.values(carrito);
 
+    const prefComprobante = document.getElementById('preferenciaComprobante').value;
+    const correoCliente   = document.getElementById('clienteCorreo').value.trim();
+    const numDocumento    = document.getElementById('numeroDocumento').value.trim();
 
     let file;
     switch (metodoPago) {
@@ -193,30 +215,45 @@ async function enviarPedido() {
         default:      file = null;
     }
 
-    if (!nombre) {
-        Swal.fire({icon: 'error',title: 'Error',text: 'Por favor, ingrese su nombre'});
-        return;
+    if (prefComprobante === 'FACTURA') {
+        if (!numDocumento) {
+            Swal.fire({icon: 'error', title: 'Error', text: 'El número de RUC es obligatorio para Factura.'});
+            return;
+        }
+        if (numDocumento.length !== 11 || !Validation.soloNumeros(numDocumento)) {
+            Swal.fire({icon: 'error', title: 'Error', text: 'El RUC debe contener exactamente 11 dígitos numéricos.'});
+            return;
+        }
+        if (!correoCliente) {
+            Swal.fire({icon: 'error', title: 'Error', text: 'El correo electrónico es obligatorio para Factura.'});
+            return;
+        }
+    } else {
+        if (numDocumento && (numDocumento.length !== 8 || !Validation.soloNumeros(numDocumento))) {
+            Swal.fire({icon: 'error', title: 'Error', text: 'El DNI debe contener exactamente 8 dígitos numéricos.'});
+            return;
+        }
     }
-    if (!items.length) {
-        Swal.fire({icon: 'error',title: 'Error',text: 'No hay artículos en su pedido'});
-        return;
-    }
-    if (tipoEntrega === 'DELIVERY' && !direccion) {
-        Swal.fire({icon: 'error',title: 'Error',text: 'Por favor, ingrese su dirección'});
-        return;
-    }
-    if ( (metodoPago === 'YAPE' || metodoPago === 'PLIN') && !file) {
-        Swal.fire({icon: 'error',title: 'Error',text: 'Por favor, añada la imagen del pago realizado'});
+
+    if (correoCliente && !Validation.correoValido(correoCliente)) {
+        Swal.fire({icon: 'error', title: 'Error', text: 'Por favor, ingrese un formato de correo electrónico válido.'});
         return;
     }
 
-    const total   = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
-    const detalle = items.map(i => `• ${i.cantidad}x ${i.nombre} = S/${(i.precio*i.cantidad).toFixed(2)}`).join('\n');
+    if ((metodoPago === 'YAPE' || metodoPago === 'PLIN') && !file) {
+        Swal.fire({icon: 'error', title: 'Error', text: 'Por favor, añada la imagen del pago realizado.'});
+        return;
+    }
+
+    const total   = carrito.reduce((s, item) => s + item.precio, 0);
+    const detalle = carrito.map(item => `• 1x ${item.nombre} = S/ ${item.precio.toFixed(2)}`).join('\n');
 
     const mensaje =
 `🍽️ PEDIDO LA JAMA
 
 👤 Cliente: ${nombre}
+📧 Correo: ${correoCliente || 'No registrado'}
+📄 Solicitud: ${prefComprobante}
 📍 ${tipoEntrega === 'RECOGER' ? 'Recojo en local' : 'Delivery'}: ${direccion}
 
 🛒 Pedido:
@@ -224,7 +261,13 @@ ${detalle}
 
 💰 TOTAL: S/ ${total.toFixed(2)}`;
 
+    // 🚀 PASO 1: Bloqueamos la interfaz mostrando la pantalla de carga del sistema
+    if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
+        AppUtils.showLoading(true);
+    }
+
     try {
+        // Enrutamos el pedido de la carta digital
         const resPedido = await fetch('/carta/pedido', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -235,11 +278,14 @@ ${detalle}
                 longitud:   lng ? parseFloat(lng) : null,
                 montoTotal: parseFloat(total.toFixed(2)),
                 tipoPedido: tipoEntrega === 'DELIVERY' ? 'DELIVERY' : 'LOCAL',
-                listaDetalles: items.map(i => ({
-                    producto:       { id: parseInt(i.id) },
-                    cantidad:       i.cantidad,
-                    precioUnitario: i.precio,
-                    subtotal:       parseFloat((i.precio*i.cantidad).toFixed(2))
+                clienteCorreo: correoCliente ? correoCliente : null,
+                preferenciaComprobante: prefComprobante,
+                documentoCliente: numDocumento ? numDocumento : null,
+                listaDetalles: carrito.map(item => ({
+                    producto:       { id: parseInt(item.id) },
+                    cantidad:       1,
+                    precioUnitario: item.precio,
+                    subtotal:       item.precio
                 }))
             })
         });
@@ -247,6 +293,7 @@ ${detalle}
         const dataPedido = await resPedido.json();
         const id = dataPedido;
 
+        // Registro de control en la bandeja de auditoría de vouchers
         const resGuardar = await fetch('/admin/pagos-digitales/api/guardar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -260,29 +307,60 @@ ${detalle}
         const pagoData = await resGuardar.json();
         const idPago = pagoData.data.id;
 
-        let imgUrl = null;
+        let urlFinalImagen = null;
         if (file) {
-            const resImage = await subirImagen("pagodigital", idPago, file);
-            console.log(resImage);
-            imgUrl = resImage.url;
+            console.log("⏳ Procesando archivo seleccionado por el usuario...");
+            urlFinalImagen = await subirImagen(file);
+            console.log("🎯 URL final que se enviará a la base de datos:", urlFinalImagen);
         }
 
-        await fetch(`/admin/pagos-digitales/api/actualizar-imagen/${idPago}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imgUrl })
+        if (urlFinalImagen) {
+            await fetch(`/admin/pagos-digitales/api/actualizar-imagen/${idPago}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    imgUrl: urlFinalImagen
+                })
+            });
+            console.log("💾 Base de datos actualizada con el identificador de Cloudinary.");
+        }
+
+        // 🚀 PASO 2: Liberamos la pantalla de carga una vez completados los hilos asíncronos
+        if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
+            AppUtils.showLoading(false);
+        }
+
+        // Limpieza atómica de estados locales
+        localStorage.removeItem("carrito");
+        carrito = [];
+        actualizarUI();
+        if (modalCarrito) modalCarrito.hide();
+
+        // 🚀 PASO 3: Lanzamos la alerta de ÉXITO de SweetAlert2 con redirección controlada
+        Swal.fire({
+            icon: 'success',
+            title: '¡Solicitud Enviada!',
+            text: 'Tu orden fue registrada con éxito en el sistema. Espera a que el cajero valide tu comprobante digital.',
+            confirmButtonColor: '#1B3A2C',
+            confirmButtonText: 'Abrir WhatsApp'
+        }).then((result) => {
+            // Cuando le da clic a "Abrir WhatsApp", recién ahí disparamos la API externa
+            window.open('https://wa.me/51955563199?text=' + encodeURIComponent(mensaje), '_blank');
         });
 
-//        modalCarrito = null;
-//        carrito = {};
-//        localStorage.setItem("carrito", JSON.stringify(carrito));
-//        actualizarUI();
-//        renderCarrito();
     } catch (e) {
+        // En caso de fallo, forzamos la liberación del loading
+        if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
+            AppUtils.showLoading(false);
+        }
         console.warn('No se pudo registrar en sistema:', e);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de Red',
+            text: 'Fallo crítico al conectar con el servidor central de La Jama.',
+            confirmButtonColor: '#d33'
+        });
     }
-
-    window.open('https://wa.me/51955563199?text=' + encodeURIComponent(mensaje), '_blank');
 }
 
 /* ── BUSCADOR ── */
@@ -344,4 +422,21 @@ function previewImage(event) {
     if (event.target.files[0]) {
         reader.readAsDataURL(event.target.files[0]);
     }
+}
+
+function conmutarTipoDocumento() {
+    const tipo = document.getElementById('preferenciaComprobante').value;
+    const label = document.getElementById('labelDocumento');
+    const input = document.getElementById('numeroDocumento');
+
+    if (tipo === 'FACTURA') {
+        label.innerHTML = '<i class="bi bi-building me-1"></i>RUC (Obligatorio):';
+        input.placeholder = 'Ej: 20601234567';
+        input.setAttribute('maxlength', '11');
+    } else {
+        label.innerHTML = '<i class="bi bi-card-id me-1"></i>DNI (Opcional):';
+        input.placeholder = 'Ej: 74589632';
+        input.setAttribute('maxlength', '8');
+    }
+    input.value = "";
 }

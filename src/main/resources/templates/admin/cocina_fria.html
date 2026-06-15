@@ -40,7 +40,13 @@
         </div>
 
         <div th:unless="${#lists.isEmpty(pedidos)}" class="pedidos-grid">
-            <div th:each="p : ${pedidos}" class="card-pedido" th:id="'pedido-' + ${p.id}">
+            <div th:each="p : ${pedidos}"
+                 class="card-pedido"
+                 th:id="'pedido-' + ${p.id}"
+                 th:with="detallesFrios=${p.getListaDetalles().?[producto != null && producto.categoria != null && (#strings.contains(#strings.toUpperCase(producto.categoria.nombre), 'FRÍ') || #strings.contains(#strings.toUpperCase(producto.categoria.nombre), 'FRI')) && !cocinado]},
+                          platosActivosFrios=${detallesFrios.?[!canceladoPorCliente]}"
+                 th:style="${#lists.isEmpty(platosActivosFrios)} ? 'display: none;' : ''">
+
                 <div class="card-header">
                     <span class="badge-id">ORD. #[[${p.id}]]</span>
                     <div class="timer-container" th:data-start="${p.fechaCreacion}">
@@ -88,11 +94,11 @@
 
                                     <button th:if="${!d.canceladoPorCliente && d.impresoEnCocina}"
                                             type="button"
-                                            class="btn btn-sm btn-outline-info text-dark border-info hover-success"
-                                            th:onclick="despacharItemCocina([[${p.id}]], [[${d.id}]], '[[${d.producto.nombre}]]')"
+                                            class="btn btn-sm btn-outline-info text-dark border-info"
+                                            th:onclick="despacharItemCocina([[${p.id}]], [[${d.id}]], '[[${d.producto.nombre}]]', this)"
                                             title="Despachar a salón"
                                             style="padding: 2px 8px; font-weight: bold;">
-                                        <i class="bi bi-check2-all"></i>
+                                        <i class="bi bi-check2-all"></i> Despachar
                                     </button>
 
                                     <button th:if="${!d.canceladoPorCliente && !d.impresoEnCocina}"
@@ -127,6 +133,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 <script th:src="@{/js/sidebar.js}"></script>
+<script th:src="@{/js/utiles-comunes.js}"></script>
 <script th:src="@{/js/cocina-fria.js}" defer></script>
 </body>
 </html>

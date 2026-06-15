@@ -120,10 +120,25 @@ public class LoginController {
                 String cargoExacto = empOpt.get().getCargo().getNombre().toUpperCase();
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> {
-                            if (op.getRuta().equals("/dashboard")) return true;
-                            if (cargoExacto.contains("FRÍO") || cargoExacto.contains("FRIO")) return op.getRuta().equals("/admin/cocina/fria");
-                            if (cargoExacto.contains("CALIENTE")) return op.getRuta().equals("/admin/cocina/caliente");
-                            return false;
+                            String ruta = op.getRuta();
+
+                            // 1. Siempre permitimos el acceso al Dashboard base
+                            if (ruta.equals("/dashboard")) return true;
+
+                            // 2. Filtro restrictivo por subtipo de cocina (Caliente / Fría)
+                            if (ruta.contains("/cocina/")) {
+                                if (cargoExacto.contains("FRÍO") || cargoExacto.contains("FRIO")) {
+                                    return ruta.equals("/admin/cocina/fria");
+                                }
+                                if (cargoExacto.contains("CALIENTE")) {
+                                    return ruta.equals("/admin/cocina/caliente");
+                                }
+                                return false;
+                            }
+
+                            // 3. ✨ LA LLAVE MAESTRA: Si tiene cualquier otra ruta asignada en la BD
+                            // (como /insumos, /inventarios, etc.), la dejamos pasar limpia.
+                            return true;
                         })
                         .collect(Collectors.toList());
             } else if ("ADMIN".equals(rolParaSesion) || "SUPER_ADMIN".equals(rolParaSesion)) {

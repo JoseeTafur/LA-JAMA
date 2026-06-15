@@ -5,9 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
+import jakarta.validation.constraints.PastOrPresent;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -41,6 +40,7 @@ public class Empleado {
     private String tipoContrato = "PLANILLA";
 
     @Column(name = "fecha_ingreso")
+    @PastOrPresent(message = "La fecha de ingreso no puede ser futura.")
     private LocalDate fechaIngreso;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -64,5 +64,13 @@ public class Empleado {
         return this.pedidos.stream()
                 .noneMatch(p -> p.getEstado().name().equals("ASIGNADO") ||
                         p.getEstado().name().equals("EN_CAMINO"));
+    }
+
+    @PrePersist
+    @PreUpdate
+    public void validarFecha() {
+        if (this.fechaIngreso != null && this.fechaIngreso.isBefore(LocalDate.of(2026, 1, 1))) {
+            throw new IllegalArgumentException("La fecha de ingreso no puede ser anterior al 2026.");
+        }
     }
 }

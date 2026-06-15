@@ -191,7 +191,7 @@ $(document).ready(function () {
         if (inputFecha) {
             const hoyIso = new Date().toISOString().split('T')[0];
             inputFecha.setAttribute('max', hoyIso);
-            inputFecha.setAttribute('min', '1950-01-01');
+            inputFecha.setAttribute('min', '2026-01-01');
 
             inputFecha.addEventListener('change', function() {
                 const fechaSeleccionada = new Date(this.value);

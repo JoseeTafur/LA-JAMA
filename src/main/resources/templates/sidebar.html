@@ -61,21 +61,27 @@
 
                     <div th:each="grupo : ${session.menuAgrupado.entrySet()}" class="jama-uiverse-group-wrapper">
                         <th:block th:with="folder=${#strings.toLowerCase(grupo.key)},
-                       isGroupActive=${activeUri != null && (
-                           (folder == 'cocina' && activeUri.contains('/cocina/')) ||
-                           (folder == 'almacen' && (activeUri.contains('/almacen/') || activeUri.contains('/productos'))) ||
-                           (folder == 'mesas' && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
-                           (folder == 'mesero' && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
-                           (folder == 'admin' && activeUri.startsWith('/admin/') && !activeUri.contains('/cocina/') && !activeUri.contains('/mesas') && !activeUri.contains('/mesero') && !activeUri.contains('/almacen/') && !activeUri.contains('/productos') && !activeUri.contains('/usuarios') && !activeUri.contains('/perfiles') && !activeUri.contains('/empleados'))
-                       )}">
+    isGroupActive=${activeUri != null && (
+        (folder.contains('cocina') && activeUri.contains('/cocina')) ||
+        (folder.contains('almacen') && (activeUri.contains('/almacen') || activeUri.contains('/productos'))) ||
+        (folder.contains('mesas') && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
+        (folder.contains('mesero') && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
+        (folder.contains('seguridad') && (activeUri.contains('/usuarios') || activeUri.contains('/perfiles') || activeUri.contains('/empleados'))) ||
+        (folder.contains('log') && activeUri.contains('/insumos')) ||
+        (folder.contains('insumos') && activeUri.contains('/insumos')) ||
 
+        (folder == 'admin' && (
+            (activeUri.startsWith('/admin/') && !activeUri.contains('/cocina') && !activeUri.contains('/productos') && !activeUri.contains('/mesas') && !activeUri.contains('/mesero'))
+            || activeUri.contains('/pagos-digitales')
+        ))
+    )}">
                             <label th:for="${'radio-' + grupo.key}"
                                    class="jama-uiverse-item text-between"
                                    th:classappend="${isGroupActive} ? 'active-uiverse' : ''"
                                    data-bs-toggle="collapse"
-                                   th:href="@{'#collapse-' + ${grupo.key}}"
-                                   th:aria-expanded="${isGroupActive}"
-                                   th:data-module="${folder == 'admin' ? 'Cajero' : folder}">
+                                   th:data-bs-target="${'#collapse-' + grupo.key}"
+                                   th:aria-expanded="${isGroupActive ? 'true' : 'false'}"
+                                   th:data-module="${folder == 'seguridad' ? 'Cajero' : folder}">
 
                                 <input class="jama-radio-hidden"
                                        type="radio"

@@ -293,6 +293,7 @@ $(document).ready(function () {
     function openModalForNew() {
         limpiarErrores();
         AppUtils.clearForm(formId);
+        if (typeof Validation !== 'undefined') Validation.aplicarGlobal();
         $('#modalTitle').text('Agregar Usuario');
         $('#hint-permisos').remove();
 
@@ -314,6 +315,8 @@ $(document).ready(function () {
         $('#id_perfil').val(usuario.perfil ? usuario.perfil.id : '');
         $('#clave').val('');
 
+        if (typeof Validation !== 'undefined') Validation.aplicarGlobal();
+
         const perfilNombre = usuario.perfil ? usuario.perfil.nombre.toUpperCase().replace(/ /g, '_') : '';
         const esObjetivoAdmin = perfilNombre.includes('ADMIN') || perfilNombre.includes('ADMINISTRADOR');
 
@@ -322,18 +325,13 @@ $(document).ready(function () {
             // El Super Admin edita lo que quiera de quien sea
             $('#usuario, #correo, #clave').prop('readonly', false).prop('disabled', false);
             $('#id_perfil').prop('disabled', false);
-        } else if (esAdmin && !esObjetivoAdmin) {
-            // Un Admin puede alterar operarios secundarios, pero NO degradar su rol ni cambiar su clave
-            $('#usuario, #correo').prop('readonly', false).prop('disabled', false);
-            $('#clave').prop('readonly', true);
-            $('#id_perfil').prop('disabled', true);
         } else if (esAdmin && esObjetivoAdmin) {
             // Un Admin plano tiene bloqueados TODOS los campos de otra cuenta administradora
             $('#usuario, #correo, #clave').prop('readonly', true).prop('disabled', false);
             $('#id_perfil').prop('disabled', true);
 
-            // Inyectamos el banner explicativo usando tus layouts limpios
-            $('#form .row').prepend(`
+            // 🚀 CORREGIDO: Se cambió '#form .row' por '#form .row.g-3' para que elija SOLO la primera fila
+            $('#form .row.g-3').prepend(`
                 <div id="hint-permisos" class="col-12">
                     <div class="alert alert-danger border-0 rounded-3 py-2 small mb-2 text-start" style="background-color: #fce8e6; color: #a51d24;">
                         <i class="bi bi-shield-lock-fill me-1"></i>

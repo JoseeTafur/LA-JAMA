@@ -19,6 +19,9 @@ public class DetallePedido {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Transient
+    private String nombre;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_pedido")
     @JsonIgnore

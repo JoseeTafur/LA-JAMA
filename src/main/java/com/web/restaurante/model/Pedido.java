@@ -76,6 +76,8 @@ public class Pedido {
     @Column(name = "documento_cliente", length = 15)
     private String documentoCliente;
 
+    private String clienteCorreo;
+
     private String preferenciaComprobante;
 
     private String comprobantePdfUrl;

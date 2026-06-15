@@ -1175,3 +1175,9 @@ body {
     filter: drop-shadow(0 0 14px rgba(254, 215, 170, 0.65))
             drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
 }
+
+.carpeta-abierta-jama {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(254, 215, 170, 0.25) !important;
+    color: #ffffff !important;
+}

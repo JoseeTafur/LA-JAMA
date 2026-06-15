@@ -69,30 +69,55 @@ public class FacturacionService {
             BigDecimal divisorIgv = new BigDecimal("1.18");
             BigDecimal porcentajeIgv = new BigDecimal("0.18");
 
-            for (DetallePedido detalle : pedido.getListaDetalles()) {
-                if (detalle.isCanceladoPorCliente()) continue;
+            if (pedido.getListaDetalles() != null && !pedido.getListaDetalles().isEmpty()) {
 
-                ItemDTO item = new ItemDTO();
-                item.setCodProducto("PROD-" + detalle.getProducto().getId());
-                item.setDescripcion(detalle.getProducto().getNombre());
-                item.setCantidad(detalle.getCantidad());
+                double sumaPlatosTicket = pedido.getListaDetalles().stream()
+                        .filter(d -> !d.isCanceladoPorCliente())
+                        .mapToDouble(DetallePedido::getSubtotal)
+                        .sum();
 
-                BigDecimal precioUnitario = BigDecimal.valueOf(detalle.getSubtotal() / detalle.getCantidad())
-                        .setScale(2, RoundingMode.HALF_UP);
+                double factorProrrateo = 1.0;
+                if (pedido.getMontoTotal() != null && sumaPlatosTicket > 0
+                        && Math.abs(sumaPlatosTicket - pedido.getMontoTotal()) > 0.1) {
+                    factorProrrateo = pedido.getMontoTotal() / sumaPlatosTicket;
+                }
 
-                BigDecimal valorUnitario = precioUnitario.divide(divisorIgv, 4, RoundingMode.HALF_UP);
+                for (DetallePedido detalle : pedido.getListaDetalles()) {
+                    if (detalle.isCanceladoPorCliente()) continue;
 
-                BigDecimal baseIgv = valorUnitario.multiply(BigDecimal.valueOf(detalle.getCantidad()))
-                        .setScale(2, RoundingMode.HALF_UP);
+                    ItemDTO item = new ItemDTO();
 
-                BigDecimal igvItem = baseIgv.multiply(porcentajeIgv).setScale(2, RoundingMode.HALF_UP);
+                    // 🛡️ ADUANA ANTI-NULL: Extraemos los datos de forma plana si el objeto Producto no se inicializó
+                    if (detalle.getProducto() != null) {
+                        item.setCodProducto("PROD-" + detalle.getProducto().getId());
+                        item.setDescripcion(detalle.getProducto().getNombre());
+                    } else {
+                        // Respaldo directo desde las propiedades planas mapeadas del JSON
+                        item.setCodProducto("PROD-GENERICO");
+                        item.setDescripcion(detalle.getNombre() != null ? detalle.getNombre() : "Consumo de Alimentos");
+                    }
 
-                item.setMtoPrecioUnitario(precioUnitario);
-                item.setMtoValorUnitario(valorUnitario.setScale(2, RoundingMode.HALF_UP));
-                item.setMtoBaseIgv(baseIgv);
-                item.setIgv(igvItem);
+                    item.setCantidad(detalle.getCantidad());
 
-                items.add(item);
+                    double subtotalFraccionado = detalle.getSubtotal() * factorProrrateo;
+
+                    BigDecimal precioUnitario = BigDecimal.valueOf(subtotalFraccionado / detalle.getCantidad())
+                            .setScale(2, RoundingMode.HALF_UP);
+
+                    BigDecimal valorUnitario = precioUnitario.divide(divisorIgv, 4, RoundingMode.HALF_UP);
+
+                    BigDecimal baseIgv = valorUnitario.multiply(BigDecimal.valueOf(detalle.getCantidad()))
+                            .setScale(2, RoundingMode.HALF_UP);
+
+                    BigDecimal igvItem = baseIgv.multiply(porcentajeIgv).setScale(2, RoundingMode.HALF_UP);
+
+                    item.setMtoPrecioUnitario(precioUnitario);
+                    item.setMtoValorUnitario(valorUnitario.setScale(2, RoundingMode.HALF_UP));
+                    item.setMtoBaseIgv(baseIgv);
+                    item.setIgv(igvItem);
+
+                    items.add(item);
+                }
             }
             request.setItems(items);
 

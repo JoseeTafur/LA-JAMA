@@ -71,9 +71,11 @@ public class SessionInterceptor implements HandlerInterceptor {
                 ? session.getAttribute("rol").toString().trim().toUpperCase()
                 : "INVITADO";
 
-        // Pasaportes Supremos
-        if ("SUPER_ADMIN".equals(rol)) return true;
-        if ("ADMIN".equals(rol)) return true;
+        // Pasaportes Supremos (SUPER_ADMIN y ADMIN entran a absolutamente todo)
+        if ("SUPER_ADMIN".equals(rol) || "ADMIN".equals(rol)) return true;
+
+        // ✨ PASAPORTE COMÚN: Permitir que cualquier usuario autenticado vea el Dashboard base
+        if ("/dashboard".equals(path)) return true;
 
         // — Módulos de Caja, Despacho, Delivery y Catálogo de Productos
         if (path.startsWith("/admin/caja") ||
@@ -91,8 +93,16 @@ public class SessionInterceptor implements HandlerInterceptor {
         }
 
         // — Módulos de Producción (Monitores de Cocina)
-        if (path.startsWith("/admin/cocina")) {
-            return verificar(rol, response, "COCINA");
+        // 🚀 ADAPTADO: Permitimos que el rol COCINA también consuma la ruta de /insumos
+        if (path.startsWith("/admin/cocina") ||
+                path.startsWith("/insumos") ||
+                path.startsWith("/proteinas")) {
+
+            if ("COCINA".equals(rol)) {
+                return true; // El cocinero tiene luz verde total para ver stocks y mermas
+            }
+            // Si es Cajero o Admin, se rige por su propia aduana o herencia superior
+            if ("CAJERO".equals(rol)) return true;
         }
 
         // — Módulos de Despacho Logístico (Repartidores)
@@ -100,12 +110,11 @@ public class SessionInterceptor implements HandlerInterceptor {
             return verificar(rol, response, "REPARTIDOR");
         }
 
-        // ── 4. MURO DE CONTENCIÓN JERÁRQUICO DIRECTIVO ─────────────────────────────────────────
+        // ── 4. MURO DE CONTENCIÓN JERÁRQUICO DIRECTIVO (Solo para intrusos) ──────────────────────
+        // 🚀 REPARADO: Removemos /proteinas de la lista negra global para no romper los fetches asíncronos
         if (path.startsWith("/usuarios") ||
                 path.startsWith("/empleados") ||
-                path.startsWith("/perfiles") ||
-                path.startsWith("/insumos") ||
-                path.startsWith("/proteinas")) {
+                path.startsWith("/perfiles")) {
             response.sendRedirect("/dashboard?error=unauthorized");
             return false;
         }

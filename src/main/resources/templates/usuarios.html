@@ -48,7 +48,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <form id="form" novalidate>
+                <form id="form" name="formUsuario" novalidate>
                     <div class="modal-body p-4">
                         <input type="hidden" id="id" name="id" />
 
@@ -70,9 +70,10 @@
 
                             <div class="col-md-6">
                                 <label for="id_perfil" class="form-label fw-semibold small">Perfil / Rol de Acceso</label>
+
                                 <select id="id_perfil" name="perfil" class="form-select" required>
-                                </select>
-                                <div id="id_perfil-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
+                                    <option value="" disabled selected>Seleccione un rol de acceso...</option>
+                                </select> <div id="id_perfil-error" class="invalid-feedback d-block fw-semibold" style="font-size: 0.75rem;"></div>
                             </div>
 
                             <div class="col-md-6">
@@ -103,7 +104,7 @@
             </div>
         </div>
     </div>
-</div>
 
+</div>
 </body>
 </html>

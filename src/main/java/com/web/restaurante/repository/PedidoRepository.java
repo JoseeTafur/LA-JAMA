@@ -38,9 +38,22 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             "AND ((:categoria = 'FRI' AND p.frioListo = false) OR (:categoria = 'CALIENTE' AND p.calienteListo = false))")
     List<Pedido> buscarPedidosPorCocina(@Param("categoria") String categoria);
 
+    // =========================================================================
+    // ⚙️ REPARADO: Filtra pedidos de salón listos y pedidos web verificados en cocina
+    // =========================================================================
+    // =========================================================================
+    // ⚙️ REPARADO ABSOLUTO: Control unificado de Delivery, Recojo en Local y Salón
+    // =========================================================================
     @Query("SELECT p FROM Pedido p WHERE " +
-            // 🏠 MODAL DE COBRO EXITOSO: Filtra y muestra solo lo que ya pasó por caja-movil.js y se compró con éxito
-            "p.estado = com.web.restaurante.model.enums.EstadoPedido.PAGADO " +
+            // 1. 🌐 FLUJO CARTA DIGITAL (Delivery y Recojo en Local):
+            // Si el pedido no tiene mesa asignada, es web. Aparece en la bandeja
+            // de la caja listo para facturar desde que entra a cocina o preparación.
+            "(p.numeroMesa IS NULL AND p.estado IN (com.web.restaurante.model.enums.EstadoPedido.EN_COCINA, com.web.restaurante.model.enums.EstadoPedido.PREPARADO)) " +
+            "OR " +
+            // 2. 🍽️ FLUJO PRESENCIAL (Salón):
+            // Si tiene mesa asignada, es del salón. Solo aparece en la bandeja de facturación
+            // una vez que el mesero completó el pago físico en mesa.
+            "(p.numeroMesa IS NOT NULL AND p.estado = com.web.restaurante.model.enums.EstadoPedido.PAGADO AND (p.comprobanteNumero IS NULL OR p.comprobanteNumero = '')) " +
             "ORDER BY p.fechaCreacion ASC")
     List<Pedido> listarPedidosPorCobrar();
 

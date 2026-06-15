@@ -105,20 +105,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 45000);
 });
 
-// Función centralizada para despachar plato individual desde la estación fría
-function despacharItemCocina(pedidoId, detalleId, nombrePlato) {
+// =========================================================================
+// 🔥 CONTROL MICROSCOPIO: DESPACHAR PLATO INDIVIDUAL FRÍO RE-CALIBRADO
+// =========================================================================
+function despacharItemCocina(pedidoId, detalleId, nombrePlato, elementoBoton) {
+    // 🛡️ CANDADO DE SEGURIDAD EN FRÍO: Bloqueo inmediato para evitar doble procesamiento
+    if (elementoBoton && (elementoBoton.disabled || elementoBoton.classList.contains('processing-jama'))) {
+        return;
+    }
+
     AppUtils.showConfirmationDialog({
         title: '¿Preparación Lista?',
         text: `¿Enviar "${nombrePlato}" al área de entrega para que el mesero lo recoja?`,
         icon: 'question',
-        confirmButtonColor: '#198754',
+        confirmButtonColor: '#0dcaf0',
         confirmButtonText: 'Sí, despachar'
     }, async function() {
         AppUtils.showLoading(true);
+
+        // 🔒 Congelamos físicamente el botón en la barra fría
+        if (elementoBoton) {
+            elementoBoton.disabled = true;
+            elementoBoton.classList.add('processing-jama');
+            elementoBoton.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        }
+
         const params = new URLSearchParams();
         params.append("pedidoId", pedidoId);
-        params.append("detalleId", detalleId); 
-        params.append("tipoEstacion", "fria"); // <-- Se le indica al Spring Controller la ruta fría
+        params.append("detalleId", detalleId);
+        params.append("tipoEstacion", "fria");
 
         try {
             const res = await fetch('/admin/cocina/completar-item', {
@@ -126,14 +141,27 @@ function despacharItemCocina(pedidoId, detalleId, nombrePlato) {
                 body: params
             });
             if (res.ok) {
-                window.location.reload();
+                // 🚀 SOLUCIÓN ASÍNCRONA: Respiro de consolidación para la BD de La Jama
+                setTimeout(() => {
+                    window.location.reload();
+                }, 300);
             } else {
+                // Liberación de emergencia del control de barra
+                if (elementoBoton) {
+                    elementoBoton.disabled = false;
+                    elementoBoton.classList.remove('processing-jama');
+                    elementoBoton.innerHTML = '<i class="bi bi-check2-all"></i> Despachar';
+                }
                 AppUtils.showLoading(false);
                 AppUtils.showNotification("Error al despachar la preparación", "error");
             }
         } catch (error) {
+            if (elementoBoton) {
+                elementoBoton.disabled = false;
+                elementoBoton.classList.remove('processing-jama');
+            }
             AppUtils.showLoading(false);
-            console.error(error);
+            console.error("Error en la petición asíncrona de barra fría:", error);
         }
     });
 }

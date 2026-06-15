@@ -77,62 +77,6 @@
         </div>
     </div>
 
-    <div th:if="${not #lists.isEmpty(pedidosPendientes)}" class="jama-panel-vouchers">
-        <div class="panel-vouchers-cabecera">
-            <div class="vouchers-titulo-grupo">
-                <svg width="22" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icono-animado"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
-                <h5>Pedidos por Carta — Esperando Verificación de Voucher</h5>
-                <span class="jama-badge badge-alerta" th:text="${#lists.size(pedidosPendientes)} + ' por verificar'"></span>
-            </div>
-        </div>
-        <div class="jama-tabla-contenedor">
-            <table class="jama-tabla">
-                <thead>
-                <tr>
-                    <th class="col-id">ID</th>
-                    <th>Cliente</th>
-                    <th>Destino / Enrutamiento</th>
-                    <th>Total</th>
-                    <th>Registro</th>
-                    <th class="text-derecha">Acciones de Auditoría</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="p : ${pedidosPendientes}">
-                    <td><span class="id-resaltado">#[[${p.id}]]</span></td>
-                    <td>
-                        <div class="cliente-nombre">[[${p.cliente}]]</div>
-                        <small class="voucher-adjunto-tag">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px; vertical-align:middle;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Voucher Adjunto
-                        </small>
-                    </td>
-                    <td>
-                        <span class="jama-badge badge-gris" th:text="${p.direccion != null ? 'Delivery' : 'Recojo en Tienda'}"></span>
-                    </td>
-                    <td>
-                        <span class="monto-critico">S/ [[${#numbers.formatDecimal(p.montoTotal, 1, 2)}]]</span>
-                    </td>
-                    <td>
-                        <span class="jama-badge badge-tiempo">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px; vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>[[${#temporals.format(p.fechaCreacion, 'HH:mm')}]]
-                        </span>
-                    </td>
-                    <td class="text-derecha">
-                        <div class="jama-grupo-botones">
-                            <form th:action="@{/admin/caja/aprobar/{id}(id=${p.id})}" method="post" style="display:inline;">
-                                <button type="submit" class="jama-btn-accion btn-aprobar">Aprobar Pago</button>
-                            </form>
-                            <form th:action="@{/admin/caja/rechazar/{id}(id=${p.id})}" method="post" style="display:inline;">
-                                <button type="submit" class="jama-btn-accion btn-rechazar">Rechazar</button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
     <div class="jama-modulo-contable">
         <div class="jama-tabs-navegacion">
             <button class="jama-tab-link activo" id="comandas-tab" onclick="cambiarPestañaCaja('panel-comandas', this)">Comandas por Facturar</button>
@@ -187,10 +131,19 @@
                                 <td>
                                     <span class="texto-servicio" th:text="${p.tipoPedido != null and p.tipoPedido.name() == 'DELIVERY' ? '🏍️ Delivery' : '🍽️ Salón'}"></span>
                                 </td>
+                                <!-- 🚀 REPARADO: Subtexto de procedencia inteligente e inequívoco para el Cajero -->
                                 <td>
                                     <div class="cliente-nombre">[[${p.cliente}]]</div>
                                     <div class="cliente-meta-detalles">
-                                        <small class="texto-atenuado" th:text="${p.numeroMesa != null and p.numeroMesa != '' ? 'Mesa N° ' + p.numeroMesa : 'Particular'}"></small>
+                                        <!-- Discriminación absoluta de origen -->
+                                        <small th:if="${p.numeroMesa != null and p.numeroMesa != ''}" class="texto-atenuado">
+                                            Mesa N° [[${p.numeroMesa}]]
+                                        </small>
+                                        <small th:if="${p.numeroMesa == null or p.numeroMesa == ''}" class="texto-atenuado"
+                                               th:text="${p.tipoPedido != null and p.tipoPedido.name() == 'LOCAL' ? '🛍️ Recojo en Tienda' : '📍 Delivery Web'}">
+                                        </small>
+
+                                        <!-- Preferencias de comprobantes y pagos anteriores -->
                                         <span th:if="${p.preferenciaComprobante == 'BOLETA'}" class="jama-badge badge-boleta">Boleta</span>
                                         <span th:if="${p.preferenciaComprobante == 'FACTURA'}" class="jama-badge badge-factura">Factura</span>
                                         <span th:if="${p.metodoPago != null}" class="jama-badge badge-pago"
@@ -265,14 +218,25 @@
                             <td>
                                 <span th:class="${m.monto >= 0 ? 'monto-exito texto-negrita' : 'monto-critico texto-negrita'}" th:text="${'S/ ' + #numbers.formatDecimal(m.monto, 1, 2)}"></span>
                             </td>
+
                             <td>
-                                <div th:each="p : ${pedidosDiario}" th:if="${m.tipo == 'VENTA' and m.concepto.contains('#' + p.id)}">
-                                        <span th:if="${p.metodoPago != null}" class="jama-badge badge-pago"
-                                              th:text="${p.metodoPago.name() == 'TARJETA' ? '💳 Tarjeta' : p.metodoPago.name() == 'YAPE' ? '📱 Yape/Plin' : '💵 Efectivo'}"></span>
+                                <!-- CASO A: Si el concepto es Venta Online o hace referencia a una mesa N/A (Recojo), es Yape/Plin -->
+                                <div th:if="${m.tipo == 'VENTA' and (m.concepto.contains('Venta Online') or m.concepto.contains('Mesa N° N/A'))}">
+                                    <span class="jama-badge badge-pago">📱 Yape/Plin</span>
+                                </div>
+
+                                <!-- CASO B: Si es salón presencial con mesa física real -->
+                                <div th:if="${m.tipo == 'VENTA' and !m.concepto.contains('Venta Online') and !m.concepto.contains('Mesa N° N/A')}">
+                                    <div th:each="p : ${pedidosDiario}" th:if="${m.concepto.contains('Comanda #' + p.id)}">
+            <span th:if="${p.metodoPago != null}" class="jama-badge badge-pago"
+                  th:text="${p.metodoPago.name() == 'TARJETA' ? '💳 Tarjeta' : p.metodoPago.name() == 'YAPE' ? '📱 Yape/Plin' : '💵 Efectivo'}"></span>
+                                    </div>
                                 </div>
                             </td>
+
                             <td>
-                                <div th:each="p : ${pedidosDiario}" th:if="${m.tipo == 'VENTA' and m.concepto.contains('#' + p.id)}">
+                                <div th:each="p : ${pedidosDiario}"
+                                     th:if="${m.tipo == 'VENTA' and (m.concepto.contains('Pedido #' + p.id) or m.concepto.contains('Comanda #' + p.id))}">
                                     <div th:if="${p.comprobanteNumero != null}" class="cpe-grupo-descarga">
                                         <span class="jama-badge badge-cpe" th:text="${p.comprobanteTipo + ' ' + p.comprobanteNumero}"></span>
                                         <a th:if="${p.comprobantePdfUrl != null}" th:href="${p.comprobantePdfUrl}" target="_blank" class="jama-btn-link" title="Ticket">
