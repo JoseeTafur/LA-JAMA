@@ -27,6 +27,8 @@ public class SessionInterceptor implements HandlerInterceptor {
 
         // ── 0. MURO DE CONTENCIÓN EXCLUSIVO (LOGIN / LOGOUT) ────────────────────────────────
         if ("/login".equals(path) || "/logout".equals(path)) {
+            return true;
+            /*
             String ip = request.getHeader("X-Forwarded-For");
             String claveIP = "IP_" + (ip == null || ip.isEmpty() ? request.getRemoteAddr() : ip.split(",")[0].trim());
 
@@ -37,7 +39,8 @@ public class SessionInterceptor implements HandlerInterceptor {
                 response.getWriter().write("🚨 Demasiadas solicitudes en el acceso de La Jama.");
                 return false;
             }
-            return true; // Pasa directo al login/logout sin evaluar roles
+             */
+            // Pasa directo al login/logout sin evaluar roles
         }
 
         String claveIdentificadora;
