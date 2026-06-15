@@ -31,7 +31,7 @@ public class CajaController {
     private final TurnoCajaRepository turnoCajaRepository;
     private final PedidoRepository pedidoRepository;
     private final FacturacionService facturacionService;
-    private final EmailService emailService;
+    private EmailService emailService;
 
     private LocalTime obtenerHoraActualSistema() {
         return LocalTime.now();
@@ -242,10 +242,11 @@ public class CajaController {
             pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.PAGADO);
             pedidoRepository.save(pedido);
 
+            /*
             if (pedido.getClienteCorreo() != null && !pedido.getClienteCorreo().isEmpty()) {
                 emailService.enviarComprobante(pedido.getClienteCorreo(), pedido);
                 System.out.println("📧 Correo de comprobante enviado con éxito a: " + pedido.getClienteCorreo());
-            }
+            } */
 
             // ⚙️ UNIFICADO INTELIGENTE: Registra el asiento contable oficial en el Libro Diario
             // Funciona tanto para Delivery como para el Salón (LOCAL)
