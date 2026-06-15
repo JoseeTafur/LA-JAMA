@@ -78,22 +78,54 @@ document.addEventListener("DOMContentLoaded", function () {
     // 🛡️ CONTROL DE LOGIN OPTIMIZADO: ANTI-RÁFAGAS EN PRODUCCIÓN
     // ========================================================
     if (loginForm) {
-            loginForm.addEventListener("submit", function (e) {
-                const username = document.getElementById("usuario").value;
-                const password = document.getElementById("clave").value;
+        loginForm.addEventListener("submit", function (e) {
+            const username = document.getElementById("usuario").value;
+            const password = document.getElementById("clave").value;
 
-                if (username && password) {
-                    // 1. Ya NO usamos e.preventDefault() para no romper la sesión del navegador
+            if (username && password) {
+                // Frenamos el flujo por defecto para evaluar las aduanas perimetrales primero
+                e.preventDefault();
 
-                    // 2. Activamos la animación premium de inmediato para la UX
-                    const videoUrl = loginForm.getAttribute("data-video-src") || "/video/loader_lajama.webm";
-                    showPremiumVideoLoader("Validando credenciales en La Jama...", videoUrl);
+                // Disparamos la validación asíncrona controlada
+                fetch('/login', {
+                    method: 'POST',
+                    credentials: 'include', // 🚀 SOLUCIÓN: Envía las cookies y contexto de sesión seguro a Railway
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        'usuario': username,
+                        'clave': password
+                    })
+                }).then(response => {
+                    // 🚨 CASO 1: El usuario o bot agotó el balde de tokens (Rate Limit Activo)
+                    if (response.status === 429) {
+                        if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+                            AppUtils.showNotification("🚨 Demasiados intentos. Acceso bloqueado temporalmente.", "error");
+                        } else {
+                            alert("🚨 Sistema saturado. Has excedido el límite de solicitudes.");
+                        }
+                        return;
+                    }
 
-                    // 3. El formulario continúa su viaje normal por POST, inyectando las cookies de ley
-                    console.log("🚀 Redirección nativa en marcha. Sincronizando sesión...");
-                }
-            });
-        }
+                    // 🟩 CASO 2: El backend procesó las credenciales con éxito y devolvió una redirección (Dashboard)
+                    if (response.redirected) {
+                        const videoUrl = loginForm.getAttribute("data-video-src") || "/video/loader_lajama.webm";
+                        showPremiumVideoLoader("Validando credenciales...", videoUrl);
+
+                        setTimeout(() => {
+                            window.location.href = response.url; // Saltamos limpio al panel correspondiente
+                        }, 1000);
+                    } else {
+                        // ❌ CASO 3: Credenciales incorrectas. Recargamos la vista para pintar el fragmento de error de Thymeleaf
+                        window.location.reload();
+                    }
+                }).catch(err => {
+                    console.error("Error en la aduana perimetral:", err);
+                    // Fallback clásico en caso de caída extrema de red
+                    loginForm.submit();
+                });
+            }
+        });
+    }
 });
 
 // ========================================================
