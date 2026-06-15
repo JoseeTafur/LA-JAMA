@@ -271,34 +271,47 @@ public class CajaController {
     @GetMapping("/anular-comprobante")
     public String anularComprobante(@RequestParam Long pedidoId) {
         try {
-            Pedido ticket = pedidoService.obtenerPorId(pedidoId);
-            if (ticket == null) return "redirect:/admin/caja?error=TicketNoEncontrado";
+            Pedido ticket = pedidoRepository.findById(pedidoId)
+                    .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
-            // 1. Extraemos el concepto exacto que generó este pedido para buscarlo en el libro diario
-            String conceptoBusquedaWeb = "Pedido #" + ticket.getId();
-            String conceptoBusquedaLocal = "Comanda #" + ticket.getId();
-
-            // 2. Buscamos y purgamos el movimiento contable del turno activo para que desaparezca de la grilla
+            // 1. Buscamos y purgamos el movimiento contable usando el ID único de la orden
+            String coincidenciaId = "#" + ticket.getId();
             List<MovimientoCaja> movimientosTurno = turnoCajaService.obtenerMovimientosDelTurnoActivo();
+
             for (MovimientoCaja m : movimientosTurno) {
-                if (m.getConcepto() != null && (m.getConcepto().contains(conceptoBusquedaWeb) || m.getConcepto().contains(conceptoBusquedaLocal))) {
-                    // 🚀 EJECUCIÓN SEGURA: Borrado físico del asiento del Libro Diario
+                if (m.getConcepto() != null && m.getConcepto().contains(coincidenciaId)) {
+                    // Borrado físico seguro del asiento del Libro Diario
                     turnoCajaRepository.deleteMovimientoById(m.getId());
                 }
             }
 
-            // 3. Limpiamos los metadatos fiscales de la SUNAT
+            // 2. Limpiamos los metadatos fiscales de la SUNAT
             ticket.setComprobanteTipo(null);
             ticket.setComprobanteNumero(null);
             ticket.setDocumentoCliente(null);
             ticket.setComprobantePdfUrl(null);
             ticket.setComprobanteA4Url(null);
 
-            // 🚀 CLAVE LOGÍSTICA: Regresamos el pedido a estado PREPARADO.
-            // Esto hace que la bandeja intermedia de la caja lo vuelva a listar de inmediato como pendiente de CPE.
-            ticket.setEstado(com.web.restaurante.model.enums.EstadoPedido.PREPARADO);
+            // 3. 🛡️ RECTIFICACIÓN LOGÍSTICA DE MESA:
+            // Si el número de mesa es nulo, reconstruimos el número para que la bandeja no lo ignore
+            if (ticket.getNumeroMesa() == null && ticket.getCliente() != null && ticket.getCliente().contains("Mesa")) {
+                try {
+                    String numeroExtraido = ticket.getCliente().replaceAll("[^0-9]", "").trim();
+                    if (!numeroExtraido.isEmpty()) {
+                        ticket.setNumeroMesa(Integer.parseInt(numeroExtraido));
+                    }
+                } catch (Exception ex) {
+                    System.out.println("⚠️ Error al restaurar número de mesa: " + ex.getMessage());
+                }
+            }
 
+            // 🚀 CORRECCIÓN CRUCIAL: Cambiamos el estado a PREPARADO y guardamos directamente
+            // usando el repositorio inyectado en este controlador.
+            ticket.setEstado(com.web.restaurante.model.enums.EstadoPedido.PREPARADO);
             pedidoRepository.save(ticket);
+
+            // 🧼 Opcional: Si el repositorio tiene el query nativo, aseguramos la persistencia
+            pedidoRepository.actualizarEstadoJPQL(ticket.getId(), com.web.restaurante.model.enums.EstadoPedido.PREPARADO);
 
             return "redirect:/admin/caja?anulacionExito";
         } catch (Exception e) {

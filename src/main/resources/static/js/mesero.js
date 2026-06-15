@@ -191,6 +191,11 @@ function enviarPedido() {
     const mesaId = urlParams.get('mesaId');
     const pedidoId = urlParams.get('pedidoId');
 
+    let pedidoIdRaw = urlParams.get('pedidoId');
+        if (pedidoIdRaw === "null" || pedidoIdRaw === "") {
+            pedidoIdRaw = null;
+    }
+
     if (carrito.length === 0) {
         AppUtils.showNotification("⚠️ Agrega al menos un producto a la comanda", "warning");
         return;

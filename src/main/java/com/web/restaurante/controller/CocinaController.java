@@ -91,9 +91,15 @@ public class CocinaController {
         Pedido pedido = pedidoService.obtenerPorId(pedidoId);
 
         // 1. Filtramos SOLO los platos que NO se han impreso, que NO son mermas y que son de esta estación
+        // 🚀 ADUANA ANTI-NULOS: Evaluamos que ni el producto ni la categoría rompan el flujo si vienen del Split
         List<DetallePedido> detallesAImprimir = pedido.getListaDetalles().stream()
                 .filter(d -> !d.isCanceladoPorCliente() && !d.isImpresoEnCocina())
                 .filter(d -> {
+                    if (d.getProducto() == null ||
+                            d.getProducto().getCategoria() == null ||
+                            d.getProducto().getCategoria().getNombre() == null) {
+                        return false; // Si falta consistencia, lo salta de forma segura sin crashear
+                    }
                     String nombreCat = d.getProducto().getCategoria().getNombre().toUpperCase();
                     if ("caliente".equalsIgnoreCase(tipo)) return nombreCat.contains("CALIENTE");
                     else return nombreCat.contains("FRI") || nombreCat.contains("FRÍ");
@@ -105,6 +111,11 @@ public class CocinaController {
             detallesAImprimir = pedido.getListaDetalles().stream()
                     .filter(d -> !d.isCanceladoPorCliente())
                     .filter(d -> {
+                        if (d.getProducto() == null ||
+                                d.getProducto().getCategoria() == null ||
+                                d.getProducto().getCategoria().getNombre() == null) {
+                            return false; // Escudo protector para la reimpresión
+                        }
                         String cat = d.getProducto().getCategoria().getNombre().toUpperCase();
                         return "caliente".equalsIgnoreCase(tipo) ? cat.contains("CALIENTE") : (cat.contains("FRI") || cat.contains("FRÍ"));
                     }).toList();

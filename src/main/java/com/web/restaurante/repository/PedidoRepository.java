@@ -39,21 +39,13 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     List<Pedido> buscarPedidosPorCocina(@Param("categoria") String categoria);
 
     // =========================================================================
-    // ⚙️ REPARADO: Filtra pedidos de salón listos y pedidos web verificados en cocina
-    // =========================================================================
-    // =========================================================================
-    // ⚙️ REPARADO ABSOLUTO: Control unificado de Delivery, Recojo en Local y Salón
-    // =========================================================================
     @Query("SELECT p FROM Pedido p WHERE " +
             // 1. 🌐 FLUJO CARTA DIGITAL (Delivery y Recojo en Local):
-            // Si el pedido no tiene mesa asignada, es web. Aparece en la bandeja
-            // de la caja listo para facturar desde que entra a cocina o preparación.
             "(p.numeroMesa IS NULL AND p.estado IN (com.web.restaurante.model.enums.EstadoPedido.EN_COCINA, com.web.restaurante.model.enums.EstadoPedido.PREPARADO)) " +
             "OR " +
-            // 2. 🍽️ FLUJO PRESENCIAL (Salón):
-            // Si tiene mesa asignada, es del salón. Solo aparece en la bandeja de facturación
-            // una vez que el mesero completó el pago físico en mesa.
-            "(p.numeroMesa IS NOT NULL AND p.estado = com.web.restaurante.model.enums.EstadoPedido.PAGADO AND (p.comprobanteNumero IS NULL OR p.comprobanteNumero = '')) " +
+            // 2. 🍽️ FLUJO PRESENCIAL (Salón) [REPARADO AMBOS ESTADOS]:
+            // Ahora acepta pedidos PAGADOS listos para timbrar, y pedidos PREPARADOS que fueron anulados para corregir.
+            "(p.numeroMesa IS NOT NULL AND p.estado IN (com.web.restaurante.model.enums.EstadoPedido.PAGADO, com.web.restaurante.model.enums.EstadoPedido.PREPARADO) AND (p.comprobanteNumero IS NULL OR p.comprobanteNumero = '')) " +
             "ORDER BY p.fechaCreacion ASC")
     List<Pedido> listarPedidosPorCobrar();
 

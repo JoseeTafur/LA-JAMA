@@ -131,8 +131,14 @@ function abrirModalFiscalUnificado(pedidoId, tipoOriginal, documentoOriginal = '
     abrirModal('modalEmisionFiscal');
 }
 
-// ── Notas de Crédito / Bajas Asíncronas ─────────────────────────────────
+// ── NOTAS DE CRÉDITO / BAJAS ASÍNCRONAS CON DEBUGGER ACTIVO ─────────────────
 async function anularYCorregirComprobante(pedidoId, tipoActual, documentoActual) {
+    console.log("============ 🕵️‍♂️ [DEBUGGER LA JAMA: INICIO ANULACIÓN] ============");
+    console.log("🔍 Datos recibidos del botón:");
+    console.log(` -> pedidoId: ${pedidoId} (Type: ${typeof pedidoId})`);
+    console.log(` -> tipoActual: ${tipoActual}`);
+    console.log(` -> documentoActual: ${documentoActual}`);
+
     AppUtils.showConfirmationDialog({
         title: '⚠️ ¿Anular Comprobante Emitido?',
         text: `Se generará una Nota de Crédito para la Orden #${pedidoId}. Esto liberará la comanda para cambiar el tipo de documento o corregir datos inmediatamente.`,
@@ -140,21 +146,45 @@ async function anularYCorregirComprobante(pedidoId, tipoActual, documentoActual)
         confirmButtonColor: 'var(--caja-danger)',
         confirmButtonText: 'Sí, Anular y Corregir'
     }, async function() {
+        console.log("✅ El usuario confirmó el modal SweetAlert2. Disparando Fetch...");
         AppUtils.showLoading(true);
+
+        const urlObjetivo = `/admin/caja/anular-comprobante?pedidoId=${pedidoId}`;
+        console.log(`🛰️ Enviando petición GET a: ${urlObjetivo}`);
+
         try {
-            const res = await fetch(`/admin/caja/anular-comprobante?pedidoId=${pedidoId}`);
+            // Ponemos un debugger físico. Si tienes la consola F12 abierta, el navegador congelará la ejecución aquí para que revises las variables:
+            debugger;
+
+            const res = await fetch(urlObjetivo);
+
+            console.log("📥 Respuesta del servidor recibida:");
+            console.log(` -> Status Code: ${res.status} (${res.statusText})`);
+            console.log(` -> ¿Fue redireccionado?: ${res.redirected}`);
+            console.log(` -> URL de destino si redirigió: ${res.url}`);
+
             AppUtils.showLoading(false);
 
             if (res.redirected || res.ok) {
+                console.log("🎉 Flujo exitoso detectado. Lanzando notificación de reemisión...");
                 AppUtils.showNotification("Comprobante anulado. Preparando entorno de reemisión...", "warning");
-                setTimeout(() => { window.location.reload(); }, 3000);
+
+                console.log("⏱️ Iniciando temporizador de 3 segundos antes de hacer window.location.reload()...");
+                setTimeout(() => {
+                    console.log("🔄 Ejecutando window.location.reload() ahora mismo.");
+                    window.location.reload();
+                }, 3000);
             } else {
+                console.error("❌ El servidor respondió con un estado de error (No ok y No redirected).");
                 AppUtils.showNotification("El servidor rechazó la solicitud de anulación.", "error");
             }
         } catch (error) {
             AppUtils.showLoading(false);
+            console.error("💥 CRASH CRÍTICO EN EL CAPTURE DEL FETCH:");
+            console.error(error);
             AppUtils.showNotification("Fallo crítico al conectar con el módulo de notas de crédito.", "error");
         }
+        console.log("============ 🕵️‍♂️ [DEBUGGER LA JAMA: FIN ANULACIÓN] ============");
     });
 }
 

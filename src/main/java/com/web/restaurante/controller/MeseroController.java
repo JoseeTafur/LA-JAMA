@@ -32,15 +32,27 @@ public class MeseroController {
     private final PedidoService pedidoService;
     private final MesaRepository mesaRepository;
     private final PedidoRepository pedidoRepository;
-
-    // 🔥 Inyectamos el repositorio para leer las recetas y el stock
     private final InsumoProductoRepository insumoProductoRepository;
 
+    // =========================================================================
+    // 🛡️ NÚCLEO OPERATIVO: CONTROL DE ENTRADA CON TRADUCTOR DE ENTORNO ANTI-NULL
+    // =========================================================================
     @GetMapping("/nuevo")
     public String nuevoPedido(Model model, HttpSession session,
                               @RequestParam(required = false) Long mesaId,
-                              @RequestParam(required = false) Long pedidoId) {
+                              @RequestParam(required = false) String pedidoId) { // 🚀 Cambiado a String para capturar el texto "null"
+
         if (session.getAttribute("usuarioLogueado") == null) return "redirect:/login";
+
+        // 🚀 ADUANA LOGÍSTICA: Traduce la cadena de texto "null" del primer intento a un tipo numérico seguro
+        Long pedidoIdCorrecto = null;
+        if (pedidoId != null && !pedidoId.trim().isEmpty() && !"null".equalsIgnoreCase(pedidoId.trim())) {
+            try {
+                pedidoIdCorrecto = Long.parseLong(pedidoId.trim());
+            } catch (NumberFormatException e) {
+                System.out.println("⚠️ [COMANDERA] Formato de comanda corrupto interceptado: " + pedidoId);
+            }
+        }
 
         // ========================================================
         // 🔒 PERSISTENCIA EN SALA: Forzamos a que el sidebar crea que seguimos en Mesas
@@ -59,7 +71,6 @@ public class MeseroController {
 
         for (Producto p : listaProductos) {
             boolean agotado = false;
-            // Buscamos los ingredientes de este plato
             List<InsumoProducto> receta = insumoProductoRepository.findByProductoId(p.getId());
 
             for (InsumoProducto ip : receta) {
@@ -79,11 +90,12 @@ public class MeseroController {
         }
 
         model.addAttribute("productos", listaProductos);
-        model.addAttribute("productosAgotados", productosAgotados); // Enviamos el mapa al frontend
+        model.addAttribute("productosAgotados", productosAgotados);
         model.addAttribute("mesaId", mesaId);
 
-        if (pedidoId != null) {
-            model.addAttribute("pedidoId", pedidoId);
+        // Pasamos el ID numérico verificado y limpio a la vista de Thymeleaf
+        if (pedidoIdCorrecto != null) {
+            model.addAttribute("pedidoId", pedidoIdCorrecto);
         }
 
         return "admin/mesero_pedido";
@@ -114,8 +126,6 @@ public class MeseroController {
                 pedidoFinal.setCliente(pedidoDeFrontend.getCliente());
                 pedidoFinal.setDireccion(pedidoDeFrontend.getDireccion());
 
-                // Se mantiene intacta la fechaCreacion original para proteger el inicio real del servicio
-
                 if (pedidoDeFrontend.getListaDetalles() != null) {
                     for (DetallePedido nuevoDetalle : pedidoDeFrontend.getListaDetalles()) {
                         Producto productoCompleto = productoRepository.findById(nuevoDetalle.getProducto().getId())
@@ -137,7 +147,6 @@ public class MeseroController {
                 pedidoFinal.setEstado(EstadoPedido.EN_COCINA);
                 pedidoFinal.setFechaCreacion(LocalDateTime.now());
 
-                // Inicialización limpia de marcas temporales logísticas
                 pedidoFinal.setFechaSalida(null);
                 pedidoFinal.setFechaEntrega(null);
 
@@ -151,21 +160,15 @@ public class MeseroController {
                 }
             }
 
-            // =========================================================================
-            // CONTROL LOGÍSTICO DE MESA: Evita pérdidas de datos o estados en local
-            // =========================================================================
             if (mesaId != null) {
-                // Caso A: Si llega mesaId explícito por la URL, asignamos y ocupamos la mesa
                 Mesa mesa = mesaRepository.findById(mesaId).orElseThrow();
                 pedidoFinal.setNumeroMesa(mesa.getNumero());
                 mesa.setEstado("OCUPADA");
                 mesaRepository.save(mesa);
                 System.out.println("DEBUG MESA -> Asignada explícitamente: Mesa N° " + mesa.getNumero());
             } else if (pedidoDeFrontend.getId() != null) {
-                // Caso B: Es una adición y no viajó mesaId en la URL. Conservamos la mesa que ya tenía la BD
                 System.out.println("DEBUG MESA -> Manteniendo Mesa N° " + pedidoFinal.getNumeroMesa() + " heredada de la BD.");
             } else {
-                // Caso C: Alerta de consistencia en el flujo
                 System.out.println("DEBUG MESA -> ALERTA: No se recibió mesaId ni ID de comanda existente.");
             }
 
@@ -190,15 +193,12 @@ public class MeseroController {
             pedidoFinal.setFrioListo(!hayFrioPendiente);
             pedidoFinal.setCalienteListo(!hayCalientePendiente);
 
-            // CONTROL DE KPI DE DESPACHO EN COCINA:
-            // Si el lote de platos frío y caliente está listo, se marca la fechaSalida de cocina
             if (!hayFrioPendiente && !hayCalientePendiente) {
                 if (pedidoFinal.getFechaSalida() == null) {
                     pedidoFinal.setFechaSalida(LocalDateTime.now());
                     System.out.println("DEBUG LOGÍSTICA -> Cocina completada. Registrando fechaSalida automáticamente.");
                 }
             } else {
-                // Si entra una adición pendiente de preparación, se resetea hasta que todo vuelva a terminarse
                 pedidoFinal.setFechaSalida(null);
             }
 
@@ -207,14 +207,11 @@ public class MeseroController {
                 for (DetallePedido detalle : pedidoFinal.getListaDetalles()) {
                     detalle.setPedido(pedidoFinal);
 
-                    // Forzamos el seteo del precio unitario desde el producto hydratado si vino nulo
                     if (detalle.getPrecioUnitario() == null && detalle.getProducto() != null) {
                         detalle.setPrecioUnitario(detalle.getProducto().getPrecio());
                     }
 
-                    // Seteamos explícitamente el subtotal llamando a nuestro método seguro
                     detalle.setSubtotal(detalle.getSubtotal());
-
                     totalAcumulado += detalle.getSubtotal();
                 }
             }
@@ -222,7 +219,6 @@ public class MeseroController {
 
             pedidoService.guardarPedido(pedidoFinal);
 
-            // Forzar EN_COCINA directamente en BD por si @PrePersist pisó el estado
             if (pedidoFinal.getId() != null) {
                 pedidoRepository.actualizarEstadoJPQL(pedidoFinal.getId(),
                         com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
@@ -249,7 +245,6 @@ public class MeseroController {
         }
     }
 
-    // === KPI SALA: REGISTRO DE TRASLADO DE BANDEJA ===
     @PostMapping("/marcar-en-mesa/{id}")
     @ResponseBody
     public ResponseEntity<String> marcarPedidoEnMesa(@PathVariable Long id) {
@@ -267,7 +262,6 @@ public class MeseroController {
         }
     }
 
-    // === KPI ATENCIÓN: CIERRE DE COMANDA Y LIBERACIÓN OPERATIVA DE MESA ===
     @PostMapping("/finalizar-atencion/{id}")
     @ResponseBody
     public ResponseEntity<String> finalizarPedidoLocal(@PathVariable Long id, @RequestParam(required = false) Long mesaId) {
