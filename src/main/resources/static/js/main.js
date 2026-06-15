@@ -89,6 +89,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Disparamos la validación asíncrona controlada
                 fetch('/login', {
                     method: 'POST',
+                    credentials: 'include', // 🚀 SOLUCIÓN: Envía las cookies y contexto de sesión seguro a Railway
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams({
                         'usuario': username,
