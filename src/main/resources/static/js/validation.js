@@ -193,7 +193,7 @@ const Validation = {
 
         // ── Fechas ───────────────────────────────────────────────────────────
         const hoy = new Date().toISOString().split('T')[0];
-        document.querySelectorAll('input[type="date"]').forEach(el => {
+        document.querySelectorAll('input[type="date"]:not([data-no-validation])').forEach(el => {
             el.setAttribute('max', hoy);
             el.setAttribute('min', '1950-01-01');
             el.addEventListener('change', function () {

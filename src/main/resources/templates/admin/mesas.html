@@ -86,10 +86,11 @@
 
                              th:class="'mesa-box shadow-sm ' +
                                   (${m.estado == 'UNIFICADA' || (m.numerosMesasHijas != null && !m.numerosMesasHijas.isEmpty())} ? 'unificada' :
+                                  (${m.estado == 'RESERVADA'} ? 'reservada' :
                                   (${m.estado == 'OCUPADA' and pedidoMesa == null} ? 'reservada' :
                                   (${pedidoMesa == null} ? 'disponible' :
                                     (${pedidoMesa.tienePlatosMicroParaRecoger()} ? 'lista-para-recoger' :
-                                    (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar')))))"
+                                    (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar'))))))"
 
                              th:data-id="${m.id}"
                              th:data-numero="${m.numero}"

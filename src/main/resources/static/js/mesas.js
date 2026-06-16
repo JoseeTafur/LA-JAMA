@@ -87,6 +87,20 @@ function gestionarClickMesa(elemento) {
         }
         return;
     }
+    // Bloquear mesas con reserva activa (estado RESERVADA)
+    if (elemento.classList.contains('reservada')) {
+        const pedidoEstado = elemento.getAttribute('data-pedido-estado');
+        if (!pedidoEstado || pedidoEstado === 'NINGUNO') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Mesa reservada',
+                text: 'Esta mesa tiene una reserva activa. No se puede atender hasta que el cliente llegue y se confirme su llegada.',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#f59e0b'
+            });
+            return;
+        }
+    }
     prepararGestion(elemento);
 }
 

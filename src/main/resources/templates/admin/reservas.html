@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reservas - La Jama</title>
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+</head>
+<body>
+<div class="wrapper">
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/reservas')}"></div>
+
+    <main id="main-content" class="main-content">
+        <div th:replace="~{sidebar :: logistica_header('Gestión de Reservas')}"></div>
+
+        <div class="container-fluid p-4">
+
+            <!-- Botón nueva reserva -->
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-success rounded-pill px-4" id="btnNuevaReserva">
+                    <i class="bi bi-calendar-plus me-2"></i> Nueva Reserva
+                </button>
+            </div>
+
+            <!-- Tabla de reservas -->
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4"><i class="bi bi-calendar3 me-2"></i>Lista de Reservas</h5>
+                    <div class="table-responsive">
+                        <table id="tablaReservas" class="table table-hover align-middle w-100">
+                            <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Cliente</th>
+                                <th>Teléfono</th>
+                                <th>Personas</th>
+                                <th>Mesas</th>
+                                <th>Fecha y Hora</th>
+                                <th>Estado</th>
+                                <th>Observación</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal Nueva Reserva -->
+<div class="modal fade" id="modalReserva" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus me-2"></i>Nueva Reserva</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Nombre del Cliente</label>
+                        <input type="text" id="rNombre" class="form-control" placeholder="Solo letras" maxlength="30" />
+                        <div id="rNombre-error" class="text-danger small mt-1"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Teléfono</label>
+                        <input type="text" id="rTelefono" class="form-control" placeholder="9 dígitos" maxlength="9" />
+                        <div id="rTelefono-error" class="text-danger small mt-1"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">N° de Personas</label>
+                        <input type="number" id="rPersonas" class="form-control" min="1" max="50" placeholder="Ej: 6" />
+                        <div id="rPersonas-error" class="text-danger small mt-1"></div>
+                        <small class="text-muted" id="infoMesas"></small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Fecha</label>
+                        <input type="date" id="rFecha" class="form-control" data-no-validation />
+                        <div id="rFecha-error" class="text-danger small mt-1"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Hora</label>
+                        <input type="time" id="rHora" class="form-control" />
+                        <div id="rHora-error" class="text-danger small mt-1"></div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Observación (opcional)</label>
+                        <textarea id="rObservacion" class="form-control" rows="2" maxlength="150"
+                                  placeholder="Alergias, preferencias, ocasión especial..."></textarea>
+                    </div>
+
+                    <!-- Info de mesas que se asignarán -->
+                    <div class="col-12" id="mesasInfo" style="display:none">
+                        <div class="alert alert-info border-0 rounded-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <span id="mesasInfoTexto"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success rounded-pill px-4" id="btnGuardarReserva">
+                    <i class="bi bi-check-lg me-2"></i>Confirmar Reserva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Editar Reserva -->
+<div class="modal fade" id="modalEditarReserva" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Editar Reserva</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="eReservaId" />
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Nombre del Cliente</label>
+                        <input type="text" id="eNombre" class="form-control" maxlength="30" data-no-validation />
+                        <div id="eNombre-error" class="text-danger small mt-1"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Teléfono</label>
+                        <input type="text" id="eTelefono" class="form-control" maxlength="9" data-no-validation />
+                        <div id="eTelefono-error" class="text-danger small mt-1"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">N° de Personas</label>
+                        <input type="number" id="ePersonas" class="form-control" min="1" max="50" data-no-validation />
+                        <div id="ePersonas-error" class="text-danger small mt-1"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Fecha</label>
+                        <input type="date" id="eFecha" class="form-control" data-no-validation />
+                        <div id="eFecha-error" class="text-danger small mt-1"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Hora</label>
+                        <input type="time" id="eHora" class="form-control" data-no-validation />
+                        <div id="eHora-error" class="text-danger small mt-1"></div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Observación (opcional)</label>
+                        <textarea id="eObservacion" class="form-control" rows="2" maxlength="150"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <div class="alert alert-warning border-0 rounded-3 py-2 small">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Las mesas asignadas no cambian al editar. Solo se actualizan los datos del cliente y fecha.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning rounded-pill px-4" id="btnGuardarEdicion">
+                    <i class="bi bi-save me-2"></i>Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="notification-container" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+<script th:src="@{/js/utiles-comunes.js}"></script>
+<script th:src="@{/js/validation.js}"></script>
+<script th:src="@{/js/reservas.js}"></script>
+</body>
+</html>

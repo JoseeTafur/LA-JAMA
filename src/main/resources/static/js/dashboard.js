@@ -63,7 +63,7 @@ $(document).ready(function () {
         setInterval(function () {
             $.get('/dashboard/kpis', function (data) {
                 if (data.totalVentasHoy !== undefined) {
-                    $('#kpiIngresosHoy').text('S/ ' + parseFloat(data.totalVentasHoy).toFixed(2));
+                    $('#kpiIngresosHoy').text(parseFloat(data.totalVentasHoy).toFixed(2));
                 }
                 if (data.platosVendidosHoy !== undefined) {
                     $('#kpiPlatosVendidosHoy').text(data.platosVendidosHoy);
