@@ -440,3 +440,32 @@ function conmutarTipoDocumento() {
     }
     input.value = "";
 }
+
+function previewImageYape(event) {
+    const reader = new FileReader();
+    const preview = document.getElementById('imgPreviaYape');
+
+    reader.onload = function() {
+        preview.src = reader.result;
+        preview.style.display = 'block'; // Muestra la imagen dentro de la carpeta
+    };
+
+    if (event.target.files[0]) {
+        reader.readAsDataURL(event.target.files[0]);
+    }
+}
+
+// Añade esta función a tu archivo carta.js
+function previewImagePlin(event) {
+    const reader = new FileReader();
+    const preview = document.getElementById('imgPreviaPlin');
+
+    reader.onload = function() {
+        preview.src = reader.result;
+        preview.style.display = 'block';
+    };
+
+    if (event.target.files[0]) {
+        reader.readAsDataURL(event.target.files[0]);
+    }
+}

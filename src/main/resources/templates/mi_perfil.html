@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>La Jama - Mi Perfil</title>
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/mi_perfil.css}">
+</head>
+<body class="jama-dark-theme">
+<div class="wrapper">
+
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/MiPerfil')}"></div>
+
+    <main id="main-content" class="main-content">
+        <div th:replace="~{sidebar :: logistica_header('Configuración de Cuenta')}"></div>
+
+        <div class="container-fluid p-4">
+            <div class="perfil-container-jama">
+                <div class="perfil-card-jama">
+
+                    <div class="perfil-header-jama">
+                        <div class="perfil-avatar-wrapper-jama">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <h2 class="perfil-username-jama" th:text="${session.usuarioLogueado != null ? session.usuarioLogueado.usuario : 'Sin Usuario'}">Mesero01</h2>
+                        <span class="jama-badge-rol-jama" th:text="${session.rol != null ? session.rol : 'INVITADO'}">MESERO</span>
+                    </div>
+
+                    <hr class="perfil-divider-jama">
+
+                    <div class="perfil-body-jama">
+                        <h3><i class="bi bi-card-text"></i> Datos Personales</h3>
+
+                        <div class="perfil-grid-jama">
+                            <div class="perfil-info-group-jama">
+                                <label>Usuario</label>
+                                <p th:text="${session.empleadoLogueado != null ? (session.empleadoLogueado.nombre + ' ' + session.empleadoLogueado.apellido) : (session.usuarioLogueado != null ? session.usuarioLogueado.usuario : 'Usuario del Sistema')}">José Mario</p>
+                            </div>
+
+                            <div class="perfil-info-group-jama">
+                                <label>Cargo Operativo o Rango</label>
+                                <p th:text="${session.empleadoLogueado != null ? session.empleadoLogueado.cargo.nombre : (session.usuarioLogueado != null ? session.usuarioLogueado.perfil.nombre : 'Gestor de Plataforma')}">Mesero de Salón</p>
+                            </div>
+
+                            <div class="perfil-info-group-jama">
+                                <label>Correo Electrónico</label>
+                                <p th:text="${session.usuarioLogueado != null and session.usuarioLogueado.correo != null ? session.usuarioLogueado.correo : 'sin-correo@lajama.com'}">mario@lajama.com</p>
+                            </div>
+
+                            <div class="perfil-info-group-jama">
+                                <label>Estado de Cuenta</label>
+                                <p class="status-activo-jama">
+                                    <i class="bi bi-check-circle-fill"></i> Autenticado / Activo
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="perfil-footer-jama">
+                        <small class="texto-atenuado-jama">Sesión segura iniciada en los servidores de La Jama.</small>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+<script th:src="@{/js/utiles-comunes.js}"></script>
+<script th:src="@{/js/sidebar.js}"></script>
+<script th:src="@{/js/main.js}"></script>
+
+<script th:src="@{/js/mi_perfil.js}"></script>
+</body>
+</html>

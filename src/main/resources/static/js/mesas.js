@@ -129,7 +129,6 @@ function prepararGestion(elemento) {
     if (mesaModal) mesaModal.show();
 }
 
-// 🚀 FUNCIÓN EXTRACTADA: Configura la visualización de botones del modal base
 function renderizarControlesModal(esPadre, esUnificada, pedidoEstado, elemento) {
     const btnDesocupar      = document.getElementById('btnDesocupar');
     const txtConfirmacion   = document.getElementById('textoConfirmacion');
@@ -151,9 +150,13 @@ function renderizarControlesModal(esPadre, esUnificada, pedidoEstado, elemento) 
 
     if (btnSelectTodo)     { btnSelectTodo.innerHTML = `<i class="bi bi-check-all me-1"></i> Seleccionar todo`; }
     if (txtConfirmacion)   txtConfirmacion.classList.add('d-none');
-    if (btnCambiarMesa)    btnCambiarMesa.classList.add('d-none');
+
+    // 🟩 REPARACIÓN CORE DE UI: Mostramos las herramientas operativas por defecto
+    if (btnCambiarMesa)    btnCambiarMesa.classList.remove('d-none');
+    if (btnDividirComanda) btnDividirComanda.classList.remove('d-none');
+    if (btnSelectTodo)     btnSelectTodo.classList.remove('d-none');
+
     if (btnDesvincular)    btnDesvincular.classList.add('d-none');
-    if (btnDividirComanda) btnDividirComanda.classList.add('d-none');
     if (btnDesagrupar)     btnDesagrupar.classList.add('d-none');
 
     if (btnDesocupar) {
@@ -167,29 +170,48 @@ function renderizarControlesModal(esPadre, esUnificada, pedidoEstado, elemento) 
     if (badgeTicket)        badgeTicket.classList.add('d-none');
     if (lblNumero)          lblNumero.innerText = currentMesaNumero;
 
+    // ============================================================================
+    // 🎯 MOTOR INTERACTIVO DE ACCIONES SEGÚN JERARQUÍA DEL SALÓN
+    // ============================================================================
     if (esPadre) {
-        if (btnSelectTodo)  btnSelectTodo.classList.add('d-none');
-        if (btnUnificar)    btnUnificar.classList.add('d-none');
-        if (btnDesagrupar)  {
+        // Si es la Mesa Controladora de un grupo:
+        if (btnUnificar)   btnUnificar.classList.add('d-none'); // Ya está agrupada, no puede agrupar más
+        if (btnDesagrupar) {
+            // El botón de disolución manual queda 100% activo y libre
             btnDesagrupar.classList.remove('d-none');
-            btnDesagrupar.classList.toggle('disabled', (pedidoEstado === 'EN_COCINA' || pedidoEstado === 'PENDIENTE'));
-        }
-    } else if (esUnificada) {
-        if (btnSelectTodo)  btnSelectTodo.classList.add('d-none');
-        if (btnUnificar)    btnUnificar.classList.add('d-none');
-        if (btnAgregar)     btnAgregar.classList.add('d-none');
-        if (btnDesvincular) btnDesvincular.classList.remove('d-none');
-        if (lblNumero)      lblNumero.innerText = currentMesaNumero + " (Anexada)";
-    } else {
-        if (!currentPedidoId || pedidoEstado === 'NINGUNO') {
-            if (btnSelectTodo) btnSelectTodo.classList.add('d-none');
-            if (avisoVacio)    avisoVacio.classList.remove('d-none');
-            return;
+            btnDesagrupar.classList.remove('disabled');
+            btnDesagrupar.disabled = false;
         }
 
-        if (btnSelectTodo)     btnSelectTodo.classList.remove('d-none');
-        if (btnCambiarMesa)    btnCambiarMesa.classList.remove('d-none');
-        if (btnDividirComanda) btnDividirComanda.classList.remove('d-none');
+        // Failsafe por si el grupo aún no registra ningún consumo activo
+        if (!currentPedidoId || pedidoEstado === 'NINGUNO') {
+            if (btnSelectTodo)     btnSelectTodo.classList.add('d-none');
+            if (btnCambiarMesa)    btnCambiarMesa.classList.add('d-none');
+            if (btnDividirComanda) btnDividirComanda.classList.add('d-none');
+            if (avisoVacio)        avisoVacio.classList.remove('d-none');
+        }
+
+    } else if (esUnificada) {
+        // Si es una Mesa Hija anexada (Mesa Satélite):
+        if (btnSelectTodo)     btnSelectTodo.classList.add('d-none');
+        if (btnCambiarMesa)    btnCambiarMesa.classList.add('d-none');
+        if (btnDividirComanda) btnDividirComanda.classList.add('d-none');
+        if (btnUnificar)       btnUnificar.classList.add('d-none');
+        if (btnAgregar)        btnAgregar.classList.add('d-none');
+
+        // Se le permite desvincularse de forma satelital e independiente
+        if (btnDesvincular)    btnDesvincular.classList.remove('d-none');
+        if (lblNumero)         lblNumero.innerText = currentMesaNumero + " (Anexada)";
+
+    } else {
+        // Si es una Mesa Común estándar de salón:
+        if (!currentPedidoId || pedidoEstado === 'NINGUNO') {
+            if (btnSelectTodo)     btnSelectTodo.classList.add('d-none');
+            if (btnCambiarMesa)    btnCambiarMesa.classList.add('d-none');
+            if (btnDividirComanda) btnDividirComanda.classList.add('d-none');
+            if (avisoVacio)        avisoVacio.classList.remove('d-none');
+            return;
+        }
 
         if (elemento && elemento.classList.contains('lista-para-recoger')) {
             if (numMesaTexto)    numMesaTexto.innerText = currentMesaNumero;
@@ -198,7 +220,9 @@ function renderizarControlesModal(esPadre, esUnificada, pedidoEstado, elemento) 
     }
 }
 
-// 🚀 FUNCIÓN EXTRACTADA: Consume la precuenta y redibuja la lista interna del modal de forma limpia
+// =========================================================================
+// 🚀 ADUANA ASÍNCRONA: REFRESCADOR DE COMANDAS Y BOTONES EN CALIENTE (SIN F5)
+// =========================================================================
 function cargarDetalleComandaAsincrono(pedidoEstado) {
     const contenedorComanda = document.getElementById('contenedor-previsualizacion-comanda');
     const listaPlatos       = document.getElementById('lista-platos-previsualizar');
@@ -207,9 +231,15 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
     const panelSubtotal     = document.getElementById('panel-subtotal-modal');
     const badgeTicket       = document.getElementById('badge-ticket');
 
+    // Ubicamos la tarjeta física del salón para leer sus atributos jerárquicos reales
+    const tarjetaMesaDOM = document.getElementById(`mesa-card-${currentMesaId}`);
+    const esPadreGrupo = tarjetaMesaDOM ? tarjetaMesaDOM.getAttribute('data-es-padre') === 'SI' : false;
+    const esUnificada = tarjetaMesaDOM ? tarjetaMesaDOM.classList.contains('unificada') : false;
+
     if (currentPedidoId && currentPedidoId !== "" && pedidoEstado !== 'NINGUNO') {
         fetch(`/admin/mesas/precuenta/${currentMesaNumero}`)
             .then(res => {
+                // Si el servidor responde 404 es porque la mesa se quedó sin platos vivos
                 if (!res.ok) throw new Error("Sin consumos");
                 return res.json();
             })
@@ -220,13 +250,19 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                 const ticketImpreso = data.ticketImpreso === true;
                 if (badgeTicket) badgeTicket.classList.toggle('d-none', !ticketImpreso);
 
+                // ESCENARIO A: El JSON llegó pero el array de detalles está en cero
                 if (data.detalles.length === 0) {
                     if (avisoVacio) avisoVacio.classList.remove('d-none');
                     if (contenedorComanda) contenedorComanda.classList.add('d-none');
                     if (panelSubtotal) panelSubtotal.classList.add('d-none');
+
+                    // 🎯 RECONFIGURACIÓN ASÍNCRONA EN CALIENTE (Apaga botones)
+                    currentPedidoId = "";
+                    renderizarControlesModal(esPadreGrupo, esUnificada, 'NINGUNO', tarjetaMesaDOM);
                     return;
                 }
 
+                // Renderizado normal de platos si la lista tiene ítems activos
                 data.detalles.forEach(d => {
                     if (d.canceladoPorCliente) {
                         listaPlatos.innerHTML += `
@@ -309,55 +345,84 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                 if (panelSubtotal)     panelSubtotal.classList.remove('d-none');
                 if (avisoVacio)        avisoVacio.classList.add('d-none');
 
-                evaluarBotonConfirmarPago();
+                // 🎯 RECONFIGURACIÓN ASÍNCRONA EN CALIENTE (Prende botones de acción porque hay comida)
+                renderizarControlesModal(esPadreGrupo, esUnificada, pedidoEstado, tarjetaMesaDOM);
             })
             .catch(err => {
-                console.warn("Error al cargar comanda:", err);
+                // ESCENARIO B: Saltó el error 404 (Sin consumos) atrapado desde tu consola
+                console.warn("Manejo controlado de precuenta vacía:", err.message);
+
                 if (avisoVacio)    avisoVacio.classList.remove('d-none');
-                if (panelSubtotal) panelSubtotal.classList.add('d-none');
+                if (panelSubtotal) panelSubtotal.add ? panelSubtotal.add('d-none') : panelSubtotal.classList.add('d-none');
                 if (contenedorComanda) contenedorComanda.classList.add('d-none');
+
+                // 🎯 LA SOLUCIÓN REACIVA: Forzamos el apagado y bloqueo de botones al instante de ver que no hay comida
+                currentPedidoId = "";
+                renderizarControlesModal(esPadreGrupo, esUnificada, 'NINGUNO', tarjetaMesaDOM);
             });
     } else {
+        // ESCENARIO C: Variables inicializadas vacías por defecto
         if (avisoVacio)    avisoVacio.classList.remove('d-none');
         if (panelSubtotal) panelSubtotal.classList.add('d-none');
         if (contenedorComanda) contenedorComanda.classList.add('d-none');
+
+        // 🎯 Forzamos bloqueo preventivo de control de botones
+        renderizarControlesModal(esPadreGrupo, esUnificada, 'NINGUNO', tarjetaMesaDOM);
     }
 }
 
-// 🚀 NUEVA FUNCIÓN MOTOR: Modifica el plano de mesas en tiempo real sin recargar la página entera
+// =========================================================================
+// 🚀 MOTOR EN VIVO: SINCRONIZACIÓN DE COLOR Y JERARQUÍAS DEL DOM EN CALIENTE
+// =========================================================================
 function actualizarEstadoMesaEnPlano(numeroMesa, nuevoEstado, nuevoPedidoId, pedidoEstado) {
-    // Buscar la mesa tanto en la Grid normal como en las tarjetas estiradas de agrupamiento
     const tarjetasMesa = document.querySelectorAll(`[data-numero="${numeroMesa}"]`);
 
     tarjetasMesa.forEach(tarjeta => {
         if (!tarjeta) return;
 
-        // 1. Limpiar clases cromáticas viejas
+        // 1. Purgamos clases operativas viejas
         tarjeta.classList.remove('disponible', 'ocupada', 'lista-para-recoger', 'lista-para-pagar', 'unificada');
 
-        // 2. Insertar la nueva clase de estado
+        // 2. Acoplamos el nuevo estado visual
         tarjeta.classList.add(nuevoEstado);
 
-        // 3. Mutar los metadatos de estados en el DOM
+        // 3. Mutación de metadatos de comanda
         if (nuevoPedidoId) tarjeta.setAttribute('data-pedido-id', nuevoPedidoId);
         if (pedidoEstado) tarjeta.setAttribute('data-pedido-estado', pedidoEstado);
 
-        // 4. Cambiar dinámicamente el icono de Bootstrap Icons de la caja
+        // 🛡️ REPARACIÓN RADICAL DE ATRIBUTOS:
+        // Si la mesa se libera, limpiamos obligatoriamente su pasado jerárquico
+        if (nuevoEstado === 'disponible') {
+            tarjeta.setAttribute('data-es-padre', 'NO');
+            tarjeta.removeAttribute('data-id-mesa-padre');
+            tarjeta.setAttribute('data-pedido-id', '');
+            tarjeta.setAttribute('data-pedido-estado', 'NINGUNO');
+        }
+
+        // 4. Actualización dinámica del icono
         const icono = tarjeta.querySelector('.mesa-icon-wrapper i');
         if (icono) {
-            icono.className = ""; // Limpiar clases
+            icono.className = "";
             if (nuevoEstado === 'unificada') icono.className = "bi bi-link-45deg";
             else if (nuevoEstado === 'lista-para-recoger') icono.className = "bi bi-bell-fill";
             else if (nuevoEstado === 'lista-para-pagar') icono.className = "bi bi-person-check-fill";
-            else icono.className = "bi bi-cup-hot-fill"; // disponible u ocupada estándar
+            else icono.className = "bi bi-cup-hot-fill";
         }
     });
 
-    // Si el mesero tiene el modal abierto justamente de ESA mesa que cambió en cocina, refrescamos el modal internamente en caliente
+    // Refresco asíncrono en caliente de las variables del modal interno abierto
     if (currentMesaNumero == numeroMesa && mesaModal && document.getElementById('modalMesa').classList.contains('show')) {
-        if (nuevoPedidoId) currentPedidoId = nuevoPedidoId;
-        renderizarControlesModal(tarjetasMesa[0].classList.contains('tarjeta-unificada'), nuevoEstado === 'unificada', pedidoEstado, tarjetasMesa[0]);
-        cargarDetalleComandaAsincrono(pedidoEstado);
+        const tarjetaActual = tarjetasMesa[0];
+        if (tarjetaActual) {
+            const pedidoEstadoActual = tarjetaActual.getAttribute('data-pedido-estado');
+            const esPadreActual = tarjetaActual.getAttribute('data-es-padre') === 'SI' || tarjetaActual.classList.contains('tarjeta-unificada');
+            const esUnificadaActual = tarjetaActual.classList.contains('unificada');
+
+            if (nuevoPedidoId) currentPedidoId = nuevoPedidoId;
+
+            renderizarControlesModal(esPadreActual, esUnificadaActual, pedidoEstadoActual, tarjetaActual);
+            cargarDetalleComandaAsincrono(pedidoEstadoActual);
+        }
     }
 }
 
@@ -590,7 +655,6 @@ function procesarUnificacionDirecta() {
         return;
     }
     const idsHijas = Array.from(checks).map(c => c.value);
-    // Capturamos los números de mesa reales para renderizarlos asíncronamente
     const numerosHijas = Array.from(checks).map(c => c.closest('.mesa-box').getAttribute('data-numero'));
 
     AppUtils.showConfirmationDialog({
@@ -612,21 +676,38 @@ function procesarUnificacionDirecta() {
             if (res.ok) {
                 AppUtils.showNotification("Mesas unificadas correctamente", "success");
 
-                // 🚀 SOLUCIÓN ASÍNCROA: Actualizamos el plano del salón en caliente
+                // 🚀 TRATAMIENTO ASÍNCRONO DE MARCAS DE CONTROL JERÁRQUICO:
+                // Buscamos la tarjeta física de la Mesa Principal en el HTML del salón
+                const tarjetaPadreDOM = document.getElementById(`mesa-card-${currentMesaId}`);
+                if (tarjetaPadreDOM) {
+                    // 🟩 LA SOLUCIÓN: Le estampamos en caliente que a partir de este milisegundo es PADRE
+                    tarjetaPadreDOM.setAttribute('data-es-padre', 'SI');
+                }
+
+                // Sincronizamos cromáticamente la Mesa Padre Controladora
                 actualizarEstadoMesaEnPlano(currentMesaNumero, 'unificada', currentPedidoId, 'AGRUPADO');
+
+                // Marcamos e indexamos relacionalmente a cada Mesa Hija satélite
                 checks.forEach(c => {
-                    const numHija = c.closest('.mesa-box').getAttribute('data-numero');
-                    actualizarEstadoMesaEnPlano(numHija, 'unificada', null, 'NINGUNO');
+                    const cajaHijaDOM = c.closest('.mesa-box');
+                    if (cajaHijaDOM) {
+                        cajaHijaDOM.setAttribute('data-es-padre', 'NO');
+                        // Le grabamos el puntero a su Mesa Padre para blindar el enrutamiento posterior
+                        cajaHijaDOM.setAttribute('data-id-mesa-padre', currentMesaId);
+
+                        const numHija = cajaHijaDOM.getAttribute('data-numero');
+                        actualizarEstadoMesaEnPlano(numHija, 'unificada', null, 'NINGUNO');
+                    }
                 });
 
-                // 🚀 SOLUCIÓN ASÍNCRONA: Renderizamos la tarjeta en la pestaña de Grupos sin F5
+                // Renderizamos de forma transparente la tarjeta en el carrusel de Grupos
                 actualizarPanelGruposUnificados(currentMesaNumero, numerosHijas, 'AGRUPADO', currentPedidoId);
 
                 cancelarModoUnificacion();
             }
         } catch (error) {
             AppUtils.showLoading(false);
-            console.error(error);
+            console.error("Error al procesar la unificación masiva en caliente:", error);
         }
     });
 }
@@ -758,9 +839,9 @@ function toggleSeleccionarTodosLosPlatos() {
     evaluarBotonConfirmarPago();
 }
 
-// =======================================================
-// MODAL UNIFICADO DE ACCIÓN (CAMBIAR MESA / DIVIDIR COMANDA)
-// =======================================================
+// =========================================================================
+// 🎨 ADUANA DE ACCIÓN CORREGIDA: ENRUTAMIENTO STRICTO HACIA LA MESA PADRE
+// =========================================================================
 function abrirModalAccionUnificado(modo) {
     modoAccionMesaActual      = modo;
     mesaDestinoSeleccionadaId = null;
@@ -806,21 +887,56 @@ function abrirModalAccionUnificado(modo) {
                 const idMesa = opt.value;
                 const numeroMesa = opt.text;
                 const tarjetaMesaOriginal = document.getElementById('mesa-card-' + idMesa);
+
                 let estaOcupada = false;
+                let esMesaHijaAgrupada = false;
+                let esMesaPadreControladora = false;
 
                 if (tarjetaMesaOriginal) {
                     const estadoPedido = tarjetaMesaOriginal.getAttribute('data-pedido-estado');
                     estaOcupada = (estadoPedido && estadoPedido !== 'NINGUNO');
+
+                    const esUnificada = tarjetaMesaOriginal.classList.contains('unificada');
+                    const flagPadre = tarjetaMesaOriginal.getAttribute('data-es-padre');
+
+                    // 🛡️ REGLA OPERATIVA ABSOLUTA DE ENRUTAMIENTO:
+                    // Una mesa es Padre si está unificada y tiene la bandera data-es-padre="SI"
+                    if (flagPadre === 'SI') {
+                        esMesaPadreControladora = true;
+                    }
+                    // Una mesa es Hija satélite si está unificada pero NO tiene la bandera de Padre
+                    else if (esUnificada && flagPadre !== 'SI') {
+                        esMesaHijaAgrupada = true;
+                    }
                 }
 
-                const badgeEstado = estaOcupada
-                    ? '<span class="badge bg-warning text-dark rounded-pill" style="font-size:0.7rem;">Con Consumo</span>'
-                    : '<span class="badge bg-success text-white rounded-pill" style="font-size:0.7rem;">Libre</span>';
+                // Motores dinámicos de renderizado cromático interactivo
+                let badgeEstado = '';
+                let estiloAtributo = '';
+                let deshabilitadoAttr = '';
+
+                if (esMesaHijaAgrupada) {
+                    // 🚨 REGLA DE LA JAMA: Las mesas hijas quedan totalmente desactivadas en la UI
+                    badgeEstado = '<span class="badge bg-danger bg-opacity-10 text-danger rounded-pill" style="font-size:0.7rem;"><i class="bi bi-x-circle-fill me-1"></i>Hija (Bloqueada)</span>';
+                    estiloAtributo = 'background-color: #fef2f2; opacity: 0.55; cursor: not-allowed; border-left: 4px solid #ef4444 !important;';
+                    deshabilitadoAttr = 'disabled';
+                } else if (esMesaPadreControladora) {
+                    // 🎯 REGLA DE LA JAMA: La Mesa Padre sí aparece habilitada y con su estilo premium para absorber la comanda
+                    badgeEstado = '<span class="badge rounded-pill" style="font-size:0.75rem; background-color:#4c1d95; color:#fff7ed;"><i class="bi bi-link-45deg me-1"></i>Padre del Grupo</span>';
+                    estiloAtributo = 'background-color: #f5f3ff; border-left: 4px solid #4c1d95 !important; font-weight:700;';
+                } else if (estaOcupada) {
+                    badgeEstado = '<span class="badge bg-warning text-dark rounded-pill" style="font-size:0.7rem;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Con Consumo</span>';
+                    estiloAtributo = 'border-left: 4px solid #f59e0b !important;';
+                } else {
+                    badgeEstado = '<span class="badge bg-success text-white rounded-pill" style="font-size:0.7rem;"><i class="bi bi-check-circle-fill me-1"></i>Libre</span>';
+                    estiloAtributo = 'border-left: 4px solid #10b981 !important;';
+                }
 
                 if (contenedorLista) {
                     contenedorLista.innerHTML += `
                         <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 px-3 item-mesa-accion"
-                                data-id="${idMesa}" data-numero="${numeroMesa}" onclick="seleccionarMesaDestinoAccion(this, ${idMesa})">
+                                data-id="${idMesa}" data-numero="${numeroMesa}" style="${estiloAtributo}" ${deshabilitadoAttr}
+                                onclick="if(!this.hasAttribute('disabled')) seleccionarMesaDestinoAccion(this, ${idMesa})">
                             <div class="d-flex align-items-center gap-2">
                                 <i class="bi bi-door-closed text-secondary fs-5"></i>
                                 <span class="fw-semibold text-dark">Mesa ${numeroMesa}</span>
@@ -863,62 +979,82 @@ function procesarAccionMesaFinal() {
     if (instanciaModalAccion) instanciaModalAccion.hide();
 }
 
+// =========================================================================
+// 🔄 TRASLADO COMPLETO CORREGIDO: ENVÍO ATÓMICO DE KEYS Y REFRESCO EN CALIENTE
+// =========================================================================
 function _ejecutarTrasladoCompleto(idMesaDestino) {
-    let textoMesaDestino = `Mesa N° ${idMesaDestino}`;
+    // Si no viene por parámetro, usamos la variable global del modal de traslados
+    const destinoIdReal = idMesaDestino || mesaDestinoSeleccionadaId;
+    if (!destinoIdReal) {
+        AppUtils.showNotification("Por favor, selecciona una mesa de destino válida.", "warning");
+        return;
+    }
+
+    // Ubicamos la tarjeta elegida en el modal de acción para saber su número visual
     const itemSeleccionado = document.querySelector('.item-mesa-accion.active');
-    let numeroMesaDestino = idMesaDestino;
+    let numeroMesaDestino = currentMesaNumero; // Failsafe
 
     if (itemSeleccionado) {
         const numAtributo = itemSeleccionado.getAttribute('data-numero');
         if (numAtributo) {
-            textoMesaDestino = `Mesa #${numAtributo}`;
             numeroMesaDestino = parseInt(numAtributo);
         }
     }
 
     AppUtils.showConfirmationDialog({
         title: '¿Confirmar Traslado?',
-        text: `¿Estás seguro de mudar todos los platos de la Mesa #${currentMesaNumero} hacia la ${textoMesaDestino}?`,
+        text: `¿Estás seguro de mudar todos los platos de la Mesa #${currentMesaNumero} hacia la Mesa #${numeroMesaDestino}?`,
         icon: 'question',
         confirmButtonColor: '#1B3A2C',
         confirmButtonText: 'Sí, trasladar'
     }, async function () {
         AppUtils.showLoading(true);
-        const todosLosChecks = document.querySelectorAll('.chk-mesa-confirmar');
+        try {
+            // Empaquetamos los nombres EXACTOS en formato Form-UrlEncoded que exige tu MesaController
+            const urlParams = new URLSearchParams();
+            urlParams.append("idMesaOrigen", currentMesaId);
+            urlParams.append("idMesaDestino", destinoIdReal); // 🟩 ENVIAMOS EL ID REAL DE LA BD
 
-        if (todosLosChecks.length > 0) {
-            const idsDetallesAMover = Array.from(todosLosChecks).map(cb => cb.value);
-            try {
-                const urlParams = new URLSearchParams();
-                urlParams.append("idMesaOrigen",       currentMesaId);
-                urlParams.append("numeroMesaDestino",  numeroMesaDestino);
-                urlParams.append("idsDetalles",        idsDetallesAMover.join(','));
+            // Consumimos el endpoint oficial de traslados completos de tu MesaController
+            const res = await fetch(window.location.origin + '/admin/mesas/trasladar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: urlParams
+            });
 
-                const res = await fetch(window.location.origin + '/admin/mesas/comanda/dividir-platos-por-numero', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: urlParams
-                });
+            if (res.ok) {
+                // 🚀 LIMPIEZA ASÍNCRONA EN CALIENTE DE LA MESA ORIGEN QUE QUEDÓ EN CERO
+                cargarDetalleComandaAsincrono("NINGUNO");
 
-                AppUtils.showLoading(false);
-                if (res.ok) {
+                setTimeout(() => {
+                    AppUtils.showLoading(false);
                     AppUtils.showNotification("Comanda reubicada con éxito", "success");
-                    // 🚀 CAMBIO ASÍNCRONO: Liberar mesa origen y ocupar mesa destino localmente sin recargar
-                    actualizarEstadoMesaEnPlano(currentMesaNumero, 'disponible', null, 'NINGUNO');
-                    actualizarEstadoMesaEnPlano(numeroMesaDestino, 'ocupada', currentPedidoId, 'ATENDIDO');
+
+                    // Reseteamos las variables de control operativas del modal abierto
+                    currentPedidoId = "";
+                    const tarjetaOrigenDOM = document.getElementById(`mesa-card-${currentMesaId}`);
+                    if (tarjetaOrigenDOM) {
+                        const esOrigenPadre = tarjetaOrigenDOM.getAttribute('data-es-padre') === 'SI';
+                        renderizarControlesModal(esOrigenPadre, tarjetaOrigenDOM.classList.contains('unificada'), 'NINGUNO', tarjetaOrigenDOM);
+                    }
+
                     if (mesaModal) mesaModal.hide();
-                } else {
-                    const errorTxt = await res.text();
-                    AppUtils.showNotification(errorTxt || "Error al procesar el traslado", "error");
-                }
-            } catch (error) {
+                }, 400); // Delay de tolerancia para que impacten los hilos de WebSockets
+            } else {
                 AppUtils.showLoading(false);
-                console.error(error);
+                const errorTxt = await res.text();
+                AppUtils.showNotification(errorTxt || "Error al trasladar la comanda", "error");
             }
+        } catch (error) {
+            AppUtils.showLoading(false);
+            console.error("Error crítico en traslado completo asíncrono:", error);
         }
     });
 }
 
+// =========================================================================
+// ✂️ SPLIT DE COMANDA CORREGIDO: SEGUIMIENTO DE COCINA SIN F5
+// =========================================================================
 async function confirmarDivisionComanda(idMesaDestino) {
     const checkboxesMarcados = document.querySelectorAll('.chk-mesa-confirmar:checked');
     const itemActivo = document.querySelector('.item-mesa-accion.active');
@@ -940,21 +1076,108 @@ async function confirmarDivisionComanda(idMesaDestino) {
             body: urlParams
         });
 
-        AppUtils.showLoading(false);
-
         if (res.ok) {
-            Swal.fire({
-                icon: 'success',
-                title: '¡Comanda Dividida!',
-                text: `Los platos fueron trasladados con éxito a la Mesa #${numeroMesaDestino}.`,
-                confirmButtonColor: '#1B3A2C'
-            });
-            // 🚀 CAMBIO ASÍNCRONO: Actualizamos la mesa de destino a 'ocupada' y limpiamos los platos del modal origen
-            actualizarEstadoMesaEnPlano(numeroMesaDestino, 'ocupada', null, 'EN_PROCESO');
+            // 🚀 INTERCEPTACIÓN ASÍNCRONA: Dejamos que el motor de Java calcule los colores reales de red
+            // Refrescamos de inmediato la lista de platos que se quedaron en la mesa origen abierta
             cargarDetalleComandaAsincrono("EN_PROCESO");
+
+            setTimeout(() => {
+                AppUtils.showLoading(false);
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Comanda Dividida!',
+                    text: `Los platos fueron trasladados con éxito a la Mesa #${numeroMesaDestino}.`,
+                    confirmButtonColor: '#1B3A2C'
+                });
+
+                // Auditoría interna del modal abierto: si ya no quedan filas de platos renderizadas
+                const filasPlatosRestantes = document.querySelectorAll('#lista-platos-previsualizar > div').length;
+
+                if (filasPlatosRestantes === 0) {
+                    console.log("🧼 Mesa origen vaciada por completo asíncronamente.");
+                    currentPedidoId = "";
+
+                    const tarjetaOrigenDOM = document.getElementById(`mesa-card-${currentMesaId}`);
+                    if (tarjetaOrigenDOM) {
+                        const esOrigenPadre = tarjetaOrigenDOM.getAttribute('data-es-padre') === 'SI';
+                        renderizarControlesModal(esOrigenPadre, tarjetaOrigenDOM.classList.contains('unificada'), 'NINGUNO', tarjetaOrigenDOM);
+                    }
+                    cargarDetalleComandaAsincrono("NINGUNO");
+                }
+            }, 400); // Tolerancia prudente de renderizado
+        } else {
+            AppUtils.showLoading(false);
+            AppUtils.showNotification("Error al procesar la división", "error");
         }
     } catch (error) {
         AppUtils.showLoading(false);
-        console.error(error);
+        console.error("Error en split parcial asíncrono de comanda:", error);
     }
+}
+
+
+function procesarDesfragmentacionGrupo() {
+    if (!currentMesaId) return;
+
+    AppUtils.showConfirmationDialog({
+        title: '¿Desagrupar Todo el Bloque?',
+        text: 'Se disolverá el grupo de mesas colectivas.',
+        icon: 'warning',
+        confirmButtonColor: '#1B3A2C',
+        confirmButtonText: 'Sí, desagrupar todo'
+    }, async function () {
+        AppUtils.showLoading(true);
+        try {
+            const tarjetaGrupo = document.querySelector(`#contenedor-tarjetas-unificadas [data-numero="${currentMesaNumero}"]`);
+            let numerosMesasHijas = [];
+
+            if (tarjetaGrupo) {
+                const badges = tarjetaGrupo.querySelectorAll('.badge');
+                badges.forEach(badge => {
+                    const numTexto = badge.innerText.replace('#', '').trim();
+                    if (numTexto && !isNaN(numTexto)) {
+                        numerosMesasHijas.push(parseInt(numTexto));
+                    }
+                });
+            }
+
+            const res = await fetch(`/admin/mesas/desagrupar-grupo/${currentMesaId}`, { method: 'POST' });
+            AppUtils.showLoading(false);
+
+            if (res.ok) {
+                AppUtils.showNotification("Grupo disuelto con éxito", "success");
+
+                if (tarjetaGrupo) {
+                    tarjetaGrupo.remove();
+                    actualizarContadorBadgePestaña();
+                }
+
+                // Auditoría asíncrona del contenedor de grupos para inyectar la leyenda nativa
+                const contenedorGrupos = document.getElementById('contenedor-tarjetas-unificadas');
+                if (contenedorGrupos) {
+                    const tarjetasRestantes = contenedorGrupos.querySelectorAll('.tarjeta-unificada').length;
+
+                    if (tarjetasRestantes === 0) {
+                        contenedorGrupos.innerHTML = `
+                            <div class="text-center py-5 animate__animated animate__fadeIn" id="grupo-vacio-aviso">
+                                <i class="bi bi-diagram-3 text-muted" style="font-size: 4rem;"></i>
+                                <h5 class="fw-bold text-muted mt-3">No hay grupos unificados activos</h5>
+                                <p class="text-muted small">Agrupa mesas desde la pestaña "Vista Salón" para gestionarlas colectivamente.</p>
+                            </div>`;
+                    }
+                }
+
+                // Modificación asíncrona masiva en caliente del plano del salón
+                actualizarEstadoMesaEnPlano(currentMesaNumero, 'disponible', null, 'NINGUNO');
+                numerosMesasHijas.forEach(numHija => {
+                    actualizarEstadoMesaEnPlano(numHija, 'disponible', null, 'NINGUNO');
+                });
+
+                if (mesaModal) mesaModal.hide();
+            }
+        } catch (error) {
+            AppUtils.showLoading(false);
+            console.error("Error al desagrupar el bloque de mesas en caliente:", error);
+        }
+    });
 }

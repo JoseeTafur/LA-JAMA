@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
+
     const loginForm = document.getElementById("loginForm");
     const overlay = document.getElementById("loading-overlay");
     const video = document.getElementById("premium-video");
@@ -83,20 +84,17 @@ document.addEventListener("DOMContentLoaded", function () {
             const password = document.getElementById("clave").value;
 
             if (username && password) {
-                // Frenamos el flujo por defecto para evaluar las aduanas perimetrales primero
                 e.preventDefault();
 
-                // Disparamos la validación asíncrona controlada
                 fetch('/login', {
                     method: 'POST',
-                    credentials: 'include', // 🚀 SOLUCIÓN: Envía las cookies y contexto de sesión seguro a Railway
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams({
                         'usuario': username,
                         'clave': password
                     })
                 }).then(response => {
-                    // 🚨 CASO 1: El usuario o bot agotó el balde de tokens (Rate Limit Activo)
                     if (response.status === 429) {
                         if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
                             AppUtils.showNotification("🚨 Demasiados intentos. Acceso bloqueado temporalmente.", "error");
@@ -106,21 +104,18 @@ document.addEventListener("DOMContentLoaded", function () {
                         return;
                     }
 
-                    // 🟩 CASO 2: El backend procesó las credenciales con éxito y devolvió una redirección (Dashboard)
                     if (response.redirected) {
                         const videoUrl = loginForm.getAttribute("data-video-src") || "/video/loader_lajama.webm";
                         showPremiumVideoLoader("Validando credenciales...", videoUrl);
 
                         setTimeout(() => {
-                            window.location.href = response.url; // Saltamos limpio al panel correspondiente
+                            window.location.href = response.url;
                         }, 1000);
                     } else {
-                        // ❌ CASO 3: Credenciales incorrectas. Recargamos la vista para pintar el fragmento de error de Thymeleaf
                         window.location.reload();
                     }
                 }).catch(err => {
                     console.error("Error en la aduana perimetral:", err);
-                    // Fallback clásico en caso de caída extrema de red
                     loginForm.submit();
                 });
             }

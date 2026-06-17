@@ -1,0 +1,191 @@
+/* ==========================================================================
+   🍽️ LA JAMA - ECO-SISTEMA VISUAL UNIFICADO: MÓDULO MI PERFIL (2026)
+   Paleta Orgánica Tradicional:
+   - Verde Profundo: #1B3A2C         - Fondo Crema Suave: #FBF9F4
+   - Durazno Cálido:  #EAD9C9         - Acento Trigo/Oro:  #D4A373
+   ========================================================================== */
+
+.perfil-container-jama {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2.5rem 1rem;
+    min-height: calc(100vh - var(--header-height, 85px) - 80px);
+    width: 100%;
+}
+
+/* ─── TARJETA IDENTITARIA (ESTILO CARD JAMA PREMIUM) ──────────────── */
+.perfil-card-jama {
+    background-color: var(--lajama-white, #FFFFFF);
+    border-radius: 1.25rem;
+    border: 1px solid var(--lajama-peach, #EAD9C9);
+    box-shadow: var(--shadow-md, 0 6px 18px rgba(27, 58, 44, 0.08));
+    width: 100%;
+    max-width: 620px;
+    padding: 3rem 2.5rem;
+    position: relative;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.perfil-card-jama:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg, 0 12px 36px rgba(27, 58, 44, 0.15));
+    border-color: var(--lajama-gold, #D4A373);
+}
+
+/* ─── ENCABEZADO CON IDENTIDAD DE MARCA ───────────────────────────── */
+.perfil-header-jama {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.5rem;
+}
+
+/* Círculo contenedor del avatar con los colores del restobar */
+.perfil-avatar-wrapper-jama {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background-color: var(--lajama-skin, #F4EBE1);
+    border: 2px dashed var(--lajama-gold, #D4A373);
+    margin-bottom: 0.5rem;
+    color: var(--lajama-green, #1B3A2C);
+    transition: transform 0.3s ease;
+}
+
+.perfil-card-jama:hover .perfil-avatar-wrapper-jama {
+    transform: scale(1.05) rotate(5deg);
+}
+
+.perfil-avatar-wrapper-jama i {
+    font-size: 4rem;
+    line-height: 1;
+}
+
+.perfil-username-jama {
+    color: var(--lajama-green, #1B3A2C) !important;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin: 0;
+}
+
+/* Badge de Rol usando el durazno y marrón identitario */
+.jama-badge-rol-jama {
+    background-color: var(--lajama-peach, #EAD9C9);
+    color: #933D2D !important; /* Marrón corporativo de La Jama */
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.4rem 1.5rem;
+    border-radius: 2rem;
+    border: 1px solid var(--lajama-gold, #D4A373);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    box-shadow: var(--shadow-sm, 0 2px 8px rgba(27, 58, 44, 0.04));
+}
+
+/* ─── SEPARADOR DE CONTROL ───────────────────────────────────────── */
+.perfil-divider-jama {
+    border: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, var(--lajama-peach, #EAD9C9), transparent);
+    margin: 2.25rem 0;
+    opacity: 0.8;
+}
+
+/* ─── GRILLA DE INFORMACIÓN DE PERSONAL ───────────────────────────── */
+.perfil-body-jama h3 {
+    color: var(--lajama-green, #1B3A2C) !important;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.perfil-body-jama h3 i {
+    color: var(--lajama-gold, #D4A373) !important;
+}
+
+.perfil-grid-jama {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+@media (max-width: 576px) {
+    .perfil-grid-jama {
+        grid-template-columns: 1fr;
+    }
+}
+
+.perfil-info-group-jama {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+/* Mapeo estricto a las etiquetas de tus modales (form-label-jama) */
+.perfil-info-group-jama label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--lajama-green, #1B3A2C);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Mapeo estricto a los campos de lectura estilo La Jama */
+.perfil-info-group-jama p {
+    background-color: var(--lajama-cream, #FBF9F4) !important;
+    border: 1px solid var(--lajama-peach, #EAD9C9) !important;
+    color: #2D312E !important;
+    padding: 0.75rem 1rem;
+    border-radius: 0.65rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin: 0;
+    transition: all 0.2s ease;
+}
+
+.perfil-info-group-jama p:hover {
+    background-color: var(--lajama-white, #FFFFFF) !important;
+    border-color: var(--lajama-green, #1B3A2C) !important;
+}
+
+/* ─── ESTADO OPERATIVO SEGURO (CONEXIÓN ACTIVA DE CAJA/SALÓN) ────── */
+.status-activo-jama {
+    background-color: var(--lajama-success-bg, rgba(42, 123, 76, 0.08)) !important;
+    color: var(--lajama-success, #2A7B4C) !important;
+    border: 1px solid rgba(42, 123, 76, 0.2) !important;
+    font-weight: 700 !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-activo-jama i {
+    color: var(--lajama-success, #2A7B4C) !important;
+    font-size: 0.85rem;
+    animation: pulseAlert 2s infinite;
+}
+
+/* ─── PIE DE CARD ATENUADO ───────────────────────────────────────── */
+.perfil-footer-jama {
+    text-align: center;
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--lajama-peach, #EAD9C9);
+}
+
+.texto-atenuado-jama {
+    color: var(--lajama-secondary, #5C677D);
+    font-size: 0.8rem;
+    font-weight: 500;
+}

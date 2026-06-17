@@ -1,6 +1,5 @@
 package com.web.restaurante.controller;
 
-import com.web.restaurante.dto.facturacion.FacturaResponse;
 import com.web.restaurante.model.MovimientoCaja;
 import com.web.restaurante.model.Pedido;
 import com.web.restaurante.model.TurnoCaja;
@@ -14,10 +13,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Controller
@@ -30,8 +26,6 @@ public class CajaController {
     private final TurnoCajaService turnoCajaService;
     private final TurnoCajaRepository turnoCajaRepository;
     private final PedidoRepository pedidoRepository;
-    private final FacturacionService facturacionService;
-    private EmailService emailService;
 
     private LocalTime obtenerHoraActualSistema() {
         return LocalTime.now();
@@ -70,13 +64,10 @@ public class CajaController {
         model.addAttribute("movimientos", movimientos);
         model.addAttribute("saldoTeorico", saldoTeorico);
 
-        // 🟩 BANDEJA OPERATIVA: Sigue filtrando solo lo que está por cobrar
+        // BANDEJA OPERATIVA INTERNA: Listamos los pedidos listos para cobrar internamente
         List<Pedido> pedidosParaCaja = pedidoService.listarPedidosPorCobrar();
         model.addAttribute("pedidos", pedidosParaCaja);
 
-        // 🚀 REPARADO INTEGRAL PARA EL LIBRO DIARIO:
-        // Cargamos absolutamente todos los pedidos para que los registros contables estables de la comanda
-        // no se queden vacíos o desaparezcan al cambiar su estado a PAGADO.
         List<Pedido> todosLosPedidosHistorial = pedidoRepository.findAll();
         model.addAttribute("pedidosDiario", todosLosPedidosHistorial);
 
@@ -107,15 +98,7 @@ public class CajaController {
 
     @PostMapping("/cerrar")
     public String cerrarCaja(@RequestParam Double montoCierre, @RequestParam(required = false) String observaciones) {
-        List<Pedido> pendientesDeTimbradoReal = pedidoRepository.findAll().stream()
-                .filter(p -> com.web.restaurante.model.enums.EstadoPedido.PAGADO.equals(p.getEstado())
-                        && (p.getComprobanteNumero() == null || p.getComprobanteNumero().isEmpty()))
-                .toList();
-
-        if (!pendientesDeTimbradoReal.isEmpty()) {
-            return "redirect:/admin/caja?error=ComprobantesPendientes";
-        }
-
+        // Purgamos la aduana de timbrado. Ahora el turno se cierra directamente validando las ventas operativas.
         turnoCajaService.cerrarTurno(montoCierre, observaciones);
         return "redirect:/admin/caja?cierreOk";
     }
@@ -132,18 +115,44 @@ public class CajaController {
         return "redirect:/admin/caja?rechazado";
     }
 
-    @PostMapping("/liquidar-servicio")
-    public String liquidarServicioCompleto(@RequestParam Long pedidoId,
-                                           @RequestParam Long mesaId,
-                                           @RequestParam(required = false) List<Long> idsDetallesPagados,
-                                           @RequestParam Double montoAPagar) {
-        // 🚀 Cambia el estado del pedido a PAGADO y libera la mesa físicamente
-        mesaService.procesarCobro(pedidoId, mesaId, idsDetallesPagados);
+    // ============================================================================
+    // 🚀 NUEVO ENDPOINT RECEPTOR DE LIQUIDACIÓN MULTITICKET (CONEXIÓN CERRADA)
+    // ============================================================================
+    @PostMapping("/admin/mesas/comanda/liquidar-bloque-multiticket/{pedidoId}")
+    @ResponseBody
+    public ResponseEntity<?> liquidarMesaBloqueMultiticket(
+            @PathVariable Long pedidoId,
+            @RequestParam Long mesaId,
+            @RequestParam String matrizTickets,
+            @RequestParam(required = false) String idsDetallesPagados) {
+        try {
+            System.out.println("🛰️ [CAJA MÓVIL] Recibiendo Matriz de Pago para Comanda #" + pedidoId);
 
-        // ⚙️ REMOVIDO: Ya no registramos el movimiento aquí de forma prematura.
-        // Esto evita que aparezca en el Libro Diario antes de ser timbrado en SUNAT.
+            // 1. Convertimos el String de IDs pagados a una lista de Longs segura
+            List<Long> idsDetalles = new ArrayList<>();
+            if (idsDetallesPagados != null && !idsDetallesPagados.trim().isEmpty()) {
+                for (String idStr : idsDetallesPagados.split(",")) {
+                    idsDetalles.add(Long.parseLong(idStr.trim()));
+                }
+            }
 
-        return "redirect:/admin/caja?success";
+            // 2. Mapeamos la matriz de tickets JSON usando Jackson a objetos TicketDTO de forma manual
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            List<com.web.restaurante.dto.mesas.TicketDTO> listaTickets = mapper.readValue(
+                    matrizTickets,
+                    new com.fasterxml.jackson.core.type.TypeReference<List<com.web.restaurante.dto.mesas.TicketDTO>>() {}
+            );
+
+            // 3. Invocamos tu servicio contable transaccional de Spring
+            mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, idsDetalles);
+            System.out.println("🎉 [CAJA MÓVIL] Transacción procesada con éxito en Base de Datos.");
+
+            return ResponseEntity.ok("Mesa liquidada operativamente");
+
+        } catch (Exception e) {
+            System.err.println("💥 ERROR EN ADUANA MULTITICKET: " + e.getMessage());
+            return ResponseEntity.internalServerError().body("Error al procesar la liquidación en bloque: " + e.getMessage());
+        }
     }
 
     @GetMapping("/precuenta/{numeroMesa}")
@@ -191,7 +200,6 @@ public class CajaController {
             response.put("tipoPedido", pedido.getTipoPedido() != null ? pedido.getTipoPedido().name() : "LOCAL");
             response.put("numeroMesa", pedido.getNumeroMesa());
             response.put("montoTotal", pedido.getMontoTotal() != null ? pedido.getMontoTotal() : 0.0);
-            response.put("montoPropina", 0.0);
 
             List<Map<String, Object>> detallesDTO = pedido.getListaDetalles().stream()
                     .map(d -> {
@@ -209,114 +217,6 @@ public class CajaController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/emitir-comprobante")
-    public String emitirComprobanteFiscal(
-            @RequestParam Long pedidoId,
-            @RequestParam(required = false, defaultValue = "") String documento,
-            @RequestParam String tipo) {
-
-        Pedido pedido = pedidoRepository.findById(pedidoId)
-                .orElseThrow(() -> new RuntimeException("Pedido no encontrado con ID: " + pedidoId));
-
-        pedido.setPreferenciaComprobante(tipo);
-
-        if (documento != null && !documento.trim().isEmpty()) {
-            pedido.setDocumentoCliente(documento.trim());
-        } else if (pedido.getDocumentoCliente() == null || pedido.getDocumentoCliente().trim().isEmpty()) {
-            pedido.setDocumentoCliente("");
-        }
-
-        System.out.println("🪪 [AUDITORÍA SUNAT] Procesando Comprobante " + tipo + " para el Documento: " + pedido.getDocumentoCliente());
-
-        FacturaResponse.RespuestaData sunatResult = facturacionService.emitirComprobanteSunat(pedido);
-
-        if (sunatResult != null && sunatResult.isSuccess()) {
-            pedido.setComprobanteNumero(String.valueOf(pedidoId));
-            pedido.setComprobanteTipo(tipo);
-            pedido.setComprobantePdfUrl(sunatResult.getPdfTicket());
-            pedido.setComprobanteA4Url(sunatResult.getPdfA4());
-
-            pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.PAGADO);
-            pedidoRepository.save(pedido);
-
-            /*
-            if (pedido.getClienteCorreo() != null && !pedido.getClienteCorreo().isEmpty()) {
-                emailService.enviarComprobante(pedido.getClienteCorreo(), pedido);
-                System.out.println("📧 Correo de comprobante enviado con éxito a: " + pedido.getClienteCorreo());
-            } */
-
-            // ⚙️ UNIFICADO INTELIGENTE: Registra el asiento contable oficial en el Libro Diario
-            // Funciona tanto para Delivery como para el Salón (LOCAL)
-            String conceptoContable;
-            if (com.web.restaurante.model.enums.TipoPedido.DELIVERY.equals(pedido.getTipoPedido())) {
-                conceptoContable = "Venta Online de la Carta — Pedido #" + pedido.getId() + " (" + tipo + ")";
-            } else {
-                String nroMesaStr = (pedido.getNumeroMesa() != null) ? String.valueOf(pedido.getNumeroMesa()) : "N/A";
-                conceptoContable = "Liquidación Comanda #" + pedido.getId() + " — Mesa N° " + nroMesaStr + " (" + tipo + ")";
-            }
-
-            double montoVenta = pedido.getMontoTotal() != null ? pedido.getMontoTotal() : 0.0;
-            turnoCajaService.registrarVenta(conceptoContable, montoVenta);
-            System.out.println("💰 [CAJA] Venta registrada en el libro diario de caja: S/ " + montoVenta);
-
-            return "redirect:/admin/caja?param-success";
-        } else {
-            return "redirect:/admin/caja?error-sunat";
-        }
-    }
-
-    @GetMapping("/anular-comprobante")
-    public String anularComprobante(@RequestParam Long pedidoId) {
-        try {
-            Pedido ticket = pedidoRepository.findById(pedidoId)
-                    .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-
-            // 1. Buscamos y purgamos el movimiento contable usando el ID único de la orden
-            String coincidenciaId = "#" + ticket.getId();
-            List<MovimientoCaja> movimientosTurno = turnoCajaService.obtenerMovimientosDelTurnoActivo();
-
-            for (MovimientoCaja m : movimientosTurno) {
-                if (m.getConcepto() != null && m.getConcepto().contains(coincidenciaId)) {
-                    // Borrado físico seguro del asiento del Libro Diario
-                    turnoCajaRepository.deleteMovimientoById(m.getId());
-                }
-            }
-
-            // 2. Limpiamos los metadatos fiscales de la SUNAT
-            ticket.setComprobanteTipo(null);
-            ticket.setComprobanteNumero(null);
-            ticket.setDocumentoCliente(null);
-            ticket.setComprobantePdfUrl(null);
-            ticket.setComprobanteA4Url(null);
-
-            // 3. 🛡️ RECTIFICACIÓN LOGÍSTICA DE MESA:
-            // Si el número de mesa es nulo, reconstruimos el número para que la bandeja no lo ignore
-            if (ticket.getNumeroMesa() == null && ticket.getCliente() != null && ticket.getCliente().contains("Mesa")) {
-                try {
-                    String numeroExtraido = ticket.getCliente().replaceAll("[^0-9]", "").trim();
-                    if (!numeroExtraido.isEmpty()) {
-                        ticket.setNumeroMesa(Integer.parseInt(numeroExtraido));
-                    }
-                } catch (Exception ex) {
-                    System.out.println("⚠️ Error al restaurar número de mesa: " + ex.getMessage());
-                }
-            }
-
-            // 🚀 CORRECCIÓN CRUCIAL: Cambiamos el estado a PREPARADO y guardamos directamente
-            // usando el repositorio inyectado en este controlador.
-            ticket.setEstado(com.web.restaurante.model.enums.EstadoPedido.PREPARADO);
-            pedidoRepository.save(ticket);
-
-            // 🧼 Opcional: Si el repositorio tiene el query nativo, aseguramos la persistencia
-            pedidoRepository.actualizarEstadoJPQL(ticket.getId(), com.web.restaurante.model.enums.EstadoPedido.PREPARADO);
-
-            return "redirect:/admin/caja?anulacionExito";
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "redirect:/admin/caja?error=ErrorProcesamiento";
         }
     }
 

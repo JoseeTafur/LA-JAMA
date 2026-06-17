@@ -309,6 +309,13 @@ async function preguntarDestinoPlato(platoId) {
         const hayAsignados = platosDisponibles.some(p => p.idTicketAsignado !== -1);
         document.getElementById('selectNumTickets').disabled = hayAsignados;
 
+        // 🔬 [DEBUG] Rastreo en consola de asignación manual
+        console.group(`📌 PLATOS: Asignación Individual`);
+        console.log(`🍔 Producto: "${plato.nombre}"`);
+        console.log(`🎟️ Destino: ${plato.idTicketAsignado === -1 ? "Liberado a la mesa" : `Ticket #${plato.idTicketAsignado + 1}`}`);
+        console.log(`💰 Subtotal: S/. ${plato.subtotal.toFixed(2)}`);
+        console.groupEnd();
+
         recalcularMatriz();
     }
 }
@@ -434,7 +441,7 @@ function renderizarTickets() {
     const contenedor = document.getElementById('contenedor-tickets-dinamicos');
     if (!contenedor) return;
 
-    // 🕵️‍♂️ CAPTURA DE MEMORIA OPERATIVA: Guardamos qué input tenía el foco antes de borrar el DOM
+    // 🕵️‍♂️ CAPTURA DE MEMORIA OPERATIVA (Mantiene tu lógica de foco intacta)
     const elementoActivo = document.activeElement;
     let idTicketEnFoco = null;
     let esInputDoc = false;
@@ -442,7 +449,6 @@ function renderizarTickets() {
 
     if (elementoActivo && elementoActivo.tagName === 'INPUT') {
         posicionCursor = elementoActivo.selectionStart || 0;
-        // Si estábamos escribiendo en el documento de identidad
         if (elementoActivo.classList.contains('input-documento-fiscal')) {
             idTicketEnFoco = parseInt(elementoActivo.getAttribute('data-ticket-id'));
             esInputDoc = true;
@@ -460,52 +466,58 @@ function renderizarTickets() {
         const totalPOS = Math.round((consumoTotal + propinaNum) * 100) / 100;
         const requiereDNI = t.tipoDoc === 'BOLETA' && consumoTotal >= 700;
 
-        const platosDelTicket = platosDisponibles.filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id));
-        let htmlPlatosAsignados = '';
+        // ============================================================================
+        // 🛠️ MOTOR DINÁMICO DE PLATOS POR TICKET (CASO 1 Y CASO 2)
+        // ============================================================================
+        let htmlPlatosAsignados = `<div class="jama-ticket-items-list" style="margin-bottom: 12px; border-bottom: 1px dashed var(--lajama-peach); padding-bottom: 8px; max-height: 120px; overflow-y: auto;">`;
 
-        if (t.montoLibre > 0) {
-            const totalTickets = ticketsDeCobro.length;
-            const porcentajeParticipacion = totalConsumoMesa > 0 ? Math.round((consumoTotal / totalConsumoMesa) * 100) : 0;
-            const esEquitativo = ticketsDeCobro.every(tick => Math.abs((tick.montoPlatos + tick.montoLibre) - consumoTotal) < 0.05);
-            const textoParticipacion = esEquitativo ? `1/${totalTickets} de la mesa` : `${porcentajeParticipacion}% de la mesa`;
+        const ratioRealTicket = totalConsumoMesa > 0 ? (consumoTotal / totalConsumoMesa) : 0;
+        const esFlujoCompartidoDinero = t.esCompartidoPorMonto || !platosDisponibles.some(p => p.idTicketAsignado === t.id);
 
-            htmlPlatosAsignados = `
-                <div class="jama-ticket-items-list" style="margin-bottom: 15px; border-bottom: 2px dashed var(--lajama-peach); padding-bottom: 12px;">
-                    <div style="font-size: 0.85rem; font-weight: 800; color: var(--lajama-green); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">🔄 Cuenta Compartida</div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-muted); margin-bottom: 4px;">
-                        <span>Total Mesa:</span><span class="fw-semibold">S/. ${totalConsumoMesa.toFixed(2)}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-muted); margin-bottom: 4px;">
-                        <span>Participación:</span><span style="font-weight: 700; color: var(--lajama-green);">${textoParticipacion}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--jama-text-main); margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(27, 58, 44, 0.1);">
-                        <span class="fw-semibold">Monto Consumo:</span><span style="font-weight: 800; color: var(--lajama-green);">S/. ${consumoTotal.toFixed(2)}</span>
-                    </div>
-                </div>`;
-        } else if (platosDelTicket.length > 0) {
-            htmlPlatosAsignados = `<div class="jama-ticket-items-list" style="margin-bottom: 12px; border-bottom: 1px dashed var(--lajama-peach); padding-bottom: 8px;">`;
-            platosDelTicket.forEach(p => {
+        if (esFlujoCompartidoDinero && ratioRealTicket > 0) {
+            // 📊 CASO 2: CUENTA COMPARTIDA (Porcentaje / Mitades)
+            htmlPlatosAsignados += `<div style="font-size: 0.75rem; font-weight: 800; color: #1B3A2C; margin-bottom: 6px; text-transform: uppercase;">🔄 Parte Proporcional (${Math.round(ratioRealTicket * 100)}%)</div>`;
+
+            const platosCompartidos = platosDisponibles.filter(p => platosSeleccionadosParaCobro.includes(p.id));
+            platosCompartidos.sort((a, b) => a.nombre.localeCompare(b.nombre)); // Orden alfabético
+
+            platosCompartidos.forEach(p => {
+                const subtotalProrrateado = Math.round(p.subtotal * ratioRealTicket * 100) / 100;
                 htmlPlatosAsignados += `
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-main); margin-bottom: 4px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #4b5563; margin-bottom: 3px;">
                         <span style="max-width: 70%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${p.cantidad}x ${p.nombre}</span>
-                        <span style="font-weight: 600;">S/. ${p.subtotal.toFixed(2)}</span>
+                        <span style="font-weight: 600; color: #6b7280;">S/. ${subtotalProrrateado.toFixed(2)}</span>
                     </div>`;
             });
-            htmlPlatosAsignados += `</div>`;
+
         } else {
-            htmlPlatosAsignados = `
-                <div class="jama-ticket-items-list" style="margin-bottom: 12px; border-bottom: 1px dashed var(--lajama-peach); padding-bottom: 8px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-main);">
-                        <span>1x Consumo de Alimentos</span><span style="font-weight: 600;">S/. ${consumoTotal.toFixed(2)}</span>
-                    </div>
-                </div>`;
+            // 💵 CASO 1: ASIGNACIÓN INDIVIDUAL (Cada uno paga lo suyo)
+            const platosDelTicket = platosDisponibles.filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id));
+            platosDelTicket.sort((a, b) => a.nombre.localeCompare(b.nombre)); // Orden alfabético
+
+            if (platosDelTicket.length > 0) {
+                platosDelTicket.forEach(p => {
+                    htmlPlatosAsignados += `
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--jama-text-main); margin-bottom: 4px;">
+                            <span style="max-width: 65%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${p.cantidad}x ${p.nombre}</span>
+                            <span style="font-weight: 600;">S/. ${p.subtotal.toFixed(2)}</span>
+                        </div>`;
+                });
+            } else {
+                htmlPlatosAsignados += `<div class="text-muted text-center small py-2">Sin ítems asignados</div>`;
+            }
         }
 
+        htmlPlatosAsignados += `</div>`;
+        // ============================================================================
+
+        // Inyección del HTML final de la tarjeta (Mantiene tus estilos intactos)
         contenedor.innerHTML += `
             <div class="jama-ticket-card">
                 <div class="jama-ticket-header-badge">TICKET #${t.id + 1}</div>
                 <div class="jama-finance-box">
                     ${htmlPlatosAsignados}
+
                     <div class="jama-finance-line"><span>Subtotal:</span><span>S/. ${subtotalBase.toFixed(2)}</span></div>
                     <div class="jama-finance-line"><span>IGV (18%):</span><span>S/. ${igv.toFixed(2)}</span></div>
                     <div class="jama-finance-line total"><span>Total CPE:</span><span>S/. ${consumoTotal.toFixed(2)}</span></div>
@@ -554,7 +566,7 @@ function renderizarTickets() {
             </div>`;
     });
 
-    // 🚀 RETORNO FOCAL EN CALIENTE: Reinyectamos el cursor exactamente en el mismo string donde escribía el cajero
+    // RETORNO FOCAL EN CALIENTE (Mantiene tu lógica de foco intacta)
     if (esInputDoc && idTicketEnFoco !== null) {
         const inputRestaurado = document.getElementById(`doc_ticket_${idTicketEnFoco}`);
         if (inputRestaurado) {
@@ -565,7 +577,6 @@ function renderizarTickets() {
 }
 
 function actualizarDatoTicket(idTicket, llave, valor) {
-    // Validamos que el ticket solicitado exista en el ecosistema contable
     if (ticketsDeCobro[idTicket]) {
         if (llave === 'propina') {
             ticketsDeCobro[idTicket][llave] = parseFloat(valor) || 0;
@@ -574,15 +585,11 @@ function actualizarDatoTicket(idTicket, llave, valor) {
         } else {
             ticketsDeCobro[idTicket][llave] = valor;
 
-            // 🚀 CONTROL DE UI: Si el cajero cambia manualmente el tipo de documento en caliente,
-            // limpiamos el número de documento viejo para evitar que un DNI se quede grabado como RUC.
             if (llave === 'tipoDoc') {
                 ticketsDeCobro[idTicket]['numDoc'] = '';
             }
         }
     }
-
-    // Volvemos a computar balances y redibujar el carrusel con el toggle actualizado
     actualizarVista();
 }
 
@@ -590,11 +597,9 @@ function actualizarVista() {
     renderizarPlatos();
     renderizarTickets();
 
-    // 🚀 NUEVO: MOTOR DINÁMICO PARA EL CARTEL DE ALERTA (IZQUIERDA)
-    // Escucha en tiempo real lo que tiene seleccionado el Ticket #1 (índice 0)
     const contenedorAviso = document.getElementById('cobroIndicacionCliente');
     if (contenedorAviso && ticketsDeCobro.length > 0) {
-        const preferenciaActual = ticketsDeCobro[0].tipoDoc; // Lee el estado vivo del Ticket #1
+        const preferenciaActual = ticketsDeCobro[0].tipoDoc;
 
         if (preferenciaActual === 'FACTURA') {
             contenedorAviso.innerHTML = `
@@ -613,9 +618,6 @@ function actualizarVista() {
         }
     }
 
-    // =========================================================================
-    // (El resto de tu lógica de control de saldos y botones se queda exactamente igual)
-    // =========================================================================
     const sumaConsumos = ticketsDeCobro.reduce((acc, t) => {
         const totalTicket = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
         return acc + totalTicket;
@@ -648,6 +650,8 @@ function actualizarVista() {
         labelPorAsignar.className = "jama-txt-status status-danger";
         btnCierre.disabled = true;
     }
+
+    generarPrevisualizacionCajero();
 }
 
 function limpiarInstanciaCaja() {
@@ -657,6 +661,9 @@ function limpiarInstanciaCaja() {
     ticketsDeCobro = [];
 }
 
+// ============================================================================
+// ADUANA DE CIERRE: EVALUACIÓN FISCAL Y LANZAMIENTO CONTROLADO CON TIMEOUT
+// ============================================================================
 function procesarLiquidacion() {
     // 🛡️ ADUANA FISCAL DE CONTROL: Evaluamos cada ticket antes de abrir el SweetAlert
     for (let i = 0; i < ticketsDeCobro.length; i++) {
@@ -692,104 +699,160 @@ function procesarLiquidacion() {
         }
     }
 
-    AppUtils.showConfirmationDialog({
-        title: '¿Confirmar Pago de Consumos?',
-        text: `Procesando ${ticketsDeCobro.length} tickets tributarios con IGV de forma segura.`,
-        icon: 'warning',
-        confirmButtonColor: '#ffc107',
-        confirmButtonText: 'Sí, Facturar'
-    }, async function() {
-        if (facturacionModal) facturacionModal.hide();
-        AppUtils.showLoading(true);
+    // 🚀 GENERACIÓN DEL PAYLOAD: Sincronizado milimétricamente con el DTO de Java
+    const payloadTickets = ticketsDeCobro.map(t => {
+        const consumoFinalTicket = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
+        let listaPlatosModificados = [];
 
-        const urlParams = new URLSearchParams();
-        urlParams.append("mesaId", currentMesaId);
+        const ratioRealTicket = totalConsumoMesa > 0 ? (consumoFinalTicket / totalConsumoMesa) : 0;
+        const esFlujoCompartidoDinero = t.esCompartidoPorMonto || !platosDisponibles.some(p => p.idTicketAsignado === t.id);
 
-        const payloadTickets = ticketsDeCobro.map(t => {
-            const consumoFinalTicket = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
-            let listaPlatosModificados = [];
-
-            const ratioRealTicket = totalConsumoMesa > 0 ? (consumoFinalTicket / totalConsumoMesa) : 0;
-
-            // 🚀 REPARACIÓN ABSOLUTA DE CRUCE DE FLUJOS:
-            // Un ticket es puramente cuenta compartida por dinero SOLO si se activó el flag desde
-            // distribuirSaldos (esCompartidoPorMonto) o si no tiene ningún plato físico enlazado a su ID.
-            const esFlujoCompartidoDinero = t.esCompartidoPorMonto || !platosDisponibles.some(p => p.idTicketAsignado === t.id);
-
-            if (esFlujoCompartidoDinero && ratioRealTicket > 0) {
-                // 📊 CASO A: CUENTA COMPARTIDA (Equitativo o Porcentual)
-                // Metemos todos los platos de la mesa pero reducidos al porcentaje que le toca pagar
-                listaPlatosModificados = platosDisponibles
-                    .filter(p => platosSeleccionadosParaCobro.includes(p.id))
-                    .map(p => {
-                        const subtotalProrrateado = Math.round(p.subtotal * ratioRealTicket * 100) / 100;
-                        return {
-                            productoId: p.productoId || p.id,
-                            nombre: p.nombre,
-                            cantidad: p.cantidad,
-                            precioUnitario: Math.round((subtotalProrrateado / p.cantidad) * 100) / 100,
-                            subtotal: subtotalProrrateado
-                        };
-                    });
-            } else {
-                // 💵 CASO B: DIVISIÓN POR ÍTEMS INDIVIDUALES (Cada uno paga lo suyo)
-                // Mapea única y exclusivamente los platos que el mozo arrastró a este Ticket específico
-                listaPlatosModificados = platosDisponibles
-                    .filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id))
-                    .map(p => ({
-                        productoId: p.productoId || p.id,
-                        nombre: p.nombre,
+        if (esFlujoCompartidoDinero && ratioRealTicket > 0) {
+            // 📊 CASO A: CUENTA COMPARTIDA
+            listaPlatosModificados = platosDisponibles
+                .filter(p => platosSeleccionadosParaCobro.includes(p.id))
+                .map(p => {
+                    const subtotalProrrateado = Math.round(p.subtotal * ratioRealTicket * 100) / 100;
+                    return {
+                        productoId: p.id, // ◄ LLAVE CORREGIDA: Coincide con 'detalleDTO.getProductoId()' en Java
+                        nombre: p.nombre.trim(),
                         cantidad: p.cantidad,
-                        precioUnitario: Math.round((p.subtotal / p.cantidad) * 100) / 100,
-                        subtotal: p.subtotal
-                    }));
-            }
+                        precioUnitario: Math.round((subtotalProrrateado / p.cantidad) * 100) / 100, // ◄ VARIABLE UNIFICADA
+                        subtotal: subtotalProrrateado // ◄ VARIABLE UNIFICADA
+                    };
+                });
+        } else {
+            // 💵 CASO B: DIVISIÓN POR ÍTEMS INDIVIDUALES
+            listaPlatosModificados = platosDisponibles
+                .filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id))
+                .map(p => ({
+                    productoId: p.id, // ◄ LLAVE CORREGIDA
+                    nombre: p.nombre.trim(),
+                    cantidad: p.cantidad,
+                    precioUnitario: Math.round((p.subtotal / p.cantidad) * 100) / 100, // ◄ VARIABLE UNIFICADA
+                    subtotal: Math.round(p.subtotal * 100) / 100 // ◄ VARIABLE UNIFICADA
+                }));
+        }
 
-            return {
-                id: t.id,
-                consumoFinal: consumoFinalTicket,
-                propina: t.propina,
-                tipoDoc: t.tipoDoc,
-                numDoc: t.numDoc,
-                metodoPago: t.metodoPago,
-                listaDetalles: listaPlatosModificados
-            };
-        });
+        listaPlatosModificados.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-        urlParams.append("matrizTickets", JSON.stringify(payloadTickets));
+        return {
+            ticketId: t.id + 1,
+            consumoFinal: consumoFinalTicket, // ◄ Mapea directo al 'getConsumoFinal()' del DTO
+            propina: t.propina,
+            tipoDoc: t.tipoDoc,
+            numDoc: t.numDoc || "SIN DOCUMENTO",
+            metodoPago: t.metodoPago,
+            listaDetalles: listaPlatosModificados
+        };
+    });
 
-        const idsPagados = Array.from(document.querySelectorAll('.chk-mesa-confirmar:checked')).map(cb => cb.value);
-        urlParams.append("idsDetallesPagados", idsPagados.join(','));
+    // 🔬 CONSOLE LOG DE RESPALDO (Por si quieres verlo antes del F5)
+    console.log("📦 PAYLOAD SINCRONIZADO ENVIADO A SPRING BOOT:", payloadTickets);
 
-        try {
-            const res = await fetch(`/admin/mesas/comanda/liquidar-bloque-multiticket/${currentPedidoId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: urlParams
-            });
+    // ⏳ CONFIGURACIÓN DEL CONTADOR DE SEGURIDAD PSICOLÓGICO (5 SEGUNDOS)
+    let segundosRestantes = 5;
 
-            AppUtils.showLoading(false);
+    Swal.fire({
+        title: '<span style="color: #1B3A2C; font-weight: 800;">¿Confirmar Pago de Consumos?</span>',
+        text: `Procesando ${ticketsDeCobro.length} tickets tributarios con IGV de forma segura. Por favor, verifique detalladamente los montos en la pantalla.`,
+        icon: 'warning',
+        background: '#FFF7ED',
+        showCancelButton: true,
+        confirmButtonColor: '#1B3A2C',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: `Esperar (${segundosRestantes}s)`,
+        cancelButtonText: 'Cancelar',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        target: document.getElementById('modalFacturacion'),
 
-            if (res.ok) {
-                limpiarInstanciaCaja();
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Cobro Procesado!',
-                    text: 'Los comprobantes fiscales han sido enviados a cola de timbrado.',
-                    confirmButtonColor: '#1B3A2C'
-                }).then(() => window.location.reload());
-            } else {
-                const txtError = await res.text();
-                AppUtils.showNotification(txtError || "Error en la liquidación", "error");
-            }
-        } catch (error) {
-            AppUtils.showLoading(false);
-            console.error("Error en liquidación:", error);
-            window.location.reload();
+        didOpen: () => {
+            const btnConfirmar = Swal.getConfirmButton();
+            btnConfirmar.disabled = true;
+
+            const temporizador = setInterval(() => {
+                segundosRestantes--;
+
+                if (segundosRestantes > 0) {
+                    btnConfirmar.innerText = `Esperar (${segundosRestantes}s)`;
+                } else {
+                    clearInterval(temporizador);
+                    btnConfirmar.disabled = false;
+                    btnConfirmar.innerText = 'Sí, Facturar';
+                }
+            }, 1000);
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            ejecutarEnvioBackend(payloadTickets);
         }
     });
 }
 
+// 📦 FUNCIÓN ASÍNCRONA AISLADA DE ENVÍO DIRECTO A RESPALDO SERVER (SIN RECARGA FORZADA)
+async function ejecutarEnvioBackend(payloadTickets) {
+    const btnCierreGlobal = document.getElementById('btnLiquidarMesaGlobal');
+    if (btnCierreGlobal) {
+        btnCierreGlobal.disabled = true;
+        btnCierreGlobal.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando Transacción...`;
+    }
+
+    // 🟩 ASINCRONISMO REAL: Escondemos el modal de facturación de inmediato de la vista del usuario
+    if (typeof facturacionModal !== 'undefined' && facturacionModal) {
+        facturacionModal.hide();
+    }
+    AppUtils.showLoading(true);
+
+    const urlParams = new URLSearchParams();
+    urlParams.append("mesaId", currentMesaId);
+    urlParams.append("matrizTickets", JSON.stringify(payloadTickets));
+
+    const idsPagados = Array.from(document.querySelectorAll('.chk-mesa-confirmar:checked')).map(cb => cb.value);
+    urlParams.append("idsDetallesPagados", idsPagados.join(','));
+
+    try {
+        const res = await fetch(`/admin/mesas/comanda/liquidar-bloque-multiticket/${currentPedidoId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: urlParams
+        });
+
+        AppUtils.showLoading(false);
+
+        if (res.ok) {
+            limpiarInstanciaCaja();
+
+            // 🚀 EL CAMBIO CLAVE: Cambiamos el window.location.reload() por una limpieza asíncrona fluida
+            Swal.fire({
+                icon: 'success',
+                title: '¡Cobro Procesado!',
+                text: 'Los comprobantes fiscales han sido enviados a cola de timbrado de forma segura.',
+                confirmButtonColor: '#1B3A2C'
+            }).then(() => {
+                // Al ser asíncrono, no disparamos F5. El WebSocket refrescará el color del plano en vivo.
+                console.log("✔ Transmisión asíncrona completada. Mesa liberada por evento reactivo.");
+            });
+
+        } else {
+            const txtError = await res.text();
+            AppUtils.showNotification(txtError || "Error en la liquidación", "error");
+
+            if (btnCierreGlobal) {
+                btnCierreGlobal.disabled = false;
+                btnCierreGlobal.innerHTML = `<i class="bi bi-shield-check me-2"></i> Procesar Cierre Masivo`;
+            }
+        }
+    } catch (error) {
+        AppUtils.showLoading(false);
+        console.error("Error en liquidación:", error);
+
+        if (btnCierreGlobal) {
+            btnCierreGlobal.disabled = false;
+            btnCierreGlobal.innerHTML = `<i class="bi bi-shield-check me-2"></i> Procesar Cierre Masivo`;
+        }
+    }
+}
 function manoFijarMontoTicket(idTicketEditado, valorIngresado) {
     let montoDigitado = Math.round((parseFloat(valorIngresado) || 0) * 100) / 100;
 
@@ -851,10 +914,8 @@ function evaluarBotonConfirmarPago() {
     const btnDesocupar = document.getElementById('btnDesocupar');
     if (!btnDesocupar) return;
 
-    // 1. Capturamos todos los checkboxes seleccionados por el mesero en el modal
     const checksMarcados = document.querySelectorAll('.chk-mesa-confirmar:checked');
 
-    // Si no hay nada seleccionado, el botón de pago se apaga por defecto
     if (checksMarcados.length === 0) {
         btnDesocupar.classList.add('disabled');
         btnDesocupar.disabled = true;
@@ -864,22 +925,18 @@ function evaluarBotonConfirmarPago() {
     }
 
     let conteoEntregadosMarcados = 0;
-    let tienePlatosIncompletosMarcados = false; // 🚨 NUEVA BANDERA DE CONTROL
+    let tienePlatosIncompletosMarcados = false;
 
-    // 2. Analizamos rigurosamente cada uno de los elementos marcados
     checksMarcados.forEach(checkbox => {
         const estadoLogistico = checkbox.getAttribute('data-estado-plato');
 
         if (estadoLogistico === 'Entregado') {
             conteoEntregadosMarcados++;
         } else if (estadoLogistico === 'En cocina' || estadoLogistico === 'Listo') {
-            // 🚨 SI ENCUENTRA ENTRUSOS: Encendemos la alarma de bloqueo inmediatamente
             tienePlatosIncompletosMarcados = true;
         }
     });
 
-    // 3. REGLA DE EXCLUSIVIDAD DE NUESTRA APP:
-    // El botón SOLO se prende si hay mínimo un entregado Y CERO platos incompletos en la selección.
     const sePermiteProcederAlCobro = (conteoEntregadosMarcados > 0 && !tienePlatosIncompletosMarcados);
 
     if (sePermiteProcederAlCobro) {
@@ -887,13 +944,11 @@ function evaluarBotonConfirmarPago() {
         btnDesocupar.disabled = false;
         btnDesocupar.style.opacity = "1";
     } else {
-        // Bloquea si solo hay cocina, o si hay una mezcla de entregado + cocina
         btnDesocupar.classList.add('disabled');
         btnDesocupar.disabled = true;
         btnDesocupar.style.opacity = "0.5";
     }
 
-    // 4. Actualizamos el subtotal reflejado en la interfaz de usuario
     if (typeof recalcularSubtotalElegido === 'function') {
         recalcularSubtotalElegido();
     }
@@ -905,11 +960,7 @@ function recalcularSubtotalElegido() {
 
     let sumaAcumulada = 0;
 
-    // Buscamos todos los checkboxes seleccionados en el modal principal
     document.querySelectorAll('.chk-mesa-confirmar:checked').forEach(checkbox => {
-        // 🚨 REGLA LOGÍSTICA: Solo sumamos al dinero de la precuenta si el plato ya fue servido.
-        // Si el plato está "En cocina" o "Listo", el checkbox se mantiene seleccionado para mudanzas,
-        // pero su precio NO suma a la precuenta del cobro actual.
         if (checkbox.getAttribute('data-estado-plato') === 'Entregado') {
             const filaPlato = checkbox.closest('.item-plato-comanda');
             if (filaPlato) {
@@ -919,6 +970,67 @@ function recalcularSubtotalElegido() {
         }
     });
 
-    // Inyectamos el total formateado de manera limpia con dos decimales
     txtElegido.innerText = sumaAcumulada.toFixed(2);
 }
+
+// ============================================================================
+// MOTOR DE TEST: INSPECTOR DE MATRIZ DE TICKETS (DEBUG EN VIVO EN TEXTAREA)
+// ============================================================================
+function generarPrevisualizacionCajero() {
+    const visor = document.getElementById('visualizador-ticket-cajero');
+    if (!visor) return;
+
+    if (ticketsDeCobro.length === 0 || platosSeleccionadosParaCobro.length === 0) {
+        visor.innerHTML = "// [TESTING] Esperando selección de platos o inicialización de canastas...";
+        return;
+    }
+
+    const payloadDePrueba = ticketsDeCobro.map(t => {
+        const consumoFinalTicket = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
+        let listaPlatosModificados = [];
+        const ratioRealTicket = totalConsumoMesa > 0 ? (consumoFinalTicket / totalConsumoMesa) : 0;
+        const esFlujoCompartidoDinero = t.esCompartidoPorMonto || !platosDisponibles.some(p => p.idTicketAsignado === t.id);
+
+        if (esFlujoCompartidoDinero && ratioRealTicket > 0) {
+            listaPlatosModificados = platosDisponibles
+                .filter(p => platosSeleccionadosParaCobro.includes(p.id))
+                .map(p => {
+                    const subtotalProrrateado = Math.round(p.subtotal * ratioRealTicket * 100) / 100;
+                    return {
+                        productoId: p.productoId || p.id,
+                        nombre: p.nombre.trim(),
+                        cantidad: p.cantidad,
+                        precioUnitarioCalculado: Math.round((subtotalProrrateado / p.cantidad) * 100) / 100,
+                        subtotalAsignado: subtotalProrrateado
+                    };
+                });
+        } else {
+            listaPlatosModificados = platosDisponibles
+                .filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id))
+                .map(p => ({
+                    productoId: p.productoId || p.id,
+                    nombre: p.nombre.trim(),
+                    cantidad: p.cantidad,
+                    precioUnitario: Math.round((p.subtotal / p.cantidad) * 100) / 100,
+                    subtotalAsignado: Math.round(p.subtotal * 100) / 100
+                }));
+        }
+
+        listaPlatosModificados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+        return {
+            ticketId: t.id + 1,
+            tipoDoc: t.tipoDoc,
+            metodoPago: t.metodoPago,
+            consumoFinalSunat: consumoFinalTicket,
+            subtotalNeto: Math.round((consumoFinalTicket / (1 + TASA_IGV)) * 100) / 100,
+            igvCalculado: Math.round((consumoFinalTicket - Math.round((consumoFinalTicket / (1 + TASA_IGV)) * 100) / 100) * 100) / 100,
+            numItemsEnviados: listaPlatosModificados.length,
+            listaDetalles: listaPlatosModificados
+        };
+    });
+
+    visor.textContent = `// MATRIZ DE COBRO ENVIADA A LA COLA DE FACTURACIÓN\n\n` +
+                        JSON.stringify(payloadDePrueba, null, 2);
+}
+

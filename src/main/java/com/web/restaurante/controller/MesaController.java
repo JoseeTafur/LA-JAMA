@@ -150,16 +150,27 @@ public class MesaController {
         }
     }
 
-    // Reemplaza tu método actual por este en MesaController.java
     @PostMapping("/comanda/liquidar-bloque-multiticket/{pedidoId}")
     @ResponseBody
     public ResponseEntity<String> liquidarBloqueMultiticket(
             @PathVariable Long pedidoId,
             @RequestParam Long mesaId,
             @RequestParam String matrizTickets,
-            @RequestParam(required = false) List<Long> idsDetallesPagados) {
+            @RequestParam(required = false) String idsDetallesPagados) { // 🟩 Cambiado a String para blindar la recepción
         try {
-            // 1. Parsear la matriz de tickets dinámicos enviados por el carrusel móvil
+            System.out.println("🛰️ [MESA CONTROLLER] Procesando pago masivo para Pedido #" + pedidoId);
+
+            // 1. Transformación manual y segura de los IDs separados por comas
+            List<Long> listaIdsLong = new java.util.ArrayList<>();
+            if (idsDetallesPagados != null && !idsDetallesPagados.trim().isEmpty()) {
+                for (String idStr : idsDetallesPagados.split(",")) {
+                    if (!idStr.trim().isEmpty()) {
+                        listaIdsLong.add(Long.parseLong(idStr.trim()));
+                    }
+                }
+            }
+
+            // 2. Parsear la matriz de tickets dinámicos enviados por el carrusel móvil
             ObjectMapper mapper = new ObjectMapper();
             List<TicketDTO> listaTickets;
             try {
@@ -170,12 +181,14 @@ public class MesaController {
                 return ResponseEntity.badRequest().body("Error en formato de tickets: " + jsonEx.getMessage());
             }
 
-            // 2. Delegar la fragmentación y liquidación contable al Service
-            mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, idsDetallesPagados);
+            // 3. Delegar la fragmentación y liquidación contable al Service con la lista procesada
+            mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, listaIdsLong);
 
+            System.out.println("🎉 [MESA CONTROLLER] Liquidación multiticket completada con éxito.");
             return ResponseEntity.ok("Cobro multiticket procesado e independizado correctamente");
 
         } catch (Exception e) {
+            System.err.println("💥 Falló el procesamiento de liquidación: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }

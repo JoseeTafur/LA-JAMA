@@ -99,8 +99,10 @@ public class LoginController {
             // Filtros de seguridad según el rol de la sesión
             if ("REPARTIDOR".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
-                        .filter(op -> op.getRuta().equals("/dashboard") || op.getRuta().contains("/entregas"))
+                        .filter(op -> op.getRuta().equals("/dashboard") || op.getRuta().contains("/entregas") || op.getRuta().contains("/MiPerfil"))
                         .collect(Collectors.toList());
+
+// 🟩 2. FILTRO PARA CAJERO
             } else if ("CAJERO".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") ||
@@ -108,13 +110,17 @@ public class LoginController {
                                 op.getRuta().contains("/delivery") ||
                                 op.getRuta().contains("/despacho") ||
                                 op.getRuta().contains("/productos") ||
-                                op.getRuta().contains("/pagos-digitales"))
+                                op.getRuta().contains("/pagos-digitales") ||
+                                op.getRuta().contains("/MiPerfil")) // ➔ Luz verde para el perfil
                         .collect(Collectors.toList());
+
+// 🟩 3. FILTRO PARA MESERO
             } else if ("MESERO".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") ||
                                 op.getRuta().equals("/admin/mesas") ||
-                                op.getRuta().contains("/mesero"))
+                                op.getRuta().contains("/mesero") ||
+                                op.getRuta().contains("/MiPerfil")) // ➔ Luz verde para el perfil
                         .collect(Collectors.toList());
             } else if ("COCINA".equals(rolParaSesion) && empOpt.isPresent()) {
                 String cargoExacto = empOpt.get().getCargo().getNombre().toUpperCase();

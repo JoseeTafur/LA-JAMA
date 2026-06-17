@@ -40,7 +40,6 @@ public class SessionInterceptor implements HandlerInterceptor {
                 return false;
             }
              */
-            // Pasa directo al login/logout sin evaluar roles
         }
 
         String claveIdentificadora;
@@ -70,6 +69,15 @@ public class SessionInterceptor implements HandlerInterceptor {
             return false;
         }
 
+        // ✨ PASAPORTE UNIVERSAL AUTENTICADO: Cualquier trabajador con sesión iniciada
+        // puede consumir el Dashboard base o su interfaz de Perfil Personal sin restricciones.
+        if ("/dashboard".equals(path) ||
+                "/admin/MiPerfil".equals(path) ||
+                "/admin/sidebar".equals(path) ||
+                "admin/sidebar".equals(path)) {
+            return true;
+        }
+
         String rol = session.getAttribute("rol") != null
                 ? session.getAttribute("rol").toString().trim().toUpperCase()
                 : "INVITADO";
@@ -77,10 +85,7 @@ public class SessionInterceptor implements HandlerInterceptor {
         // Pasaportes Supremos (SUPER_ADMIN y ADMIN entran a absolutamente todo)
         if ("SUPER_ADMIN".equals(rol) || "ADMIN".equals(rol)) return true;
 
-        // ✨ PASAPORTE COMÚN: Permitir que cualquier usuario autenticado vea el Dashboard base
-        if ("/dashboard".equals(path)) return true;
-
-        // — Módulos de Caja, Despacho, Delivery y Catálogo de Productos
+        // — Módulos de Caja, Despacho, Delivery y Catálogo de Productos (Retirado /MiPerfil de aquí)
         if (path.startsWith("/admin/caja") ||
                 path.startsWith("/admin/despacho") ||
                 path.startsWith("/admin/productos") ||
@@ -96,15 +101,13 @@ public class SessionInterceptor implements HandlerInterceptor {
         }
 
         // — Módulos de Producción (Monitores de Cocina)
-        // 🚀 ADAPTADO: Permitimos que el rol COCINA también consuma la ruta de /insumos
         if (path.startsWith("/admin/cocina") ||
                 path.startsWith("/insumos") ||
                 path.startsWith("/proteinas")) {
 
             if ("COCINA".equals(rol)) {
-                return true; // El cocinero tiene luz verde total para ver stocks y mermas
+                return true;
             }
-            // Si es Cajero o Admin, se rige por su propia aduana o herencia superior
             if ("CAJERO".equals(rol)) return true;
         }
 
@@ -113,8 +116,7 @@ public class SessionInterceptor implements HandlerInterceptor {
             return verificar(rol, response, "REPARTIDOR");
         }
 
-        // ── 4. MURO DE CONTENCIÓN JERÁRQUICO DIRECTIVO (Solo para intrusos) ──────────────────────
-        // 🚀 REPARADO: Removemos /proteinas de la lista negra global para no romper los fetches asíncronos
+        // ── 4. MURO DE CONTENCIÓN JERÁRQUICO DIRECTIVO
         if (path.startsWith("/usuarios") ||
                 path.startsWith("/empleados") ||
                 path.startsWith("/perfiles")) {

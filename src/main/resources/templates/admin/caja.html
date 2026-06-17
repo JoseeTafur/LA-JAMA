@@ -3,7 +3,7 @@
       th:replace="~{layout-gestion :: layout(
           title='La Jama - Control de Caja',
           activeUri='/caja',
-          titleHeader='Control de Caja y Facturación',
+          titleHeader='Control de Caja Operativa',
           content=~{::#contenido-caja},
           modals=~{::#modales-caja},
           js='/js/caja.js'
@@ -14,34 +14,6 @@
 
 <div id="contenido-caja" class="jama-caja-wrapper">
     <link rel="stylesheet" th:href="@{/css/caja.css}">
-
-    <div th:if="${param.error != null and param.error[0] == 'ComprobantesPendientes'}"
-         class="jama-alerta alerta-error">
-        <div class="alerta-icono">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </div>
-        <div class="alerta-cuerpo">
-            <h6 class="alerta-titulo">Arqueo Amazonia Rechazado: Comandas sin Comprobante Fiscal</h6>
-            <p class="alerta-texto">
-                Por disciplina de auditoría, <strong>no puedes cerrar el turno</strong> si aún tienes
-                órdenes cobradas como <em>Nota de Venta</em>. Por favor, emite las Boletas o Facturas
-                pendientes en la primera pestaña antes de proceder.
-            </p>
-        </div>
-    </div>
-
-    <div th:if="${param.error != null and param.error[0] == 'HorarioNoPermitido'}"
-         class="jama-alerta alerta-advertencia">
-        <div class="alerta-icono">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-        </div>
-        <div class="alerta-cuerpo">
-            <h6 class="alerta-titulo">Acción Denegada</h6>
-            <p class="alerta-texto">
-                El sistema detectó un intento de operación fuera del horario comercial permitido (08:00 AM).
-            </p>
-        </div>
-    </div>
 
     <input type="hidden" id="saldoTeoricoOculto" th:value="${saldoTeorico}">
 
@@ -79,7 +51,7 @@
 
     <div class="jama-modulo-contable">
         <div class="jama-tabs-navegacion">
-            <button class="jama-tab-link activo" id="comandas-tab" onclick="cambiarPestañaCaja('panel-comandas', this)">Comandas por Facturar</button>
+            <button class="jama-tab-link activo" id="comandas-tab" onclick="cambiarPestañaCaja('panel-comandas', this)">Comandas de Turno</button>
             <button class="jama-tab-link" id="movimientos-tab" onclick="cambiarPestañaCaja('panel-movimientos', this)">Libro Diario del Turno</button>
             <button class="jama-tab-link" id="historial-tab" onclick="cambiarPestañaCaja('panel-historial', this); inicializarHistorialFechas()">Historial Cerrado</button>
         </div>
@@ -88,7 +60,7 @@
 
             <div class="jama-tab-panel activo" id="panel-comandas">
                 <div class="panel-subbar">
-                    <span class="subbar-leyenda">Órdenes liquidadas por salón listas para comprobante fiscal</span>
+                    <span class="subbar-leyenda">Órdenes operativas listas para auditoría interna de Notas de Venta</span>
                     <div class="jama-buscador-box">
                         <span class="buscar-icono">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="12" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -97,19 +69,19 @@
                     </div>
                 </div>
 
-                <div th:if="${#lists.isEmpty(pedidos.?[comprobanteNumero == null])}"
+                <div th:if="${#lists.isEmpty(pedidos)}"
                      class="text-center py-5 animate__animated animate__fadeIn"
                      style="padding: 3rem 1.5rem; border: 2px dashed var(--lajama-peach); border-radius: 12px; background-color: var(--lajama-cream); margin: 1.5rem;">
                     <div class="mb-3" style="color: var(--lajama-success); font-size: 3.5rem; margin-bottom: 1rem;">
                         <i class="bi bi-emoji-smile-fill"></i>
                     </div>
-                    <h5 class="fw-bold text-dark mb-1" style="font-weight:700;">¡Todo Cuadrado!</h5>
+                    <h5 class="fw-bold text-dark mb-1" style="font-weight:700;">¡Todo al Día!</h5>
                     <p class="text-muted small mb-0">
-                        No registras comandas pendientes de comprobante fiscal en este turno. El salón está completamente al día.
+                        No registras comandas pendientes de cobro operativo en este turno.
                     </p>
                 </div>
 
-                <div th:unless="${#lists.isEmpty(pedidos.?[comprobanteNumero == null])}" class="jama-bloque-datos-activos">
+                <div th:unless="${#lists.isEmpty(pedidos)}" class="jama-bloque-datos-activos">
 
                     <div class="jama-tabla-contenedor">
                         <table class="jama-tabla" id="tablaCaja">
@@ -119,33 +91,26 @@
                                 <th>Tipo Servicio</th>
                                 <th>Cliente / Origen</th>
                                 <th>Registro</th>
-                                <th>Total Bruto</th>
+                                <th>Total Venta</th>
                                 <th class="text-centro">Detalles</th>
-                                <th class="text-centro">Estado</th>
-                                <th class="text-derecha">Comprobante Fiscal</th>
+                                <th class="text-derecha">Estado</th>
                             </tr>
                             </thead>
                             <tbody>
-                            <tr th:each="p : ${pedidos.?[comprobanteNumero == null]}" th:data-cliente="${p.cliente}" class="fila-pedido-caja">
+                            <tr th:each="p : ${pedidos}" th:data-cliente="${p.cliente}" class="fila-pedido-caja">
                                 <td><span class="texto-negrita">#[[${p.id}]]</span></td>
                                 <td>
                                     <span class="texto-servicio" th:text="${p.tipoPedido != null and p.tipoPedido.name() == 'DELIVERY' ? '🏍️ Delivery' : '🍽️ Salón'}"></span>
                                 </td>
-                                <!-- 🚀 REPARADO: Subtexto de procedencia inteligente e inequívoco para el Cajero -->
                                 <td>
                                     <div class="cliente-nombre">[[${p.cliente}]]</div>
                                     <div class="cliente-meta-detalles">
-                                        <!-- Discriminación absoluta de origen -->
                                         <small th:if="${p.numeroMesa != null and p.numeroMesa != ''}" class="texto-atenuado">
                                             Mesa N° [[${p.numeroMesa}]]
                                         </small>
                                         <small th:if="${p.numeroMesa == null or p.numeroMesa == ''}" class="texto-atenuado"
                                                th:text="${p.tipoPedido != null and p.tipoPedido.name() == 'LOCAL' ? '🛍️ Recojo en Tienda' : '📍 Delivery Web'}">
                                         </small>
-
-                                        <!-- Preferencias de comprobantes y pagos anteriores -->
-                                        <span th:if="${p.preferenciaComprobante == 'BOLETA'}" class="jama-badge badge-boleta">Boleta</span>
-                                        <span th:if="${p.preferenciaComprobante == 'FACTURA'}" class="jama-badge badge-factura">Factura</span>
                                         <span th:if="${p.metodoPago != null}" class="jama-badge badge-pago"
                                               th:text="${p.metodoPago.name() == 'TARJETA' ? '💳 Tarjeta' : p.metodoPago.name() == 'YAPE' ? '📱 Yape/Plin' : '💵 Efectivo'}"></span>
                                     </div>
@@ -157,24 +122,9 @@
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 9 7 9 7-3 7-10 7-9-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                                     </button>
                                 </td>
-                                <td class="text-centro">
-                                    <span th:if="${p.estado.name() == 'PAGADO'}" class="jama-badge status-ingreso">Cobrado</span>
-                                    <span th:if="${p.estado.name() != 'PAGADO'}" class="jama-badge status-egreso">Pendiente</span>
-                                </td>
                                 <td class="text-derecha">
-                                    <div class="jama-grupo-botones-fin">
-                                        <button type="button"
-                                                th:class="${p.preferenciaComprobante == 'FACTURA' ? 'jama-btn-accion btn-emitir-factura' : 'jama-btn-accion btn-emitir-boleta'}"
-                                                th:data-id="${p.id}" th:data-tipo="${p.preferenciaComprobante}" th:data-doc="${p.documentoCliente}"
-                                                onclick="prepararModalDesdeTabla(this, false)">
-                                            Emitir [[${p.preferenciaComprobante}]]
-                                        </button>
-                                        <button type="button" class="jama-btn-accion btn-editar-cpe" title="Editar datos"
-                                                th:data-id="${p.id}" th:data-tipo="${p.preferenciaComprobante}" th:data-doc="${p.documentoCliente}"
-                                                onclick="prepararModalDesdeTabla(this, true)">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                                        </button>
-                                    </div>
+                                    <span th:if="${p.estado.name() == 'PAGADO'}" class="jama-badge status-ingreso">Liquidado</span>
+                                    <span th:if="${p.estado.name() != 'PAGADO'}" class="jama-badge status-egreso">Por Cobrar</span>
                                 </td>
                             </tr>
                             </tbody>
@@ -183,7 +133,7 @@
 
                     <div class="jama-paginacion" style="margin-top: 1rem;">
                         <div class="paginacion-info">
-                            Mostrando registros del <span id="pagStart">0</span> al <span id="pagEnd">0</span> de <span th:text="${#lists.size(pedidos.?[comprobanteNumero == null])}">0</span> totales
+                            Mostrando registros del <span id="pagStart">0</span> al <span id="pagEnd">0</span> de <span th:text="${#lists.size(pedidos)}">0</span> totales
                         </div>
                         <div class="paginacion-controles">
                             <button type="button" class="pag-btn btn-ant" id="btnPagAnterior">◀ Anterior</button>
@@ -204,7 +154,6 @@
                             <th>Concepto Comercial / Descripción</th>
                             <th>Monto Operación</th>
                             <th>Método de Pago</th>
-                            <th>Comprobante Emitido</th>
                             <th class="text-derecha">Hora Registro</th>
                         </tr>
                         </thead>
@@ -218,41 +167,14 @@
                             <td>
                                 <span th:class="${m.monto >= 0 ? 'monto-exito texto-negrita' : 'monto-critico texto-negrita'}" th:text="${'S/ ' + #numbers.formatDecimal(m.monto, 1, 2)}"></span>
                             </td>
-
                             <td>
-                                <!-- CASO A: Si el concepto es Venta Online o hace referencia a una mesa N/A (Recojo), es Yape/Plin -->
                                 <div th:if="${m.tipo == 'VENTA' and (m.concepto.contains('Venta Online') or m.concepto.contains('Mesa N° N/A'))}">
                                     <span class="jama-badge badge-pago">📱 Yape/Plin</span>
                                 </div>
-
-                                <!-- CASO B: Si es salón presencial con mesa física real -->
                                 <div th:if="${m.tipo == 'VENTA' and !m.concepto.contains('Venta Online') and !m.concepto.contains('Mesa N° N/A')}">
-                                    <div th:each="p : ${pedidosDiario}" th:if="${m.concepto.contains('Comanda #' + p.id)}">
-            <span th:if="${p.metodoPago != null}" class="jama-badge badge-pago"
-                  th:text="${p.metodoPago.name() == 'TARJETA' ? '💳 Tarjeta' : p.metodoPago.name() == 'YAPE' ? '📱 Yape/Plin' : '💵 Efectivo'}"></span>
-                                    </div>
-                                </div>
-                            </td>
-
-                            <td>
-                                <div th:each="p : ${pedidosDiario}"
-                                     th:if="${m.tipo == 'VENTA' and (m.concepto.contains('Pedido #' + p.id) or m.concepto.contains('Comanda #' + p.id))}">
-                                    <div th:if="${p.comprobanteNumero != null}" class="cpe-grupo-descarga">
-                                        <span class="jama-badge badge-cpe" th:text="${p.comprobanteTipo + ' ' + p.comprobanteNumero}"></span>
-                                        <a th:if="${p.comprobantePdfUrl != null}" th:href="${p.comprobantePdfUrl}" target="_blank" class="jama-btn-link" title="Ticket">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-                                        </a>
-                                        <a th:if="${p.comprobanteA4Url != null}" th:href="${p.comprobanteA4Url}" target="_blank" class="jama-btn-link" title="A4 PDF">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                        </a>
-                                        <button type="button" class="jama-btn-link btn-anular" title="Anular"
-                                                th:data-id="${p.id}" th:data-tipo="${p.comprobanteTipo}" th:data-doc="${p.documentoCliente}"
-                                                onclick="prepararAnulacionDesdeTabla(this)">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                                        </button>
-                                    </div>
-                                    <div th:if="${p.comprobanteNumero == null}">
-                                        <span class="texto-atenuado italic">Nota de Venta</span>
+                                    <div th:each="p : ${pedidosDiario}" th:if="${m.concepto.contains('Pedido #' + p.id) or m.concepto.contains('Comanda #' + p.id)}">
+                                        <span th:if="${p.metodoPago != null}" class="jama-badge badge-pago"
+                                              th:text="${p.metodoPago.name() == 'TARJETA' ? '💳 Tarjeta' : p.metodoPago.name() == 'YAPE' ? '📱 Yape/Plin' : '💵 Efectivo'}"></span>
                                     </div>
                                 </div>
                             </td>
@@ -396,40 +318,6 @@
                     <h4 style="color:var(--lajama-success); margin:0; font-weight:700;">Total Consumo: S/. <span id="auditoriaTotal">0.00</span></h4>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div class="jama-modal-overlay" id="modalEmisionFiscal" onclick="if(event.target===this) cerrarModal('modalEmisionFiscal')">
-        <div class="jama-modal-caja">
-            <form th:action="@{/admin/caja/emitir-comprobante}" method="post" id="formEmisionFiscal">
-                <input type="hidden" name="pedidoId" id="fiscalPedidoId">
-                <input type="hidden" name="tipo" id="fiscalTipoDoc">
-
-                <div class="jama-modal-header">
-                    <h5 class="jama-modal-titulo">Gestión de Comprobante Fiscal #<span id="fiscalIdOrdenTexto">0</span></h5>
-                    <button type="button" class="jama-modal-cerrar" onclick="cerrarModal('modalEmisionFiscal')">✕</button>
-                </div>
-                <div class="jama-modal-body" style="background-color: var(--lajama-cream);">
-                    <div style="margin-bottom:1.25rem;">
-                        <label class="jama-form-label">Paso 1: Tipo de Comprobante</label>
-                        <div class="btn-fiscal-switch">
-                            <button type="button" id="btnPasoBoleta" class="jama-btn-selector" onclick="cambiarTipoEnModal('BOLETA', true)">BOLETA</button>
-                            <button type="button" id="btnPasoFactura" class="jama-btn-selector" onclick="cambiarTipoEnModal('FACTURA', true)">FACTURA</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="jama-form-label" id="labelDocumentoFiscal">Paso 2: Número de Documento</label>
-                        <input type="text" name="documento" id="fiscalInputDoc" class="jama-form-control" style="font-size:1.15rem; font-weight:700;" maxlength="11">
-                        <small style="display:block; color:var(--lajama-secondary); margin-top:0.4rem; font-size:0.78rem;" id="ayudaDocumentoFiscal">
-                            Los datos cargados provienen del mesero y pueden ser modificados si hubo un error.
-                        </small>
-                    </div>
-                </div>
-                <div class="jama-modal-footer">
-                    <button type="button" class="btn-pag-jama-block" onclick="cerrarModal('modalEmisionFiscal')">Cancelar</button>
-                    <button type="submit" class="btn-pag-jama-block btn-pag-jama-active">Emitir Comprobante</button>
-                </div>
-            </form>
         </div>
     </div>
 

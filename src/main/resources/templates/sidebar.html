@@ -69,9 +69,8 @@
         (folder.contains('seguridad') && (activeUri.contains('/usuarios') || activeUri.contains('/perfiles') || activeUri.contains('/empleados'))) ||
         (folder.contains('log') && activeUri.contains('/insumos')) ||
         (folder.contains('insumos') && activeUri.contains('/insumos')) ||
-
         (folder == 'admin' && (
-            (activeUri.startsWith('/admin/') && !activeUri.contains('/cocina') && !activeUri.contains('/productos') && !activeUri.contains('/mesas') && !activeUri.contains('/mesero'))
+            (activeUri.startsWith('/admin/') && !activeUri.contains('/cocina') && !activeUri.contains('/productos') && !activeUri.contains('/mesas') && !activeUri.contains('/mesero') && !activeUri.contains('/MiPerfil'))
             || activeUri.contains('/pagos-digitales')
         ))
     )}">
@@ -114,6 +113,23 @@
                             </div>
                         </th:block>
                     </div>
+
+                    <label for="radio-miperfil"
+                           class="jama-uiverse-item"
+                           th:classappend="${activeUri == '/admin/MiPerfil'} ? 'active-uiverse' : ''"
+                           data-module="miperfil">
+
+                        <input class="jama-radio-hidden"
+                               type="radio"
+                               name="sidebar_path"
+                               id="radio-miperfil"
+                               th:checked="${activeUri == '/admin/MiPerfil'}"
+                               th:onclick="|window.location.href='@{/admin/MiPerfil}'|" />
+
+                        <i class="bi bi-person-badge-fill jama-uiverse-icon"></i>
+                        <span class="jama-uiverse-text">Mi Perfil</span>
+                    </label>
+
                 </article>
             </div>
 
@@ -135,19 +151,21 @@
     <div id="stars2"></div>
     <div id="stars3"></div>
 
-    <div class="header-title-container d-flex align-items-center gap-3">
-        <button id="open-sidebar" class="btn btn-outline-light border-2 d-md-none rounded-3 px-2 py-1" type="button">
-            <i class="bi bi-list fs-4"></i>
-        </button>
-        <h2 class="header-title fs-5 mb-0" th:text="${titulo}">La Jama</h2>
-    </div>
+    <div class="header-title-container d-flex align-items-center justify-content-between w-100">
+        <div class="d-flex align-items-center gap-3">
+            <button id="open-sidebar" class="btn btn-outline-light border-2 d-md-none rounded-3 px-2 py-1" type="button">
+                <i class="bi bi-list fs-4"></i>
+            </button>
+            <h2 class="header-title fs-5 mb-0" th:text="${titulo}">La Jama</h2>
+        </div>
 
-    <div class="d-flex gap-2">
-        <button th:if="${titulo == 'Gestión de Usuarios'}"
-                id="btnNuevoRegistro"
-                class="btn btn-nuevo-jama">
-            <i class="bi bi-plus"></i> Nuevo Registro
-        </button>
+        <div class="d-flex gap-2">
+            <th:block th:if="${titulo == 'Gestión de Usuarios'}">
+                <button id="btnNuevoRegistro" class="btn btn-nuevo-jama">
+                    <i class="bi bi-plus"></i> <span>Nuevo Registro</span>
+                </button>
+            </th:block>
+        </div>
     </div>
 </header>
 

@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('param-aprobado')) AppUtils.showNotification("Pedido enviado a cocina.", "success");
     if (document.getElementById('param-success')) AppUtils.showNotification("¡Cobro cuadrado e ingreso registrado!", "success");
 
-    // Buscador en caliente de comandas de salón (Optimizado para el motor de paginación)
+    // Buscador en caliente de comandas de salón
     const buscador = document.getElementById('buscadorPedido');
     const tabla = document.getElementById('tablaCaja')?.getElementsByTagName('tbody')[0];
 
@@ -45,7 +45,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Ejecución inicial de paginación al cargar la vista
     inicializarPaginacionLocal();
 });
 
@@ -88,121 +87,7 @@ function verDetallesComandaAuditoria(btn) {
         });
 }
 
-// ── Control de Emisión CPE (Mapeo de UI) ─────────────────────────────────
-function cambiarTipoEnModal(tipo, esModificable = false) {
-    document.getElementById('fiscalTipoDoc').value = tipo;
-
-    const btnBoleta = document.getElementById('btnPasoBoleta');
-    const btnFactura = document.getElementById('btnPasoFactura');
-    const labelDoc = document.getElementById('labelDocumentoFiscal');
-    const inputDoc = document.getElementById('fiscalInputDoc');
-
-    if (btnBoleta) btnBoleta.disabled = !esModificable;
-    if (btnFactura) btnFactura.disabled = !esModificable;
-
-    if (tipo === 'FACTURA') {
-        if (btnFactura) btnFactura.className = "jama-btn-selector activo";
-        if (btnBoleta) btnBoleta.className = "jama-btn-selector";
-        if (labelDoc) labelDoc.innerText = esModificable ? "Paso 2: Corregir RUC de la Empresa (11 dígitos) *" : "Paso 2: RUC de la Empresa (Validado en Mesa)";
-        if (inputDoc) inputDoc.placeholder = "Ingrese RUC corporativo";
-    } else {
-        if (btnBoleta) btnBoleta.className = "jama-btn-selector activo";
-        if (btnFactura) btnFactura.className = "jama-btn-selector";
-        if (labelDoc) labelDoc.innerText = esModificable ? "Paso 2: Corregir DNI / Identificación *" : "Paso 2: DNI del Cliente (Asignado en Mesa)";
-        if (inputDoc) inputDoc.placeholder = "Clientes Varios / DNI";
-    }
-}
-
-function abrirModalFiscalUnificado(pedidoId, tipoOriginal, documentoOriginal = '', esModificable = false) {
-    document.getElementById('fiscalPedidoId').value = pedidoId;
-    document.getElementById('fiscalIdOrdenTexto').innerText = pedidoId;
-
-    const tipoSeguro = (tipoOriginal && tipoOriginal !== 'null' && tipoOriginal !== '') ? tipoOriginal.toUpperCase() : 'BOLETA';
-    const docSeguro = (documentoOriginal && documentoOriginal !== 'null' && documentoOriginal !== 'undefined') ? documentoOriginal : '';
-
-    const inputDoc = document.getElementById('fiscalInputDoc');
-    if (inputDoc) {
-        inputDoc.value = docSeguro;
-        inputDoc.readOnly = !esModificable;
-        inputDoc.style.backgroundColor = !esModificable ? "var(--caja-skin)" : "var(--caja-white)";
-    }
-
-    cambiarTipoEnModal(tipoSeguro, esModificable);
-    abrirModal('modalEmisionFiscal');
-}
-
-// ── NOTAS DE CRÉDITO / BAJAS ASÍNCRONAS CON DEBUGGER ACTIVO ─────────────────
-async function anularYCorregirComprobante(pedidoId, tipoActual, documentoActual) {
-    console.log("============ 🕵️‍♂️ [DEBUGGER LA JAMA: INICIO ANULACIÓN] ============");
-    console.log("🔍 Datos recibidos del botón:");
-    console.log(` -> pedidoId: ${pedidoId} (Type: ${typeof pedidoId})`);
-    console.log(` -> tipoActual: ${tipoActual}`);
-    console.log(` -> documentoActual: ${documentoActual}`);
-
-    AppUtils.showConfirmationDialog({
-        title: '⚠️ ¿Anular Comprobante Emitido?',
-        text: `Se generará una Nota de Crédito para la Orden #${pedidoId}. Esto liberará la comanda para cambiar el tipo de documento o corregir datos inmediatamente.`,
-        icon: 'warning',
-        confirmButtonColor: 'var(--caja-danger)',
-        confirmButtonText: 'Sí, Anular y Corregir'
-    }, async function() {
-        console.log("✅ El usuario confirmó el modal SweetAlert2. Disparando Fetch...");
-        AppUtils.showLoading(true);
-
-        const urlObjetivo = `/admin/caja/anular-comprobante?pedidoId=${pedidoId}`;
-        console.log(`🛰️ Enviando petición GET a: ${urlObjetivo}`);
-
-        try {
-            // Ponemos un debugger físico. Si tienes la consola F12 abierta, el navegador congelará la ejecución aquí para que revises las variables:
-            debugger;
-
-            const res = await fetch(urlObjetivo);
-
-            console.log("📥 Respuesta del servidor recibida:");
-            console.log(` -> Status Code: ${res.status} (${res.statusText})`);
-            console.log(` -> ¿Fue redireccionado?: ${res.redirected}`);
-            console.log(` -> URL de destino si redirigió: ${res.url}`);
-
-            AppUtils.showLoading(false);
-
-            if (res.redirected || res.ok) {
-                console.log("🎉 Flujo exitoso detectado. Lanzando notificación de reemisión...");
-                AppUtils.showNotification("Comprobante anulado. Preparando entorno de reemisión...", "warning");
-
-                console.log("⏱️ Iniciando temporizador de 3 segundos antes de hacer window.location.reload()...");
-                setTimeout(() => {
-                    console.log("🔄 Ejecutando window.location.reload() ahora mismo.");
-                    window.location.reload();
-                }, 3000);
-            } else {
-                console.error("❌ El servidor respondió con un estado de error (No ok y No redirected).");
-                AppUtils.showNotification("El servidor rechazó la solicitud de anulación.", "error");
-            }
-        } catch (error) {
-            AppUtils.showLoading(false);
-            console.error("💥 CRASH CRÍTICO EN EL CAPTURE DEL FETCH:");
-            console.error(error);
-            AppUtils.showNotification("Fallo crítico al conectar con el módulo de notas de crédito.", "error");
-        }
-        console.log("============ 🕵️‍♂️ [DEBUGGER LA JAMA: FIN ANULACIÓN] ============");
-    });
-}
-
-function prepararModalDesdeTabla(btn, esModificable) {
-    const id = btn.getAttribute('data-id');
-    const tipo = btn.getAttribute('data-tipo');
-    const doc = String(btn.getAttribute('data-doc') || '').trim();
-    abrirModalFiscalUnificado(id, tipo, doc, esModificable);
-}
-
 // ── Historial Asíncrono por rangos ─────────────────────────────────────
-function prepararAnulacionDesdeTabla(btn) {
-    const id = btn.getAttribute('data-id');
-    const tipo = btn.getAttribute('data-tipo');
-    const doc = btn.getAttribute('data-doc');
-    anularYCorregirComprobante(id, tipo, doc);
-}
-
 function inicializarHistorialFechas() {
     const inputInicio = document.getElementById('historialFechaInicio');
     const inputFin = document.getElementById('historialFechaFin');

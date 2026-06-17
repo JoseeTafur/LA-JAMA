@@ -36,7 +36,7 @@ public class FacturacionService {
             // 1. Clave en el JSON (Validación interna del emisor)
             request.setClaveSecreta(apiToken);
 
-            // 2. Cabecera del Comprobante (Mantiene tu lógica de negocio)
+            // 2. Cabecera del Comprobante
             ComprobanteDTO comp = new ComprobanteDTO();
             boolean esFactura = "FACTURA".equals(pedido.getPreferenciaComprobante());
 
@@ -64,56 +64,90 @@ public class FacturacionService {
             cli.setDireccion("Chiclayo, Lambayeque");
             request.setCliente(cli);
 
-            // 4. Items con desglose para SUNAT
+            // 4. Items con desglose estricto y control de céntimos para SUNAT
             List<ItemDTO> items = new ArrayList<>();
             BigDecimal divisorIgv = new BigDecimal("1.18");
             BigDecimal porcentajeIgv = new BigDecimal("0.18");
 
             if (pedido.getListaDetalles() != null && !pedido.getListaDetalles().isEmpty()) {
 
-                double sumaPlatosTicket = pedido.getListaDetalles().stream()
+                // Filtramos y calculamos los ítems activos
+                List<DetallePedido> detallesActivos = pedido.getListaDetalles().stream()
                         .filter(d -> !d.isCanceladoPorCliente())
-                        .mapToDouble(DetallePedido::getSubtotal)
-                        .sum();
+                        .toList();
 
-                double factorProrrateo = 1.0;
-                if (pedido.getMontoTotal() != null && sumaPlatosTicket > 0
-                        && Math.abs(sumaPlatosTicket - pedido.getMontoTotal()) > 0.1) {
-                    factorProrrateo = pedido.getMontoTotal() / sumaPlatosTicket;
-                }
+                int totalItems = detallesActivos.size();
 
-                for (DetallePedido detalle : pedido.getListaDetalles()) {
-                    if (detalle.isCanceladoPorCliente()) continue;
+                // 🎯 PASO METÓDICO: Definimos los totales globales inquebrantables del ticket (Vienen de la caja móvil)
+                BigDecimal totalComprobanteReal = BigDecimal.valueOf(pedido.getMontoTotal()).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal totalBaseTeorico = totalComprobanteReal.divide(divisorIgv, 2, RoundingMode.HALF_UP);
+                BigDecimal totalIgvTeorico = totalComprobanteReal.subtract(totalBaseTeorico).setScale(2, RoundingMode.HALF_UP);
+
+                // Variables de control de asignación acumulada
+                BigDecimal acumuladoBaseIgv = BigDecimal.ZERO;
+                BigDecimal acumuladoIgv = BigDecimal.ZERO;
+                BigDecimal acumuladoPrecioVenta = BigDecimal.ZERO;
+
+                // Calculamos la suma bruta para el factor de prorrateo si fuera necesario
+                double sumaPlatosTicket = detallesActivos.stream().mapToDouble(DetallePedido::getSubtotal).sum();
+                BigDecimal totalBrutoPlatos = BigDecimal.valueOf(sumaPlatosTicket).setScale(2, RoundingMode.HALF_UP);
+
+                for (int i = 0; i < totalItems; i++) {
+                    DetallePedido detalle = detallesActivos.get(i);
+                    boolean esElUltimoItem = (i == totalItems - 1);
 
                     ItemDTO item = new ItemDTO();
 
-                    // 🛡️ ADUANA ANTI-NULL: Extraemos los datos de forma plana si el objeto Producto no se inicializó
+                    // Identificación de producto
                     if (detalle.getProducto() != null) {
                         item.setCodProducto("PROD-" + detalle.getProducto().getId());
                         item.setDescripcion(detalle.getProducto().getNombre());
                     } else {
-                        // Respaldo directo desde las propiedades planas mapeadas del JSON
                         item.setCodProducto("PROD-GENERICO");
                         item.setDescripcion(detalle.getNombre() != null ? detalle.getNombre() : "Consumo de Alimentos");
                     }
 
+                    BigDecimal cantidad = BigDecimal.valueOf(detalle.getCantidad());
                     item.setCantidad(detalle.getCantidad());
 
-                    double subtotalFraccionado = detalle.getSubtotal() * factorProrrateo;
+                    // Calcular subtotal de este plato considerando prorrateo
+                    BigDecimal subtotalPlato = BigDecimal.valueOf(detalle.getSubtotal()).setScale(4, RoundingMode.HALF_UP);
+                    if (totalBrutoPlatos.compareTo(BigDecimal.ZERO) > 0 && totalBrutoPlatos.subtract(totalComprobanteReal).abs().doubleValue() > 0.1) {
+                        subtotalPlato = subtotalPlato.multiply(totalComprobanteReal).divide(totalBrutoPlatos, 4, RoundingMode.HALF_UP);
+                    }
 
-                    BigDecimal precioUnitario = BigDecimal.valueOf(subtotalFraccionado / detalle.getCantidad())
-                            .setScale(2, RoundingMode.HALF_UP);
+                    // Declaramos las variables financieras por ítem
+                    BigDecimal precioVentaItem;
+                    BigDecimal baseIgvItem;
+                    BigDecimal igvItem;
+                    BigDecimal precioUnitario;
+                    BigDecimal valorUnitario;
 
-                    BigDecimal valorUnitario = precioUnitario.divide(divisorIgv, 4, RoundingMode.HALF_UP);
+                    if (esElUltimoItem) {
+                        // 🛡️ ADUANA FISCAL: El último plato absorbe la diferencia exacta de los céntimos huérfanos
+                        precioVentaItem = totalComprobanteReal.subtract(acumuladoPrecioVenta).setScale(2, RoundingMode.HALF_UP);
+                        baseIgvItem = totalBaseTeorico.subtract(acumuladoBaseIgv).setScale(2, RoundingMode.HALF_UP);
+                        igvItem = totalIgvTeorico.subtract(acumuladoIgv).setScale(2, RoundingMode.HALF_UP);
+                    } else {
+                        // Cálculos normales para los platos iniciales
+                        precioVentaItem = subtotalPlato.setScale(2, RoundingMode.HALF_UP);
+                        baseIgvItem = precioVentaItem.divide(divisorIgv, 2, RoundingMode.HALF_UP);
+                        igvItem = precioVentaItem.subtract(baseIgvItem).setScale(2, RoundingMode.HALF_UP);
 
-                    BigDecimal baseIgv = valorUnitario.multiply(BigDecimal.valueOf(detalle.getCantidad()))
-                            .setScale(2, RoundingMode.HALF_UP);
+                        // Acumulamos para el control del último ítem
+                        acumuladoPrecioVenta = acumuladoPrecioVenta.add(precioVentaItem);
+                        acumuladoBaseIgv = acumuladoBaseIgv.add(baseIgvItem);
+                        acumuladoIgv = acumuladoIgv.add(igvItem);
+                    }
 
-                    BigDecimal igvItem = baseIgv.multiply(porcentajeIgv).setScale(2, RoundingMode.HALF_UP);
+                    // Derivamos los precios unitarios de forma segura para evitar divisiones por cero infinitas
+                    precioUnitario = precioVentaItem.divide(cantidad, 2, RoundingMode.HALF_UP);
+                    valorUnitario = baseIgvItem.divide(cantidad, 4, RoundingMode.HALF_UP);
 
+                    // Seteamos las propiedades financieras del DTO de timbrado
                     item.setMtoPrecioUnitario(precioUnitario);
                     item.setMtoValorUnitario(valorUnitario.setScale(2, RoundingMode.HALF_UP));
-                    item.setMtoBaseIgv(baseIgv);
+                    item.setMtoBaseIgv(baseIgvItem);
                     item.setIgv(igvItem);
 
                     items.add(item);
@@ -121,16 +155,12 @@ public class FacturacionService {
             }
             request.setItems(items);
 
-            // 🚀 5. EL REMEDIO: CONSTRUIR LAS CABECERAS HTTP FORMALES DE AUTORIZACIÓN
+            // 🚀 5. ENVIÓ CON CABECERAS HTTP FORMALES
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            // Inyectamos el Bearer Token en el canal de transporte seguro
             headers.set("Authorization", "Bearer " + apiToken);
 
-            // Empaquetamos la payload de La Jama junto con las llaves de acceso
             HttpEntity<FacturaRequest> entity = new HttpEntity<>(request, headers);
-
-            // Realizamos el envío enviando el empaquetado completo (Request + Headers)
             ResponseEntity<FacturaResponse> response = restTemplate.postForEntity(apiUrl, entity, FacturaResponse.class);
 
             if (response.getBody() != null && response.getBody().getRespuesta() != null) {
