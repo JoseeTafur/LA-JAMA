@@ -29,4 +29,6 @@ public class Mesa {
     // Si esta es la mesa principal, aquí tiene la lista de las mesas que se le unieron
     @OneToMany(mappedBy = "mesaPadre")
     private List<Mesa> mesasHijas;
+
+    private boolean enReserva = false;
 }

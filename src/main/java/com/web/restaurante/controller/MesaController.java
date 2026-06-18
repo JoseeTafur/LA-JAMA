@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -73,6 +74,7 @@ public class MesaController {
             mesaService.desagruparGrupoCompleto(idMesaPadre);
             return ResponseEntity.ok("Grupo disuelto con éxito");
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
@@ -221,6 +223,63 @@ public class MesaController {
             return ResponseEntity.ok("Platos divididos correctamente");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+
+
+    // =========================================================================
+    // 🟩 MASIVO 1: MUDAR LOTE DE MESAS DESOCUPADAS AL APARTADO DE RESERVAS
+    // =========================================================================
+    @PostMapping("/api/trasladar-a-reserva-masivo")
+    @ResponseBody
+    public ResponseEntity<?> trasladarAReservaMasivo(@RequestParam("idsMesas") List<Long> idsMesas) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            if (idsMesas == null || idsMesas.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "No se seleccionó ninguna mesa.");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Delegamos la mudanza física al servicio
+            mesaService.mudarMesasAReservaEnBloque(idsMesas);
+
+            response.put("success", true);
+            response.put("message", "Lote de " + idsMesas.size() + " mesas movido a reservas con éxito.");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error en lote: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    // =========================================================================
+    // 🟩 MASIVO 2: QUITAR CUSTODIA Y DEVOLVER LOTE DE MESAS AL SALÓN ORDINARIO
+    // =========================================================================
+    @PostMapping("/api/quitar-de-reserva-masivo")
+    @ResponseBody
+    public ResponseEntity<?> quitarDeReservaMasivo(@RequestParam("idsMesas") List<Long> idsMesas) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            if (idsMesas == null || idsMesas.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "No se seleccionó ninguna mesa.");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Delegamos la liberación al servicio
+            mesaService.liberarMesasDeReservaEnBloque(idsMesas);
+
+            response.put("success", true);
+            response.put("message", "Lote de " + idsMesas.size() + " mesas devuelto al salón ordinario.");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error al liberar lote: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
         }
     }
 }

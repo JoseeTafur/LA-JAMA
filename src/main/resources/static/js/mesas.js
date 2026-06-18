@@ -9,6 +9,7 @@ let facturacionModal  = null;
 
 // ─── Unificación de mesas ───────────────────────────────
 let modoUnificacionActivo = false;
+let modoReservaMasivaActiva = false;
 
 // ─── Modal de acción unificado (Cambiar / Dividir) ──────
 let modoAccionMesaActual        = null;   // 'CAMBIAR_TODO' | 'DIVIDIR_PARCIAL'
@@ -76,31 +77,63 @@ document.addEventListener('DOMContentLoaded', function () {
 function gestionarClickMesa(elemento) {
     if (modoUnificacionActivo) {
         const checkbox = elemento.querySelector('.check-salon-unir');
-        if (checkbox
-            && !elemento.classList.contains('unificada')
-            && elemento.getAttribute('data-id') !== currentMesaId) {
-
+        if (checkbox && !elemento.classList.contains('unificada') && elemento.getAttribute('data-id') !== currentMesaId) {
             checkbox.checked = !checkbox.checked;
-            elemento.style.border     = checkbox.checked ? "3px solid #4c1d95" : "2px solid transparent";
-            elemento.style.transform  = checkbox.checked ? "scale(0.96)" : "none";
+            elemento.style.border    = checkbox.checked ? "3px solid #4c1d95" : "2px solid transparent";
+            elemento.style.transform = checkbox.checked ? "scale(0.96)" : "none";
             actualizarContadorUnificacion();
         }
         return;
     }
-    // Bloquear mesas con reserva activa (estado RESERVADA)
-    if (elemento.classList.contains('reservada')) {
-        const pedidoEstado = elemento.getAttribute('data-pedido-estado');
-        if (!pedidoEstado || pedidoEstado === 'NINGUNO') {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Mesa reservada',
-                text: 'Esta mesa tiene una reserva activa. No se puede atender hasta que el cliente llegue y se confirme su llegada.',
-                confirmButtonText: 'Entendido',
-                confirmButtonColor: '#f59e0b'
-            });
-            return;
+
+    if (modoReservaMasivaActiva) {
+        const checkboxReserva = elemento.querySelector('.check-reserva-masiva');
+        if (checkboxReserva) {
+            const vistaActual = document.getElementById('vista-salon').classList.contains('d-none') ? 'reservas' : 'salon';
+
+            if (vistaActual === 'salon' && (elemento.classList.contains('ocupada') || elemento.classList.contains('unificada'))) return;
+            if (vistaActual === 'reservas' && elemento.classList.contains('unificada')) return;
+
+            checkboxReserva.checked = !checkboxReserva.checked;
+            elemento.style.border    = checkboxReserva.checked ? "3px solid #1B3A2C" : "2px solid transparent";
+            elemento.style.transform = checkboxReserva.checked ? "scale(0.96)" : "none";
+            actualizarContadorReservaMasiva();
         }
+        return;
     }
+
+    const id = elemento.getAttribute('data-id');
+    const numero = elemento.getAttribute('data-numero');
+    const pedidoEstado = elemento.getAttribute('data-pedido-estado');
+
+    const vistaReservasActiva = !document.getElementById('vista-reservas').classList.contains('d-none');
+
+    // ADUANA OPERATIVA: Si la mesa está en la pestaña de reservas y no tiene comanda todavía
+    if (vistaReservasActiva && (!pedidoEstado || pedidoEstado === 'NINGUNO')) {
+        currentMesaId = id;
+        currentMesaNumero = numero;
+
+        Swal.fire({
+            title: `Mesa #${numero} Custodiada`,
+            text: "¿Deseas liberar esta mesa al salón ordinario o abrir atención para la reserva?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="bi bi-unlock-fill me-1"></i> Quitar de Reserva',
+            cancelButtonText: 'Atender Mesa'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Delegamos la acción. La aduana física se ejecutará adentro cuando el servidor responda OK.
+                procesarQuitarMesaDeReservaIndividual(id, numero);
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                prepararGestion(elemento);
+            }
+        });
+        return;
+    }
+
+    // Flujo ordinario para mesas comunes o con comida activa
     prepararGestion(elemento);
 }
 
@@ -372,57 +405,110 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
 }
 
 // =========================================================================
-// 🚀 MOTOR EN VIVO: SINCRONIZACIÓN DE COLOR Y JERARQUÍAS DEL DOM EN CALIENTE
+// 🚀 MOTOR EN VIVO: REACTIVIDAD PURA Y ADUANA DE RETENCIÓN VERDE/MORADO
 // =========================================================================
 function actualizarEstadoMesaEnPlano(numeroMesa, nuevoEstado, nuevoPedidoId, pedidoEstado) {
-    const tarjetasMesa = document.querySelectorAll(`[data-numero="${numeroMesa}"]`);
+    const tarjeta = document.querySelector(`[data-numero="${numeroMesa}"]`);
+    if (!tarjeta) return;
 
-    tarjetasMesa.forEach(tarjeta => {
-        if (!tarjeta) return;
+    // 1. Purgamos absolutamente todas las clases operativas de color anteriores
+    tarjeta.classList.remove('disponible', 'ocupada', 'lista-para-recoger', 'lista-para-pagar', 'unificada', 'reservada');
 
-        // 1. Purgamos clases operativas viejas
-        tarjeta.classList.remove('disponible', 'ocupada', 'lista-para-recoger', 'lista-para-pagar', 'unificada');
+    // 2. Sincronizamos metadatos de la orden activa
+    if (nuevoPedidoId) tarjeta.setAttribute('data-pedido-id', nuevoPedidoId);
+    if (pedidoEstado) tarjeta.setAttribute('data-pedido-estado', pedidoEstado);
 
-        // 2. Acoplamos el nuevo estado visual
-        tarjeta.classList.add(nuevoEstado);
+        const contenedorSalon    = document.querySelector('#vista-salon .grid-mesas');
+        const contenedorReservas = document.querySelector('#vista-reservas .grid-mesas') || document.getElementById('contenedor-mesas-reservadas-pestaña');
 
-        // 3. Mutación de metadatos de comanda
-        if (nuevoPedidoId) tarjeta.setAttribute('data-pedido-id', nuevoPedidoId);
-        if (pedidoEstado) tarjeta.setAttribute('data-pedido-estado', pedidoEstado);
-
-        // 🛡️ REPARACIÓN RADICAL DE ATRIBUTOS:
-        // Si la mesa se libera, limpiamos obligatoriamente su pasado jerárquico
-        if (nuevoEstado === 'disponible') {
-            tarjeta.setAttribute('data-es-padre', 'NO');
-            tarjeta.removeAttribute('data-id-mesa-padre');
-            tarjeta.setAttribute('data-pedido-id', '');
-            tarjeta.setAttribute('data-pedido-estado', 'NINGUNO');
+        // 🟩 MUDANZA OPERATIVA REAL
+        if (nuevoEstado === 'reservada' || nuevoEstado === 'RESERVADA') {
+            tarjeta.setAttribute('data-en-reserva', 'true');
+            if (contenedorReservas && !contenedorReservas.contains(tarjeta)) {
+                contenedorReservas.appendChild(tarjeta);
+            }
+        } else if (nuevoEstado === 'disponible' || nuevoEstado === 'ocupada' || nuevoEstado === 'lista-para-recoger' || nuevoEstado === 'lista-para-pagar') {
+            tarjeta.setAttribute('data-en-reserva', 'false');
+            if (contenedorSalon && !contenedorSalon.contains(tarjeta)) {
+                // Inyecta directamente en la grilla de la Vista Salón ordinaria
+                contenedorSalon.appendChild(tarjeta);
+            }
         }
 
-        // 4. Actualización dinámica del icono
-        const icono = tarjeta.querySelector('.mesa-icon-wrapper i');
+    // 4. ASIGNACIÓN CROMÁTICA DIRECTA
+    if (nuevoEstado === 'reservada' || nuevoEstado === 'RESERVADA' || nuevoEstado === 'disponible') {
+        tarjeta.classList.add('disponible');
+    } else {
+        tarjeta.classList.add(nuevoEstado);
+    }
+
+    // REPARACIÓN EN CALIENTE DE ATRIBUTOS JERÁRQUICOS
+    if (nuevoEstado === 'disponible' || nuevoEstado === 'ocupada' || nuevoEstado === 'lista-para-recoger' || nuevoEstado === 'lista-para-pagar') {
+            // Al romperse el grupo, el nodo deja de actuar como mesa controladora en el DOM instantáneamente
+            tarjeta.setAttribute('data-es-padre', 'NO');
+
+            if (nuevoEstado === 'disponible') {
+                tarjeta.removeAttribute('data-id-mesa-padre');
+                tarjeta.setAttribute('data-pedido-id', '');
+                tarjeta.setAttribute('data-pedido-estado', 'NINGUNO');
+            }
+        }
+
+
+    // 5. CORRECCIÓN DE ÍCONOS EN CALIENTE: Evaluamos la variable limpia 'nuevoEstado' en vez de clases del DOM
+    const icono = tarjeta.querySelector('.mesa-icon-wrapper i');
         if (icono) {
             icono.className = "";
-            if (nuevoEstado === 'unificada') icono.className = "bi bi-link-45deg";
-            else if (nuevoEstado === 'lista-para-recoger') icono.className = "bi bi-bell-fill";
-            else if (nuevoEstado === 'lista-para-pagar') icono.className = "bi bi-person-check-fill";
-            else icono.className = "bi bi-cup-hot-fill";
-        }
-    });
 
-    // Refresco asíncrono en caliente de las variables del modal interno abierto
+            // Evaluamos el 'nuevoEstado' crudo recibido por el WebSocket/servidor
+            if (nuevoEstado === 'unificada') {
+                icono.className = "bi bi-link-45deg";
+            } else if (nuevoEstado === 'lista-para-recoger') {
+                icono.className = "bi bi-bell-fill"; // Amarillo parpadeante culinario
+            } else if (nuevoEstado === 'lista-para-pagar') {
+                icono.className = "bi bi-person-check-fill";
+            } else if (nuevoEstado === 'ocupada') {
+                icono.className = "bi bi-cup-hot-fill";
+            } else {
+                // Si la mesa se liberó o regresó al estado disponible/reservado, dibuja el ícono base según su pestaña
+                const estaFisicamenteEnReservas = (contenedorReservas && contenedorReservas.contains(tarjeta));
+                icono.className = estaFisicamenteEnReservas ? "bi bi-calendar-check-fill" : "bi bi-cup-hot-fill";
+            }
+        }
+
+        // 🟩 ADUANA ASÍNCRONA DE RESERVAS: Reevalúa dinámicamente si el panel quedó vacío
+            if (contenedorReservas) {
+                const totalMesasEnReservas = contenedorReservas.querySelectorAll('.mesa-box').length;
+                let avisoReservaVacio = document.getElementById('reserva-vacia-aviso');
+
+                if (totalMesasEnReservas === 0) {
+                    // Si el contenedor se quedó sin casilleros y no existe el aviso, lo inyectamos de inmediato
+                    if (!avisoReservaVacio) {
+                        contenedorReservas.insertAdjacentHTML('afterend', `
+                            <div class="text-center py-5 animate__animated animate__fadeIn" id="reserva-vacia-aviso">
+                                <i class="bi bi-calendar-x text-muted" style="font-size: 4rem;"></i>
+                                <h5 class="fw-bold text-muted mt-3">No hay mesas en custodia de reserva</h5>
+                                <p class="text-muted small">Asigna bloques de mesas desde la pestaña "Vista Salón" para resguardarlas.</p>
+                            </div>`);
+                    }
+                } else {
+                    // En cuanto ingrese al menos una mesa al panel, destruimos el aviso dinámicamente
+                    if (avisoReservaVacio) {
+                        avisoReservaVacio.remove();
+                    }
+                }
+            }
+
+    // 6. Sincronización de la UI del modal operativo abierto
     if (currentMesaNumero == numeroMesa && mesaModal && document.getElementById('modalMesa').classList.contains('show')) {
-        const tarjetaActual = tarjetasMesa[0];
-        if (tarjetaActual) {
-            const pedidoEstadoActual = tarjetaActual.getAttribute('data-pedido-estado');
-            const esPadreActual = tarjetaActual.getAttribute('data-es-padre') === 'SI' || tarjetaActual.classList.contains('tarjeta-unificada');
-            const esUnificadaActual = tarjetaActual.classList.contains('unificada');
+        const pedidoEstadoActual = tarjeta.getAttribute('data-pedido-estado');
+        const esPadreActual = tarjeta.getAttribute('data-es-padre') === 'SI' || tarjeta.classList.contains('tarjeta-unificada');
+        const esUnificadaActual = tarjeta.classList.contains('unificada');
 
-            if (nuevoPedidoId) currentPedidoId = nuevoPedidoId;
+        if (nuevoPedidoId) currentPedidoId = nuevoPedidoId;
 
-            renderizarControlesModal(esPadreActual, esUnificadaActual, pedidoEstadoActual, tarjetaActual);
-            cargarDetalleComandaAsincrono(pedidoEstadoActual);
-        }
+        renderizarControlesModal(esPadreActual, esUnificadaActual, pedidoEstadoActual, tarjeta);
+        cargarDetalleComandaAsincrono(pedidoEstadoActual);
     }
 }
 
@@ -676,23 +762,18 @@ function procesarUnificacionDirecta() {
             if (res.ok) {
                 AppUtils.showNotification("Mesas unificadas correctamente", "success");
 
-                // 🚀 TRATAMIENTO ASÍNCRONO DE MARCAS DE CONTROL JERÁRQUICO:
-                // Buscamos la tarjeta física de la Mesa Principal en el HTML del salón
-                const tarjetaPadreDOM = document.getElementById(`mesa-card-${currentMesaId}`);
+                const tarjetaPadreDOM = document.querySelector(`[data-id="${currentMesaId}"]`);
                 if (tarjetaPadreDOM) {
-                    // 🟩 LA SOLUCIÓN: Le estampamos en caliente que a partir de este milisegundo es PADRE
                     tarjetaPadreDOM.setAttribute('data-es-padre', 'SI');
                 }
 
-                // Sincronizamos cromáticamente la Mesa Padre Controladora
+                // Le estampamos el estado operativo real
                 actualizarEstadoMesaEnPlano(currentMesaNumero, 'unificada', currentPedidoId, 'AGRUPADO');
 
-                // Marcamos e indexamos relacionalmente a cada Mesa Hija satélite
                 checks.forEach(c => {
                     const cajaHijaDOM = c.closest('.mesa-box');
                     if (cajaHijaDOM) {
                         cajaHijaDOM.setAttribute('data-es-padre', 'NO');
-                        // Le grabamos el puntero a su Mesa Padre para blindar el enrutamiento posterior
                         cajaHijaDOM.setAttribute('data-id-mesa-padre', currentMesaId);
 
                         const numHija = cajaHijaDOM.getAttribute('data-numero');
@@ -700,9 +781,7 @@ function procesarUnificacionDirecta() {
                     }
                 });
 
-                // Renderizamos de forma transparente la tarjeta en el carrusel de Grupos
                 actualizarPanelGruposUnificados(currentMesaNumero, numerosHijas, 'AGRUPADO', currentPedidoId);
-
                 cancelarModoUnificacion();
             }
         } catch (error) {
@@ -738,6 +817,7 @@ function procesarDesvincular() {
 
 function procesarDesfragmentacionGrupo() {
     if (!currentMesaId) return;
+
     AppUtils.showConfirmationDialog({
         title: '¿Desagrupar Todo el Bloque?',
         text: 'Se disolverá el grupo de mesas colectivas.',
@@ -747,24 +827,43 @@ function procesarDesfragmentacionGrupo() {
     }, async function () {
         AppUtils.showLoading(true);
         try {
-            const res = await fetch(`/admin/mesas/desagrupar-grupo/${currentMesaId}`, { method: 'POST' });
+            const res = await fetch(`/admin/mesas/desagrupar-grupo/${currentMesaId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            });
+
             AppUtils.showLoading(false);
+
             if (res.ok) {
-                AppUtils.showNotification("Grupo disuelto con éxito", "success");
+                const data = await res.json();
 
-                // 🚀 SOLUCIÓN ASÍNCRONA: Quitar la tarjeta del panel de grupos en caliente
-                const tarjetaGrupo = document.querySelector(`#contenedor-tarjetas-unificadas [data-numero="${currentMesaNumero}"]`);
-                if (tarjetaGrupo) {
-                    tarjetaGrupo.remove();
-                    actualizarContadorBadgePestaña();
+                if (data.success) {
+                    AppUtils.showNotification(data.message || "Grupo disuelto con éxito", "success");
+
+                    const tarjetaGrupo = document.querySelector(`#contenedor-tarjetas-unificadas [data-numero="${currentMesaNumero}"]`);
+                    if (tarjetaGrupo) {
+                        tarjetaGrupo.remove();
+                        actualizarContadorBadgePestaña();
+                    }
+
+                    // Sincronizamos localmente la mesa principal
+                    actualizarEstadoMesaEnPlano(currentMesaNumero, 'disponible', null, 'NINGUNO');
+                    if (mesaModal) mesaModal.hide();
+                } else {
+                    // Muestra el SweetAlert2 explicativo si hay platos vivos
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Operación Restringida',
+                        text: data.message || "No se puede desagrupar el bloque con pedidos activos.",
+                        confirmButtonColor: '#1B3A2C'
+                    });
                 }
-
-                actualizarEstadoMesaEnPlano(currentMesaNumero, 'disponible', null, 'NINGUNO');
-                if (mesaModal) mesaModal.hide();
+            } else {
+                AppUtils.showNotification("Error de comunicación con el servidor.", "error");
             }
         } catch (error) {
             AppUtils.showLoading(false);
-            console.error(error);
+            console.error("Error al intentar desagrupar bloque:", error);
         }
     });
 }
@@ -873,7 +972,11 @@ function abrirModalAccionUnificado(modo) {
     }
 
     const contenedorLista = document.getElementById('lista-mesas-destino-accion');
-    if (contenedorLista) contenedorLista.innerHTML = '<div class="p-3 text-center text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Cargando mapa de mesas...</div>';
+    if (contenedorLista) contenedorLista.innerHTML = '<div class="p-3 text-center text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Cargando mapa...</div>';
+
+    // 🟩 ADUANA DE ENTORNO: Leemos si la mesa origen actual está en Reservas o en el Salón
+    const tarjetaOrigenDOM = document.getElementById(`mesa-card-${currentMesaId}`);
+    const origenEsReservada = tarjetaOrigenDOM ? (tarjetaOrigenDOM.closest('#contenedor-mesas-reservadas-pestaña') !== null) : false;
 
     const selectNativo = document.getElementById('selectMesaDestino');
     if (selectNativo) {
@@ -886,6 +989,9 @@ function abrirModalAccionUnificado(modo) {
             opcionesValidas.forEach(opt => {
                 const idMesa = opt.value;
                 const numeroMesa = opt.text;
+
+                // Leemos el flag de reserva inyectado en el option del select nativo
+                const destinoEsReservada = opt.getAttribute('data-reserva-entorno') === 'true';
                 const tarjetaMesaOriginal = document.getElementById('mesa-card-' + idMesa);
 
                 let estaOcupada = false;
@@ -899,29 +1005,28 @@ function abrirModalAccionUnificado(modo) {
                     const esUnificada = tarjetaMesaOriginal.classList.contains('unificada');
                     const flagPadre = tarjetaMesaOriginal.getAttribute('data-es-padre');
 
-                    // 🛡️ REGLA OPERATIVA ABSOLUTA DE ENRUTAMIENTO:
-                    // Una mesa es Padre si está unificada y tiene la bandera data-es-padre="SI"
                     if (flagPadre === 'SI') {
                         esMesaPadreControladora = true;
-                    }
-                    // Una mesa es Hija satélite si está unificada pero NO tiene la bandera de Padre
-                    else if (esUnificada && flagPadre !== 'SI') {
+                    } else if (esUnificada && flagPadre !== 'SI') {
                         esMesaHijaAgrupada = true;
                     }
                 }
 
-                // Motores dinámicos de renderizado cromático interactivo
                 let badgeEstado = '';
                 let estiloAtributo = '';
                 let deshabilitadoAttr = '';
 
-                if (esMesaHijaAgrupada) {
-                    // 🚨 REGLA DE LA JAMA: Las mesas hijas quedan totalmente desactivadas en la UI
+                // 🛡️ REGLA ABSOLUTA DE ENRUTAMIENTO: Si no pertenecen al mismo entorno boolean, se bloquea la fila
+                if (origenEsReservada !== destinoEsReservada) {
+                    const mensajeBloqueo = origenEsReservada ? 'Mesa de Salón (Bloqueada)' : 'Mesa Reservada (Bloqueada)';
+                    badgeEstado = `<span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill" style="font-size:0.7rem;"><i class="bi bi-lock-fill me-1"></i>${mensajeBloqueo}</span>`;
+                    estiloAtributo = 'background-color: #f8fafc; opacity: 0.45; cursor: not-allowed; border-left: 4px solid #64748b !important;';
+                    deshabilitadoAttr = 'disabled';
+                } else if (esMesaHijaAgrupada) {
                     badgeEstado = '<span class="badge bg-danger bg-opacity-10 text-danger rounded-pill" style="font-size:0.7rem;"><i class="bi bi-x-circle-fill me-1"></i>Hija (Bloqueada)</span>';
                     estiloAtributo = 'background-color: #fef2f2; opacity: 0.55; cursor: not-allowed; border-left: 4px solid #ef4444 !important;';
                     deshabilitadoAttr = 'disabled';
                 } else if (esMesaPadreControladora) {
-                    // 🎯 REGLA DE LA JAMA: La Mesa Padre sí aparece habilitada y con su estilo premium para absorber la comanda
                     badgeEstado = '<span class="badge rounded-pill" style="font-size:0.75rem; background-color:#4c1d95; color:#fff7ed;"><i class="bi bi-link-45deg me-1"></i>Padre del Grupo</span>';
                     estiloAtributo = 'background-color: #f5f3ff; border-left: 4px solid #4c1d95 !important; font-weight:700;';
                 } else if (estaOcupada) {
@@ -1128,56 +1233,247 @@ function procesarDesfragmentacionGrupo() {
     }, async function () {
         AppUtils.showLoading(true);
         try {
-            const tarjetaGrupo = document.querySelector(`#contenedor-tarjetas-unificadas [data-numero="${currentMesaNumero}"]`);
-            let numerosMesasHijas = [];
+            const res = await fetch(`/admin/mesas/desagrupar-grupo/${currentMesaId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            });
 
-            if (tarjetaGrupo) {
-                const badges = tarjetaGrupo.querySelectorAll('.badge');
-                badges.forEach(badge => {
-                    const numTexto = badge.innerText.replace('#', '').trim();
-                    if (numTexto && !isNaN(numTexto)) {
-                        numerosMesasHijas.push(parseInt(numTexto));
-                    }
-                });
-            }
-
-            const res = await fetch(`/admin/mesas/desagrupar-grupo/${currentMesaId}`, { method: 'POST' });
             AppUtils.showLoading(false);
 
             if (res.ok) {
-                AppUtils.showNotification("Grupo disuelto con éxito", "success");
+                // 🟩 REPARACIÓN: Leemos como texto crudo para acoplarnos al String de tu MesaController
+                const dataText = await res.text();
 
-                if (tarjetaGrupo) {
-                    tarjetaGrupo.remove();
-                    actualizarContadorBadgePestaña();
-                }
+            if (dataText.includes("éxito")) { // o data.success según uses texto o JSON
+                    AppUtils.showNotification("Grupo disuelto con éxito", "success");
 
-                // Auditoría asíncrona del contenedor de grupos para inyectar la leyenda nativa
-                const contenedorGrupos = document.getElementById('contenedor-tarjetas-unificadas');
-                if (contenedorGrupos) {
-                    const tarjetasRestantes = contenedorGrupos.querySelectorAll('.tarjeta-unificada').length;
-
-                    if (tarjetasRestantes === 0) {
-                        contenedorGrupos.innerHTML = `
-                            <div class="text-center py-5 animate__animated animate__fadeIn" id="grupo-vacio-aviso">
-                                <i class="bi bi-diagram-3 text-muted" style="font-size: 4rem;"></i>
-                                <h5 class="fw-bold text-muted mt-3">No hay grupos unificados activos</h5>
-                                <p class="text-muted small">Agrupa mesas desde la pestaña "Vista Salón" para gestionarlas colectivamente.</p>
-                            </div>`;
+                    const tarjetaGrupo = document.querySelector(`#contenedor-tarjetas-unificadas [data-numero="${currentMesaNumero}"]`);
+                    if (tarjetaGrupo) {
+                        tarjetaGrupo.remove();
+                        actualizarContadorBadgePestaña();
                     }
+
+                    // 🟩 ADUANA ASÍNCRONA DE GRUPOS: Si ya no quedan tarjetas vivas, inyecta la leyenda premium de La Jama
+                    const contenedorGrupos = document.getElementById('contenedor-tarjetas-unificadas');
+                    if (contenedorGrupos) {
+                        const tarjetasRestantes = contenedorGrupos.querySelectorAll('.tarjeta-unificada').length;
+                        if (tarjetasRestantes === 0) {
+                            contenedorGrupos.innerHTML = `
+                                <div class="text-center py-5 animate__animated animate__fadeIn" id="grupo-vacio-aviso">
+                                    <i class="bi bi-diagram-3 text-muted" style="font-size: 4rem;"></i>
+                                    <h5 class="fw-bold text-muted mt-3">No hay grupos unificados activos</h5>
+                                    <p class="text-muted small">Agrupa mesas desde la pestaña "Vista Salón" para gestionarlas colectivamente.</p>
+                                </div>`;
+                        }
+                    }
+
+                    if (mesaModal) mesaModal.hide();
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Operación Restringida',
+                        text: dataText || "No se puede desagrupar el bloque con pedidos activos.",
+                        confirmButtonColor: '#1B3A2C'
+                    });
                 }
-
-                // Modificación asíncrona masiva en caliente del plano del salón
-                actualizarEstadoMesaEnPlano(currentMesaNumero, 'disponible', null, 'NINGUNO');
-                numerosMesasHijas.forEach(numHija => {
-                    actualizarEstadoMesaEnPlano(numHija, 'disponible', null, 'NINGUNO');
-                });
-
-                if (mesaModal) mesaModal.hide();
+            } else {
+                AppUtils.showNotification("Error de comunicación con el servidor.", "error");
             }
         } catch (error) {
             AppUtils.showLoading(false);
-            console.error("Error al desagrupar el bloque de mesas en caliente:", error);
+            console.error("Error al intentar desagrupar bloque:", error);
         }
     });
+}
+
+function activarModoReservaMasiva() {
+    const vistaActual = document.getElementById('vista-salon').classList.contains('d-none') ? 'reservas' : 'salon';
+    modoReservaMasivaActiva = true;
+
+    // Mostramos la barra de herramientas superior correspondiente
+    if (vistaActual === 'salon') {
+        const barraSalon = document.getElementById('barre-reserva-masiva-salon');
+        if (barraSalon) {
+            barraSalon.classList.remove('d-none');
+            barraSalon.classList.add('d-flex');
+        }
+    } else {
+        const barraReservas = document.getElementById('barre-reserva-masiva-reservas');
+        if (barraReservas) {
+            barraReservas.classList.remove('d-none');
+            barraReservas.classList.add('d-flex');
+        }
+    }
+
+    const contenedorId = vistaActual === 'salon' ? '#vista-salon' : '#contenedor-mesas-reservadas-pestaña';
+
+    document.querySelectorAll(`${contenedorId} .mesa-box`).forEach(box => {
+        const pedidoEstado = box.getAttribute('data-pedido-estado');
+
+        // Congelamos las mesas que tengan consumos activos o estén unificadas
+        if (box.classList.contains('ocupada') ||
+            box.classList.contains('unificada') ||
+            (pedidoEstado && pedidoEstado !== 'NINGUNO')) {
+
+            box.style.opacity = "0.3";
+            box.style.pointerEvents = "none";
+        } else {
+            box.querySelector(".checkbox-seleccion-reserva-masiva")?.classList.remove("d-none");
+        }
+    });
+
+    actualizarContadorReservaMasiva();
+}
+
+function cancelarModoReservaMasiva() {
+    modoReservaMasivaActiva = false;
+
+    // Apagamos ambas barras de herramientas
+    const barraSalon = document.getElementById('barre-reserva-masiva-salon');
+    if (barraSalon) barraSalon.classList.add('d-none');
+
+    const barraReservas = document.getElementById('barre-reserva-masiva-reservas');
+    if (barraReservas) barraReservas.classList.add('d-none');
+
+    document.querySelectorAll(".mesa-box").forEach(box => {
+        box.style.opacity = "1";
+        box.style.pointerEvents = "auto";
+        box.style.border = "2px solid transparent";
+        box.style.transform = "none";
+
+        const check = box.querySelector(".check-reserva-masiva");
+        if (check) check.checked = false;
+
+        box.querySelector(".checkbox-seleccion-reserva-masiva")?.classList.add("d-none");
+    });
+
+    actualizarContadorReservaMasiva();
+}
+
+function actualizarContadorReservaMasiva() {
+    const vistaActual = document.getElementById('vista-salon').classList.contains('d-none') ? 'reservas' : 'salon';
+    const contenedorId = vistaActual === 'salon' ? '#vista-salon' : '#contenedor-mesas-reservadas-pestaña';
+
+    const seleccionadas = document.querySelectorAll(`${contenedorId} .check-reserva-masiva:checked`).length;
+
+    if (vistaActual === 'salon') {
+        const btnSalon = document.getElementById('btnEjecutarReservaMasivaSalon');
+        if (btnSalon) btnSalon.disabled = (seleccionadas === 0);
+
+        const txtSalon = document.getElementById("count-seleccionadas-reserva-masiva-salon");
+        if (txtSalon) txtSalon.innerText = seleccionadas;
+    } else {
+        const btnReservas = document.getElementById('btnEjecutarReservaMasivaReservas');
+        if (btnReservas) btnReservas.disabled = (seleccionadas === 0);
+
+        const txtReservas = document.getElementById("count-seleccionadas-reserva-masiva-reservas");
+        if (txtReservas) txtReservas.innerText = seleccionadas;
+    }
+}
+
+function procesarAccionReservaMasivaFinal() {
+    const checks = document.querySelectorAll(".check-reserva-masiva:checked");
+    if (checks.length === 0) return;
+
+    const vistaActual = document.getElementById('vista-salon').classList.contains('d-none') ? 'reservas' : 'salon';
+    const idsMesas = Array.from(checks).map(c => c.value);
+
+    const tituloTxt = vistaActual === 'salon' ? '¿Apartar bloque para Reservas?' : '¿Liberar bloque de Reservas?';
+    const msgTxt = vistaActual === 'salon' ? `Se guardarán estas ${idsMesas.length} mesas en custodia.` : `Estas ${idsMesas.length} mesas volverán a estar libres en el salón ordinario.`;
+
+    const endpoint = vistaActual === 'salon' ? '/admin/mesas/api/trasladar-a-reserva-masivo' : '/admin/mesas/api/quitar-de-reserva-masivo';
+
+    AppUtils.showConfirmationDialog({
+        title: tituloTxt,
+        text: msgTxt,
+        icon: 'question',
+        confirmButtonColor: '#1B3A2C',
+        confirmButtonText: 'Sí, procesar bloque'
+    }, async function () {
+        AppUtils.showLoading(true);
+        try {
+            const params = new URLSearchParams();
+            idsMesas.forEach(id => params.append("idsMesas", id));
+
+            const res = await fetch(window.location.origin + endpoint, {
+                method: "POST",
+                body: params
+            });
+
+            AppUtils.showLoading(false);
+
+        if (res.ok) {
+                AppUtils.showNotification("Plano actualizado correctamente en bloque", "success");
+
+                // 🟩 REACTIVIDAD EN CALIENTE: Forzamos la mudanza física en el DOM de inmediato
+                checks.forEach(c => {
+                    const box = c.closest('.mesa-box');
+                    if (box) {
+                        const num = box.getAttribute('data-numero');
+                        const nuevoEst = vistaActual === 'salon' ? 'reservada' : 'disponible';
+
+                        // ⚡ Mueve el nodo al contenedor correcto sin esperar a dar F5
+                        actualizarEstadoMesaEnPlano(num, nuevoEst, '', 'NINGUNO');
+                    }
+                });
+
+                // 🟩 AUDITORÍA MASIVA ASÍNCRONA: Evaluamos el panel justo después de mudar el lote
+                const contenedorReservas = document.getElementById('contenedor-mesas-reservadas-pestaña');
+                if (contenedorReservas) {
+                    const totalMesasEnReservas = contenedorReservas.querySelectorAll('.mesa-box').length;
+                    let avisoReservaVacio = document.getElementById('reserva-vacia-aviso');
+
+                    if (totalMesasEnReservas === 0) {
+                        if (!avisoReservaVacio) {
+                            contenedorReservas.insertAdjacentHTML('afterend', `
+                                <div class="text-center py-5 animate__animated animate__fadeIn" id="reserva-vacia-aviso">
+                                    <i class="bi bi-calendar-x text-muted" style="font-size: 4rem;"></i>
+                                    <h5 class="fw-bold text-muted mt-3">No hay mesas en custodia de reserva</h5>
+                                    <p class="text-muted small">Asigna bloques de mesas desde la pestaña "Vista Salón" para resguardarlas.</p>
+                                </div>`);
+                        }
+                    } else {
+                        if (avisoReservaVacio) {
+                            avisoReservaVacio.remove();
+                        }
+                    }
+                }
+
+                cancelarModoReservaMasiva();
+            }else {
+                AppUtils.showNotification("Error al procesar el lote de mesas", "error");
+            }
+        } catch (error) {
+            AppUtils.showLoading(false);
+            console.error("Error en operación por lotes de reservas:", error);
+        }
+    });
+}
+
+async function procesarQuitarMesaDeReservaIndividual(idMesa, numeroMesa) {
+    AppUtils.showLoading(true);
+    try {
+        const params = new URLSearchParams();
+        params.append("idsMesas", idMesa);
+
+        // Llamamos al endpoint del controlador (que ya mapea correctamente)
+        const res = await fetch(window.location.origin + '/admin/mesas/api/quitar-de-reserva-masivo', {
+            method: 'POST',
+            body: params
+        });
+
+        AppUtils.showLoading(false);
+
+        if (res.ok) {
+            AppUtils.showNotification(`Mesa #${numeroMesa} devuelta al salón de venta libre.`, "success");
+
+            // 🟩 ¡AQUÍ SÍ! Invocamos la mudanza física usando las variables correctas
+            actualizarEstadoMesaEnPlano(numeroMesa, 'disponible', '', 'NINGUNO');
+        } else {
+            AppUtils.showNotification("No se pudo liberar la mesa.", "error");
+        }
+    } catch (error) {
+        AppUtils.showLoading(false);
+        console.error("Error al quitar custodia individual:", error);
+    }
 }

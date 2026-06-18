@@ -40,6 +40,9 @@ public class MesaService {
             if (mesa.getMesasHijas() != null && !mesa.getMesasHijas().isEmpty()) {
                 dto.setNumerosMesasHijas(mesa.getMesasHijas().stream().map(Mesa::getNumero).toList());
             }
+
+            dto.setEnReserva(mesa.isEnReserva());
+
             return dto;
         }).toList();
     }
@@ -212,19 +215,45 @@ public class MesaService {
 
     @Transactional
     public void desagruparGrupoCompleto(Long idMesaPadre) {
-        Mesa padre = mesaRepository.findById(idMesaPadre).orElseThrow(() -> new RuntimeException("Mesa principal no encontrada"));
+        Mesa padre = mesaRepository.findById(idMesaPadre)
+                .orElseThrow(() -> new RuntimeException("Mesa principal no encontrada"));
+
+        // 🧠 Paso 1: Evaluamos si quedan pedidos reales activos
         List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesa(padre.getNumero()).stream()
-                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA || p.getEstado() == EstadoPedido.PENDIENTE).toList();
+                .filter(p -> p.getMontoTotal() > 0 && p.getNumeroMesa() != null && p.getEstado() != EstadoPedido.PAGADO && p.getEstado() != EstadoPedido.CANCELADO)
+                .toList();
 
-        if (!pedidosActivos.isEmpty()) throw new RuntimeException("No se puede desagrupar. Hay pedidos activos en cocina.");
-
-        if (padre.getMesasHijas() != null) {
+        // 🟩 Paso 2: LIMPIAMOS LAS HIJAS PRIMERO (Rompe el enclavamiento antes de recalcular cocina)
+        if (padre.getMesasHijas() != null && !padre.getMesasHijas().isEmpty()) {
             for (Mesa hija : padre.getMesasHijas()) {
                 hija.setMesaPadre(null);
-                hija.setEstado("DISPONIBLE");
+                hija.setEstado("DISPONIBLE"); // Vuelven a color verde tradicional
                 mesaRepository.save(hija);
+
+                // Notificamos reactivamente al WebSocket de inmediato para las hijas
+                emitirCambioEstadoReactivo(hija.getNumero(), "disponible", null, "NINGUNO");
             }
+
+            // Limpiamos la colección mutable de Hibernate para que no afecte el cálculo posterior
+            padre.getMesasHijas().clear();
+            mesaRepository.saveAndFlush(padre); // <-- Forzamos el vaciado a las tablas reales YA
         }
+
+        // 🎨 Paso 3: Sincronizamos el estado de la mesa principal (Ahora sí, libre de hijas)
+        if (!pedidosActivos.isEmpty()) {
+            padre.setEstado("OCUPADA");
+            mesaRepository.save(padre);
+
+            // Ahora la máquina de estados sabrá que NO tiene hijas y le asignará
+            // legítimamente su color de cocina (Rojo, Amarillo, etc.) enviándolo por el WebSocket
+            recalcularYNotificarEstadoCocinaMesa(padre);
+        } else {
+            padre.setEstado("DISPONIBLE"); // Si no tenía consumos, vuelve a estar libre (verde)
+            mesaRepository.save(padre);
+            emitirCambioEstadoReactivo(padre.getNumero(), "disponible", null, "NINGUNO");
+        }
+
+        System.out.println("🔓 [LaJama ORM] Bloque disuelto con éxito. Todos los platos consolidados en la Mesa #" + padre.getNumero());
     }
 
     @Transactional
@@ -234,9 +263,16 @@ public class MesaService {
                 .filter(p -> p.getEstado() != EstadoPedido.PAGADO && p.getEstado() != EstadoPedido.CANCELADO).toList();
         Pedido pedidoPadreActivo = pedidosPadre.isEmpty() ? null : pedidosPadre.get(pedidosPadre.size() - 1);
 
+        // 🟩 TU LOGICA: El padre muta su estado visual a unificada (morado)
+        mesaPadre.setEstado("UNIFICADA");
+        mesaRepository.save(mesaPadre);
+
         for (Long idHija : idsMesasHijas) {
             Mesa hija = mesaRepository.findById(idHija).orElseThrow();
             hija.setMesaPadre(mesaPadre);
+
+            // 🟩 TU LOGICA: Cambia su estado visual a unificada (morado)
+            // pero CONSERVA intacto su flag enReserva (true/false) que ya tenía guardado en BD
             hija.setEstado("UNIFICADA");
             mesaRepository.save(hija);
 
@@ -653,7 +689,7 @@ public class MesaService {
     }
 
     // =========================================================================
-// 🔄 MOTOR CORE REPARADO: MÁQUINA DE ESTADOS FINITOS CON ENCLAVAMIENTO MORADO
+// 🔄 MOTOR CORE REPARADO: MÁQUINA DE ESTADOS FINITOS CON FILTRADO DE ENTORNO
 // =========================================================================
     private void recalcularYNotificarEstadoCocinaMesa(Mesa mesaTarget) {
         if (mesaTarget == null) return;
@@ -667,10 +703,10 @@ public class MesaService {
 
         boolean esUnGrupoFisicoActivo = (mesaPrincipal.getMesasHijas() != null && !mesaPrincipal.getMesasHijas().isEmpty());
 
-        // Si la mesa se quedó con 0 platos vivos por traslado completo
+        // Si la mesa se quedó con 0 platos vivos (traslado completo o desagrupación limpia)
         if (pedidosActivos.isEmpty()) {
-            // 🛡️ REGLA INMUTABLE: Si es un grupo, se queda morado ('unificada') pase lo que pase con la comida
-            String estadoFinal = esUnGrupoFisicoActivo ? "unificada" : "disponible";
+            // 🟩 FILTRADO DE ENTORNO DEFINITIVO: Si vive en reservas, la señal DEBE ser "reservada"
+            String estadoFinal = esUnGrupoFisicoActivo ? "unificada" : (mesaPrincipal.isEnReserva() ? "reservada" : "disponible");
 
             mesaPrincipal.setEstado(estadoFinal.toUpperCase());
             mesaRepository.save(mesaPrincipal);
@@ -742,5 +778,39 @@ public class MesaService {
         } catch(Exception e) {
             System.err.println("⚠️ Canal WebSocket ocupado temporalmente.");
         }
+    }
+
+    // =========================================================================
+    // LÓGICA DE MUDANZA TRANSACCIONAL DE MESAS
+    // =========================================================================
+
+    @Transactional
+    public void mudarMesasAReservaEnBloque(List<Long> idsMesas) {
+        List<Mesa> mesasTarget = mesaRepository.findAllById(idsMesas);
+        for (Mesa m : mesasTarget) {
+            m.setEnReserva(true);
+            m.setEstado("DISPONIBLE"); // Forzamos un estado limpio base
+            mesaRepository.save(m);
+
+            // Avisamos al plano que se mude de entorno bajo la señal limpia
+            emitirCambioEstadoReactivo(m.getNumero(), "reservada", null, "NINGUNO");
+        }
+        // 🟩 CLAVE ASÍNCRONA: Obligamos a Hibernate a asentar las tablas antes de cerrar el hilo
+        mesaRepository.flush();
+    }
+
+    @Transactional
+    public void liberarMesasDeReservaEnBloque(List<Long> idsMesas) {
+        List<Mesa> mesasTarget = mesaRepository.findAllById(idsMesas);
+        for (Mesa m : mesasTarget) {
+            m.setEnReserva(false);
+            m.setEstado("DISPONIBLE"); // Limpiamos la columna de raíz en BD
+            mesaRepository.save(m);
+
+            // Avisamos al plano que regrese libre al salón
+            emitirCambioEstadoReactivo(m.getNumero(), "disponible", null, "NINGUNO");
+        }
+        // 🟩 CLAVE ASÍNCRONA: Obligamos a Hibernate a asentar las tablas antes de cerrar el hilo
+        mesaRepository.flush();
     }
 }

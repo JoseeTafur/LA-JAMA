@@ -28,6 +28,7 @@
             <span class="badge badge-legend bg-recoger"><i class="bi bi-bell-fill me-1"></i> Para Recoger</span>
             <span class="badge badge-legend bg-pagar"><i class="bi bi-person-check-fill me-1"></i> Listo para Pagar</span>
             <span class="badge badge-legend bg-unificada"><i class="bi bi-link-45deg me-1"></i> Unificada</span>
+            <span class="badge badge-legend" style="background-color: #64748b; color: white;"><i class="bi bi-calendar-check-fill me-1"></i> Reservado</span>
         </div>
     </div>
 
@@ -48,49 +49,104 @@
                       th:text="${totalGrupos}">0</span>
             </span>
         </label>
+        <label class="radio-jama">
+            <input type="radio" name="vista-mesas" value="reservas" onclick="alternarVistaMesas('reservas')">
+            <span class="name-jama">
+                <i class="bi bi-calendar-check-fill"></i> Mesas Reservadas
+            </span>
+        </label>
+    </div>
+
+    <div>
+        <div id="barre-unificacion"
+             class="alert alert-dark d-none justify-content-between align-items-center p-3 mb-4 rounded-4 shadow border-0 text-white animate__animated animate__fadeIn"
+             style="background-color: var(--lajama-green);">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-info-circle-fill text-warning fs-4"></i>
+                <div>
+                    <h6 class="mb-0 fw-bold">Modo Agrupamiento Activo</h6>
+                    <p class="mb-0 small text-white-50">
+                        Selecciona las mesas en el plano que deseas unir a la Mesa
+                        #<span id="txtMesaPadreHerramienta" class="fw-bold text-warning"></span>
+                    </p>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold"
+                        onclick="cancelarModoUnificacion()">Cancelar</button>
+                <button class="btn btn-sm btn-warning text-dark rounded-pill px-4 fw-bold shadow-sm"
+                        onclick="procesarUnificacionDirecta()">
+                    <i class="bi bi-link-45deg me-1"></i>Unificar Seleccionadas
+                    (<span id="count-seleccionadas">0</span>)
+                </button>
+            </div>
+        </div>
+
+        <div id="barre-reserva-masiva-reservas"
+             class="alert alert-dark d-none justify-content-between align-items-center p-3 mb-4 rounded-4 shadow border-0 text-white animate__animated animate__fadeIn"
+             style="background-color: #1e293b;">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-calendar-check-fill text-warning fs-4"></i>
+                <div>
+                    <h6 class="mb-0 fw-bold">Modo Selección de Reservas — Quitar de Reservas</h6>
+                    <p class="mb-0 small text-white-50">Selecciona los casilleros en la cuadrícula para procesar el lote de mesas al instante.</p>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold"
+                        onclick="cancelarModoReservaMasiva()">Cancelar</button>
+                <button class="btn btn-sm btn-danger text-white rounded-pill px-4 fw-bold shadow-sm"
+                        id="btnEjecutarReservaMasivaReservas"
+                        onclick="procesarAccionReservaMasivaFinal()" disabled>
+                    <i class="bi bi-check-circle me-1"></i> Confirmar Gestión (<span id="count-seleccionadas-reserva-masiva-reservas">0</span>)
+                </button>
+            </div>
+        </div>
     </div>
 
     <div>
         <div id="vista-salon" class="animate__animated animate__fadeIn">
 
-            <div id="barre-unificacion"
+            <div id="barre-reserva-masiva-salon"
                  class="alert alert-dark d-none justify-content-between align-items-center p-3 mb-4 rounded-4 shadow border-0 text-white animate__animated animate__fadeIn"
-                 style="background-color: var(--lajama-green);">
+                 style="background-color: #1e293b;">
                 <div class="d-flex align-items-center gap-3">
-                    <i class="bi bi-info-circle-fill text-warning fs-4"></i>
+                    <i class="bi bi-calendar-check-fill text-warning fs-4"></i>
                     <div>
-                        <h6 class="mb-0 fw-bold">Modo Agrupamiento Activo</h6>
-                        <p class="mb-0 small text-white-50">
-                            Selecciona las mesas en el plano que deseas unir a la Mesa
-                            #<span id="txtMesaPadreHerramienta" class="fw-bold text-warning"></span>
-                        </p>
+                        <h6 class="mb-0 fw-bold">Modo Selección de Reservas — Añadir a Reservas</h6>
+                        <p class="mb-0 small text-white-50">Selecciona los casilleros en la cuadrícula para procesar el lote de mesas al instante.</p>
                     </div>
                 </div>
                 <div class="d-flex gap-2">
                     <button class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold"
-                            onclick="cancelarModoUnificacion()">Cancelar</button>
-                    <button class="btn btn-sm btn-warning text-dark rounded-pill px-4 fw-bold shadow-sm"
-                            onclick="procesarUnificacionDirecta()">
-                        <i class="bi bi-link-45deg me-1"></i>Unificar Seleccionadas
-                        (<span id="count-seleccionadas">0</span>)
+                            onclick="cancelarModoReservaMasiva()">Cancelar</button>
+                    <button class="btn btn-sm btn-success text-white rounded-pill px-4 fw-bold shadow-sm"
+                            id="btnEjecutarReservaMasivaSalon"
+                            onclick="procesarAccionReservaMasivaFinal()" disabled>
+                        <i class="bi bi-check-circle me-1"></i> Confirmar Gestión (<span id="count-seleccionadas-reserva-masiva-salon">0</span>)
                     </button>
                 </div>
             </div>
 
             <div class="card-color1">
                 <div class="card-body p-4">
-                    <div class="grid-mesas">
+                    <div class="d-flex justify-content-end mb-3">
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="activarModoReservaMasiva()">
+                            <i class="bi bi-tags-fill me-1"></i> Asignar Bloque de Reservas
+                        </button>
+                    </div>
+
+                    <div class="grid-mesas" id="contenedor-grid-salon">
                         <div th:each="m : ${mesas}"
+                             th:if="${!m.enReserva}"
                              th:with="pedidosFiltrados=${pedidos != null ? pedidos.?[numeroMesa == __${m.numero}__ && estado.name() != 'PAGADO' && estado.name() != 'CANCELADO'] : null},
-                                      pedidoMesa=${pedidosFiltrados != null && !#lists.isEmpty(pedidosFiltrados) ? pedidosFiltrados[#lists.size(pedidosFiltrados) - 1] : null}"
+              pedidoMesa=${pedidosFiltrados != null && !#lists.isEmpty(pedidosFiltrados) ? pedidosFiltrados[#lists.size(pedidosFiltrados) - 1] : null}"
 
                              th:class="'mesa-box shadow-sm ' +
                                   (${m.estado == 'UNIFICADA' || (m.numerosMesasHijas != null && !m.numerosMesasHijas.isEmpty())} ? 'unificada' :
-                                  (${m.estado == 'RESERVADA'} ? 'reservada' :
-                                  (${m.estado == 'OCUPADA' and pedidoMesa == null} ? 'reservada' :
                                   (${pedidoMesa == null} ? 'disponible' :
                                     (${pedidoMesa.tienePlatosMicroParaRecoger()} ? 'lista-para-recoger' :
-                                    (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar'))))))"
+                                    (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar'))))"
 
                              th:data-id="${m.id}"
                              th:data-numero="${m.numero}"
@@ -106,11 +162,18 @@
                                        onclick="event.stopPropagation(); actualizarContadorUnificacion();">
                             </div>
 
+                            <div class="checkbox-seleccion-reserva-masiva d-none" style="position: absolute; top: 8px; right: 8px; z-index: 10;">
+                                <input type="checkbox" class="check-reserva-masiva"
+                                       th:value="${m.id}"
+                                       onclick="event.stopPropagation(); actualizarContadorReservaMasiva();"
+                                       style="width:20px; height:20px; cursor:pointer;">
+                            </div>
+
                             <div class="mesa-icon-wrapper">
                                 <i th:class="${m.estado == 'UNIFICADA' || (m.numerosMesasHijas != null && !m.numerosMesasHijas.isEmpty())} ? 'bi bi-link-45deg' :
-                                                 (${pedidoMesa != null && pedidoMesa.tienePlatosMicroParaRecoger()} ? 'bi bi-bell-fill' :
-                                                 (${pedidoMesa != null && pedidoMesa.tienePlatosMicroEnCocina()} ? 'bi bi-cup-hot-fill' :
-                                                 (${pedidoMesa != null} ? 'bi bi-person-check-fill' : 'bi bi-cup-hot-fill')))"></i>
+                                                 (${pedidoMesa == null} ? 'bi bi-cup-hot-fill' :
+                                                 (${pedidoMesa.tienePlatosMicroParaRecoger()} ? 'bi bi-bell-fill' :
+                                                 (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'bi bi-cup-hot-fill' : 'bi bi-person-check-fill')))"></i>
                             </div>
                             <span class="mesa-numero">Mesa #[[${m.numero}]]</span>
                         </div>
@@ -161,6 +224,59 @@
                                 <i class="bi bi-box-arrow-in-up-right me-1"></i> Administrar Comanda Colectiva
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="vista-reservas" class="d-none animate__animated animate__fadeIn">
+            <div class="card card-color1 border-0 shadow-sm rounded-4 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-calendar3 me-2"></i>Mesas en Custodia de Reserva</h5>
+                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="activarModoReservaMasiva()">
+                        <i class="bi bi-unlock-fill me-1"></i> Liberar Bloque de Reservas
+                    </button>
+                </div>
+                <div class="grid-mesas" id="contenedor-mesas-reservadas-pestaña">
+                    <div th:each="m : ${mesas}"
+                         th:if="${m.enReserva}"
+                         th:with="pedidosFiltrados=${pedidos != null ? pedidos.?[numeroMesa == __${m.numero}__ && estado.name() != 'PAGADO' && estado.name() != 'CANCELADO'] : null},
+              pedidoMesa=${pedidosFiltrados != null && !#lists.isEmpty(pedidosFiltrados) ? pedidosFiltrados[#lists.size(pedidosFiltrados) - 1] : null}"
+
+                         th:class="'mesa-box shadow-sm ' +
+          (${m.estado == 'UNIFICADA' || (m.numerosMesasHijas != null && !m.numerosMesasHijas.isEmpty())} ? 'unificada' :
+          (${pedidoMesa == null} ? 'disponible' :
+            (${pedidoMesa.tienePlatosMicroParaRecoger()} ? 'lista-para-recoger' :
+            (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar'))))"
+
+                         th:data-id="${m.id}"
+                         th:data-numero="${m.numero}"
+                         th:data-pedido-id="${pedidoMesa != null ? pedidoMesa.id : ''}"
+                         th:data-pedido-estado="${pedidoMesa != null ? pedidoMesa.estado.name() : 'NINGUNO'}"
+                         th:data-es-padre="${m.numerosMesasHijas != null && !m.numerosMesasHijas.isEmpty() ? 'SI' : 'NO'}"
+                         th:id="'mesa-card-' + ${m.id}"
+                         onclick="gestionarClickMesa(this)">
+
+                        <div class="checkbox-seleccion-unificacion d-none">
+                            <input type="checkbox" class="check-salon-unir"
+                                   th:value="${m.id}"
+                                   onclick="event.stopPropagation(); actualizarContadorUnificacion();">
+                        </div>
+
+                        <div class="checkbox-seleccion-reserva-masiva d-none" style="position: absolute; top: 8px; right: 8px; z-index: 10;">
+                            <input type="checkbox" class="check-reserva-masiva"
+                                   th:value="${m.id}"
+                                   onclick="event.stopPropagation(); actualizarContadorReservaMasiva();"
+                                   style="width:20px; height:20px; cursor:pointer;">
+                        </div>
+
+                        <div class="mesa-icon-wrapper">
+                            <i th:class="${m.estado == 'UNIFICADA' || (m.numerosMesasHijas != null && !m.numerosMesasHijas.isEmpty())} ? 'bi bi-link-45deg' :
+                                             (${pedidoMesa == null} ? 'bi bi-calendar-check-fill' :
+                                             (${pedidoMesa.tienePlatosMicroParaRecoger()} ? 'bi bi-bell-fill' :
+                                             (${pedidoMesa.tienePlatosMicroEnCocina()} ? 'bi bi-cup-hot-fill' : 'bi bi-person-check-fill')))"></i>
+                        </div>
+                        <span class="mesa-numero">Mesa #[[${m.numero}]]</span>
                     </div>
                 </div>
             </div>
@@ -231,6 +347,11 @@
                                 <button type="button" id="btnDesagruparGrupo" class="btn-jama-kinetic btn-kinetic-green-outline justify-content-center d-none" onclick="procesarDesfragmentacionGrupo()">
                                     <i class="bi bi-diagram-3"></i>
                                     <span>Desagrupar Grupo</span>
+                                </button>
+
+                                <button type="button" id="btnMudarAReserva" class="btn-jama-kinetic btn-kinetic-dark justify-content-center" onclick="transferirMesaModuloReservas()">
+                                    <i class="bi bi-calendar-plus"></i>
+                                    <span>Mudar a Reservas</span>
                                 </button>
                             </div>
                         </div>
@@ -305,74 +426,70 @@
 
     <select id="selectMesaDestino" class="d-none">
         <option value="">-- Seleccionar --</option>
-        <option th:each="m : ${mesas}" th:value="${m.id}" th:text="${m.numero}"></option>
+        <option th:each="m : ${mesas}"
+                th:value="${m.id}"
+                th:text="${m.numero}"
+                th:data-reserva-entorno="${m.enReserva}"></option>
     </select>
 
     <th:block th:replace="~{pago/modal-cobro :: modalCobro}"></th:block>
 
     <script>
         function alternarVistaMesas(vistaSeleccionada) {
+            if (typeof cancelarModoUnificacion === 'function') cancelarModoUnificacion();
+            if (typeof cancelarModoReservaMasiva === 'function') cancelarModoReservaMasiva();
+
             const vistaSalon = document.getElementById('vista-salon');
             const vistaGrupos = document.getElementById('vista-grupos');
+            const vistaReservas = document.getElementById('vista-reservas');
 
-            if (vistaSeleccionada === 'salon') {
-                if (vistaSalon) vistaSalon.classList.remove('d-none');
-                if (vistaGrupos) vistaGrupos.classList.add('d-none');
-            } else if (vistaSeleccionada === 'grupos') {
-                if (vistaGrupos) vistaGrupos.classList.remove('d-none');
-                if (vistaSalon) vistaSalon.classList.add('d-none');
+            if (vistaSalon) vistaSalon.classList.toggle('d-none', vistaSeleccionada !== 'salon');
+            if (vistaGrupos) vistaGrupos.classList.toggle('d-none', vistaSeleccionada !== 'grupos');
+            if (vistaReservas) vistaReservas.classList.toggle('d-none', vistaSeleccionada !== 'reservas');
+
+            if (vistaSeleccionada === 'reservas' && typeof refrescarPestañaMesasReservadas === 'function') {
+                refrescarPestañaMesasReservadas();
             }
         }
 
-        // =======================================================
-// ONDAS DE CONTROL PARA VISTA EMPOTRADA (MODO MONITOR)
-// =======================================================
-document.addEventListener('DOMContentLoaded', function () {
-    // Leemos los parámetros de la URL actual
-    const urlParams = new URLSearchParams(window.location.search);
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
 
-    if (urlParams.get('embed') === 'true') {
-        // 1. Buscamos y removemos el Sidebar de navegación lateral
-        const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar');
-        if (sidebar) sidebar.remove();
+            if (urlParams.get('embed') === 'true') {
+                const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar');
+                if (sidebar) sidebar.remove();
 
-        // 2. Buscamos y removemos el header superior de logística
-        const header = document.querySelector('.main-content header') || document.querySelector('.header-jama') || document.querySelector('div[th\:replace*="logistica_header"]');
-        if (header) header.remove();
+                const header = document.querySelector('.main-content header') || document.querySelector('.header-jama') || document.querySelector('div[th\:replace*="logistica_header"]');
+                if (header) header.remove();
 
-        // 3. 🚨 BLINDAJE EXTRA: Removemos las restricciones del Layout Padre en caliente
-        // Esto elimina los paddings y transformaciones heredadas de 'layout-gestion'
-        const wrapper = document.querySelector('.wrapper');
-        if (wrapper) {
-            wrapper.style.display = "block";
-            wrapper.style.width = "100%";
-        }
+                const wrapper = document.querySelector('.wrapper');
+                if (wrapper) {
+                    wrapper.style.display = "block";
+                    wrapper.style.width = "100%";
+                }
 
-        const mainContent = document.getElementById('main-content') || document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.style.marginLeft = "0px";
-            mainContent.style.padding = "0px";
-            mainContent.style.width = "100%";
-            mainContent.style.minHeight = "auto";
-            mainContent.style.backgroundColor = "transparent"; // Se acopla al fondo del modal de la caja
-        }
+                const mainContent = document.getElementById('main-content') || document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.style.marginLeft = "0px";
+                    mainContent.style.padding = "0px";
+                    mainContent.style.width = "100%";
+                    mainContent.style.minHeight = "auto";
+                    mainContent.style.backgroundColor = "transparent";
+                }
 
-        // 4. Forzamos que el container use el 100% real del espacio del modal de la caja
-        const container = document.querySelector('.container-fluid');
-        if (container) {
-            container.style.padding = "10px";
-            container.style.maxWidth = "100%";
-        }
+                const container = document.querySelector('.container-fluid');
+                if (container) {
+                    container.style.padding = "10px";
+                    container.style.maxWidth = "100%";
+                }
 
-        // 5. Ocultamos el banner superior de recaudación para ganar espacio vertical en el modal
-        const banner = document.querySelector('.recaudacion-banner');
-        if (banner) {
-            banner.style.padding = "12px";
-            banner.querySelector('p')?.remove(); // Quitamos el subtítulo para compactar la UI
-        }
-    }
-});
-
+                const banner = document.querySelector('.recaudacion-banner');
+                if (banner) {
+                    banner.style.padding = "12px";
+                    banner.querySelector('p')?.remove();
+                }
+            }
+        });
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
