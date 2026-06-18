@@ -34,12 +34,25 @@ public class PedidoService {
 
     @Transactional(readOnly = true)
     public List<Pedido> listarPedidosFrios() {
-        return pedidoRepository.buscarPedidosPorCocina("FRI");
+        return pedidoRepository.findAll().stream()
+                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA || p.getEstado() == EstadoPedido.PENDIENTE)
+                .filter(p -> p.getListaDetalles() != null && p.getListaDetalles().stream()
+                        .anyMatch(d -> !d.isCocinado() && d.getProducto() != null && d.getProducto().getCategoria() != null
+                                && (d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRI")
+                                || d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRÍ"))))
+                .sorted(Comparator.comparing(Pedido::getFechaCreacion))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public List<Pedido> listarPedidosCalientes() {
-        return pedidoRepository.buscarPedidosPorCocina("CALIENTE");
+        return pedidoRepository.findAll().stream()
+                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA || p.getEstado() == EstadoPedido.PENDIENTE)
+                .filter(p -> p.getListaDetalles() != null && p.getListaDetalles().stream()
+                        .anyMatch(d -> !d.isCocinado() && d.getProducto() != null && d.getProducto().getCategoria() != null
+                                && d.getProducto().getCategoria().getNombre().toUpperCase().contains("CALIENTE")))
+                .sorted(Comparator.comparing(Pedido::getFechaCreacion))
+                .toList();
     }
 
     @Transactional
