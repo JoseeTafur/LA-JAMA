@@ -1,4 +1,4 @@
-package com.web.restaurante.service;
+/*package com.web.restaurante.service;
 
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
@@ -162,4 +162,4 @@ public class YapePlinValidatorService {
 
         return resultado;
     }
-}
+}*/

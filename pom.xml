@@ -108,11 +108,6 @@
 			<artifactId>spring-boot-starter-thymeleaf-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>net.sourceforge.tess4j</groupId>
-			<artifactId>tess4j</artifactId>
-			<version>5.11.0</version>
-		</dependency>
 	</dependencies>
 
 	<build>

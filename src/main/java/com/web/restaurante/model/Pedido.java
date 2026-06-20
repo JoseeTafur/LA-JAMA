@@ -79,6 +79,9 @@ public class Pedido {
     @Column(name = "codigo_pago_operacion", length = 100)
     private String codigoPagoOperacion;
 
+    @Transient
+    private String textoVoucherCrudo;
+
     private String clienteCorreo;
 
     private String preferenciaComprobante;

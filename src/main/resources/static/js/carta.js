@@ -334,7 +334,7 @@ async function subirImagen(file) {
     }
 }
 
-/* ── TRANSMISIÓN DEL PEDIDO CON LOGÍSTICA MULTIPART ANTIFRAUDE ── */
+/* ── TRANSMISIÓN DEL PEDIDO CON LOGÍSTICA MULTIPART HÍBRIDA ANTIFRAUDE ── */
 async function enviarPedido() {
     const nombre    = document.getElementById('nombreCliente').value.trim();
     const direccion = tipoEntrega === 'RECOGER'
@@ -376,49 +376,72 @@ ${detalle}
 
 💰 TOTAL: S/ ${total.toFixed(2)}`;
 
-    // Activamos la pantalla de bloqueo de La Jama
+    // Activamos la pantalla de bloqueo visual de La Jama
     if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
         AppUtils.showLoading(true);
     }
 
+    // ── 🔥 PASO MAESTRO: PROCESAMIENTO OCR EN EL NAVEGADOR DEL CLIENTE ──
+    let textoVoucherExtraido = "";
+    if (file && (metodoPago === 'YAPE' || metodoPago === 'PLIN')) {
+        Swal.fire({
+            title: 'Validando Parámetros Financieros...',
+            text: 'La IA está descifrando el monto y la fecha del voucher desde tu dispositivo de forma segura.',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            // Inicialización local del Worker en el cliente sin consumir RAM en Railway
+            const resultadoOcr = await Tesseract.recognize(file, 'spa');
+            textoVoucherExtraido = resultadoOcr.data.text;
+            console.log("🛰️ [OCR FRONTEND] Texto extraído con éxito:\n", textoVoucherExtraido);
+        } catch (ocrError) {
+            console.warn("⚠️ Falló el motor OCR en el navegador, pasando a contingencia:", ocrError);
+            textoVoucherExtraido = ""; // Pasa vacío para que el backend lo marque como CHECK-MANUAL
+        }
+    }
+
     try {
-       const formDataPayload = new FormData();
+        const formDataPayload = new FormData();
 
-               const pedidoDataJson = {
-                   cliente:    nombre,
-                   direccion:  direccion,
-                   latitud:    lat ? parseFloat(lat) : null,
-                   longitud:   lng ? parseFloat(lng) : null,
-                   montoTotal: parseFloat(total.toFixed(2)),
-                   metodoPago: metodoPago,
-                   tipoPedido: tipoEntrega === 'DELIVERY' ? 'DELIVERY' : 'LOCAL',
-                   clienteCorreo: correoCliente ? correoCliente : null,
-                   preferenciaComprobante: prefComprobante,
-                   documentoCliente: numDocumento ? numDocumento : null,
-                   listaDetalles: carrito.map(item => ({
-                       producto:       { id: parseInt(item.id) },
-                       cantidad:       1,
-                       precioUnitario: item.precio,
-                       subtotal:       item.precio
-                   }))
-               };
+        const pedidoDataJson = {
+            cliente:    nombre,
+            direccion:  direccion,
+            latitud:    lat ? parseFloat(lat) : null,
+            longitud:   lng ? parseFloat(lng) : null,
+            montoTotal: parseFloat(total.toFixed(2)),
+            metodoPago: metodoPago,
+            tipoPedido: tipoEntrega === 'DELIVERY' ? 'DELIVERY' : 'LOCAL',
+            clienteCorreo: correoCliente ? correoCliente : null,
+            preferenciaComprobante: prefComprobante,
+            documentoCliente: numDocumento ? numDocumento : null,
+            textoVoucherCrudo: textoVoucherExtraido, // 🌟 INYECTAMOS EL TEXTO EXTRAÍDO EN EL JSON
+            listaDetalles: carrito.map(item => ({
+                producto:       { id: parseInt(item.id) },
+                cantidad:       1,
+                precioUnitario: item.precio,
+                subtotal:       item.precio
+            }))
+        };
 
-               // Empaquetamos el json
-               formDataPayload.append("pedido", new Blob([JSON.stringify(pedidoDataJson)], { type: "application/json" }));
+        // Empaquetamos el json del DTO pedido
+        formDataPayload.append("pedido", new Blob([JSON.stringify(pedidoDataJson)], { type: "application/json" }));
 
-               // Adjuntamos el archivo binario del voucher original
-               if (file) {
-                   formDataPayload.append("voucher", file);
-               }
+        // Adjuntamos el archivo binario del voucher para el filtro cromático de seguridad en el backend
+        if (file) {
+            formDataPayload.append("voucher", file);
+        }
 
-               const resPedido = await fetch('/carta/pedido', {
-                   method: 'POST',
-                   body: formDataPayload // Envío directo multipart seguro
-               });
+        const resPedido = await fetch('/carta/pedido', {
+            method: 'POST',
+            body: formDataPayload
+        });
 
         const dataPedido = await resPedido.json();
 
-        // 🛡️ CONTROL DE ADUANA ANTIFRAUDE: Si el backend rechazó por ID, precio o fecha, interrumpe el flujo
+        // 🛡️ CONTROL DE ADUANA ANTIFRAUDE
         if (!resPedido.ok) {
             if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
                 AppUtils.showLoading(false);
@@ -429,12 +452,12 @@ ${detalle}
                 text: dataPedido.message || 'El comprobante enviado no cumple con los requisitos mínimos de seguridad.',
                 confirmButtonColor: '#933D2D'
             });
-            return; // Detiene la ejecución, protegiendo los datos en el formulario del cliente
+            return;
         }
 
-        const id = dataPedido.id; // Extraemos el ID del mapa de éxito enviado desde tu controlador
+        const id = dataPedido.id;
 
-        // Flujo regular con tus tablas internas de auditoría de vouchers
+        // Tu flujo regular con tablas internas de auditoría de vouchers
         const resGuardar = await fetch('/admin/pagos-digitales/api/guardar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -450,20 +473,15 @@ ${detalle}
 
         let urlFinalImagen = null;
         if (file) {
-            console.log("⏳ Procesando archivo seleccionado por el usuario...");
             urlFinalImagen = await subirImagen(file);
-            console.log("🎯 URL final que se enviará a la base de datos:", urlFinalImagen);
         }
 
         if (urlFinalImagen) {
             await fetch(`/admin/pagos-digitales/api/actualizar-imagen/${idPago}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    imgUrl: urlFinalImagen
-                })
+                body: JSON.stringify({ imgUrl: urlFinalImagen })
             });
-            console.log("💾 Base de datos actualizada con el identificador de Cloudinary.");
         }
 
         if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
@@ -490,7 +508,6 @@ ${detalle}
         if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
             AppUtils.showLoading(false);
         }
-        console.warn('No se pudo registrar en sistema:', e.message || e);
         Swal.fire({
             icon: 'error',
             title: 'Error en la Operación',
