@@ -440,5 +440,13 @@ public class PedidoService {
         return pedidoRepository.findAll(); // Trae todo sin filtros de estado ni tipo
     }
 
+    @Transactional(readOnly = true)
+    public boolean existeNumeroOperationHoy(String firmaVoucher) {
+        LocalDateTime inicioHoy = java.time.LocalDate.now().atStartOfDay();
+        // Buscamos si existe algún pedido registrado hoy con este hash estructural único
+        return pedidoRepository.findAll().stream()
+                .filter(p -> p.getFechaCreacion() != null && p.getFechaCreacion().isAfter(inicioHoy))
+                .anyMatch(p -> firmaVoucher.equalsIgnoreCase(p.getDocumentoCliente()));
+    }
 
 }

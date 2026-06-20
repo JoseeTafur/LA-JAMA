@@ -38,7 +38,30 @@ stompClient.connect({}, function (frame) {
         // evento = { numeroMesa: 5, nuevoEstado: 'lista-para-recoger', pedidoId: 102, pedidoEstado: 'EN_COCINA' }
         actualizarEstadoMesaEnPlano(evento.numeroMesa, evento.nuevoEstado, evento.pedidoId, evento.pedidoEstado);
     });
+
+    stompClient.subscribe('/topic/notificaciones/mozos', function (notificacion) {
+            procesarNotificacionMozoInPlano(notificacion.body);
+    });
 });
+
+function procesarNotificacionMozoInPlano(mensaje) {
+    var audioNotif = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audioNotif.play().catch(e => console.log("Audio en espera"));
+
+    if (mensaje.includes("⏳") || mensaje.includes("🚨")) {
+        AppUtils.showNotification(mensaje, 'warning');
+    } else if (mensaje.includes("⚠️")) {
+        // Reservas expiradas
+        AppUtils.showNotification(mensaje, 'error');
+    } else {
+        AppUtils.showNotification(mensaje, 'success');
+    }
+
+    // Refresca la grilla de reservas de fondo si el DataTable está renderizado en pantalla
+    if (typeof dataTable !== 'undefined') {
+        dataTable.ajax.reload(null, false);
+    }
+}
 
 function mostrarNotificacionCocina(mensaje) {
     if (mensaje.includes("🚨 ALERTA DE MERMA")) {

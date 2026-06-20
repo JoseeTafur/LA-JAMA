@@ -10,6 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -46,14 +47,24 @@ public class PerfilController {
                 .map(perfil -> {
                     Map<String, Object> response = new HashMap<>();
                     response.put("success", true);
+
                     Map<String, Object> perfilData = new HashMap<>();
                     perfilData.put("id", perfil.getId());
                     perfilData.put("nombre", perfil.getNombre());
                     perfilData.put("descripcion", perfil.getDescripcion());
                     perfilData.put("estado", perfil.getEstado());
-                    perfilData.put("opciones",
-                            perfil.getOpciones().stream().map(op -> op.getId()).collect(Collectors.toSet()));
 
+                    // 🌟 CORRECCIÓN DE LA FIRMA JSON: Devolvemos objetos completos con id para que Jackson no se rompa
+                    List<Map<String, Object>> opcionesMapeadas = perfil.getOpciones().stream()
+                            .map(op -> {
+                                Map<String, Object> opMap = new HashMap<>();
+                                opMap.put("id", op.getId());
+                                opMap.put("nombre", op.getNombre());
+                                opMap.put("ruta", op.getRuta());
+                                return opMap;
+                            }).collect(Collectors.toList());
+
+                    perfilData.put("opciones", opcionesMapeadas);
                     response.put("data", perfilData);
                     return ResponseEntity.ok(response);
                 })

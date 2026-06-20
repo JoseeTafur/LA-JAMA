@@ -124,141 +124,203 @@
     <span class="badge-count" id="badgeCount">0</span>
 </button>
 
-<div class="modal fade modal-carrito" id="modalCarrito" tabindex="-1">
-    <div class="modal-dialog modal-dialog-scrollable">
-        <div class="modal-content">
+<div class="modal fade modal-carrito" id="modalCarrito" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content premium-modal">
 
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold"><i class="bi bi-bag-fill me-2"></i>Tu Pedido</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body" style="padding: 1rem 1.1rem;">
-
-                <div id="listaCarrito"></div>
-
-                <div class="total-row">
-                    <span class="total-label">Total</span>
-                    <span class="total-monto">S/ <span id="totalCarrito">0.00</span></span>
+            <div class="modal-header d-flex flex-column align-items-stretch border-0 pb-0">
+                <div class="d-flex justify-content-between align-items-center w-100 mb-3 px-2 mt-2">
+                    <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2">
+                        <i class="bi bi-bag-check-fill fs-4 text-gold"></i> Tu Pedido
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white opacity-75 hover-opacity-100" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <div class="seccion-entrega" style="margin-top:1rem;">
-                    <label><i class="bi bi-person-fill me-1"></i>Tu nombre</label>
-                    <input type="text" id="nombreCliente" class="input-entrega" placeholder="Ej: María García">
+                <div class="jama-steps-indicator position-relative px-3 mb-4">
+                    <div class="step-progress-line">
+                        <div id="stepProgressBar" class="progress-fill"></div>
+                    </div>
+                    <div class="jama-step-node active" id="indicator-step-1">
+                        <span class="node-num"><i class="bi bi-basket3-fill"></i></span>
+                        <span class="node-txt">Datos</span>
+                    </div>
+                    <div class="jama-step-node" id="indicator-step-2">
+                        <span class="node-num"><i class="bi bi-box-seam-fill"></i></span>
+                        <span class="node-txt">Entrega</span>
+                    </div>
+                    <div class="jama-step-node" id="indicator-step-3">
+                        <span class="node-num"><i class="bi bi-receipt-cutoff"></i></span>
+                        <span class="node-txt">Fiscal</span>
+                    </div>
+                    <div class="jama-step-node" id="indicator-step-4">
+                        <span class="node-num"><i class="bi bi-wallet2"></i></span>
+                        <span class="node-txt">Pago</span>
+                    </div>
+                </div>
+            </div>
 
-                    <label><i class="bi bi-send me-1"></i>¿Cómo lo recibes?</label>
-                    <div class="d-flex gap-2 mb-3">
-                        <button class="btn-tipo" id="btnRecoger" onclick="seleccionarTipo('RECOGER')">
-                            🛍️ Recoger en local
-                        </button>
-                        <button class="btn-tipo" id="btnDelivery" onclick="seleccionarTipo('DELIVERY')">
-                            🚴 Delivery
-                        </button>
+            <div class="modal-body custom-scroll">
+
+                <div class="jama-checkout-step step-fade-in active" id="checkout-step-1">
+                    <h6 class="step-section-title"><i class="bi bi-card-checklist me-2"></i>Revisión de Consumos</h6>
+
+                    <div class="ticket-receipt mb-4">
+                        <div id="listaCarrito" class="ticket-items"></div>
+                        <div class="ticket-total">
+                            <span class="total-label">Total a Pagar</span>
+                            <span class="total-monto">S/ <span id="totalCarrito">0.00</span></span>
+                        </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label for="preferenciaComprobante"><i class="bi bi-file-earmark-text-fill me-1"></i>Tipo de Comprobante</label>
-                            <select name="preferenciaComprobante" id="preferenciaComprobante" class="form-control" onchange="conmutarTipoDocumento()">
-                                <option value="BOLETA">Boleta</option>
-                                <option value="FACTURA">Factura</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label id="labelDocumento" for="numeroDocumento"><i class="bi bi-card-id me-1"></i>DNI (Opcional):</label>
-                            <input type="text" id="numeroDocumento" class="form-control" placeholder="Ej: 74589632" maxlength="8">
-                        </div>
+                    <div class="form-group-premium">
+                        <label for="nombreCliente"><i class="bi bi-person-badge me-1"></i> ¿A nombre de quién va el pedido? *</label>
+                        <input type="text" id="nombreCliente" class="input-premium" placeholder="Ej: María García" required>
                     </div>
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="clienteCorreo"><i class="bi bi-envelope-fill me-1"></i>Correo Electrónico (Para recibir ticket):</label>
-                            <input type="email" name="clienteCorreo" id="clienteCorreo" class="form-control" placeholder="ejemplo@correo.com">
-                        </div>
-                    </div>
+                </div>
 
-                    <div id="seccionDireccion" class="mb-3">
-                        <label><i class="bi bi-geo-alt-fill me-1"></i>¿Dónde te entregamos?</label>
-                        <div class="direccion-wrap">
-                            <div class="dir-input-group">
-                                <div class="dir-icon"><i class="bi bi-search"></i></div>
+                <div class="jama-checkout-step step-fade-in d-none" id="checkout-step-2">
+                    <h6 class="step-section-title"><i class="bi bi-truck me-2"></i>Logística de Despacho</h6>
+
+                    <div class="form-group-premium">
+                        <label><i class="bi bi-shop me-1"></i> ¿Cómo lo recibes? *</label>
+                        <div class="selection-grid mb-4">
+                            <button type="button" class="btn-selection" id="btnRecoger" onclick="seleccionarTipo('RECOGER')">
+                                <span class="icon-wrap bg-light"><i class="bi bi-bag-heart-fill text-verde"></i></span>
+                                <span class="fw-bold">Recoger</span>
+                                <span class="small text-muted">En el local</span>
+                            </button>
+                            <button type="button" class="btn-selection" id="btnDelivery" onclick="seleccionarTipo('DELIVERY')">
+                                <span class="icon-wrap bg-light"><i class="bi bi-bicycle text-rojo"></i></span>
+                                <span class="fw-bold">Delivery</span>
+                                <span class="small text-muted">A tu puerta</span>
+                            </button>
+                        </div>
+
+                        <div id="seccionDireccion" class="animate__animated animate__fadeIn">
+                            <label><i class="bi bi-geo-alt-fill me-1"></i> ¿Dónde te entregamos? *</label>
+                            <div class="dir-input-premium mb-2">
+                                <i class="bi bi-search search-icon"></i>
                                 <input type="text" id="direccionCliente" placeholder="Busca tu calle o barrio..." autocomplete="off">
                             </div>
-                            <ul id="sugerencias-dir" class="sugerencias-lista"></ul>
+                            <ul id="sugerencias-dir" class="sugerencias-lista premium-shadow"></ul>
+
+                            <div class="map-container-premium">
+                                <div class="map-overlay-tip"><i class="bi bi-cursor-fill me-1"></i>Toca el mapa para exactitud</div>
+                                <div id="mapa-pedido"></div>
+                            </div>
+                            <input type="hidden" id="latCliente">
+                            <input type="hidden" id="lngCliente">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="jama-checkout-step step-fade-in d-none" id="checkout-step-3">
+                    <h6 class="step-section-title"><i class="bi bi-file-earmark-text-fill me-2"></i>Información Fiscal</h6>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <div class="form-group-premium m-0">
+                                <label for="preferenciaComprobante">Comprobante</label>
+                                <select name="preferenciaComprobante" id="preferenciaComprobante" class="input-premium form-select" onchange="conmutarTipoDocumento()">
+                                    <option value="BOLETA">Boleta</option>
+                                    <option value="FACTURA">Factura</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group-premium m-0">
+                                <label id="labelDocumento" for="numeroDocumento">DNI (Opcional)</label>
+                                <input type="text" id="numeroDocumento" class="input-premium" placeholder="Ej: 74589632" maxlength="11">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group-premium">
+                        <label for="clienteCorreo"><i class="bi bi-envelope-at-fill me-1"></i> Correo Electrónico (Ticket digital) *</label>
+                        <input type="email" id="clienteCorreo" class="input-premium" placeholder="ejemplo@correo.com" required>
+                    </div>
+                </div>
+
+                <div class="jama-checkout-step step-fade-in d-none" id="checkout-step-4">
+                    <h6 class="step-section-title"><i class="bi bi-shield-lock-fill me-2"></i>Liquidación Contable</h6>
+
+                    <div class="form-group-premium">
+                        <label><i class="bi bi-phone-vibrate-fill me-1"></i> Seleccione Billetera Digital *</label>
+
+                        <div class="selection-grid mb-4">
+                            <button type="button" class="btn-selection yape-btn" id="btnYape" onclick="seleccionarPago('YAPE')">
+                                <div class="brand-logo bg-yape">Y</div>
+                                <span class="fw-bold">Yape</span>
+                            </button>
+                            <button type="button" class="btn-selection plin-btn" id="btnPlin" onclick="seleccionarPago('PLIN')">
+                                <div class="brand-logo bg-plin">P</div>
+                                <span class="fw-bold">Plin</span>
+                            </button>
                         </div>
 
-                        <p class="tip-mapa"><i class="bi bi-info-circle me-1"></i>También puedes tocar el mapa para marcar tu punto exacto</p>
-
-                        <input type="hidden" id="latCliente">
-                        <input type="hidden" id="lngCliente">
-                        <div id="mapa-pedido"></div>
-                    </div>
-
-                    <label><i class="bi bi-credit-card-fill me-1"></i>Método de pago</label>
-                    <div class="d-flex gap-2 mb-1">
-                        <button class="btn-tipo" id="btnYape" onclick="seleccionarPago('YAPE')">
-                            Yape
-                        </button>
-                        <button class="btn-tipo" id="btnPlin" onclick="seleccionarPago('PLIN')">
-                            Plin
-                        </button>
-                    </div>
-
-                    <div id="seccionYape" style="display:none;">
-                        <p class="mb-3">Escanea el QR y realiza el pago. O yapea al: <span class="fw-bold">971566216</span></p>
-
-                        <div class="uiverse-wrapper-panel">
-                            <div class="folder">
-                                <div class="back-side"></div>
-                                <div class="front-side">
-                                    <div class="tip"></div>
-                                    <div class="cover"></div>
-                                </div>
-                                <div class="custom-paper-inside">
-                                    <img id="imgPreviaYape" src="" alt="preview" class="folder-preview-img" style="display:none;">
+                        <div id="seccionYape" style="display:none;" class="payment-instruction-box">
+                            <div class="payment-header yape-text">
+                                <i class="bi bi-qr-code-scan fs-3"></i>
+                                <div>
+                                    <span class="d-block small text-muted">Yapea al titular de La Jama</span>
+                                    <strong class="fs-5">971 566 216</strong>
                                 </div>
                             </div>
-                            <label class="custom-file-upload">
-                                <input type="file" id="yapeImgInput" name="archivoImagen" accept="image/jpeg, image/png, image/webp" onchange="previewImageYape(event)">
-                                Subir Voucher Yape
-                            </label>
-                        </div>
-                    </div>
-
-                    <div id="seccionPlin" style="display:none;">
-                        <div class="qr-img-wrap">
-                            <img src="https://res.cloudinary.com/dyjnbddit/image/upload/v1781449329/QRPlin_s9ycit.png"
-                                 alt="QR Plin"
-                                 class="img-fluid rounded mb-2 w-100">
-                        </div>
-                        <p class="mb-3">Escanea el QR y realiza el pago por Plin. O plinea al: <span class="fw-bold">999888777</span></p>
-
-                        <!-- Nueva estructura estilo Uiverse para Plin -->
-                        <div class="uiverse-wrapper-panel">
-                            <div class="folder">
-                                <div class="back-side"></div>
-                                <div class="front-side">
-                                    <div class="tip"></div>
-                                    <div class="cover"></div>
+                            <div class="uiverse-wrapper-panel">
+                                <div class="folder">
+                                    <div class="back-side"></div>
+                                    <div class="front-side"><div class="tip"></div><div class="cover"></div></div>
+                                    <div class="custom-paper-inside">
+                                        <img id="imgPreviaYape" src="" alt="preview" class="folder-preview-img" style="display:none;">
+                                    </div>
                                 </div>
-                                <div class="custom-paper-inside">
-                                    <img id="imgPreviaPlin" src="" alt="preview" class="folder-preview-img" style="display:none;">
+                                <label class="custom-file-upload">
+                                    <input type="file" id="yapeImgInput" style="display:none;" accept="image/jpeg, image/png, image/webp" onchange="previewImageYape(event)">
+                                    <i class="bi bi-cloud-arrow-up-fill me-1"></i> Subir Voucher Yape
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="seccionPlin" style="display:none;" class="payment-instruction-box">
+                            <div class="payment-header plin-text">
+                                <img src="https://res.cloudinary.com/dyjnbddit/image/upload/v1781449329/QRPlin_s9ycit.png" alt="QR Plin" class="qr-thumbnail">
+                                <div>
+                                    <span class="d-block small text-muted">Plinea al número comercial</span>
+                                    <strong class="fs-5">999 888 777</strong>
                                 </div>
                             </div>
-                            <label class="custom-file-upload">
-                                <input type="file" id="plinImgInput" name="archivoImagenPlin" accept="image/jpeg, image/png, image/webp" onchange="previewImagePlin(event)">
-                                Subir Voucher Plin
-                            </label>
+                            <div class="uiverse-wrapper-panel">
+                                <div class="folder">
+                                    <div class="back-side"></div>
+                                    <div class="front-side"><div class="tip"></div><div class="cover"></div></div>
+                                    <div class="custom-paper-inside">
+                                        <img id="imgPreviaPlin" src="" alt="preview" class="folder-preview-img" style="display:none;">
+                                    </div>
+                                </div>
+                                <label class="custom-file-upload">
+                                    <input type="file" id="plinImgInput" style="display:none;" accept="image/jpeg, image/png, image/webp" onchange="previewImagePlin(event)">
+                                    <i class="bi bi-cloud-arrow-up-fill me-1"></i> Subir Voucher Plin
+                                </label>
+                            </div>
                         </div>
                     </div>
-
                 </div>
 
             </div>
 
-            <div class="modal-footer" style="gap:0.6rem;">
-                <button class="btn-seguir" data-bs-dismiss="modal">Seguir viendo</button>
-                <button class="btn-confirmar" onclick="enviarPedido()">
-                    <i class="bi bi-whatsapp"></i> Confirmar pedido
+            <div class="modal-footer premium-footer">
+                <button type="button" class="btn-action btn-outline-secondary d-none" id="btnAtrasStep" onclick="navegarEtapa(-1)">
+                    <i class="bi bi-arrow-left"></i> Atrás
+                </button>
+                <button type="button" class="btn-action btn-ghost" id="btnCancelarCheckout" data-bs-dismiss="modal">
+                    Seguir Viendo
+                </button>
+
+                <button type="button" class="btn-action btn-primary-jama" id="btnSiguienteStep" onclick="navegarEtapa(1)">
+                    Siguiente <i class="bi bi-arrow-right"></i>
+                </button>
+                <button type="button" class="btn-action btn-whatsapp d-none" id="btnFinalizarPedido" onclick="enviarPedido()">
+                    <i class="bi bi-whatsapp"></i> Confirmar Pedido
                 </button>
             </div>
 

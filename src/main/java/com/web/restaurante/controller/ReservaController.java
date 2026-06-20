@@ -24,8 +24,10 @@ public class ReservaController {
     private final MesaService mesaService;
 
     @GetMapping
-
     public String mostrarReservas(Model model) {
+        model.addAttribute("activeUri", "/admin/reservas");
+        model.addAttribute("titleHeader", "Gestión de Reservas");
+
         model.addAttribute("reservas", reservaService.listarTodas());
         return "admin/reservas";
     }

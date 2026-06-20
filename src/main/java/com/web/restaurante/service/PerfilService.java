@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -38,7 +39,7 @@ public class    PerfilService {
         return perfilRepository.findByNombreIgnoreCase(nombre);
     }
 
-    
+
     @Transactional
     public Perfil guardar(Perfil perfil) {
         if (perfil.getId() != null) {
@@ -49,12 +50,46 @@ public class    PerfilService {
 
             existente.setNombre(perfil.getNombre().trim());
             existente.setDescripcion(perfil.getDescripcion().trim());
-            existente.setOpciones(perfil.getOpciones());
+
+            // 🌟 MOTOR DE SINCRONIZACIÓN ATÓMICA DE PRIVILEGIOS (ACTUALIZAR)
+            existente.getOpciones().clear();
+
+            if (perfil.getOpciones() != null) {
+                for (Opcion opForm : perfil.getOpciones()) {
+                    if (opForm.getId() != null) {
+                        opcionRepository.findById(opForm.getId()).ifPresent(opcionBD -> {
+                            existente.getOpciones().add(opcionBD);
+                        });
+                    }
+                }
+            }
 
             return perfilRepository.save(existente);
         }
 
+        // 🌟 NUEVO REGISTRO DESDE CERO
         validarDuplicados(perfil);
+
+        // Guardamos temporalmente las opciones que vinieron desacopladas del formulario
+        java.util.List<Opcion> opcionesFormulario = perfil.getOpciones() != null ?
+                new java.util.ArrayList<>(perfil.getOpciones()) : new java.util.ArrayList<>();
+
+        // Limpiamos la colección original para evitar que Hibernate intente persistir referencias detached
+        if (perfil.getOpciones() != null) {
+            perfil.getOpciones().clear();
+        } else {
+            // Failsafe por si la entidad no inicializa la colección por defecto en su constructor
+            perfil.setOpciones(new java.util.HashSet<>()); // O java.util.ArrayList<>() según tu modelo
+        }
+
+        // Poblamos el nuevo perfil trayendo las entidades rastreables del gestor de persistencia
+        for (Opcion opForm : opcionesFormulario) {
+            if (opForm.getId() != null) {
+                opcionRepository.findById(opForm.getId()).ifPresent(opcionBD -> {
+                    perfil.getOpciones().add(opcionBD);
+                });
+            }
+        }
 
         return perfilRepository.save(perfil);
     }

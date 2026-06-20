@@ -1,0 +1,164 @@
+/* ========================================================
+   🌿 LA JAMA UI - RESPONSIVIDAD MAESTRA (SIN SCROLL HORIZONTAL)
+   ======================================================== */
+
+:root {
+    --lajama-green-bg: #1e3a2b;     /* Verde Bosque de la Barra Lateral */
+    --lajama-green-free: #00b159;   /* Verde Vibrante Estado "Libre" */
+    --lajama-cream-soft: #faf6ee;   /* Crema de Fondo del Tablero */
+    --lajama-orange-alert: #ff8a00; /* Naranja de Alerta / Reservas */
+    --lajama-purple: #7011e4;       /* Púrpura Unificada */
+    --lajama-dark-text: #17251d;    /* Texto oscuro verdoso para legibilidad */
+    --lajama-white: #ffffff;
+}
+
+/* 🏢 CONTENEDOR ADAPTATIVO PRINCIPAL */
+.card.card-jama-main {
+    border: 1px solid rgba(30, 58, 43, 0.06) !important;
+    width: 100%;
+    height: calc(100vh - 140px) !important; /* 📐 Ajusta la tarjeta al alto neto de la pantalla */
+    margin: 0 auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.01) !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Evita que la tarjeta desborde el layout maestro */
+}
+
+.card.card-jama-main .card-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    padding: 1.5rem !important;
+}
+
+/* 📥 ENVOLTURA FLUIDA INTELIGENTE (PREVIENE SCROLL GENERAL) */
+.table-container-fluid {
+    width: 100%;
+    flex-grow: 1;
+    overflow-y: auto !important;   /* Solo permite scroll vertical interno si se llena la agenda */
+    overflow-x: hidden !important;  /* 🚫 Purgado absoluto de cualquier residuo horizontal */
+    padding-right: 4px;            /* Espacio preventivo para el scrollbar vertical */
+}
+
+/* 📊 DISTRIBUCIÓN DE LA TABLA EN ANCHOS DE PANTALLA */
+#tablaReservas {
+    border-collapse: separate !important;
+    border-spacing: 0 6px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important; /* 📐 Distribución matemática de celdas según porcentajes JS */
+    margin: 0 !important;
+}
+
+#tablaReservas tbody tr {
+    background-color: var(--lajama-white, #ffffff) !important;
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
+}
+
+#tablaReservas tbody tr:hover {
+    background-color: var(--lajama-cream, #fffbeb) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(27, 58, 44, 0.05) !important;
+}
+
+/* Forzar que las columnas respeten el espacio y truncar texto si es muy largo */
+#tablaReservas th, #tablaReservas td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 10px 8px !important; /* 🎯 Celdas compactas para optimizar resolución */
+}
+
+/* 🟩 DISEÑO GRID AUTOMÁTICO DE LOS MODALES (SHADCN SYSTEM) */
+.jama-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2100;
+    padding: 1.5rem;
+}
+
+.jama-modal-content {
+    width: 100%;
+    max-width: 680px;
+    background-color: var(--lajama-white, #ffffff) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.12) !important;
+    border: 1px solid rgba(30, 58, 43, 0.06) !important;
+    border-radius: 16px !important;
+}
+
+/* Grilla interna nativa para inputs */
+.jama-grid-layout {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
+    width: 100%;
+}
+
+.jama-form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Divisiones de columnas proporcionales */
+.span-4 { grid-column: span 4; }
+.span-6 { grid-column: span 6; }
+.span-12 { grid-column: span 12; }
+
+/* Mensajes de error pequeños y firmes */
+.invalid-feedback {
+    font-size: 0.72rem !important;
+    font-weight: 700;
+    margin-top: 0.25rem;
+}
+
+/* Botonera de Cierre */
+.jama-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.6rem;
+    color: #94a3b8;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.jama-close-btn:hover {
+    color: var(--lajama-green-bg);
+}
+
+/* ⏳ CUSTOM SCROLLBAR INTERNO (ESTILO PREMEDITADO CREMA) */
+.table-container-fluid::-webkit-scrollbar {
+    width: 5px;
+}
+.table-container-fluid::-webkit-scrollbar-thumb {
+    background: rgba(30, 58, 43, 0.15);
+    border-radius: 10px;
+}
+.table-container-fluid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 📱 ADAPTABILIDAD PARA PANTALLAS DE LAPTOPS PEQUEÑAS O TABLETS */
+@media (max-width: 768px) {
+    .span-4, .span-6 {
+        grid-column: span 12;
+    }
+    #tablaReservas {
+        table-layout: auto !important;
+    }
+    .table-container-fluid {
+        overflow-x: auto !important; /* Habilitar scroll horizontal únicamente en móviles si se desborda */
+    }
+    .card.card-jama-main {
+        height: auto !important; /* Permite flujo natural en dispositivos portátiles pequeños */
+    }
+}

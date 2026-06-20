@@ -40,9 +40,14 @@ public class CajaController {
             model.addAttribute("montoSugerido", turnoCajaService.obtenerMontoAperturaSugerido());
             model.addAttribute("activeUri", "/admin/caja");
 
-            if (horaActual.isBefore(LocalTime.of(8, 0))) {
+            //Turno Día (8AM - 6PM) | Turno Noche (7PM - 7AM)
+            boolean horarioPermitido =
+                    (horaActual.isAfter(LocalTime.of(8, 0)) && horaActual.isBefore(LocalTime.of(18, 0))) || // Guardia Día
+                            (horaActual.isAfter(LocalTime.of(19, 0)) || horaActual.isBefore(LocalTime.of(7, 0)));   // Guardia Noche (Cruza medianoche)
+
+            if (!horarioPermitido) {
                 model.addAttribute("horarioBloqueado", true);
-                model.addAttribute("horaAperturaPermitida", "08:00 AM");
+                model.addAttribute("horaAperturaPermitida", "08:00 AM o 07:00 PM");
                 model.addAttribute("horaActualSimulada", horaActual.toString());
             } else {
                 model.addAttribute("horarioBloqueado", false);
@@ -64,9 +69,26 @@ public class CajaController {
         model.addAttribute("movimientos", movimientos);
         model.addAttribute("saldoTeorico", saldoTeorico);
 
-        // BANDEJA OPERATIVA INTERNA: Listamos los pedidos listos para cobrar internamente
-        List<Pedido> pedidosParaCaja = pedidoService.listarPedidosPorCobrar();
-        model.addAttribute("pedidos", pedidosParaCaja);
+        List<Pedido> porCobrar = pedidoRepository.findAll().stream()
+                .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.PAGADO
+                        && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
+                .filter(p -> p.getNumeroMesa() != null)
+                .filter(p -> p.getListaDetalles() != null && p.getListaDetalles().stream()
+                        .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isPagado()))
+                .sorted(Comparator.comparing(Pedido::getId).reversed())
+                .collect(Collectors.toList());
+
+        List<Pedido> liquidados = pedidoRepository.findAll().stream()
+                .filter(p -> p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PAGADO)
+                .filter(p -> {
+                    if (p.getFechaCreacion() == null || turnoActivo.getFechaApertura() == null) return false;
+                    return p.getFechaCreacion().isAfter(turnoActivo.getFechaApertura());
+                })
+                .sorted(Comparator.comparing(Pedido::getId).reversed())
+                .collect(Collectors.toList());
+
+        model.addAttribute("pedidosPorCobrar", porCobrar);
+        model.addAttribute("pedidosLiquidados", liquidados);
 
         List<Pedido> todosLosPedidosHistorial = pedidoRepository.findAll();
         model.addAttribute("pedidosDiario", todosLosPedidosHistorial);
@@ -116,9 +138,9 @@ public class CajaController {
     }
 
     // ============================================================================
-    // 🚀 NUEVO ENDPOINT RECEPTOR DE LIQUIDACIÓN MULTITICKET (CONEXIÓN CERRADA)
+    // 🚀 ENDPOINT RECEPTOR DE LIQUIDACIÓN MULTITICKET (RUTA RE-CALIBRADA)
     // ============================================================================
-    @PostMapping("/admin/mesas/comanda/liquidar-bloque-multiticket/{pedidoId}")
+    @PostMapping("/api/mesas/comanda/liquidar-bloque-multiticket/{pedidoId}") // 🌟 CORREGIDO: Relativo al @RequestMapping base
     @ResponseBody
     public ResponseEntity<?> liquidarMesaBloqueMultiticket(
             @PathVariable Long pedidoId,
@@ -128,7 +150,6 @@ public class CajaController {
         try {
             System.out.println("🛰️ [CAJA MÓVIL] Recibiendo Matriz de Pago para Comanda #" + pedidoId);
 
-            // 1. Convertimos el String de IDs pagados a una lista de Longs segura
             List<Long> idsDetalles = new ArrayList<>();
             if (idsDetallesPagados != null && !idsDetallesPagados.trim().isEmpty()) {
                 for (String idStr : idsDetallesPagados.split(",")) {
@@ -136,18 +157,16 @@ public class CajaController {
                 }
             }
 
-            // 2. Mapeamos la matriz de tickets JSON usando Jackson a objetos TicketDTO de forma manual
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             List<com.web.restaurante.dto.mesas.TicketDTO> listaTickets = mapper.readValue(
                     matrizTickets,
                     new com.fasterxml.jackson.core.type.TypeReference<List<com.web.restaurante.dto.mesas.TicketDTO>>() {}
             );
 
-            // 3. Invocamos tu servicio contable transaccional de Spring
             mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, idsDetalles);
             System.out.println("🎉 [CAJA MÓVIL] Transacción procesada con éxito en Base de Datos.");
 
-            return ResponseEntity.ok("Mesa liquidada operativamente");
+            return ResponseEntity.ok(Map.of("success", true, "message", "Mesa liquidada operatively"));
 
         } catch (Exception e) {
             System.err.println("💥 ERROR EN ADUANA MULTITICKET: " + e.getMessage());
@@ -159,27 +178,26 @@ public class CajaController {
     @ResponseBody
     public ResponseEntity<?> obtenerPrecuentaMesaDebug(@PathVariable Integer numeroMesa) {
         try {
-            List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesaAndEstado(
-                    numeroMesa, com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
+            // 🎯 Sincronizamos la búsqueda: Trae la orden que tenga platos encima consumiéndose en este instante
+            List<Pedido> pedidosActivos = pedidoRepository.findAll().stream()
+                    .filter(p -> p.getNumeroMesa() != null && p.getNumeroMesa().equals(numeroMesa))
+                    .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.PAGADO
+                            && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
+                    .filter(p -> p.getListaDetalles() != null && p.getListaDetalles().stream()
+                            .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isPagado()))
+                    .collect(Collectors.toList());
 
             if (pedidosActivos.isEmpty()) {
-                pedidosActivos = pedidoRepository.findByNumeroMesa(numeroMesa).stream()
-                        .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.PAGADO)
-                        .collect(Collectors.toList());
-            }
-
-            if (pedidosActivos.isEmpty()) {
-                return ResponseEntity.badRequest().body("No hay comanda activa para esta mesa.");
+                return ResponseEntity.badRequest().body("No hay comanda activa para esta mesa con platos pendientes.");
             }
 
             Pedido pedidoTarget = pedidosActivos.get(0);
 
+            // Forzamos el recálculo dinámico matemático en caliente de los subtotales para auditoría
             if (pedidoTarget.getListaDetalles() != null) {
                 for (com.web.restaurante.model.DetallePedido d : pedidoTarget.getListaDetalles()) {
-                    if (d.getSubtotal() == null || d.getSubtotal() == 0) {
-                        double subtotalCalculado = d.getCantidad() * (d.getPrecioUnitario() != null ? d.getPrecioUnitario() : 0.0);
-                        d.setSubtotal(subtotalCalculado);
-                    }
+                    double precio = d.getPrecioUnitario() != null ? d.getPrecioUnitario() : 0.0;
+                    d.setSubtotal(precio * d.getCantidad());
                 }
             }
             return ResponseEntity.ok(pedidoTarget);
@@ -204,10 +222,23 @@ public class CajaController {
             List<Map<String, Object>> detallesDTO = pedido.getListaDetalles().stream()
                     .map(d -> {
                         Map<String, Object> item = new HashMap<>();
+                        item.put("id", d.getId()); // 🌟 CRUCIAL: Identificador único del plato
                         item.put("cantidad", d.getCantidad());
                         item.put("canceladoPorCliente", d.isCanceladoPorCliente());
-                        String nombrePlato = (d.getProducto() != null) ? d.getProducto().getNombre() : "Plato Desconocido";
-                        item.put("producto", Map.of("nombre", nombrePlato));
+                        item.put("pagado", d.isPagado()); // 🌟 CRUCIAL: Estado contable real
+
+                        // Estructuramos el producto para que JS no pierda la referencia
+                        Map<String, Object> productoInfo = new HashMap<>();
+                        if (d.getProducto() != null) {
+                            productoInfo.put("id", d.getProducto().getId());
+                            productoInfo.put("nombre", d.getProducto().getNombre());
+                        } else {
+                            productoInfo.put("id", 0);
+                            productoInfo.put("nombre", "Plato Desconocido");
+                        }
+                        item.put("producto", productoInfo);
+                        item.put("productoId", d.getProducto() != null ? d.getProducto().getId() : 0);
+
                         double precio = d.getPrecioUnitario() != null ? d.getPrecioUnitario() : 0.0;
                         item.put("subtotal", precio * d.getCantidad());
                         return item;
@@ -257,5 +288,37 @@ public class CajaController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Error al extraer historial: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/ticket-venta/{pedidoId}")
+    public String verTicketVenta(@PathVariable Long pedidoId, Model model) {
+        Pedido pedido = pedidoService.obtenerPorId(pedidoId);
+        if (pedido == null) return "redirect:/admin/caja?error=not_found";
+
+        model.addAttribute("pedido", pedido);
+
+        // 🚀 MOTOR DE CONSOLIDACIÓN VISUAL PARA EL TICKET
+        // Agrupamos los detalles activos por el ID del producto para unificar cantidades repetidas
+        Collection<com.web.restaurante.model.DetallePedido> detallesAgrupados = pedido.getListaDetalles().stream()
+                .filter(d -> !d.isCanceladoPorCliente())
+                .collect(Collectors.toMap(
+                        d -> d.getProducto().getId(), // Clave de agrupación: ID del producto
+                        d -> {
+                            // Creamos una copia temporal para no alterar la persistencia real de la BD
+                            com.web.restaurante.model.DetallePedido copia = new com.web.restaurante.model.DetallePedido();
+                            copia.setProducto(d.getProducto());
+                            copia.setCantidad(d.getCantidad());
+                            copia.setPrecioUnitario(d.getPrecioUnitario());
+                            return copia;
+                        },
+                        (existente, nuevo) -> {
+                            // Si el producto ya se mapeó, sumamos las cantidades en la visualización
+                            existente.setCantidad(existente.getCantidad() + nuevo.getCantidad());
+                            return existente;
+                        }
+                )).values();
+
+        model.addAttribute("detalles", detallesAgrupados);
+        return "admin/caja/ticket_venta";
     }
 }

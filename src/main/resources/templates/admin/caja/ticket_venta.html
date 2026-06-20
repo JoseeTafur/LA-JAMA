@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket de Venta #[[${pedido.id}]]</title>
+    <style>
+        /* --- ESTILOS EN PANTALLA --- */
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            margin: 0;
+            padding: 10px;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .ticket-container {
+            width: 72mm; /* 📐 Ajuste milimétrico para rollos de 80mm */
+            background-color: #fff;
+            padding: 12px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .linea-separadora { border-top: 1px dashed #000; margin: 8px 0; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { font-size: 11px; padding: 4px 0; vertical-align: top; }
+
+        /* --- CONFIGURACIÓN CRÍTICA PARA IMPRESIÓN --- */
+        @media print {
+            body {
+                background-color: #fff;
+                padding: 0;
+                margin: 0;
+            }
+            .ticket-container {
+                width: 72mm !important; /* 🌟 FORZADO: Evita que se estire al ancho de un A4 */
+                box-shadow: none;
+                padding: 4px;
+            }
+            .no-print {
+                display: none;
+            }
+            @page {
+                size: 80mm auto; /* 🌟 CLAVE: Le dice al navegador que el papel mide 80mm de ancho y el largo es automático (continuo) */
+                margin: 0mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="ticket-container">
+
+    <div class="text-center">
+        <h3 style="margin: 0 0 3px 0; font-size: 16px;">LA JAMA</h3>
+        <p style="margin: 2px 0; font-weight: bold;">Sabor y Tradición</p>
+        <p style="margin: 2px 0;">Chiclayo, Lambayeque</p>
+        <div class="linea-separadora"></div>
+        <p style="margin: 2px 0; text-align: left;"><strong>TICKET VENTA:</strong> #[[${pedido.id}]]</p>
+        <p style="margin: 2px 0; text-align: left;"><strong>Fecha:</strong> [[${#temporals.format(pedido.fechaCreacion, 'dd/MM/yyyy HH:mm')}]]</p>
+        <p style="margin: 2px 0; text-align: left;"><strong>Mesa:</strong> [[${pedido.numeroMesa != null ? pedido.numeroMesa : 'N/A'}]]</p>
+        <p style="margin: 2px 0; text-align: left;"><strong>Cliente:</strong> [[${pedido.cliente}]]</p>
+    </div>
+
+    <div class="linea-separadora"></div>
+
+    <table>
+        <thead>
+        <tr>
+            <th align="left" style="width: 15%;">Cant.</th>
+            <th align="left" style="width: 55%;">Producto</th>
+            <th align="right" style="width: 30%;">Total</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="detalle : ${detalles}">
+            <td th:text="${detalle.cantidad + 'x'}">1x</td>
+            <td th:text="${detalle.producto.nombre}">Plato</td>
+            <td align="right" th:text="${'S/ ' + #numbers.formatDecimal(detalle.precioUnitario * detalle.cantidad, 1, 2)}">S/ 0.00</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="linea-separadora"></div>
+
+    <table style="font-weight: bold; font-size: 13px;">
+        <tr>
+            <td>TOTAL COBRADO:</td>
+            <td align="right" th:text="${'S/ ' + #numbers.formatDecimal(pedido.montoTotal, 1, 2)}">S/ 0.00</td>
+        </tr>
+    </table>
+
+    <div class="linea-separadora" style="margin-top: 15px;"></div>
+    <p class="text-center" style="font-size: 10px; margin: 5px 0; font-style: italic;">¡Gracias por tu preferencia!</p>
+    <p class="text-center" style="font-size: 9px; margin: 0; color: #555;">Vuelve pronto a La Jama</p>
+</div>
+
+<script>
+    window.onload = function() {
+        console.log("Lienzo del ticket de La Jama renderizado. Esperando acción del cajero.");
+    }
+</script>
+
+</body>
+</html>

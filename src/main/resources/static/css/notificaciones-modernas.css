@@ -1,0 +1,233 @@
+/* ========================================================
+   🌿 LA JAMA UI - SINTONÍA DE COLOR OFICIAL (image_74b6fd.png)
+   ======================================================== */
+:root {
+    --lajama-green-bg: #1e3a2b;     /* Verde Bosque de la Barra Lateral */
+    --lajama-green-free: #00b159;   /* Verde Vibrante Estado "Libre" */
+    --lajama-cream-soft: #faf6ee;   /* Crema de Fondo del Tablero */
+    --lajama-orange-alert: #ff8a00; /* Naranja de Alerta / Reservas */
+    --lajama-purple: #7011e4;       /* Púrpura Unificada */
+    --lajama-dark-text: #17251d;    /* Texto oscuro verdoso para legibilidad */
+}
+
+/* 📥 CONTENEDOR FLOTANTE */
+#notification-container {
+    z-index: 2150 !important;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+/* ✨ TOASTS FLOTANTES CON DISEÑO INTEGRADO */
+.jama-modern-toast {
+    pointer-events: auto;
+    min-width: 340px;
+    max-width: 420px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(30, 58, 43, 0.08);
+    border-radius: 14px;
+    padding: 0.95rem 1.2rem;
+    /* Sombra suave difuminada coincidiendo con la estética de tus tarjetas de mesa */
+    box-shadow: 0 10px 30px -5px rgba(30, 58, 43, 0.06), 0 4px 12px -2px rgba(0, 0, 0, 0.02);
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+
+    /* 🌟 ANIMACIÓN ELÁSTICA PREMIUM (Efecto sutil de rebote cinético) */
+    transform: translateX(120%) scale(0.9);
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    opacity: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.jama-modern-toast.show {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+}
+
+/* Decorador de línea izquierda suave */
+.jama-modern-toast::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+}
+.toast-success::before { background-color: var(--lajama-green-free); }
+.toast-warning::before { background-color: var(--lajama-orange-alert); }
+.toast-error::before { background-color: #e11d48; }
+
+.toast-icon { font-size: 1.3rem; flex-shrink: 0; display: flex; align-items: center; }
+.toast-success .toast-icon { color: var(--lajama-green-free); }
+.toast-warning .toast-icon { color: var(--lajama-orange-alert); }
+.toast-error .toast-icon { color: #e11d48; }
+
+.toast-content { flex-grow: 1; }
+.toast-message {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--lajama-dark-text);
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* 🎛️ BUZÓN POPOVER REESTILIZADO AL ESTILO SIDEBAR */
+#popoverNotificaciones {
+    border: 1px solid rgba(30, 58, 43, 0.1) !important;
+    background: rgba(255, 255, 255, 0.97) !important;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 20px 40px -10px rgba(15, 33, 24, 0.15) !important;
+    border-radius: 16px !important;
+
+    /* Transición elástica de salida hacia arriba */
+    transform: translateY(20px) scale(0.95);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#popoverNotificaciones.visible {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Encabezado del Popover usando el color exacto de tu barra lateral */
+#popoverNotificaciones .card-header {
+    background-color: var(--lajama-green-bg) !important;
+    color: #ffffff !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0.85rem 1rem;
+}
+
+/* Elementos del Historial Interno */
+.buzon-item {
+    padding: 0.75rem 0.9rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 0.35rem;
+    border: 1px solid transparent;
+}
+.buzon-item-success { background-color: #f0fdf4; color: #14532d; border-left: 3px solid var(--lajama-green-free); }
+.buzon-item-warning { background-color: #fffbeb; color: #78350f; border-left: 3px solid var(--lajama-orange-alert); }
+.buzon-item-error { background-color: #fef2f2; color: #991b1b; border-left: 3px solid #e11d48; }
+
+/* Botón flotante gatillo camuflado con tu línea de diseño */
+#btnBuzonNotificaciones {
+    background-color: var(--lajama-green-bg) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+#btnBuzonNotificaciones:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 20px -5px rgba(30, 58, 43, 0.3) !important;
+}
+
+/* ========================================================
+   ⏳ LÍNEA DE TIEMPO INTERNA (TIMELINE LA JAMA SHADCN)
+   ======================================================== */
+.jama-timeline {
+    position: relative;
+    padding-left: 1.25rem;
+    border-left: 2px solid rgba(30, 58, 43, 0.06);
+    margin: 0.5rem 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.jama-timeline-node {
+    position: relative;
+    opacity: 0;
+    transform: translateY(12px);
+    /* 🌟 Efecto Cascada controlado por la variable reactiva --delay */
+    animation: entradaNodo 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: var(--delay, 0s);
+}
+
+.node-icon {
+    position: absolute;
+    left: calc(-1.25rem - 8px);
+    top: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    border: 2px solid #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    z-index: 2;
+}
+
+.node-body {
+    background-color: #ffffff;
+    padding: 0.75rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid rgba(30, 58, 43, 0.04);
+    box-shadow: 0 4px 12px rgba(30, 58, 43, 0.02);
+}
+
+.node-title { font-size: 0.82rem; font-weight: 700; color: var(--lajama-dark-text); }
+.node-time { font-size: 0.68rem; color: #94a3b8; font-weight: 500; }
+.node-desc { font-size: 0.78rem; color: #475569; margin: 0; line-height: 1.35; font-weight: 500; }
+
+/* 🌟 Distinción Cromática por Modulos Operativos */
+.item-success .node-icon { border-color: var(--lajama-green-free); color: var(--lajama-green-free); }
+.item-success .node-body { border-left: 3px solid var(--lajama-green-free); }
+
+.item-warning .node-icon { border-color: var(--lajama-orange-alert); color: var(--lajama-orange-alert); }
+.item-warning .node-body { border-left: 3px solid var(--lajama-orange-alert); }
+
+.item-error .node-icon { border-color: #e11d48; color: #e11d48; }
+.item-error .node-body { border-left: 3px solid #e11d48; }
+
+.badge-jama-mini {
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background-color: rgba(30, 58, 43, 0.05);
+    color: var(--lajama-green-bg);
+}
+
+@keyframes entradaNodo {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ❌ BOTÓN DE DESCARTE INDIVIDUAL OPERATIVO */
+.btn-descarte-individual {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease, transform 0.2s ease;
+    z-index: 5;
+}
+
+.btn-descarte-individual:hover {
+    color: #ef4444; /* Rojo de alerta suave al pasar el mouse */
+    transform: scale(1.15);
+}
+
+/* Evita que los textos colisionen con el nuevo botón */
+.node-body {
+    padding-right: 1.5rem !important;
+}

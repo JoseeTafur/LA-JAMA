@@ -6,15 +6,140 @@ let modalCarrito = null;
 let tipoEntrega = 'DELIVERY'; // por defecto
 let metodoPago = 'YAPE';
 
+// Variables globales para el control del Multi-Step Wizard
+let etapaActualCheckout = 1;
+const totalEtapasCheckout = 4;
+
 const BASE_IMG_URL = '';
 
-/* ── TIPO ENTREGA ── */
+// ============================================================================
+// 🚀 MOTOR CONTROLLER: MULTI-STEP WIZARD NAVEGACIÓN (LA JAMA)
+// ============================================================================
+function navegarEtapa(direccion) {
+    // 🛡️ ADUANA FRONTEND: Validaciones estrictas antes de permitir avanzar de paso
+    if (direccion === 1) {
+        if (etapaActualCheckout === 1) {
+            const nombre = document.getElementById('nombreCliente').value.trim();
+            if (!nombre) {
+                Swal.fire({ icon: 'warning', title: 'Dato Obligatorio', text: 'Por favor, ingrese su nombre para continuar con su pedido.', confirmButtonColor: '#1B3A2C' });
+                return;
+            }
+        }
+        if (etapaActualCheckout === 2 && tipoEntrega === 'DELIVERY') {
+            const direccion = document.getElementById('direccionCliente').value.trim();
+            const lat = document.getElementById('latCliente').value;
+            if (!direccion || !lat) {
+                Swal.fire({ icon: 'warning', title: 'Ubicación Requerida', text: 'Por favor, busque su dirección o marque su punto exacto en el mapa para el delivery.', confirmButtonColor: '#1B3A2C' });
+                return;
+            }
+        }
+        if (etapaActualCheckout === 3) {
+            const correo = document.getElementById('clienteCorreo').value.trim();
+            const tipoDoc = document.getElementById('preferenciaComprobante').value;
+            const numDoc = document.getElementById('numeroDocumento').value.trim();
+
+            if (correo && !Validation.correoValido(correo)) {
+                Swal.fire({ icon: 'error', title: 'Correo Inválido', text: 'Por favor, ingrese un formato de correo electrónico válido.', confirmButtonColor: '#1B3A2C' });
+                return;
+            }
+
+            if (tipoDoc === 'FACTURA') {
+                if (!numDoc) {
+                    Swal.fire({ icon: 'error', title: 'Error Fiscal', text: 'El número de RUC es obligatorio para la emisión de Facturas.', confirmButtonColor: '#1B3A2C' });
+                    return;
+                }
+                if (numDoc.length !== 11 || !Validation.soloNumeros(numDoc)) {
+                    Swal.fire({ icon: 'error', title: 'RUC Inválido', text: 'El RUC comercial debe contener exactamente 11 dígitos numéricos.', confirmButtonColor: '#1B3A2C' });
+                    return;
+                }
+                if (!correo) {
+                    Swal.fire({ icon: 'error', title: 'Dato Obligatorio', text: 'El correo electrónico es obligatorio para Facturas.', confirmButtonColor: '#1B3A2C' });
+                    return;
+                }
+            } else {
+                if (numDoc && (numDoc.length !== 8 || !Validation.soloNumeros(numDoc))) {
+                    Swal.fire({ icon: 'error', title: 'DNI Inválido', text: 'El DNI civil debe contener exactamente 8 dígitos numéricos.', confirmButtonColor: '#1B3A2C' });
+                    return;
+                }
+            }
+        }
+    }
+
+    // Calculamos el destino matemático seguro
+    etapaActualCheckout += direccion;
+    if (etapaActualCheckout < 1) etapaActualCheckout = 1;
+    if (etapaActualCheckout > totalEtapasCheckout) etapaActualCheckout = totalEtapasCheckout;
+
+    // 🔄 CONMUTACIÓN DE PANELES HTML
+    document.querySelectorAll('.jama-checkout-step').forEach(step => step.classList.add('d-none'));
+    document.getElementById(`checkout-step-${etapaActualCheckout}`).classList.remove('d-none');
+
+    // Sincronizamos la barra de nodos superiores de la cabecera
+    for (let i = 1; i <= totalEtapasCheckout; i++) {
+        const node = document.getElementById(`indicator-step-${i}`);
+        if (i < etapaActualCheckout) {
+            node.className = "jama-step-node completed";
+        } else if (i === etapaActualCheckout) {
+            node.className = "jama-step-node active";
+        } else {
+            node.className = "jama-step-node";
+        }
+    }
+
+    // Actualizamos el porcentaje de llenado de la barra de progreso
+    const porcentajeProgreso = ((etapaActualCheckout - 1) / (totalEtapasCheckout - 1)) * 100;
+    const progressBar = document.getElementById('stepProgressBar');
+    if (progressBar) progressBar.style.width = `${porcentajeProgreso}%`;
+
+    // 🎮 CONTROL DINÁMICO DE BOTONES DE ACCIÓN (FOOTER)
+    const btnAtras = document.getElementById('btnAtrasStep');
+    const btnCancelar = document.getElementById('btnCancelarCheckout');
+    const btnSiguiente = document.getElementById('btnSiguienteStep');
+    const btnFinalizar = document.getElementById('btnFinalizarPedido');
+
+    // Visibilidad del botón de retorno
+    if (etapaActualCheckout === 1) {
+        btnAtras.classList.add('d-none');
+        btnCancelar.classList.remove('d-none');
+    } else {
+        btnAtras.classList.remove('d-none');
+        btnCancelar.classList.add('d-none');
+    }
+
+    // Visibilidad del disparador final
+    if (etapaActualCheckout === totalEtapasCheckout) {
+        btnSiguiente.classList.add('d-none');
+        btnFinalizar.classList.remove('d-none');
+    } else {
+        btnSiguiente.classList.remove('d-none');
+        btnFinalizar.classList.add('d-none');
+    }
+
+    // 🗺️ CORRECCIÓN DE MOTOR DE MAPA EN SEGUNDA ETAPA
+    if (etapaActualCheckout === 2 && tipoEntrega === 'DELIVERY') {
+        if (!mapa) {
+            setTimeout(iniciarMapa, 300);
+        } else {
+            // Re-calculamos las dimensiones físicas de Leaflet para corregir casillas grises
+            setTimeout(() => { mapa.invalidateSize(); }, 200);
+        }
+    }
+}
+
+/* ── CONFIGURACIÓN LOGÍSTICA DE SERVICIO ── */
 function seleccionarTipo(tipo) {
     tipoEntrega = tipo;
     document.getElementById('btnRecoger').className = 'btn-tipo' + (tipo === 'RECOGER' ? ' activo' : '');
     document.getElementById('btnDelivery').className = 'btn-tipo' + (tipo === 'DELIVERY' ? ' activo' : '');
     document.getElementById('seccionDireccion').style.display = tipo === 'DELIVERY' ? 'block' : 'none';
-    if (tipo === 'DELIVERY' && !mapa) setTimeout(iniciarMapa, 300);
+
+    if (tipo === 'DELIVERY' && etapaActualCheckout === 2) {
+        if (!mapa) {
+            setTimeout(iniciarMapa, 300);
+        } else {
+            setTimeout(() => { mapa.invalidateSize(); }, 200);
+        }
+    }
 }
 
 function seleccionarPago(metodo) {
@@ -25,7 +150,7 @@ function seleccionarPago(metodo) {
     document.getElementById('seccionPlin').style.display = metodo === 'PLIN' ? 'block' : 'none';
 }
 
-/* ── CARRITO ── */
+/* ── ACCIONES DEL CARRITO DE COMPRAS ── */
 function agregarDesdeCard(el) {
     const id     = el.getAttribute('data-id');
     const nombre = el.getAttribute('data-nombre');
@@ -53,7 +178,9 @@ function agregarProducto(id, nombre, precio) {
 
 function actualizarUI() {
     const total = carrito.length;
-    document.getElementById('badgeCount').textContent = total;
+    const badge = document.getElementById('badgeCount');
+    if (badge) badge.textContent = total;
+
     const btn = document.getElementById('btnCarrito');
     if (btn) btn.style.display = total > 0 ? 'flex' : 'none';
 }
@@ -78,7 +205,7 @@ function renderCarrito() {
                     <div class="item-precio">S/ ${item.precio.toFixed(2)} c/u</div>
                 </div>
                 <div class="controles-cant">
-                    <button class="btn-cant text-danger" onclick="removerItemCarta(${index})">
+                    <button class="btn-cant text-danger" onclick="removerItemCarta(${index})" style="background:transparent; border:none;">
                         <i class="bi bi-trash3-fill"></i>
                     </button>
                 </div>
@@ -93,19 +220,30 @@ function removerItemCarta(index) {
     localStorage.setItem("carrito", JSON.stringify(carrito));
     actualizarUI();
     renderCarrito();
+
+    // Si borra el último plato y el carrito se vacía, cerramos el modal automáticamente
+    if (carrito.length === 0 && modalCarrito) {
+        modalCarrito.hide();
+    }
 }
 
 function abrirCarrito() {
     renderCarrito();
+
+    // Inicializamos y reseteamos el checkout secuencial al Paso 1
+    etapaActualCheckout = 1;
+    navegarEtapa(0);
+
     if (!modalCarrito) {
         modalCarrito = new bootstrap.Modal(document.getElementById('modalCarrito'));
     }
     modalCarrito.show();
-    if (!mapa && tipoEntrega === 'DELIVERY') setTimeout(iniciarMapa, 300);
 }
 
-/* ── MAPA ── */
+/* ── MOTOR GEOLOCALIZACIÓN: MAPAS COBERTURA ── */
 function iniciarMapa() {
+    if (mapa) return; // Evita inicializaciones redundantes sobre el mismo contenedor
+
     mapa = L.map('mapa-pedido').setView([-6.7768, -79.8428], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
 
@@ -163,6 +301,7 @@ function fijarPunto(lat, lng) {
     marcador = L.marker([lat, lng]).addTo(mapa).bindPopup('<b>Tu ubicación</b>').openPopup();
 }
 
+/* ── ADUANA DIGITAL DE CARGA DE VOUCHERS ── */
 async function subirImagen(file) {
     const cloudName = "dyjnbddit";
     const unsignedUploadPreset = "vouchers_preset";
@@ -195,7 +334,7 @@ async function subirImagen(file) {
     }
 }
 
-/* ── ENVIAR PEDIDO MODIFICADO CON LOADING Y SWEETALERT DE ÉXITO ── */
+/* ── TRANSMISIÓN DEL PEDIDO CON LOGÍSTICA MULTIPART ANTIFRAUDE ── */
 async function enviarPedido() {
     const nombre    = document.getElementById('nombreCliente').value.trim();
     const direccion = tipoEntrega === 'RECOGER'
@@ -211,37 +350,13 @@ async function enviarPedido() {
     let file;
     switch (metodoPago) {
         case 'YAPE': file = document.getElementById('yapeImgInput').files[0]; break;
-        case 'PLIN':  file = document.getElementById('plinImgInput').files[0]; break;
-        default:      file = null;
+        case 'PLIN': file = document.getElementById('plinImgInput').files[0]; break;
+        default:     file = null;
     }
 
-    if (prefComprobante === 'FACTURA') {
-        if (!numDocumento) {
-            Swal.fire({icon: 'error', title: 'Error', text: 'El número de RUC es obligatorio para Factura.'});
-            return;
-        }
-        if (numDocumento.length !== 11 || !Validation.soloNumeros(numDocumento)) {
-            Swal.fire({icon: 'error', title: 'Error', text: 'El RUC debe contener exactamente 11 dígitos numéricos.'});
-            return;
-        }
-        if (!correoCliente) {
-            Swal.fire({icon: 'error', title: 'Error', text: 'El correo electrónico es obligatorio para Factura.'});
-            return;
-        }
-    } else {
-        if (numDocumento && (numDocumento.length !== 8 || !Validation.soloNumeros(numDocumento))) {
-            Swal.fire({icon: 'error', title: 'Error', text: 'El DNI debe contener exactamente 8 dígitos numéricos.'});
-            return;
-        }
-    }
-
-    if (correoCliente && !Validation.correoValido(correoCliente)) {
-        Swal.fire({icon: 'error', title: 'Error', text: 'Por favor, ingrese un formato de correo electrónico válido.'});
-        return;
-    }
-
+    // Validaciones previas básicas en el Frontend
     if ((metodoPago === 'YAPE' || metodoPago === 'PLIN') && !file) {
-        Swal.fire({icon: 'error', title: 'Error', text: 'Por favor, añada la imagen del pago realizado.'});
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Por favor, añada la imagen del pago realizado.', confirmButtonColor: '#1B3A2C' });
         return;
     }
 
@@ -261,39 +376,65 @@ ${detalle}
 
 💰 TOTAL: S/ ${total.toFixed(2)}`;
 
-    // 🚀 PASO 1: Bloqueamos la interfaz mostrando la pantalla de carga del sistema
+    // Activamos la pantalla de bloqueo de La Jama
     if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
         AppUtils.showLoading(true);
     }
 
     try {
-        // Enrutamos el pedido de la carta digital
-        const resPedido = await fetch('/carta/pedido', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                cliente:    nombre,
-                direccion:  direccion,
-                latitud:    lat ? parseFloat(lat) : null,
-                longitud:   lng ? parseFloat(lng) : null,
-                montoTotal: parseFloat(total.toFixed(2)),
-                tipoPedido: tipoEntrega === 'DELIVERY' ? 'DELIVERY' : 'LOCAL',
-                clienteCorreo: correoCliente ? correoCliente : null,
-                preferenciaComprobante: prefComprobante,
-                documentoCliente: numDocumento ? numDocumento : null,
-                listaDetalles: carrito.map(item => ({
-                    producto:       { id: parseInt(item.id) },
-                    cantidad:       1,
-                    precioUnitario: item.precio,
-                    subtotal:       item.precio
-                }))
-            })
-        });
+       const formDataPayload = new FormData();
+
+               const pedidoDataJson = {
+                   cliente:    nombre,
+                   direccion:  direccion,
+                   latitud:    lat ? parseFloat(lat) : null,
+                   longitud:   lng ? parseFloat(lng) : null,
+                   montoTotal: parseFloat(total.toFixed(2)),
+                   metodoPago: metodoPago,
+                   tipoPedido: tipoEntrega === 'DELIVERY' ? 'DELIVERY' : 'LOCAL',
+                   clienteCorreo: correoCliente ? correoCliente : null,
+                   preferenciaComprobante: prefComprobante,
+                   documentoCliente: numDocumento ? numDocumento : null,
+                   listaDetalles: carrito.map(item => ({
+                       producto:       { id: parseInt(item.id) },
+                       cantidad:       1,
+                       precioUnitario: item.precio,
+                       subtotal:       item.precio
+                   }))
+               };
+
+               // Empaquetamos el json
+               formDataPayload.append("pedido", new Blob([JSON.stringify(pedidoDataJson)], { type: "application/json" }));
+
+               // Adjuntamos el archivo binario del voucher original
+               if (file) {
+                   formDataPayload.append("voucher", file);
+               }
+
+               const resPedido = await fetch('/carta/pedido', {
+                   method: 'POST',
+                   body: formDataPayload // Envío directo multipart seguro
+               });
 
         const dataPedido = await resPedido.json();
-        const id = dataPedido;
 
-        // Registro de control en la bandeja de auditoría de vouchers
+        // 🛡️ CONTROL DE ADUANA ANTIFRAUDE: Si el backend rechazó por ID, precio o fecha, interrumpe el flujo
+        if (!resPedido.ok) {
+            if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
+                AppUtils.showLoading(false);
+            }
+            Swal.fire({
+                icon: 'error',
+                title: 'Validación de Pago Fallida',
+                text: dataPedido.message || 'El comprobante enviado no cumple con los requisitos mínimos de seguridad.',
+                confirmButtonColor: '#933D2D'
+            });
+            return; // Detiene la ejecución, protegiendo los datos en el formulario del cliente
+        }
+
+        const id = dataPedido.id; // Extraemos el ID del mapa de éxito enviado desde tu controlador
+
+        // Flujo regular con tus tablas internas de auditoría de vouchers
         const resGuardar = await fetch('/admin/pagos-digitales/api/guardar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -325,18 +466,16 @@ ${detalle}
             console.log("💾 Base de datos actualizada con el identificador de Cloudinary.");
         }
 
-        // 🚀 PASO 2: Liberamos la pantalla de carga una vez completados los hilos asíncronos
         if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
             AppUtils.showLoading(false);
         }
 
-        // Limpieza atómica de estados locales
+        // Limpieza y reseteo una vez que la transacción es exitosa
         localStorage.removeItem("carrito");
         carrito = [];
         actualizarUI();
         if (modalCarrito) modalCarrito.hide();
 
-        // 🚀 PASO 3: Lanzamos la alerta de ÉXITO de SweetAlert2 con redirección controlada
         Swal.fire({
             icon: 'success',
             title: '¡Solicitud Enviada!',
@@ -344,43 +483,45 @@ ${detalle}
             confirmButtonColor: '#1B3A2C',
             confirmButtonText: 'Abrir WhatsApp'
         }).then((result) => {
-            // Cuando le da clic a "Abrir WhatsApp", recién ahí disparamos la API externa
             window.open('https://wa.me/51955563199?text=' + encodeURIComponent(mensaje), '_blank');
         });
 
     } catch (e) {
-        // En caso de fallo, forzamos la liberación del loading
         if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
             AppUtils.showLoading(false);
         }
-        console.warn('No se pudo registrar en sistema:', e);
+        console.warn('No se pudo registrar en sistema:', e.message || e);
         Swal.fire({
             icon: 'error',
-            title: 'Error de Red',
-            text: 'Fallo crítico al conectar con el servidor central de La Jama.',
+            title: 'Error en la Operación',
+            text: e.message || 'Fallo crítico al conectar con el servidor central de La Jama.',
             confirmButtonColor: '#d33'
         });
     }
 }
 
-/* ── BUSCADOR ── */
+/* ── FILTRADO Y MOTOR DE BÚSQUEDA DE PLATOS ── */
 const inputBuscar       = document.getElementById('inputBuscar');
 const btnLimpiarBuscar  = document.getElementById('btnLimpiarBuscar');
 const buscarCounter     = document.getElementById('buscarCounter');
 const sinResultados     = document.getElementById('sinResultados');
 const txtSinResultados  = document.getElementById('txtSinResultados');
 
-inputBuscar.addEventListener('input', function () {
-    const q = this.value.trim();
-    btnLimpiarBuscar.style.display = q ? 'block' : 'none';
-    filtrarCarta(q);
-});
+if (inputBuscar) {
+    inputBuscar.addEventListener('input', function () {
+        const q = this.value.trim();
+        if (btnLimpiarBuscar) btnLimpiarBuscar.style.display = q ? 'block' : 'none';
+        filtrarCarta(q);
+    });
+}
 
 function limpiarBusqueda() {
-    inputBuscar.value = '';
-    btnLimpiarBuscar.style.display = 'none';
-    filtrarCarta('');
-    inputBuscar.focus();
+    if (inputBuscar) {
+        inputBuscar.value = '';
+        if (btnLimpiarBuscar) btnLimpiarBuscar.style.display = 'none';
+        filtrarCarta('');
+        inputBuscar.focus();
+    }
 }
 
 function filtrarCarta(q) {
@@ -404,23 +545,15 @@ function filtrarCarta(q) {
     });
 
     if (q) {
-        buscarCounter.style.display = 'inline';
-        buscarCounter.textContent   = totalVisibles === 1 ? '1 resultado' : totalVisibles + ' resultados';
-        sinResultados.style.display = totalVisibles === 0 ? 'block' : 'none';
-        txtSinResultados.textContent = q;
+        if (buscarCounter) {
+            buscarCounter.style.display = 'inline';
+            buscarCounter.textContent   = totalVisibles === 1 ? '1 resultado' : totalVisibles + ' resultados';
+        }
+        if (sinResultados) sinResultados.style.display = totalVisibles === 0 ? 'block' : 'none';
+        if (txtSinResultados) txtSinResultados.textContent = q;
     } else {
-        buscarCounter.style.display = 'none';
-        sinResultados.style.display = 'none';
-    }
-}
-
-function previewImage(event) {
-    const reader = new FileReader();
-    reader.onload = function() {
-        document.getElementById('imgPrevia').src = reader.result;
-    };
-    if (event.target.files[0]) {
-        reader.readAsDataURL(event.target.files[0]);
+        if (buscarCounter) buscarCounter.style.display = 'none';
+        if (sinResultados) sinResultados.style.display = 'none';
     }
 }
 
@@ -441,13 +574,16 @@ function conmutarTipoDocumento() {
     input.value = "";
 }
 
+/* ── RENDERIZADORES DE PREVISUALIZACIÓN DE IMÁGENES (VOUCHERS) ── */
 function previewImageYape(event) {
     const reader = new FileReader();
     const preview = document.getElementById('imgPreviaYape');
 
     reader.onload = function() {
-        preview.src = reader.result;
-        preview.style.display = 'block'; // Muestra la imagen dentro de la carpeta
+        if (preview) {
+            preview.src = reader.result;
+            preview.style.display = 'block';
+        }
     };
 
     if (event.target.files[0]) {
@@ -455,14 +591,15 @@ function previewImageYape(event) {
     }
 }
 
-// Añade esta función a tu archivo carta.js
 function previewImagePlin(event) {
     const reader = new FileReader();
     const preview = document.getElementById('imgPreviaPlin');
 
     reader.onload = function() {
-        preview.src = reader.result;
-        preview.style.display = 'block';
+        if (preview) {
+            preview.src = reader.result;
+            preview.style.display = 'block';
+        }
     };
 
     if (event.target.files[0]) {

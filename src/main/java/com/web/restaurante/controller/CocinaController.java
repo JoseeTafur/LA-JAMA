@@ -1,9 +1,7 @@
 package com.web.restaurante.controller;
 
-import com.web.restaurante.model.DetallePedido;
-import com.web.restaurante.model.Empleado;
-import com.web.restaurante.model.Pedido;
-import com.web.restaurante.model.Usuario;
+import com.web.restaurante.model.*;
+import com.web.restaurante.repository.NotificacionRepository;
 import com.web.restaurante.service.PedidoService;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import jakarta.servlet.http.HttpSession;
@@ -21,6 +19,7 @@ public class CocinaController {
 
     private final PedidoService pedidoService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificacionRepository notificacionRepository;
 
     @GetMapping("/{tipo}")
     public String verMonitor(@PathVariable("tipo") String tipo, HttpSession session, Model model) {
@@ -135,21 +134,27 @@ public class CocinaController {
 
     @PostMapping("/completar")
     public String completarPedido(@RequestParam Long pedidoId, @RequestParam String tipoEstacion) {
-        System.out.println("DEBUG: Completando estación " + tipoEstacion + " para pedido ID: " + pedidoId);
         pedidoService.completarEstacion(pedidoId, tipoEstacion);
 
         Pedido p = pedidoService.obtenerPorId(pedidoId);
-        String identificadorMesa = (p != null && p.getNumeroMesa() != null) ? "N° " + p.getNumeroMesa() : String.valueOf(pedidoId);
+        String identificadorMesa = (p != null && p.getNumeroMesa() != null) ? "Mesa N° " + p.getNumeroMesa() : String.valueOf(pedidoId);
 
-        messagingTemplate.convertAndSend("/topic/notificaciones",
-                "Mesa " + identificadorMesa + " tiene su lote de cocina " + tipoEstacion + " listo.");
+        String msgNotif = "🔔 ¡Lote Completo! La " + identificadorMesa + " tiene su sección de cocina " + tipoEstacion.toUpperCase() + " en barra.";
+
+        // 🌟 CORRECCIÓN PERSISTENTE: Guardamos físicamente en la BD
+        Notificacion n = new Notificacion();
+        n.setMensaje(msgNotif);
+        n.setTipo("SUCCESS");
+        n.setDestinoPerfil("MESERO");
+        n.setLeido(false);
+        notificacionRepository.save(n);
+
+        // Disparo al canal de tiempo real
+        messagingTemplate.convertAndSend("/topic/notificaciones/mozos", msgNotif);
 
         return "redirect:/admin/cocina/" + tipoEstacion + "?success";
     }
 
-    // =========================================================================
-    // 🔥 NUEVO: DESPACHAR ÍTEM INDIVIDUAL POR AJAX DESDE MONITOR DEL CHEF
-    // =========================================================================
     @PostMapping("/completar-item")
     @ResponseBody
     public String completarItemIndividual(@RequestParam Long pedidoId, @RequestParam Long detalleId, @RequestParam String tipoEstacion) {
@@ -157,10 +162,27 @@ public class CocinaController {
         pedidoService.despacharPlatoIndividual(pedidoId, detalleId);
 
         Pedido p = pedidoService.obtenerPorId(pedidoId);
-        String identificadorMesa = (p != null && p.getNumeroMesa() != null) ? "N° " + p.getNumeroMesa() : "Carta/Delivery";
 
-        messagingTemplate.convertAndSend("/topic/notificaciones",
-                "Un plato de la Mesa " + identificadorMesa + " está listo en barra.");
+        String nombrePlato = p.getListaDetalles().stream()
+                .filter(d -> d.getId().equals(detalleId))
+                .map(d -> d.getProducto().getNombre())
+                .findFirst().orElse("Un plato");
+
+        String identificadorMesa = (p.getNumeroMesa() != null) ? "Mesa N° " + p.getNumeroMesa() : "Carta/Delivery";
+
+        // Mapeamos el string que el escáner del JS de los mozos ya sabe interpretar automáticamente con el ícono de cocina (🍳)
+        String msgNotif = "🍳 ¡Listo para servir! " + nombrePlato + " asignado a la " + identificadorMesa;
+
+        // 🌟 CORRECCIÓN PERSISTENTE: Guardamos en base de datos antes de despachar
+        Notificacion n = new Notificacion();
+        n.setMensaje(msgNotif);
+        n.setTipo("SUCCESS");
+        n.setDestinoPerfil("MESERO");
+        n.setLeido(false);
+        notificacionRepository.save(n);
+
+        // Disparo al WebSocket
+        messagingTemplate.convertAndSend("/topic/notificaciones/mozos", msgNotif);
 
         return "OK";
     }

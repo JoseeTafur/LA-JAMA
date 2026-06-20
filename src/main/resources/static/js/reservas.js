@@ -1,18 +1,46 @@
+// =========================================================================
+// 🟩 OPERACIONES DE CAPAS NATIVAS - INSTANCIACIÓN EN VENTANA GLOBAL (window)
+// =========================================================================
+window.abrirCapaModal = function(idElemento) {
+    const modal = document.getElementById(idElemento);
+    if (modal) modal.removeAttribute('hidden');
+};
+
+window.cerrarCapaModal = function(idElemento) {
+    const modal = document.getElementById(idElemento);
+    if (modal) modal.setAttribute('hidden', true);
+};
+
 $(document).ready(function () {
     let dataTable;
-    let modal;
     const CAPACIDAD_MESA = 4;
+    const TOTAL_MESAS_RESTAURANTE = 40; // 🌟 Límite de control físico para La Jama
 
-    modal = new bootstrap.Modal(document.getElementById('modalReserva'));
-
-    // Fecha mínima = hoy
+    // 🗓️ CONFIGURACIÓN DE RANGOS DE FECHA DINÁMICOS
     const hoy = new Date();
-    const hoyStr = hoy.getFullYear() + '-' +
-        String(hoy.getMonth() + 1).padStart(2, '0') + '-' +
-        String(hoy.getDate()).padStart(2, '0');
-    document.getElementById('rFecha').setAttribute('min', hoyStr);
+    const hoyStr = hoy.toISOString().split('T')[0];
 
-    // Validaciones en tiempo real
+    // Máximo 1 semana y media adelante (11 días exactos)
+    const maxFecha = new Date();
+    maxFecha.setDate(hoy.getDate() + 11);
+    const maxFechaStr = maxFecha.toISOString().split('T')[0];
+
+    // Aplicar límites nativos al input de los formularios
+    ['rFecha', 'eFecha'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.setAttribute('min', hoyStr);
+            el.setAttribute('max', maxFechaStr);
+        }
+    });
+
+    // ⏳ CONFIGURACIÓN DE PASOS DE TIEMPO (Bloques de 15 minutos)
+    ['rHora', 'eHora'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.setAttribute('step', '900'); // 900 segundos = 15 minutos exactos
+    });
+
+    // Validaciones de caracteres en tiempo real
     document.getElementById('rNombre').addEventListener('input', function () {
         this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]/g, '');
     });
@@ -20,32 +48,41 @@ $(document).ready(function () {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
-    // Calcular mesas necesarias al cambiar personas
+    // Calcular mesas necesarias al cambiar personas con validación de aforo
     document.getElementById('rPersonas').addEventListener('input', function () {
         const personas = parseInt(this.value);
+        const errorDiv = document.getElementById('rPersonas-error');
+        errorDiv.textContent = '';
+
         if (personas > 0) {
             const mesas = Math.ceil(personas / CAPACIDAD_MESA);
-            document.getElementById('mesasInfo').style.display = 'block';
-            document.getElementById('mesasInfoTexto').textContent =
-                `Para ${personas} personas se necesitan ${mesas} mesa(s). El sistema las asignará automáticamente.`;
+
+            if (mesas > TOTAL_MESAS_RESTAURANTE) {
+                errorDiv.textContent = `Excede la capacidad del salón. Máximo ${TOTAL_MESAS_RESTAURANTE * CAPACIDAD_MESA} comensales (${TOTAL_MESAS_RESTAURANTE} mesas).`;
+                document.getElementById('mesasInfo').style.display = 'none';
+            } else {
+                document.getElementById('mesasInfo').style.display = 'block';
+                document.getElementById('mesasInfoTexto').textContent =
+                    `Para ${personas} personas se ocuparán automáticamente ${mesas} de las ${TOTAL_MESAS_RESTAURANTE} mesas de La Jama.`;
+            }
         } else {
             document.getElementById('mesasInfo').style.display = 'none';
         }
     });
 
-    // DataTable
     initDataTable();
 
-    // Botón nueva reserva
-    $('#btnNuevaReserva').on('click', function () {
+    $('#btnNuevoRegistro').on('click', function () {
         limpiarModal();
-        modal.show();
+        window.abrirCapaModal('modalReserva');
     });
 
-    // Guardar reserva
-    $('#btnGuardarReserva').on('click', guardarReserva);
+    $('#form').on('submit', function (e) {
+        e.preventDefault();
+        guardarReserva();
+    });
 
-    // Eventos delegados para confirmar/cancelar
+    // Eventos delegados para confirmar/cancelar/editar (DataTables)
     $('#tablaReservas tbody').on('click', '.btn-confirmar', function () {
         const id = $(this).data('id');
         confirmarLlegada(id);
@@ -54,199 +91,6 @@ $(document).ready(function () {
         const id = $(this).data('id');
         cancelarReserva(id);
     });
-
-    function initDataTable() {
-        dataTable = $('#tablaReservas').DataTable({
-            responsive: true,
-            ajax: { url: '/admin/reservas/api/listar', dataSrc: 'data' },
-            columns: [
-                { data: 'id' },
-                { data: 'nombreCliente' },
-                { data: 'telefono' },
-                { data: 'numeroPersonas' },
-                
-                    { data: 'mesasAsignadas', defaultContent: '-' },
-                {
-                    data: 'fechaHoraReserva',
-                    render: (fecha) => {
-                        if (!fecha) return '-';
-                        const d = new Date(fecha);
-                        return d.toLocaleDateString('es-PE') + ' ' + d.toLocaleTimeString('es-PE', {hour: '2-digit', minute:'2-digit'});
-                    }
-                },
-                {
-                    data: 'estado',
-                    render: (estado) => {
-                        const badges = {
-                            'PENDIENTE': 'bg-warning text-dark',
-                            'CONFIRMADA': 'bg-success',
-                            'CANCELADA': 'bg-danger',
-                            'COMPLETADA': 'bg-secondary'
-                        };
-                        return `<span class="badge ${badges[estado] || 'bg-secondary'}">${estado}</span>`;
-                    }
-                },
-                { data: 'observacion', defaultContent: '-' },
-                {
-                    data: null,
-                    orderable: false,
-                    render: (data, type, row) => {
-                        let btns = '';
-                        if (row.estado === 'CONFIRMADA') {
-                            btns += `<button class="btn btn-sm btn-success btn-confirmar me-1" data-id="${row.id}" title="Confirmar llegada">
-                                        <i class="bi bi-check-circle"></i>
-                                     </button>`;
-                        }
-                        if (row.estado === 'PENDIENTE' || row.estado === 'CONFIRMADA') {
-                            btns += `<button class="btn btn-sm btn-danger btn-cancelar me-1" data-id="${row.id}" title="Cancelar reserva">
-                                        <i class="bi bi-x-circle"></i>
-                                     </button>`;
-                        }
-                        if (row.estado === 'PENDIENTE' || row.estado === 'CONFIRMADA') {
-                            btns += `<button class="btn btn-sm btn-warning btn-editar me-1" data-id="${row.id}"
-                                        data-nombre="${row.nombreCliente}" data-telefono="${row.telefono}"
-                                        data-personas="${row.numeroPersonas}" data-fecha="${row.fechaHoraReserva || ''}"
-                                        data-observacion="${row.observacion || ''}" title="Editar reserva">
-                                        <i class="bi bi-pencil"></i>
-                                     </button>`;
-                        }
-                        btns += `<button class="btn btn-sm btn-outline-danger btn-eliminar" data-id="${row.id}" title="Eliminar reserva">
-                                    <i class="bi bi-trash"></i>
-                                 </button>`;
-                        return btns || '<span class="text-muted small">-</span>';
-                    }
-                }
-            ],
-            language: {
-                processing: "Procesando...", lengthMenu: "Mostrar _MENU_ registros",
-                zeroRecords: "No hay reservas", emptyTable: "Sin reservas registradas",
-                info: "Mostrando _START_ al _END_ de _TOTAL_",
-                search: "Buscar:",
-                paginate: { first: "Primero", last: "Último", next: "Siguiente", previous: "Anterior" }
-            },
-            order: [[5, 'desc']]
-        });
-    }
-
-    function guardarReserva() {
-        const nombre = $('#rNombre').val().trim();
-        const telefono = $('#rTelefono').val().trim();
-        const personas = parseInt($('#rPersonas').val());
-        const fecha = $('#rFecha').val();
-        const hora = $('#rHora').val();
-        const observacion = $('#rObservacion').val().trim();
-
-        // Limpiar errores
-        ['rNombre','rTelefono','rPersonas','rFecha','rHora'].forEach(id => {
-            document.getElementById(id + '-error').textContent = '';
-        });
-
-        let hayError = false;
-
-        if (!nombre) { document.getElementById('rNombre-error').textContent = 'El nombre es obligatorio.'; hayError = true; }
-        else if (typeof Validation !== 'undefined' && !Validation.soloLetras(nombre)) {
-            document.getElementById('rNombre-error').textContent = 'Solo letras.'; hayError = true;
-        }
-        if (!telefono || telefono.length !== 9) { document.getElementById('rTelefono-error').textContent = 'Teléfono debe tener 9 dígitos.'; hayError = true; }
-        if (!personas || personas < 1) { document.getElementById('rPersonas-error').textContent = 'Ingresa el número de personas.'; hayError = true; }
-        if (!fecha) { document.getElementById('rFecha-error').textContent = 'La fecha es obligatoria.'; hayError = true; }
-        if (!hora) { document.getElementById('rHora-error').textContent = 'La hora es obligatoria.'; hayError = true; }
-
-        if (hayError) return;
-
-        const fechaHora = fecha + 'T' + hora + ':00';
-
-        // Verificar que no sea en el pasado
-        if (new Date(fechaHora) <= new Date()) {
-            document.getElementById('rFecha-error').textContent = 'La fecha y hora no puede ser en el pasado.';
-            return;
-        }
-
-        const payload = { nombreCliente: nombre, telefono, numeroPersonas: personas, fechaHora, observacion };
-
-        AppUtils.showLoading(true);
-        fetch('/admin/reservas/api/crear', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                modal.hide();
-                AppUtils.showNotification(data.message, 'success');
-                dataTable.ajax.reload();
-            } else {
-                AppUtils.showNotification(data.message, 'error');
-            }
-        })
-        .catch(() => AppUtils.showNotification('Error de conexión', 'error'))
-        .finally(() => AppUtils.showLoading(false));
-    }
-
-    function confirmarLlegada(id) {
-        Swal.fire({
-            title: '¿Confirmar llegada?',
-            text: 'Las mesas pasarán a estado OCUPADA.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#198754',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, confirmar',
-            cancelButtonText: 'Cancelar'
-        }).then(result => {
-            if (result.isConfirmed) {
-                AppUtils.showLoading(true);
-                fetch(`/admin/reservas/api/confirmar-llegada/${id}`, { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) { AppUtils.showNotification(data.message, 'success'); dataTable.ajax.reload(); }
-                    else AppUtils.showNotification(data.message, 'error');
-                })
-                .catch(() => AppUtils.showNotification('Error de conexión', 'error'))
-                .finally(() => AppUtils.showLoading(false));
-            }
-        });
-    }
-
-    function cancelarReserva(id) {
-        Swal.fire({
-            title: '¿Cancelar reserva?',
-            text: 'Las mesas quedarán disponibles nuevamente.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, cancelar',
-            cancelButtonText: 'No'
-        }).then(result => {
-            if (result.isConfirmed) {
-                AppUtils.showLoading(true);
-                fetch(`/admin/reservas/api/cancelar/${id}`, { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) { AppUtils.showNotification(data.message, 'success'); dataTable.ajax.reload(); }
-                    else AppUtils.showNotification(data.message, 'error');
-                })
-                .catch(() => AppUtils.showNotification('Error de conexión', 'error'))
-                .finally(() => AppUtils.showLoading(false));
-            }
-        });
-    }
-
-    function limpiarModal() {
-        ['rNombre','rTelefono','rPersonas','rFecha','rHora','rObservacion'].forEach(id => {
-            document.getElementById(id).value = '';
-        });
-        ['rNombre','rTelefono','rPersonas','rFecha','rHora'].forEach(id => {
-            document.getElementById(id + '-error').textContent = '';
-        });
-        document.getElementById('mesasInfo').style.display = 'none';
-    }
-
-    // ── Editar / Eliminar (delegación jQuery para DataTables) ────
-    const modalEditar = new bootstrap.Modal(document.getElementById('modalEditarReserva'));
-
     $('#tablaReservas tbody').on('click', '.btn-editar', function () {
         const d = this.dataset;
         document.getElementById('eReservaId').value   = d.id;
@@ -263,52 +107,151 @@ $(document).ready(function () {
         ['eNombre','eTelefono','ePersonas','eFecha','eHora'].forEach(id => {
             document.getElementById(id + '-error').textContent = '';
         });
-        modalEditar.show();
+        window.abrirCapaModal('modalEditarReserva');
     });
-
     $('#tablaReservas tbody').on('click', '.btn-eliminar', function () {
         eliminarReserva(this.dataset.id);
     });
 
     document.getElementById('btnGuardarEdicion').addEventListener('click', guardarEdicion);
 
-    function guardarEdicion() {
-        const id       = document.getElementById('eReservaId').value;
-        const nombre   = document.getElementById('eNombre').value.trim();
-        const telefono = document.getElementById('eTelefono').value.trim();
-        const personas = parseInt(document.getElementById('ePersonas').value);
-        const fecha    = document.getElementById('eFecha').value;
-        const hora     = document.getElementById('eHora').value;
-        const obs      = document.getElementById('eObservacion').value.trim();
+    function initDataTable() {
+        dataTable = $('#tablaReservas').DataTable({
+            responsive: false,
+            autoWidth: false,
+            ajax: { url: '/admin/reservas/api/listar', dataSrc: 'data' },
+            columns: [
+                { data: 'id', width: '5%' },
+                { data: 'nombreCliente', width: '20%' },
+                { data: 'telefono', width: '10%' },
+                { data: 'numeroPersonas', width: '8%' },
+                { data: 'mesasAsignadas', defaultContent: '-', width: '15%' },
+                {
+                    data: 'fechaHoraReserva',
+                    width: '15%',
+                    render: (fecha) => {
+                        if (!fecha) return '-';
+                        const d = new Date(fecha);
+                        return d.toLocaleDateString('es-PE') + ' ' + d.toLocaleTimeString('es-PE', {hour: '2-digit', minute:'2-digit'});
+                    }
+                },
+                {
+                    data: 'estado',
+                    width: '10%',
+                    render: (estado) => {
+                        const badges = {
+                            'PENDIENTE': 'bg-warning text-dark',
+                            'CONFIRMADA': 'bg-success',
+                            'CANCELADA': 'bg-danger',
+                            'COMPLETADA': 'bg-secondary',
+                            'EXPIRADA': 'bg-danger'
+                        };
+                        return `<span class="badge ${badges[estado] || 'bg-secondary'}">${estado}</span>`;
+                    }
+                },
+                { data: 'observacion', defaultContent: '-', width: '12%' },
+                {
+                    data: null,
+                    orderable: false,
+                    width: '10%',
+                    className: 'text-center',
+                    render: (data, type, row) => {
+                        let btns = '<div class="d-flex justify-content-center gap-1">';
+                        if (row.estado === 'CONFIRMADA') {
+                            btns += `<button class="btn btn-sm btn-success btn-confirmar" data-id="${row.id}" title="Confirmar llegada"><i class="bi bi-check-circle"></i></button>`;
+                        }
+                        if (row.estado === 'PENDIENTE' || row.estado === 'CONFIRMADA') {
+                            btns += `<button class="btn btn-sm btn-danger btn-cancelar" data-id="${row.id}" title="Cancelar reserva"><i class="bi bi-x-circle"></i></button>`;
+                        }
+                        if (row.estado === 'PENDIENTE' || row.estado === 'CONFIRMADA') {
+                            btns += `<button class="btn btn-sm btn-warning btn-editar" data-id="${row.id}" data-nombre="${row.nombreCliente}" data-telefono="${row.telefono}" data-personas="${row.numeroPersonas}" data-fecha="${row.fechaHoraReserva || ''}" data-observacion="${row.observacion || ''}" title="Editar reserva"><i class="bi bi-pencil"></i></button>`;
+                        }
+                        btns += `<button class="btn btn-sm btn-outline-danger btn-eliminar" data-id="${row.id}" title="Eliminar reserva"><i class="bi bi-trash"></i></button>`;
+                        btns += '</div>';
+                        return btns;
+                    }
+                }
+            ],
+            language: {
+                processing: "Procesando...", lengthMenu: "Mostrar _MENU_",
+                zeroRecords: "No hay reservas", emptyTable: "Sin reservas registradas",
+                info: "Mostrando _START_ al _END_ de _TOTAL_",
+                search: "Buscar:",
+                paginate: { first: "Primero", last: "Último", next: "Siguiente", previous: "Anterior" }
+            },
+            order: [[5, 'desc']]
+        });
+    }
 
-        let hayError = false;
-        ['eNombre','eTelefono','ePersonas','eFecha','eHora'].forEach(id => {
+    // 🟩 AUDITORÍA INTERNA DE REGLAS DE TIEMPO
+    function esIntervaloInvalido(horaStr) {
+        if (!horaStr) return true;
+        const minutos = parseInt(horaStr.split(':')[1]);
+        return (minutos % 15 !== 0); // Failsafe: devuelve true si no es múltiplo de 15
+    }
+
+    function guardarReserva() {
+        const nombre = $('#rNombre').val().trim();
+        const telefono = $('#rTelefono').val().trim();
+        const personas = parseInt($('#rPersonas').val());
+        const fecha = $('#rFecha').val();
+        const hora = $('#rHora').val();
+        const observacion = $('#rObservacion').val().trim();
+
+        ['rNombre','rTelefono','rPersonas','rFecha','rHora'].forEach(id => {
             document.getElementById(id + '-error').textContent = '';
         });
 
-        if (!nombre) { document.getElementById('eNombre-error').textContent = 'Obligatorio.'; hayError = true; }
-        if (!telefono || telefono.length !== 9) { document.getElementById('eTelefono-error').textContent = '9 dígitos.'; hayError = true; }
-        if (!personas || personas < 1) { document.getElementById('ePersonas-error').textContent = 'Mínimo 1.'; hayError = true; }
-        if (!fecha) { document.getElementById('eFecha-error').textContent = 'Obligatorio.'; hayError = true; }
-        if (!hora)  { document.getElementById('eHora-error').textContent = 'Obligatorio.'; hayError = true; }
+        let hayError = false;
+
+        if (!nombre) { document.getElementById('rNombre-error').textContent = 'El nombre es obligatorio.'; hayError = true; }
+        if (!telefono || telefono.length !== 9) { document.getElementById('rTelefono-error').textContent = 'El teléfono debe tener 9 dígitos.'; hayError = true; }
+
+        if (!personas || personas < 1) {
+            document.getElementById('rPersonas-error').textContent = 'Mínimo 1 comensal.';
+            hayError = true;
+        } else if (Math.ceil(personas / CAPACIDAD_MESA) > TOTAL_MESAS_RESTAURANTE) {
+            document.getElementById('rPersonas-error').textContent = `Máximo permitido: ${TOTAL_MESAS_RESTAURANTE * CAPACIDAD_MESA} personas.`;
+            hayError = true;
+        }
+
+        if (!fecha) {
+            document.getElementById('rFecha-error').textContent = 'La fecha es obligatoria.';
+            hayError = true;
+        } else if (fecha < hoyStr || fecha > maxFechaStr) {
+            document.getElementById('rFecha-error').textContent = 'Fecha fuera del rango permitido (Hoy a 1 semana y media).';
+            hayError = true;
+        }
+
+        if (!hora) {
+            document.getElementById('rHora-error').textContent = 'La hora es obligatoria.';
+            hayError = true;
+        } else if (esIntervaloInvalido(hora)) {
+            document.getElementById('rHora-error').textContent = 'Intervalos permitidos cada 15 minutos (Ej. 12:00, 12:15, 12:30).';
+            hayError = true;
+        }
+
         if (hayError) return;
 
         const fechaHora = fecha + 'T' + hora + ':00';
+
         if (new Date(fechaHora) <= new Date()) {
-            document.getElementById('eFecha-error').textContent = 'No puede ser en el pasado.';
+            document.getElementById('rFecha-error').textContent = 'La fecha y hora no puede ser en el pasado.';
             return;
         }
 
+        const payload = { nombreCliente: nombre, telefono, numeroPersonas: personas, fechaHora, observacion };
+
         AppUtils.showLoading(true);
-        fetch(`/admin/reservas/api/editar/${id}`, {
-            method: 'PUT',
+        fetch('/admin/reservas/api/crear', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombreCliente: nombre, telefono, numeroPersonas: personas, fechaHora, observacion: obs })
+            body: JSON.stringify(payload)
         })
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                modalEditar.hide();
+                window.cerrarCapaModal('modalReserva');
                 AppUtils.showNotification(data.message, 'success');
                 dataTable.ajax.reload();
             } else {
@@ -319,28 +262,116 @@ $(document).ready(function () {
         .finally(() => AppUtils.showLoading(false));
     }
 
-    function eliminarReserva(id) {
-        Swal.fire({
-            title: '¿Eliminar reserva?',
-            text: 'Esta acción no se puede deshacer. Las mesas quedarán disponibles.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'No'
-        }).then(result => {
-            if (result.isConfirmed) {
-                AppUtils.showLoading(true);
-                fetch(`/admin/reservas/api/eliminar/${id}`, { method: 'DELETE' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) { AppUtils.showNotification(data.message, 'success'); dataTable.ajax.reload(); }
-                    else AppUtils.showNotification(data.message, 'error');
-                })
-                .catch(() => AppUtils.showNotification('Error de conexión', 'error'))
-                .finally(() => AppUtils.showLoading(false));
-            }
+    function guardarEdicion() {
+        // 1. Captura de elementos limpia
+        const idReserva = document.getElementById('eReservaId').value;
+        const nombre   = document.getElementById('eNombre').value.trim();
+        const telefono = document.getElementById('eTelefono').value.trim();
+        const personas = parseInt(document.getElementById('ePersonas').value);
+        const fecha    = document.getElementById('eFecha').value;
+        const hora     = document.getElementById('eHora').value;
+        const obs      = document.getElementById('eObservacion').value.trim();
+
+        // Constantes de control (Aseguradas dentro del alcance de la edición)
+        const CAPACIDAD_MESA = 4;
+        const TOTAL_MESAS_RESTAURANTE = 40;
+
+        // Control dinámico de fechas para evitar bloqueos por cambio de día (Failsafe)
+        const hoy = new Date();
+        const hoyStr = hoy.toISOString().split('T')[0];
+
+        const maxFecha = new Date();
+        maxFecha.setDate(hoy.getDate() + 11); // Semana y media límite
+        const maxFechaStr = maxFecha.toISOString().split('T')[0];
+
+        let hayError = false;
+
+        // 🌟 CORRECCIÓN: Cambiado 'id' por 'idInput' para evitar colisiones de variables
+        ['eNombre','eTelefono','ePersonas','eFecha','eHora'].forEach(idInput => {
+            const errorEl = document.getElementById(idInput + '-error');
+            if (errorEl) errorEl.textContent = '';
         });
+
+        // 2. Motor de Validaciones de Negocio
+        if (!nombre) { document.getElementById('eNombre-error').textContent = 'Obligatorio.'; hayError = true; }
+        if (!telefono || telefono.length !== 9) { document.getElementById('eTelefono-error').textContent = '9 dígitos.'; hayError = true; }
+
+        if (!personas || personas < 1) {
+            document.getElementById('ePersonas-error').textContent = 'Mínimo 1.';
+            hayError = true;
+        } else if (Math.ceil(personas / CAPACIDAD_MESA) > TOTAL_MESAS_RESTAURANTE) {
+            document.getElementById('ePersonas-error').textContent = `Supera capacidad de ${TOTAL_MESAS_RESTAURANTE} mesas.`;
+            hayError = true;
+        }
+
+        if (!fecha) {
+            document.getElementById('eFecha-error').textContent = 'Obligatorio.';
+            hayError = true;
+        } else if (fecha < hoyStr || fecha > maxFechaStr) {
+            document.getElementById('eFecha-error').textContent = 'Fuera de rango.';
+            hayError = true;
+        }
+
+        if (!hora) {
+            document.getElementById('eHora-error').textContent = 'Obligatorio.';
+            hayError = true;
+        } else if (typeof esIntervaloInvalido === 'function' && esIntervaloInvalido(hora)) {
+            document.getElementById('eHora-error').textContent = 'Bloques de 15 min.';
+            hayError = true;
+        }
+
+        if (hayError) return;
+
+        // 3. Validación de tiempo real
+        const fechaHora = fecha + 'T' + hora + ':00';
+        if (new Date(fechaHora) <= new Date()) {
+            document.getElementById('eFecha-error').textContent = 'No puede ser en el pasado.';
+            return;
+        }
+
+        // 4. Despacho al Controlador de Spring Boot
+        AppUtils.showLoading(true);
+        fetch(`/admin/reservas/api/editar/${idReserva}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nombreCliente: nombre,
+                telefono: telefono,
+                numeroPersonas: personas,
+                fechaHora: fechaHora,
+                observacion: obs
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.cerrarCapaModal('modalEditarReserva');
+                AppUtils.showNotification(data.message, 'success');
+                if (typeof dataTable !== 'undefined') dataTable.ajax.reload();
+            } else {
+                AppUtils.showNotification(data.message, 'error');
+            }
+        })
+        .catch(() => AppUtils.showNotification('Error de conexión', 'error'))
+        .finally(() => AppUtils.showLoading(false));
+    }
+
+    // (Las funciones confirmarLlegada, cancelarReserva y eliminarReserva se mantienen idénticas...)
+    function confirmarLlegada(id) {
+        Swal.fire({ title: '¿Confirmar llegada?', text: 'Las mesas pasarán a estado OCUPADA.', icon: 'question', showCancelButton: true, confirmButtonColor: '#1B3A2C', cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, confirmar', cancelButtonText: 'Cancelar' }).then(result => { if (result.isConfirmed) { AppUtils.showLoading(true); fetch(`/admin/reservas/api/confirmar-llegada/${id}`, { method: 'POST' }).then(r => r.json()).then(data => { if (data.success) { AppUtils.showNotification(data.message, 'success'); dataTable.ajax.reload(); } else AppUtils.showNotification(data.message, 'error'); }).catch(() => AppUtils.showNotification('Error de conexión', 'error')).finally(() => AppUtils.showLoading(false)); } });
+    }
+    function cancelarReserva(id) {
+        Swal.fire({ title: '¿Cancelar reserva?', text: 'Las mesas quedarán disponibles nuevamente.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545', cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, cancelar', cancelButtonText: 'No' }).then(result => { if (result.isConfirmed) { AppUtils.showLoading(true); fetch(`/admin/reservas/api/cancelar/${id}`, { method: 'POST' }).then(r => r.json()).then(data => { if (data.success) { AppUtils.showNotification(data.message, 'success'); dataTable.ajax.reload(); } else AppUtils.showNotification(data.message, 'error'); }).catch(() => AppUtils.showNotification('Error de conexión', 'error')).finally(() => AppUtils.showLoading(false)); } });
+    }
+    function eliminarReserva(id) {
+        Swal.fire({ title: '¿Eliminar reserva?', text: 'Esta acción no se puede deshacer. Las mesas quedarán disponibles.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545', cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'No' }).then(result => { if (result.isConfirmed) { AppUtils.showLoading(true); fetch(`/admin/reservas/api/eliminar/${id}`, { method: 'DELETE' }).then(r => r.json()).then(data => { if (data.success) { AppUtils.showNotification(data.message, 'success'); dataTable.ajax.reload(); } else AppUtils.showNotification(data.message, 'error'); }).catch(() => AppUtils.showNotification('Error de conexión', 'error')).finally(() => AppUtils.showLoading(false)); } });
+    }
+    function limpiarModal() {
+        ['rNombre','rTelefono','rPersonas','rFecha','rHora','rObservacion'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        ['rNombre','rTelefono','rPersonas','rFecha','rHora'].forEach(id => { const el = document.getElementById(id + '-error'); if (el) el.textContent = ''; });
+        document.getElementById('mesasInfo').style.display = 'none';
     }
 });
+
+// (Conexión asíncrona stompReservas intacta al final...)
+var socketCocina = new SockJS('/ws-restaurante'); var stompReservas = Stomp.over(socketCocina); stompReservas.debug = null; stompReservas.connect({}, function (frame) { stompReservas.subscribe('/topic/notificaciones', function (payload) { const mensaje = payload.body; if (mensaje.includes("🚨 ATENCIÓN RESERVA")) { var audioAlerta = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); audioAlerta.play().catch(e => console.log("Audio retenido")); Swal.fire({ icon: 'info', title: '¡CLIENTE DE RESERVA EN TIEMPO!', text: mensaje, background: '#f0fdf4', color: '#14532d', confirmButtonColor: '#1B3A2C', confirmButtonText: '<i class="bi bi-calendar-check me-2"></i> Entendido', allowOutsideClick: true }); if (typeof dataTable !== 'undefined') dataTable.ajax.reload(null, false); } else if (mensaje.includes("⚠️ RESERVA EXPIRADA")) { AppUtils.showNotification(mensaje, 'error'); if (typeof dataTable !== 'undefined') dataTable.ajax.reload(null, false); } }); });

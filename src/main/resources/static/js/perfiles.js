@@ -314,51 +314,62 @@ $(document).ready(function () {
         }
     }
 
-    // ── GUARDAR PERMISOS (CONSERVANDO DESCRIPCIONES Y ENTIDADES) ──────────────
-    async function savePermissions() {
-        if (!esSuperAdmin) {
-            AppUtils.showNotification('Operación rechazada: Rango insuficiente.', 'error');
-            return;
-        }
-        const perfilId = $('#permisoPerfilId').val();
-
-        const selectedOpciones = $('#listaOpciones input:checked').map(function () {
-            return { id: parseInt($(this).val()) };
-        }).get();
-
-        AppUtils.showLoading(true);
-        try {
-            const perfilRes = await fetch(ENDPOINTS.get(perfilId));
-            const perfilData = await perfilRes.json();
-
-            if (!perfilData.success) {
-                AppUtils.showNotification('No se pudo ubicar el perfil maestro para actualizar.', 'error');
+    // ── GUARDAR PERMISOS (CORREGIDO PARA SINCRONIZACIÓN HIBERNATE) ──────────
+        async function savePermissions() {
+            if (!esSuperAdmin) {
+                AppUtils.showNotification('Operación rechazada: Rango insuficiente.', 'error');
                 return;
             }
+            const perfilId = $('#permisoPerfilId').val();
 
-            const perfilToUpdate = perfilData.data;
-            perfilToUpdate.opciones = selectedOpciones;
+            // 1. Capturamos los IDs numéricos seleccionados por el Super Admin
+            const idsSeleccionados = $('#listaOpciones input:checked').map(function () {
+                return parseInt($(this).val());
+            }).get();
 
-            const saveRes = await fetch(ENDPOINTS.save, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(perfilToUpdate)
-            });
-            const saveData = await saveRes.json();
+            AppUtils.showLoading(true);
+            try {
+                // 2. Traemos la instancia fresca del perfil desde el servidor anticaché
+                const perfilRes = await fetch(`${ENDPOINTS.get(perfilId)}?t=${new Date().getTime()}`);
+                const perfilData = await perfilRes.json();
 
-            if (saveData.success) {
-                permisosModal.hide();
-                AppUtils.showNotification('Fórmula de accesos actualizada con éxito en la base de datos.', 'success');
-                reloadTable(); // Sincroniza la tabla reactivamente sin meter F5
-            } else {
-                AppUtils.showNotification(saveData.message || 'Error al procesar la actualización.', 'error');
+                if (!perfilData.success) {
+                    AppUtils.showNotification('No se pudo ubicar el perfil maestro para actualizar.', 'error');
+                    return;
+                }
+
+                const perfilToUpdate = perfilData.data;
+
+                // 3. 🌟 EL AJUSTE MAESTRO: Mapeamos los IDs hacia la estructura que el backend espera
+                // Re-armamos la colección de opciones inyectándole el ID limpio en el formato nativo del ORM
+                perfilToUpdate.opciones = idsSeleccionados.map(id => {
+                    return {
+                        id: id
+                    };
+                });
+
+                // 4. Enviamos la petición POST para asentar la matriz en base de datos
+                const saveRes = await fetch(ENDPOINTS.save, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(perfilToUpdate)
+                });
+                const saveData = await saveRes.json();
+
+                if (saveData.success) {
+                    permisosModal.hide();
+                    AppUtils.showNotification('Fórmula de accesos actualizada con éxito en la base de datos.', 'success');
+                    reloadTable(); // Sincroniza la tabla reactivamente sin meter F5
+                } else {
+                    AppUtils.showNotification(saveData.message || 'Error al procesar la actualización.', 'error');
+                }
+            } catch (error) {
+                console.error("💥 Error en aduana de guardado de permisos:", error);
+                AppUtils.showNotification('Error de conexión al inyectar permisos.', 'error');
+            } finally {
+                AppUtils.showLoading(false);
             }
-        } catch (error) {
-            AppUtils.showNotification('Error de conexión al inyectar permisos.', 'error');
-        } finally {
-            AppUtils.showLoading(false);
         }
-    }
 
     function openModalForNew() {
         if (!esSuperAdmin) {

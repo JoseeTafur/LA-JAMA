@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Centro de Notificaciones - La Jama</title>
+    <th:block th:replace="~{links :: headLinks}"></th:block>
+    <link rel="stylesheet" th:href="@{/css/utiles.css}">
+    <style>
+        .notif-card { transition: all 0.2s ease-in-out; border-left: 5px solid #64748b; }
+        .notif-card:hover { transform: translateY(-2px); }
+        .notif-LEIDO { opacity: 0.65; border-left-color: #cbd5e1 !important; }
+        .tipo-MERMA { border-left-color: #dc3545 !important; background-color: #fff5f5; }
+        .tipo-RESERVA { border-left-color: #198754 !important; background-color: #f6fdf9; }
+        .tipo-ALERTA { border-left-color: #fd7e14 !important; background-color: #fff9f3; }
+    </style>
+</head>
+<body class="bg-light">
+<div class="wrapper">
+    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/notificaciones')}"></div>
+
+    <main id="main-content" class="main-content p-4">
+        <div th:replace="~{sidebar :: logistica_header('Centro de Control e Inteligencia')}"></div>
+
+        <div class="container-fluid mt-4" style="max-width: 900px;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="fw-bold text-dark mb-1"><i class="bi bi-bell-slider me-2 text-primary"></i>Historial Operativo</h4>
+                    <p class="text-muted small mb-0">Sesión actual: <span class="badge bg-dark" th:text="${perfilUsuario}">ADMIN</span></p>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="limpiarPanelBuzon()">
+                    <i class="bi bi-trash3 me-1"></i> Marcar todo como leído
+                </button>
+            </div>
+
+            <!-- Contenedor Dinámico de Notificaciones -->
+            <div class="d-flex flex-column gap-3">
+                <div th:if="${#lists.isEmpty(notificaciones)}" class="text-center py-5 bg-white rounded-4 shadow-sm">
+                    <i class="bi bi-envelope-open text-muted" style="font-size: 4rem;"></i>
+                    <h5 class="fw-bold text-muted mt-3">Buzón de control despejado</h5>
+                    <p class="text-muted small">No se registran alertas ni mermas en este turno.</p>
+                </div>
+
+                <div th:each="n : ${notificaciones}"
+                     class="card notif-card border-0 shadow-sm rounded-4 p-3 animate__animated animate__fadeIn"
+                     th:classappend="'notif-' + (${n.leido} ? 'LEIDO' : 'ACTIVO') + ' tipo-' + ${n.tipo}">
+
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div class="d-flex gap-3 align-items-center">
+                            <div class="fs-3">
+                                <i th:if="${n.tipo == 'MERMA'}" class="bi bi-exclamation-octagon-fill text-danger"></i>
+                                <i th:if="${n.tipo == 'RESERVA'}" class="bi bi-calendar-check-fill text-success"></i>
+                                <i th:if="${n.tipo == 'ALERTA'}" class="bi bi-exclamation-triangle-fill text-warning"></i>
+                                <i th:if="${n.tipo == 'INFO'}" class="bi bi-info-circle-fill text-info"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1 text-dark" th:text="${n.mensaje}">Mensaje de control descriptivo</h6>
+                                <small class="text-muted d-block" th:text="${#temporals.format(n.fechaCreacion, 'dd/MM/yyyy HH:mm')}">18/06/2026 16:00</small>
+                            </div>
+                        </div>
+                        <span class="badge rounded-pill bg-opacity-10 px-2.5 py-1 small"
+                              th:classappend="${n.destinoPerfil == 'TODOS'} ? 'bg-dark text-dark' : 'bg-primary text-primary'"
+                              th:text="${n.destinoPerfil}">ADMIN</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+<script>
+    function limpiarPanelBuzon() {
+        fetch('/admin/notificaciones/api/marcar-leido', { method: 'POST' })
+            .then(() => {
+                AppUtils.showNotification("Historial marcado como leído", "success");
+                setTimeout(() => location.reload(), 500);
+            });
+    }
+</script>
+</body>
+</html>
