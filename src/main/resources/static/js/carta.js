@@ -126,8 +126,9 @@ function navegarEtapa(direccion) {
 /* ── CONFIGURACIÓN LOGÍSTICA DE SERVICIO ── */
 function seleccionarTipo(tipo) {
     tipoEntrega = tipo;
-    document.getElementById('btnRecoger').className = 'btn-tipo' + (tipo === 'RECOGER' ? ' activo' : '');
-    document.getElementById('btnDelivery').className = 'btn-tipo' + (tipo === 'DELIVERY' ? ' activo' : '');
+    // CORRECCIÓN: Apuntamos exactamente a tus clases CSS nativas sin Bootstrap
+    document.getElementById('btnRecoger').className = 'btn-selection-premium' + (tipo === 'RECOGER' ? ' activo' : '');
+    document.getElementById('btnDelivery').className = 'btn-selection-premium' + (tipo === 'DELIVERY' ? ' activo' : '');
     document.getElementById('seccionDireccion').style.display = tipo === 'DELIVERY' ? 'block' : 'none';
 
     if (tipo === 'DELIVERY' && etapaActualCheckout === 2) {
@@ -141,8 +142,9 @@ function seleccionarTipo(tipo) {
 
 function seleccionarPago(metodo) {
     metodoPago = metodo;
-    document.getElementById('btnYape').className = 'btn-tipo' + (metodo === 'YAPE' ? ' activo' : '');
-    document.getElementById('btnPlin').className = 'btn-tipo' + (metodo === 'PLIN' ? ' activo' : '');
+    // CORRECCIÓN: Apuntamos exactamente a tus clases CSS nativas de billeteras
+    document.getElementById('btnYape').className = 'btn-pago-cliente-card' + (metodo === 'YAPE' ? ' activo' : '');
+    document.getElementById('btnPlin').className = 'btn-pago-cliente-card' + (metodo === 'PLIN' ? ' activo' : '');
     document.getElementById('seccionYape').style.display = metodo === 'YAPE' ? 'block' : 'none';
     document.getElementById('seccionPlin').style.display = metodo === 'PLIN' ? 'block' : 'none';
 }
@@ -173,6 +175,7 @@ function agregarProducto(id, nombre, precio) {
     actualizarUI();
 }
 
+/* ── INTERFACES DINÁMICAS DEL NEGOCIO ── */
 function actualizarUI() {
     const total = carrito.length;
     const badge = document.getElementById('badgeCount');
@@ -187,7 +190,7 @@ function renderCarrito() {
     if (!lista) return;
 
     if (carrito.length === 0) {
-        lista.innerHTML = '<p class="text-muted text-center py-3" style="font-size:0.9rem;">Tu carrito está vacío</p>';
+        lista.innerHTML = '<p class="text-muted text-center py-3" style="font-size:0.9rem; color:#64748b;">Tu carrito está vacío</p>';
         document.getElementById('totalCarrito').textContent = '0.00';
         return;
     }
@@ -199,10 +202,10 @@ function renderCarrito() {
             <div class="item-carrito">
                 <div style="flex:1; min-width:0;">
                     <div class="item-nombre">${item.nombre}</div>
-                    <div class="item-precio">S/ ${item.precio.toFixed(2)} c/u</div>
+                    <div class="item-precio">S/ ${item.precio.toFixed(2)}</div>
                 </div>
                 <div class="controles-cant">
-                    <button class="btn-cant text-danger" onclick="removerItemCarta(${index})" style="background:transparent; border:none;">
+                    <button class="btn-cant" onclick="removerItemCarta(${index})" style="background:transparent; border:none; color:#933D2D; cursor:pointer; font-size:1.1rem;">
                         <i class="bi bi-trash3-fill"></i>
                     </button>
                 </div>
@@ -218,9 +221,10 @@ function removerItemCarta(index) {
     actualizarUI();
     renderCarrito();
 
-    // Si borra el último plato y el carrito se vacía, cerramos el modal automáticamente
-    if (carrito.length === 0 && modalCarrito) {
-        modalCarrito.hide();
+    // CORRECCIÓN: Si borra el último plato, quitamos la clase .show nativa de CSS para cerrar el modal
+    if (carrito.length === 0) {
+        const modal = document.getElementById('modalCarrito');
+        if (modal) modal.classList.remove('show');
     }
 }
 
@@ -231,10 +235,9 @@ function abrirCarrito() {
     etapaActualCheckout = 1;
     navegarEtapa(0);
 
-    if (!modalCarrito) {
-        modalCarrito = new bootstrap.Modal(document.getElementById('modalCarrito'));
-    }
-    modalCarrito.show();
+    // CORRECCIÓN: Apertura nativa agregando la clase .show de CSS para el renderizado puro
+    const modal = document.getElementById('modalCarrito');
+    if (modal) modal.classList.add('show');
 }
 
 /* ── MOTOR GEOLOCALIZACIÓN: MAPAS COBERTURA ── */
@@ -280,7 +283,9 @@ function iniciarMapa() {
     });
 
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.direccion-wrap')) listaDir.style.display = 'none';
+        if (!e.target.closest('.dir-input-premium') && !e.target.closest('#sugerencias-dir')) {
+            if(listaDir) listaDir.style.display = 'none';
+        }
     });
 }
 
@@ -377,48 +382,41 @@ ${detalle}
     }
 
     // ── 🔥 PASO MAESTRO: PROCESAMIENTO OCR EN EL NAVEGADOR CON PREPROCESADO ÓPTICO ──
-        let textoVoucherExtraido = "";
-        if (file && (metodoPago === 'YAPE' || metodoPago === 'PLIN')) {
-            Swal.fire({
-                title: 'Validando Parámetros Financieros...',
-                text: 'Optimizando el contraste del voucher para descifrar el monto de forma segura.',
-                allowOutsideClick: false,
-                showConfirmButton: false,
-                didOpen: () => { Swal.showLoading(); }
-            });
+    let textoVoucherExtraido = "";
+    if (file && (metodoPago === 'YAPE' || metodoPago === 'PLIN')) {
+        Swal.fire({
+            title: 'Validando Parámetros Financieros...',
+            text: 'Optimizando el contraste del voucher para descifrar el monto de forma segura.',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
 
-            try {
-                // 🎨 Creación de Canvas en memoria para procesamiento digital de imágenes
-                const imgElement = document.createElement('img');
-                imgElement.src = URL.createObjectURL(file);
+        try {
+            const imgElement = document.createElement('img');
+            imgElement.src = URL.createObjectURL(file);
 
-                await new Promise((resolve) => { imgElement.onload = resolve; });
+            await new Promise((resolve) => { imgElement.onload = resolve; });
 
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = imgElement.width;
-                canvas.height = imgElement.height;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = imgElement.width;
+            canvas.height = imgElement.height;
 
-                ctx.drawImage(imgElement, 0, 0);
+            ctx.drawImage(imgElement, 0, 0);
 
-                // Extraemos los píxeles de la imagen
-                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imgData.data;
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
 
-                // FILTRO DE BINARIZACIÓN DE ALTO CONTRASTE (Blanco y Negro Puro)
-                for (let i = 0; i < data.length; i += 4) {
-                    // Fórmula de luminancia para escala de grises
-                    let gris = 0.34 * data[i] + 0.5 * data[i + 1] + 0.16 * data[i + 2];
+            for (let i = 0; i < data.length; i += 4) {
+                let gris = 0.34 * data[i] + 0.5 * data[i + 1] + 0.16 * data[i + 2];
+                let valorBinario = (gris > 128) ? 255 : 0;
+                data[i]     = valorBinario;
+                data[i + 1] = valorBinario;
+                data[i + 2] = valorBinario;
+            }
 
-                    // Umbral (Threshold): Si el píxel es claro, va a blanco; si es oscuro, a negro puro
-                    let valorBinario = (gris > 128) ? 255 : 0;
-
-                    data[i]     = valorBinario; // R
-                    data[i + 1] = valorBinario; // G
-                    data[i + 2] = valorBinario; // B
-                }
-
-ctx.putImageData(imgData, 0, 0);
+            ctx.putImageData(imgData, 0, 0);
             console.log("🎨 [CANVAS FRONTEND] Filtro binarizado aplicado con éxito. Renderizando píxeles puros.");
 
             const blobProcesado = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -437,15 +435,13 @@ ctx.putImageData(imgData, 0, 0);
                 .join('\n');
 
             console.log("🚀 [CONSOLA CLIENTE] Texto final mapeado para enviar al DTO de Java:\n", textoVoucherExtraido);
+            URL.revokeObjectURL(imgElement.src);
 
-                // Limpieza de memoria
-                URL.revokeObjectURL(imgElement.src);
-
-            } catch (ocrError) {
-                console.warn("⚠️ Falló el preprocesamiento del voucher, pasando a contingencia:", ocrError);
-                textoVoucherExtraido = "";
-            }
+        } catch (ocrError) {
+            console.warn("⚠️ Falló el preprocesamiento del voucher, pasando a contingencia:", ocrError);
+            textoVoucherExtraido = "";
         }
+    }
 
     try {
         const formDataPayload = new FormData();
@@ -531,7 +527,10 @@ ctx.putImageData(imgData, 0, 0);
         localStorage.removeItem("carrito");
         carrito = [];
         actualizarUI();
-        if (modalCarrito) modalCarrito.hide();
+
+        // CORRECCIÓN: Cierre nativo mediante manipulación directa de clases CSS
+        const modal = document.getElementById('modalCarrito');
+        if (modal) modal.classList.remove('show');
 
         Swal.fire({
             icon: 'success',

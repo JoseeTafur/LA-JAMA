@@ -109,8 +109,8 @@
     margin-bottom: 12px;
 }
 
-/* Quitando estilos nativos a botones de los formularios */
-.form button {
+/* ✅ SCOPEADO: solo afecta botones dentro de .form dentro del checkout */
+.jama-checkout-main-container .form button {
     border: none;
     background: none;
     color: #8b8ba7;
@@ -120,13 +120,13 @@
 }
 
 /* Contenedor del input con diseño animado */
-.form {
+.jama-checkout-main-container .form {
     --timing: 0.3s;
     --width-of-input: 260px;
     --height-of-input: 40px;
     --border-height: 2px;
     --input-bg: #f4f4f6;
-    --border-color: var(--jama-green-dark); /* Color verde corporativo La Jama */
+    --border-color: var(--jama-green-dark);
     --border-radius: 8px;
     --after-border-radius: 1px;
 
@@ -142,12 +142,12 @@
 }
 
 /* Extensión opcional para formularios de ancho completo */
-.form.w-100-form {
+.jama-checkout-main-container .form.w-100 {
     width: 100% !important;
 }
 
 /* Estilizado del Input nativo */
-.input {
+.jama-checkout-main-container .form .input {
     font-size: 0.9rem;
     background-color: transparent;
     width: 100%;
@@ -159,12 +159,12 @@
     color: var(--jama-text-dark);
 }
 
-.input:focus {
+.jama-checkout-main-container .form .input:focus {
     outline: none;
 }
 
-/* Creación de línea animada inferior en focus */
-.form:before {
+/* Línea animada inferior en focus */
+.jama-checkout-main-container .form:before {
     content: "";
     position: absolute;
     background: var(--border-color);
@@ -179,18 +179,18 @@
 }
 
 /* Evento Focus-Within */
-.form:focus-within {
+.jama-checkout-main-container .form:focus-within {
     border-radius: var(--after-border-radius);
     background: #ffffff;
     box-shadow: 0 4px 10px rgba(0,0,0,0.02);
 }
 
-.form:focus-within:before {
+.jama-checkout-main-container .form:focus-within:before {
     transform: scale(1);
 }
 
-/* Botón de limpiar entrada (X) */
-.reset {
+/* ✅ SCOPEADO: botón de limpiar entrada (X) */
+.jama-checkout-main-container .reset {
     border: none;
     background: none;
     opacity: 0;
@@ -202,14 +202,14 @@
     transition: all 0.2s ease;
 }
 
-/* Mostrar cuando el input tenga datos escritos */
-input:not(:placeholder-shown) ~ .reset {
+/* ✅ SCOPEADO: mostrar cuando el input tenga datos escritos */
+.jama-checkout-main-container input:not(:placeholder-shown) ~ .reset {
     opacity: 1;
     visibility: visible;
 }
 
-/* Tamaño de los iconos vectoriales de los formularios */
-.form svg {
+/* ✅ SCOPEADO: tamaño de los iconos vectoriales de los formularios */
+.jama-checkout-main-container .form svg {
     width: 15px;
     height: 15px;
     color: #8b8ba7;
@@ -584,7 +584,6 @@ input:not(:placeholder-shown) ~ .reset {
     margin-top: 0.5rem;
 }
 
-/* Contenedor base de la tarjeta */
 .btn-pago-card-selector {
     position: relative;
     height: 100px;
@@ -609,7 +608,6 @@ input:not(:placeholder-shown) ~ .reset {
     height: 100%;
 }
 
-/* Caja del icono invisible sin marcos para mezclar el PNG */
 .pago-card-icon-box {
     width: 48px;
     height: 48px;
@@ -635,7 +633,6 @@ input:not(:placeholder-shown) ~ .reset {
     letter-spacing: 0.02em;
 }
 
-/* 🪐 LAS ESFERAS DE DISEÑO INTERACTIVAS */
 .esfera-diseno-pago {
     position: absolute;
     border-radius: 50%;
@@ -662,18 +659,10 @@ input:not(:placeholder-shown) ~ .reset {
 /* ======================================================== */
 /* 🎨 ASIGNACIÓN DE IDENTIDAD CROMÁTICA CORPORATIVA          */
 /* ======================================================== */
-
-/* 💵 EFECTIVO: Verde Orgánico La Jama */
 #btnPagoEfectivo { background: linear-gradient(135deg, #1B3A2C 0%, #11251C 100%); }
-
-/* 📱 YAPE: Morado Místico */
-#btnPagoYape { background: linear-gradient(135deg, #742384 0%, #4D1258 100%); }
-
-/* 📱 PLIN: Celeste Eléctrico */
-#btnPagoPlin { background: linear-gradient(135deg, #00B1A7 0%, #007D76 100%); }
-
-/* 💳 TARJETA: Azul Tecnológico */
-#btnPagoTarjeta { background: linear-gradient(135deg, #24416B 0%, #13243E 100%); }
+#btnPagoYape     { background: linear-gradient(135deg, #742384 0%, #4D1258 100%); }
+#btnPagoPlin     { background: linear-gradient(135deg, #00B1A7 0%, #007D76 100%); }
+#btnPagoTarjeta  { background: linear-gradient(135deg, #24416B 0%, #13243E 100%); }
 
 /* ======================================================== */
 /* ✨ EFECTO HOVER Y MOVIMIENTO DE ESFERAS                   */
@@ -682,13 +671,11 @@ input:not(:placeholder-shown) ~ .reset {
     transform: translateY(-5px);
 }
 
-/* Disparadores de Brillo Externo e Interno Coincidentes */
 #btnPagoEfectivo:hover:not(:disabled) { box-shadow: 0 15px 30px rgba(27, 58, 44, 0.35), inset 0 0 20px rgba(255,255,255,0.15); }
 #btnPagoYape:hover:not(:disabled)     { box-shadow: 0 15px 30px rgba(116, 35, 132, 0.35), inset 0 0 20px rgba(255,255,255,0.15); }
 #btnPagoPlin:hover:not(:disabled)     { box-shadow: 0 15px 30px rgba(0, 177, 167, 0.35), inset 0 0 20px rgba(255,255,255,0.15); }
 #btnPagoTarjeta:hover:not(:disabled)  { box-shadow: 0 15px 30px rgba(36, 65, 107, 0.35), inset 0 0 20px rgba(255,255,255,0.15); }
 
-/* Cinética: Las burbujas se cruzan al pasar el cursor */
 .btn-pago-card-selector:hover:not(:disabled) .e-p-1 {
     transform: translate(-12px, 12px) scale(1.15);
     opacity: 0.4;
