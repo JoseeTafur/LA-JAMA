@@ -137,8 +137,8 @@ function renderizarCarrito() {
     if (carrito.length === 0) {
         container.innerHTML = `
             <div class="text-center py-5 opacity-50">
-                <i class="bi bi-cart-x" style="font-size: 3rem;"></i>
-                <p class="mt-2 mb-0">Comanda vacía</p>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted mb-2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+                <p class="mt-1 mb-0 small fw-bold text-secondary">Comanda vacía</p>
             </div>`;
         document.getElementById('total-monto').innerText = "0.00";
         return;
@@ -148,29 +148,39 @@ function renderizarCarrito() {
     carrito.forEach((item, index) => {
         total += item.subtotal;
 
+        // Maquetación limpia de insumos omitidos (Si aplica)
         const sinEsto = item.nombresSinDescontar && item.nombresSinDescontar.length > 0
-            ? `<small class="text-danger d-block fw-bold" style="font-size:0.75rem;"><i class="bi bi-dash-circle-fill me-1"></i>Sin: ${item.nombresSinDescontar.join(', ')}</small>`
+            ? `<small class="text-danger d-block fw-bold font-monospace mt-1" style="font-size:0.75rem;"><i class="bi bi-dash-circle-fill me-1"></i>Sin: ${item.nombresSinDescontar.join(', ')}</small>`
             : '';
 
+        // 🚀 INYECCIÓN DE FILA PREMIUM ESTILO TICKET FINTECH (CERO CELESTE)
         html += `
-            <div class="cart-item-card shadow-sm border-0 animate__animated animate__fadeIn">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="d-block fw-bold text-dark">${item.nombre}</span>
-                        <small class="text-muted">1 unidad x S/ ${item.precio.toFixed(2)}</small>
-                        ${sinEsto}
-                    </div>
-                    <div class="text-end">
-                        <span class="d-block fw-bold text-primary">S/ ${item.subtotal.toFixed(2)}</span>
-                        <button class="btn btn-sm text-danger p-0 mt-1" onclick="eliminarItem(${index})">
-                           <i class="bi bi-trash3"></i>
-                        </button>
-                    </div>
+            <div class="cart-item-premium-row">
+                <div class="item-ticket-details">
+                    <span class="item-ticket-title text-dark">${item.nombre}</span>
+                    <span class="item-ticket-price-unit">1 unidad x S/ ${item.precio.toFixed(2)}</span>
+                    ${sinEsto}
+                </div>
+                <div class="item-ticket-actions">
+                    <span class="item-ticket-total">S/ ${item.subtotal.toFixed(2)}</span>
+                    <button type="button" class="btn-trash-ticket" onclick="eliminarItem(${index})" title="Eliminar Renglón">
+                        <i class="bi bi-trash3-fill"></i>
+                    </button>
                 </div>
             </div>`;
     });
+
     container.innerHTML = html;
     document.getElementById('total-monto').innerText = total.toFixed(2);
+}
+
+function limpiarBuscadorCarta() {
+    const input = document.getElementById('buscador');
+    if (input) {
+        input.value = ''; // Vacía la caja de texto
+        filtrarProductos(); // Restaura la visibilidad total de los platos
+        input.focus(); // Coloca el cursor adentro automáticamente
+    }
 }
 
 function eliminarItem(index) {

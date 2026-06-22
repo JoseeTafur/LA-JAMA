@@ -1,17 +1,17 @@
 package com.web.restaurante.service;
 
-import com.web.restaurante.model.DetallePedido;
-import com.web.restaurante.model.Empleado;
-import com.web.restaurante.model.Pedido;
+import com.web.restaurante.model.*;
 import com.web.restaurante.model.enums.EstadoPedido;
 import com.web.restaurante.model.enums.TipoPedido;
 import com.web.restaurante.repository.EmpleadoRepository;
 import com.web.restaurante.repository.InsumoProductoRepository;
 import com.web.restaurante.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -28,6 +28,7 @@ public class PedidoService {
     private final ProteinaService proteinaService;
     private final InsumoService insumoService;
     private final InsumoProductoRepository insumoProductoRepository;
+    private final TurnoCajaService turnoCajaService;
 
     private final double LAT_LOCAL = -6.787382;
     private final double LON_LOCAL = -79.842961;
@@ -89,19 +90,26 @@ public class PedidoService {
     @Transactional
     public void guardarPedido(Pedido pedido) {
         if (pedido.getId() == null) {
-            pedido.setEstado(EstadoPedido.EN_COCINA); // O el estado EN_COCINA / PENDIENTE que manejes al inicio
+            pedido.setEstado(EstadoPedido.EN_COCINA);
             pedido.setFechaCreacion(LocalDateTime.now());
+
+            if (pedido.getTipoPedido() == null) {
+                System.out.println("⚠️ [SERVICE] Pedido detectado sin Tipo. Seteando TipoPedido.LOCAL de forma automática.");
+                pedido.setTipoPedido(TipoPedido.LOCAL);
+            }
         }
 
         if (pedido.getListaDetalles() != null) {
             for (DetallePedido detalle : pedido.getListaDetalles()) {
                 detalle.setPedido(pedido);
-
-                // 🌟 CORREGIDO: Usamos la sintaxis correcta de Lombok para tipos boolean primitivos
-                // Si por alguna razón necesitas forzar el reinicio al guardar:
                 detalle.setCocinado(detalle.isCocinado());
                 detalle.setEntregado(detalle.isEntregado());
                 detalle.setCanceladoPorCliente(detalle.isCanceladoPorCliente());
+
+                // 🚀 EL ESCUDO DEL MOZO: Si es una fila nueva (sin ID aún persistido), comprometemos stock inmediatamente
+                if (detalle.getId() == null && !detalle.isCanceladoPorCliente()) {
+                    comprometerStockPorReceta(detalle);
+                }
             }
         }
         pedidoRepository.save(pedido);
@@ -110,7 +118,7 @@ public class PedidoService {
     @Transactional
     public Long guardarPedidoCarta(Pedido pedido) {
         if (pedido.getId() == null) {
-            pedido.setEstado(EstadoPedido.PENDIENTE); // 🚀 Cambiado para entrar directo al scope de cobranza/revisión
+            pedido.setEstado(EstadoPedido.PENDIENTE);
             pedido.setFechaCreacion(LocalDateTime.now());
         }
 
@@ -120,6 +128,11 @@ public class PedidoService {
                 detalle.setCocinado(false);
                 detalle.setEntregado(false);
                 detalle.setCanceladoPorCliente(false);
+
+                // 🚀 EL ESCUDO DE LA CARTA QR: Comprometemos stock antes de que el cajero apruebe
+                if (detalle.getId() == null) {
+                    comprometerStockPorReceta(detalle);
+                }
             }
         }
         pedidoRepository.save(pedido);
@@ -149,20 +162,27 @@ public class PedidoService {
         if (!detalleTarget.isCocinado()) {
             detalleTarget.setCocinado(true);
 
-            // 🚀 RECORRIDO INTEGRAL DE LA RECETA PARA AUDITORÍA DOBLE FLUJO
+            // 🔍 REEMPLAZA ESTE BLOQUE EXACTO DENTRO DE despacharPlatoIndividual():
             insumoProductoRepository.findByProductoId(detalleTarget.getProducto().getId()).forEach(ip -> {
                 if (ip.getInsumo() != null && ip.getInsumo().getCategoria() != null) {
+                    Insumo insumo = ip.getInsumo();
+                    double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
+                    double totalTeorico = cantidadUsada * detalleTarget.getCantidad();
 
-                    if (ip.getInsumo().getCategoria().toUpperCase().contains("PROTEIN")) {
-                        // 🥩 CASO PROTEÍNA: Al canal de porciones (Resta stock + Kardex Porciones)
-                        proteinaService.registrarKardexPorVenta(ip.getInsumo().getId(), detalleTarget.getCantidad(), p.getId());
+                    // 🚀 PASO MAESTRO: Liberamos el escudo virtual (Resta del comprometido)
+                    double comprometidoActual = (insumo.getStockComprometido() != null) ? insumo.getStockComprometido() : 0.0;
+                    insumo.setStockComprometido(Math.max(0.0, comprometidoActual - totalTeorico));
+
+                    if (insumo.getCategoria().toUpperCase().contains("PROTEIN")) {
+                        // 🥩 CASO PROTEÍNA: Sigue a tu canal de porciones (Resta stockActual + Kardex Porciones)
+                        proteinaService.registrarKardexPorVenta(insumo.getId(), detalleTarget.getCantidad(), p.getId());
                     } else {
-                        // 🛒 CASO GENERAL: Al canal de abarrotes (Stock INTACTO + Kardex General)
-                        double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
-                        double totalTeorico = cantidadUsada * detalleTarget.getCantidad();
-                        String detalleVenta = "Despacho a cocina: " + detalleTarget.getCantidad() + "x " + detalleTarget.getProducto().getNombre();
+                        // 🛒 CASO GENERAL: Descuento físico real del almacén
+                        double stockFisicoActual = (insumo.getStockActual() != null) ? insumo.getStockActual() : 0.0;
+                        insumo.setStockActual(stockFisicoActual - totalTeorico);
 
-                        insumoService.registrarMovimientoPorId(ip.getInsumo().getId(), totalTeorico, "EGRESO", detalleVenta);
+                        String detalleVenta = "Despacho a cocina (Gasto Real): " + detalleTarget.getCantidad() + "x " + detalleTarget.getProducto().getNombre();
+                        insumoService.registrarMovimientoPorId(insumo.getId(), totalTeorico, "EGRESO", detalleVenta);
                     }
                 }
             });
@@ -362,8 +382,21 @@ public class PedidoService {
         Pedido pedido = pedidoRepository.findById(pedidoId)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado con ID: " + pedidoId));
 
-        pedido.setEstado(EstadoPedido.EN_COCINA); // 🚀 Pasa directo a producción
+        // 🚀 Seteamos el estado de producción para cocina
+        pedido.setEstado(EstadoPedido.EN_COCINA);
+
+        // 📅 Seteamos la hora exacta del pago para que la recoja el HTML de la caja
+        pedido.setFechaEntrega(LocalDateTime.now());
+
+        // 💵 Registramos el ingreso real en el libro de movimientos de la caja activa
+        if (pedido.getMontoTotal() != null && pedido.getMontoTotal() > 0) {
+            String conceptoVenta = "Carta QR (" + pedido.getMetodoPago() + ") - Orden #" + pedido.getId();
+            turnoCajaService.registrarVenta(conceptoVenta, pedido.getMontoTotal());
+            System.out.println("💰 [SERVICE] Venta registrada en caja para pedido de carta #" + pedido.getId());
+        }
+
         pedidoRepository.save(pedido);
+        System.out.println("✅ [SERVICE] Pedido de carta #" + pedidoId + " aprobado con marcas temporales y financieras.");
     }
 
     public List<DetallePedido> obtenerDetallesPorTipo(Long pedidoId, String tipoCocina) {
@@ -402,6 +435,20 @@ public class PedidoService {
             // Lo quitamos de la lista. Gracias a orphanRemoval=true, JPA ejecutará el DELETE SQL
             pedido.getListaDetalles().remove(detalleTarget);
             detalleTarget.setPedido(null);
+        }
+
+        if (!detalleTarget.isCocinado()) {
+            insumoProductoRepository.findByProductoId(detalleTarget.getProducto().getId()).forEach(ip -> {
+                if (ip.getInsumo() != null) {
+                    Insumo insumo = ip.getInsumo();
+                    double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
+                    double totalALiberar = cantidadUsada * detalleTarget.getCantidad();
+
+                    // Restamos del comprometido devolviendo el plato a la vida en la carta pública
+                    double comprometidoActual = (insumo.getStockComprometido() != null) ? insumo.getStockComprometido() : 0.0;
+                    insumo.setStockComprometido(Math.max(0.0, comprometidoActual - totalALiberar));
+                }
+            });
         }
 
         // En ambos casos recalculamos el monto total usando tu método correcto: setMontoTotal
@@ -449,4 +496,41 @@ public class PedidoService {
                 .anyMatch(p -> firmaVoucher.equalsIgnoreCase(p.getDocumentoCliente()));
     }
 
+    @Transactional(readOnly = true)
+    public List<Pedido> obtenerPedidosParaCajaHoy() {
+        java.util.Optional<TurnoCaja> turnoOpt = turnoCajaService.obtenerTurnoActivo();
+        java.time.LocalDateTime inicioRangoContable = (turnoOpt.isPresent() && turnoOpt.get().getFechaApertura() != null)
+                ? turnoOpt.get().getFechaApertura()
+                : java.time.LocalDate.now().atStartOfDay();
+
+        System.out.println("🛰️ [SQL REPOSITORY] Extrayendo estrictamente comprobantes validados desde: " + inicioRangoContable);
+
+        // 🚀 Invocación indexada a MySQL: Retorna únicamente la data exacta a pintar en la interfaz
+        List<Pedido> comprobantesValidos = pedidoRepository.findPedidosParaComprobantesHoy(inicioRangoContable);
+
+        System.out.println("📦 [SERVICE] Elementos cargados directamente en memoria: " + comprobantesValidos.size());
+        return comprobantesValidos;
+    }
+
+    public List<Pedido> obtenerPedidosPorRango(LocalDate inicio, LocalDate fin) {
+        LocalDateTime desde = inicio.atStartOfDay();
+        LocalDateTime hasta = fin.atTime(23, 59, 59);
+        return pedidoRepository.findByFechaCreacionBetweenOrderByFechaCreacionDesc(desde, hasta);
+    }
+
+    private void comprometerStockPorReceta(DetallePedido detalle) {
+        if (detalle.getProducto() != null) {
+            insumoProductoRepository.findByProductoId(detalle.getProducto().getId()).forEach(ip -> {
+                if (ip.getInsumo() != null) {
+                    Insumo insumo = ip.getInsumo();
+                    double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
+                    double totalAComprometer = cantidadUsada * detalle.getCantidad();
+
+                    double actualComprometido = (insumo.getStockComprometido() != null) ? insumo.getStockComprometido() : 0.0;
+                    insumo.setStockComprometido(actualComprometido + totalAComprometer);
+                    System.out.println("🛡️ [ESCUDO] Insumo '" + insumo.getNombre() + "' comprometido en +" + totalAComprometer);
+                }
+            });
+        }
+    }
 }

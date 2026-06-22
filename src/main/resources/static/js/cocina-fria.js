@@ -11,7 +11,6 @@ stompClient.connect({}, function (frame) {
 
 function procesarAlertaCocina(mensaje) {
     if (mensaje.includes("🚨 ALERTA DE MERMA")) {
-        // Alarma ruidosa y visual para detener preparaciones en frío
         var audioAlarma = new Audio('https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3');
         audioAlarma.play().catch(e => console.log("Sonido bloqueado por directiva de navegador"));
 
@@ -46,7 +45,6 @@ function updateTimers() {
         const display = container.querySelector('.timer-display');
         if (display) display.innerText = `${mins}:${secs}`;
 
-        // Alerta visual de retraso en preparaciones frías (> 10 min)
         if (diff > 600) {
             container.classList.add('timer-urgent');
         } else {
@@ -83,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     botonesImprimir.forEach(btn => {
         btn.addEventListener('click', function() {
-            // Solo recargamos si el botón estaba palpitando (tenía cosas NUEVAS)
             if (this.classList.contains('btn-alerta-ticket')) {
                 this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Procesando...';
                 this.classList.remove('btn-info', 'btn-alerta-ticket');
@@ -96,9 +93,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Auto-recarga inteligente (ignorada si hay modal abierto)
+    // Auto-recarga inteligente reactiva de fondo (solo si la estación está vacía)
     setInterval(() => {
-        if (!Swal.isVisible()) {
+        const tarjetasVivas = document.querySelectorAll('.pedidos-grid .card-pedido');
+        if (!Swal.isVisible() && tarjetasVivas.length === 0) {
             console.log("Sincronizando monitor de barra fría en background...");
             location.reload();
         }
@@ -106,10 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =========================================================================
-// 🔥 CONTROL MICROSCOPIO: DESPACHAR PLATO INDIVIDUAL FRÍO RE-CALIBRADO
+// 🚀 ENTORNO DINÁMICO REACTIVO: DESPACHAR INDIVIDUAL ASÍNCRONO (CERO REFRESH)
 // =========================================================================
 function despacharItemCocina(pedidoId, detalleId, nombrePlato, elementoBoton) {
-    // 🛡️ CANDADO DE SEGURIDAD EN FRÍO: Bloqueo inmediato para evitar doble procesamiento
     if (elementoBoton && (elementoBoton.disabled || elementoBoton.classList.contains('processing-jama'))) {
         return;
     }
@@ -123,7 +120,6 @@ function despacharItemCocina(pedidoId, detalleId, nombrePlato, elementoBoton) {
     }, async function() {
         AppUtils.showLoading(true);
 
-        // 🔒 Congelamos físicamente el botón en la barra fría
         if (elementoBoton) {
             elementoBoton.disabled = true;
             elementoBoton.classList.add('processing-jama');
@@ -140,13 +136,38 @@ function despacharItemCocina(pedidoId, detalleId, nombrePlato, elementoBoton) {
                 method: 'POST',
                 body: params
             });
+
             if (res.ok) {
-                // 🚀 SOLUCIÓN ASÍNCRONA: Respiro de consolidación para la BD de La Jama
-                setTimeout(() => {
-                    window.location.reload();
-                }, 300);
+                AppUtils.showLoading(false);
+
+                // 👨‍🍳 ALERTA LOCAL COMPACTA EXCLUSIVA PARA EL COCINERO FRÍO
+                if (window.AppUtils && AppUtils.showNotification) {
+                    AppUtils.showNotification(`✅ Despacho exitoso: "${nombrePlato}" enviado a barra.`, "success");
+                }
+
+                // ── 🪐 ENTORNO DINÁMICO REACTIVO DEL DOM (CERO F5) ──
+                const contenedorPlato = elementoBoton.closest('.item-plato');
+                if (contenedorPlato) {
+                    contenedorPlato.classList.add('animate__animated', 'animate__fadeOutLeft');
+
+                    setTimeout(() => {
+                        const itemsListaContenedor = contenedorPlato.closest('.items-lista');
+                        contenedorPlato.remove();
+
+                        if (itemsListaContenedor && itemsListaContenedor.querySelectorAll('.item-plato').length === 0) {
+                            const tarjetaComandaCompleta = document.getElementById(`pedido-${pedidoId}`);
+                            if (tarjetaComandaCompleta) {
+                                tarjetaComandaCompleta.classList.add('animate__animated', 'animate__zoomOut');
+                                setTimeout(() => {
+                                    tarjetaComandaCompleta.remove();
+                                    actualizarContadorOrdenesPendientes();
+                                }, 400);
+                            }
+                        }
+                    }, 400);
+                }
+
             } else {
-                // Liberación de emergencia del control de barra
                 if (elementoBoton) {
                     elementoBoton.disabled = false;
                     elementoBoton.classList.remove('processing-jama');
@@ -159,9 +180,35 @@ function despacharItemCocina(pedidoId, detalleId, nombrePlato, elementoBoton) {
             if (elementoBoton) {
                 elementoBoton.disabled = false;
                 elementoBoton.classList.remove('processing-jama');
+                elementoBoton.innerHTML = '<i class="bi bi-check2-all"></i> Despachar';
             }
             AppUtils.showLoading(false);
             console.error("Error en la petición asíncrona de barra fría:", error);
+            AppUtils.showNotification("💥 Conexión interrumpida con el microservicio", "error");
         }
     });
+}
+
+// ── 🧠 FUNCIÓN COMPLEMENTARIA PARA RECALCULAR CONTADORES EN CALIENTE ──
+function actualizarContadorOrdenesPendientes() {
+    const contadorSpan = document.querySelector('.status-badge-jama span');
+    const tarjetasVivas = document.querySelectorAll('.pedidos-grid .card-pedido');
+
+    if (contadorSpan) {
+        contadorSpan.innerText = tarjetasVivas.length;
+    }
+
+    if (tarjetasVivas.length === 0) {
+        const gridContenedor = document.querySelector('.pedidos-grid');
+        if (gridContenedor) {
+            gridContenedor.insertAdjacentHTML('beforebegin', `
+                <div class="text-center py-5 mt-5 text-muted animate__animated animate__fadeIn">
+                    <i class="bi bi-clipboard2-check-fill text-info" style="font-size: 5rem; opacity: 0.8;"></i>
+                    <h3 class="mt-3 fw-bold text-dark">No hay pedidos recientes</h3>
+                    <p class="fs-5 text-muted">La barra fría está totalmente al día. ¡Excelente trabajo!</p>
+                </div>
+            `);
+            gridContenedor.remove();
+        }
+    }
 }

@@ -12,59 +12,135 @@
 </head>
 <body>
 
-<div id="contenido-caja" class="jama-caja-wrapper">
+<div id="contenido-caja" class="container-fluid p-0">
     <link rel="stylesheet" th:href="@{/css/caja.css}">
     <link rel="stylesheet" th:href="@{/css/caja-movil.css}">
 
     <input type="hidden" id="saldoTeoricoOculto" th:value="${saldoTeorico}">
 
-    <div class="jama-dashboard-top">
-        <div class="jama-kpi-grid">
-            <div class="kpi-tarjeta kpi-apertura">
-                <span class="kpi-etiqueta">Fondo de Apertura</span>
-                <h3 class="kpi-monto" th:text="${'S/ ' + #numbers.formatDecimal(turno.montoApertura, 1, 2)}">S/ 0.00</h3>
-            </div>
-            <div class="kpi-tarjeta kpi-ventas">
-                <span class="kpi-etiqueta">Ventas del Turno</span>
-                <h3 class="kpi-monto" th:text="${'S/ ' + #numbers.formatDecimal(saldoTeorico - turno.montoApertura, 1, 2)}">S/ 0.00</h3>
-            </div>
-            <div class="kpi-tarjeta kpi-esperado">
-                <span class="kpi-etiqueta">Saldo Esperado en Caja</span>
-                <h3 class="kpi-monto monto-destacado" th:text="${'S/ ' + #numbers.formatDecimal(saldoTeorico, 1, 2)}">S/ 0.00</h3>
+    <div class="row g-4 mb-4">
+        <!-- Tarjeta 1: Fondo de Apertura (Estilo Esmeralda Aurora) -->
+        <div class="col-md-4">
+            <div class="card card-resumen-jama cr-apertura position-relative overflow-hidden p-4">
+                <div class="esfera-diseno e-1"></div>
+                <div class="esfera-diseno e-2"></div>
+                <div class="position-relative" style="z-index: 2;">
+                    <span class="text-white-50 small text-uppercase fw-bold" style="letter-spacing: 0.05em;">Fondo de Apertura</span>
+                    <h3 class="mt-2 mb-0 fw-extrabold text-white style-monto-resumen" th:text="${'S/ ' + #numbers.formatDecimal(turno.montoApertura, 1, 2)}">S/ 0.00</h3>
+                </div>
             </div>
         </div>
 
-        <div class="jama-acciones-rapidas">
-            <button class="jama-btn btn-movimiento" onclick="abrirModal('modalMovimiento')">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon"><path d="m22 7-6-6v4H8a5 5 0 0 0-5 5v4"/><path d="m2 17 6 6v-4h8a5 5 0 0 0 5-5v-4"/></svg>
-                Movimiento
-            </button>
-            <button class="jama-btn btn-salon" onclick="abrirPlanoMesasDesdeCaja()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
-                Ver Salón
-            </button>
-            <button class="jama-btn btn-cierre" onclick="abrirModal('modalCierre')">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                Cerrar Caja
-            </button>
+        <!-- Tarjeta 2: Ventas del Turno (Estilo Zafiro Eléctrico) -->
+        <div class="col-md-4">
+            <div class="card card-resumen-jama cr-ventas position-relative overflow-hidden p-4">
+                <div class="esfera-diseno e-1"></div>
+                <div class="esfera-diseno e-2"></div>
+                <div class="position-relative" style="z-index: 2;">
+                    <span class="text-white-50 small text-uppercase fw-bold" style="letter-spacing: 0.05em;">Ventas del Turno</span>
+                    <h3 class="mt-2 mb-0 fw-extrabold text-white style-monto-resumen" th:text="${'S/ ' + #numbers.formatDecimal(totalVentasCalculado, 1, 2)}">S/ 0.00</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta 3: Saldo Esperado en Caja (Estilo Oro Líquido / Premium Jama) -->
+        <div class="col-md-4">
+            <div class="card card-resumen-jama cr-saldo position-relative overflow-hidden p-4">
+                <div class="esfera-diseno e-1"></div>
+                <div class="esfera-diseno e-2"></div>
+                <div class="position-relative" style="z-index: 2;">
+                    <span class="small text-uppercase fw-bold style-titulo-oro" style="letter-spacing: 0.05em;">Saldo Esperado en Caja</span>
+                    <h3 class="mt-2 mb-0 fw-extrabold text-jama-gold style-monto-resumen font-gold-glow" th:text="${'S/ ' + #numbers.formatDecimal(saldoTeorico, 1, 2)}">S/ 0.00</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="row g-3 p-3 bg-light-jama m-0 text-white">
+                <div class="col-md-4">
+                    <div class="tarjeta-financiera-jama tf-efectivo position-relative overflow-hidden p-3 rounded-3 shadow-sm">
+                        <div class="esfera-diseno e-1"></div><div class="esfera-diseno e-2"></div>
+                        <div class="d-flex justify-content-between align-items-center position-relative" style="z-index: 2;">
+                            <div class="d-flex align-items-center gap-2">
+                                <img th:src="@{/img/Efectivo.png}" alt="Efectivo" style="width: 24px; height: 24px; object-fit: contain;">
+                                <span class="small fw-bold text-white-50">Efectivo en Gaveta:</span>
+                            </div>
+                            <span class="fw-extrabold fs-4 text-white" th:text="|S/ ${#numbers.formatDecimal(efectivoEsperado, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="tarjeta-financiera-jama tf-digital position-relative overflow-hidden p-3 rounded-3 shadow-sm">
+                        <div class="esfera-diseno e-1"></div><div class="esfera-diseno e-2"></div>
+                        <div class="d-flex justify-content-between align-items-center position-relative" style="z-index: 2;">
+                            <div class="d-flex align-items-center gap-2">
+                                <img th:src="@{/img/YapePlin.png}" alt="Yape Plin" style="width: 24px; height: 24px; object-fit: contain;">
+                                <span class="small fw-bold text-white-50">Balance Yape/Plin:</span>
+                            </div>
+                            <span class="fw-extrabold fs-4 text-white" th:text="|S/ ${#numbers.formatDecimal(yapePlinEsperado, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="tarjeta-financiera-jama tf-tarjeta position-relative overflow-hidden p-3 rounded-3 shadow-sm">
+                        <div class="esfera-diseno e-1"></div><div class="esfera-diseno e-2"></div>
+                        <div class="d-flex justify-content-between align-items-center position-relative" style="z-index: 2;">
+                            <div class="d-flex align-items-center gap-2">
+                                <img th:src="@{/img/Tarjeta.png}" alt="Tarjeta" style="width: 24px; height: 24px; object-fit: contain;">
+                                <span class="small fw-bold text-white-50">Depósito por Tarjeta:</span>
+                            </div>
+                            <span class="fw-extrabold fs-4 text-white" th:text="|S/ ${#numbers.formatDecimal(tarjetaEsperada, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="jama-modulo-contable">
-        <div class="jama-tabs-navegacion">
-            <button class="jama-tab-link activo" id="por-cobrar-tab" onclick="cambiarPestañaCaja('panel-por-cobrar', this)">Comandas por Cobrar</button>
-            <button class="jama-tab-link" id="liquidados-tab" onclick="cambiarPestañaCaja('panel-liquidados', this)">Historial del Turno (Liquidados)</button>
-            <button class="jama-tab-link" id="historial-tab" onclick="cambiarPestañaCaja('panel-historial', this); inicializarHistorialFechas()">Historial Cerrado</button>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <button class="btn-jama-kinetic px-4" onclick="abrirModalLocal('modalMovimiento')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m22 7-6-6v4H8a5 5 0 0 0-5 5v4"/><path d="m2 17 6 6v-4h8a5 5 0 0 0 5-5v-4"/></svg>
+            Movimiento Manual
+        </button>
+        <button class="btn-jama-kinetic px-4" style="background: #374151 !important;" onclick="abrirPlanoMesasDesdeCaja()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+            Ver Salón Espejo
+        </button>
+        <button class="btn-jama-kinetic px-4" style="background: var(--lajama-brown) !important;" onclick="abrirModalLocal('modalCierre')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Cerrar Caja Operativa
+        </button>
+    </div>
+
+    <div class="card card-color1 p-4">
+        <div class="radio-inputs-jama mb-4">
+            <label class="radio-jama">
+                <input type="radio" name="cajaSegmento" checked onclick="cambiarPestañaCaja('panel-por-cobrar', this)">
+                <span class="name-jama">🛒 Por Cobrar</span>
+            </label>
+            <label class="radio-jama">
+                <input type="radio" name="cajaSegmento" onclick="cambiarPestañaCaja('panel-liquidados', this)">
+                <span class="name-jama">✅ Liquidados Turno</span>
+            </label>
+            <label class="radio-jama">
+                <input type="radio" name="cajaSegmento" onclick="cambiarPestañaCaja('panel-movimientos-turno', this)">
+                <span class="name-jama">📊 Bitácora Caja</span>
+            </label>
+            <label class="radio-jama">
+                <input type="radio" name="cajaSegmento" onclick="cambiarPestañaCaja('panel-historial', this); inicializarHistorialFechas()">
+                <span class="name-jama">📁 Historial Cerrado</span>
+            </label>
+            <label class="radio-jama">
+                <input type="radio" name="cajaSegmento" onclick="cambiarPestañaCaja('panel-historial-completo', this)">
+                <span class="name-jama">🔍 Buscador Global</span>
+            </label>
         </div>
 
         <div class="jama-tabs-contenido">
 
             <div class="jama-tab-panel activo" id="panel-por-cobrar">
-                <div class="panel-subbar">
-                    <span class="subbar-leyenda">Órdenes operativas vivas esperando cobro en salón</span>
-                </div>
-                <div class="jama-tabla-contenedor">
-                    <table class="jama-tabla">
+                <div class="table-responsive-jama">
+                    <table class="table table-jama" id="tablaPorCobrarLocal">
                         <thead>
                         <tr>
                             <th class="col-id">ID Orden</th>
@@ -72,53 +148,76 @@
                             <th>Cliente / Origen</th>
                             <th>Registro</th>
                             <th>Total Venta</th>
-                            <th class="text-centro">Acciones</th>
-                            <th class="text-derecha">Estado</th>
+                            <th class="text-center">Acciones</th>
+                            <th class="text-end">Estado</th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr th:each="p : ${pedidosPorCobrar}" class="fila-pedido-caja">
-                            <td><span class="texto-negrita">#[[${p.id}]]</span></td>
-                            <td><span class="texto-servicio" th:text="${p.tipoPedido != null and p.tipoPedido.name() == 'DELIVERY' ? '🏍️ Delivery' : '🍽️ Salón'}"></span></td>
+                            <td class="fw-bold">#[[${p.id}]]</td>
                             <td>
-                                <div class="cliente-nombre">[[${p.cliente}]]</div>
-                                <div class="cliente-meta-detalles">
-                                    <small th:if="${p.numeroMesa != null}" class="texto-atenuado">Mesa N° [[${p.numeroMesa}]]</small>
+                                <div class="d-flex align-items-center gap-2">
+                                    <svg th:if="${p.tipoPedido != null and p.tipoPedido.name() == 'DELIVERY'}" width="15" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="7.5" cy="12.5" r="2.5"/><path d="M5 11V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v4"/></svg>
+                                    <svg th:if="${p.tipoPedido == null or p.tipoPedido.name() != 'DELIVERY'}" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                    <span th:text="${p.tipoPedido != null and p.tipoPedido.name() == 'DELIVERY' ? 'Delivery' : 'Salón'}">Salón</span>
                                 </div>
                             </td>
-                            <td><span class="jama-badge badge-gris">[[${#temporals.format(p.fechaCreacion, 'HH:mm')}]]</span></td>
-                            <td><span class="monto-exito">S/ [[${#numbers.formatDecimal(p.montoTotal, 1, 2)}]]</span></td>
-                            <td class="text-centro">
-                                <div class="jama-acciones-celda" style="display: flex; gap: 6px; justify-content: center;">
-                                    <button type="button" class="jama-btn-circular" th:data-id="${p.id}" onclick="verDetallesComandaAuditoria(this)" title="Ver Auditoría">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 9 7 9 7-3 7-10 7-9-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <td>
+                                <div class="fw-bold text-dark">[[${p.cliente}]]</div>
+                                <small th:if="${p.numeroMesa != null}" class="text-muted">Mesa N° [[${p.numeroMesa}]]</small>
+                            </td>
+                            <td><span class="badge bg-light text-dark font-monospace border px-2 py-1" th:text="${#temporals.format(p.fechaCreacion, 'HH:mm')}">00:00</span></td>
+                            <td class="fw-bold text-jama-gold">S/ [[${#numbers.formatDecimal(p.montoTotal, 1, 2)}]]</td>
+                            <td class="text-center">
+                                <div class="action-buttons-wrapper justify-content-center">
+                                    <button type="button" class="action-jama-btn btn-action-edit" th:data-id="${p.id}" onclick="verDetallesComandaAuditoria(this)" title="Auditar Platos">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12s3-7 10-7 9 7 9 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                                     </button>
-
-                                    <button type="button" class="jama-btn-circular btn-cobrar-directo"
-                                            th:data-id="${p.id}"
-                                            th:data-mesa="${p.numeroMesa}"
-                                            th:with="mesaMatch=${mesas.?[numero == __${p.numeroMesa}__]}"
-                                            th:data-mesa-id="${!#lists.isEmpty(mesaMatch) ? mesaMatch[0].id : 1}"
-                                            onclick="abrirFlujoPagoDesdeFila(this)"
-                                            style="background-color: var(--lajama-green, #2ecc71); color: white; border-color: transparent;"
-                                            title="Procesar Pago Completo o Split">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                                    <button type="button" class="action-jama-btn btn-action-status is-active" th:data-id="${p.id}" th:data-mesa="${p.numeroMesa}" th:with="mesaMatch=${mesas.?[numero == __${p.numeroMesa}__]}" th:data-mesa-id="${!#lists.isEmpty(mesaMatch) ? mesaMatch[0].id : 1}" onclick="abrirFlujoPagoDesdeFila(this)" title="Cobrar Cuenta">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><path d="M6 14h.01M10 14h.01M14 14h.01M18 14h.01"/></svg>
                                     </button>
                                 </div>
                             </td>
-                            <td class="text-derecha"><span class="jama-badge status-egreso">Por Cobrar</span></td>
+                            <td class="text-end"><span class="badge bg-warning text-dark fw-bold px-3 py-2 rounded-pill" style="font-size:0.72rem; letter-spacing:0.02em;">POR COBRAR</span></td>
                         </tr>
                         </tbody>
                     </table>
                 </div>
+                <div class="jama-table-controls mt-3">
+                    <span id="infoPagPorCobrar" class="text-muted small fw-bold">Mostrando 0 registros</span>
+                    <ul class="jama-pagination-wrapper" id="paginadorPorCobrar"></ul>
+                </div>
             </div>
 
             <div class="jama-tab-panel" id="panel-liquidados">
-                <div class="panel-subbar">
-                    <span class="subbar-leyenda">Comprobantes y sub-tickets cobrados durante el turno actual</span>
+                <div class="p-3 mb-3 bg-light rounded-3 border" style="border-color: rgba(27,58,44,0.06) !important;">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <input type="text" id="filtroAsincronoTexto" class="form-control form-control-sm" placeholder="Buscar por cliente, ID o ticket...">
+                        </div>
+                        <div class="col-md-3">
+                            <select id="filtroAsincronoMetodo" class="form-select form-select-sm">
+                                <option value="TODOS">-- Todos los Métodos --</option>
+                                <option value="EFECTIVO">Efectivo</option>
+                                <option value="YAPE">Yape / Plin</option>
+                                <option value="TARJETA">Tarjeta</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select id="filtroAsincronoOrigen" class="form-select form-select-sm">
+                                <option value="TODOS">-- Todos los Orígenes --</option>
+                                <option value="SALON">Salón (Mesas)</option>
+                                <option value="DELIVERY">Delivery / Web</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-secondary btn-sm w-100 fw-bold" style="border-radius:8px; height:34px;" onclick="limpiarFiltrosHistorialAsincrono()">Limpiar</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="jama-tabla-contenedor">
-                    <table class="jama-tabla">
+
+                <div class="table-responsive-jama">
+                    <table class="table table-jama" id="tablaHistorialLiquidadosTurno">
                         <thead>
                         <tr>
                             <th class="col-id">ID Ticket</th>
@@ -126,59 +225,135 @@
                             <th>Cliente / Mesa</th>
                             <th>Hora Pago</th>
                             <th>Monto Cobrado</th>
-                            <th class="text-centro">Imprimir</th>
-                            <th class="text-derecha">Estado</th>
+                            <th class="text-center">Acciones</th>
+                            <th class="text-end">Estado</th>
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="p : ${pedidosLiquidados}" class="fila-pedido-caja">
-                            <td><span class="texto-negrita">#[[${p.id}]]</span></td>
-                            <td><span class="texto-servicio" th:text="${p.tipoPedido != null and p.tipoPedido.name() == 'DELIVERY' ? '🏍️ Delivery' : '🍽️ Salón'}"></span></td>
+                        <tr th:each="comp : ${pedidosLiquidados}" class="fila-pedido-caja" th:styleappend="${comp.estado.name() == 'ANULADO' ? 'background-color: #fff5f5 !important; opacity: 0.75;' : ''}">
+                            <td class="fw-bold">#[[${comp.id}]]</td>
                             <td>
-                                <div class="cliente-nombre">[[${p.cliente}]]</div>
-                                <div class="cliente-meta-detalles">
-                                    <small th:if="${p.numeroMesa != null}" class="texto-atenuado">Mesa N° [[${p.numeroMesa}]]</small>
-                                    <span th:if="${p.metodoPago != null}" class="jama-badge badge-pago" th:text="${p.metodoPago.name() == 'TARJETA' ? '💳 Tarjeta' : p.metodoPago.name() == 'YAPE' ? '📱 Yape/Plin' : '💵 Efectivo'}"></span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <svg width="15" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" th:if="${comp.tipoPedido != null and comp.tipoPedido.name() == 'DELIVERY'}"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="7.5" cy="12.5" r="2.5"/><path d="M5 11V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v4"/></svg>
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" th:if="${comp.tipoPedido == null or comp.tipoPedido.name() != 'DELIVERY'}"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                    <span th:text="${comp.tipoPedido != null and comp.tipoPedido.name() == 'DELIVERY' ? 'Delivery' : 'Salón'}">Salón</span>
                                 </div>
                             </td>
-                            <td><span class="jama-badge badge-gris">[[${#temporals.format(p.fechaEntrega, 'HH:mm')}]]</span></td>
-                            <td><span class="monto-exito" style="color:var(--lajama-green);">S/ [[${#numbers.formatDecimal(p.montoTotal, 1, 2)}]]</span></td>
-                            <td class="text-centro">
-                                <div class="jama-acciones-celda" style="display: flex; gap: 6px; justify-content: center;">
-                                    <button type="button" class="jama-btn-circular" th:data-id="${p.id}" onclick="verDetallesComandaAuditoria(this)" title="Visualizar Consumos">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 9 7 9 7-3 7-10 7-9-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                                    </button>
+                            <td>
+                                <div class="fw-bold text-dark" th:styleappend="${comp.estado.name() == 'ANULADO' ? 'text-decoration: line-through; color: #999;' : ''}">[[${comp.cliente}]]</div>
+                                <small th:if="${comp.numeroMesa != null}" class="text-muted">Mesa N° [[${comp.numeroMesa}]]</small>
+                                <div th:if="${comp.metodoPago != null}" class="d-inline-block ms-1">
 
-                                    <a th:href="@{'/admin/caja/ticket-venta/' + ${p.id}}" target="_blank" class="jama-btn-circular btn-imprimir-ticket" title="Imprimir Ticket Venta">
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                                    </a>
+    <span th:if="${comp.metodoPago.name() == 'EFECTIVO'}" class="badge-metodo-jama bm-efectivo">
+        <img th:src="@{/img/Efectivo.png}" alt="Efectivo"> Efectivo
+    </span>
+
+                                <span th:if="${comp.metodoPago.name() == 'YAPE_PLIN' or comp.metodoPago.name() == 'YAPE' or comp.metodoPago.name() == 'PLIN'}" class="badge-metodo-jama bm-digital">
+        <img th:src="@{/img/YapePlin.png}" alt="Yape Plin"> Yape/Plin
+    </span>
+
+                                <span th:if="${comp.metodoPago.name() == 'TARJETA'}" class="badge-metodo-jama bm-tarjeta">
+        <img th:src="@{/img/Tarjeta.png}" alt="Tarjeta"> Tarjeta
+    </span>
+
+                            </div>
+                            </td>
+                            <td><span class="badge bg-light text-dark font-monospace border px-2 py-1" th:text="${comp.fechaEntrega != null ? #temporals.format(comp.fechaEntrega, 'HH:mm') : '-'}">00:00</span></td>
+                            <td>
+        <span th:class="${comp.estado.name() == 'ANULADO' ? 'text-danger fw-bold' : 'fw-bold text-success'}"
+              th:styleappend="${comp.estado.name() == 'ANULADO' ? 'text-decoration: line-through;' : ''}"
+              th:text="|S/ ${#numbers.formatDecimal(comp.montoTotal, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</span>
+                            </td>
+                            <td class="text-center">
+                                <div class="action-buttons-wrapper justify-content-center">
+                                    <button type="button" class="action-jama-btn btn-action-edit" th:data-id="${comp.id}" onclick="verDetallesComandaAuditoria(this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12s3-7 10-7 9 7 9 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                                    <a th:href="@{'/admin/caja/ticket-venta/' + ${comp.id}}" target="_blank" class="action-jama-btn btn-action-edit bg-light-jama" style="border-color: rgba(27,58,44,0.15) !important;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></a>
                                 </div>
                             </td>
-                            <td class="text-derecha"><span class="jama-badge status-ingreso">Liquidado</span></td>
+                            <td class="text-end">
+        <span th:class="${comp.estado.name() == 'ANULADO' ? 'badge bg-danger text-white fw-bold px-3 py-2 rounded-pill' : 'badge bg-success text-white fw-bold px-3 py-2 rounded-pill'}"
+              th:text="${comp.estado.name() == 'ANULADO' ? 'ANULADO' : 'LIQUIDADO'}" style="font-size:0.72rem; letter-spacing:0.02em;">LIQUIDADO</span>
+                            </td>
                         </tr>
                         </tbody>
                     </table>
                 </div>
+                <div class="jama-table-controls mt-3">
+                    <span id="infoPagLiquidados" class="text-muted small fw-bold">Mostrando 0 registros</span>
+                    <ul class="jama-pagination-wrapper" id="paginadorLiquidados"></ul>
+                </div>
+            </div>
+
+            <div class="jama-tab-panel" id="panel-movimientos-turno">
+                <div class="table-responsive-jama">
+                    <table class="table table-jama">
+                        <thead>
+                        <tr>
+                            <th class="col-id">ID Mov</th>
+                            <th>Tipo Operación</th>
+                            <th>Concepto Justificación</th>
+                            <th>Hora Registro</th>
+                            <th>Monto Transacción</th>
+                            <th>Método Pago</th>
+                            <th class="text-end">Origen</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="m : ${todosLosMovimientosCaja}" class="fila-pedido-caja">
+                            <td class="text-muted font-monospace">#M-[[${m.id}]]</td>
+                            <td>
+                                <span th:class="${m.tipo == 'EGRESO' ? 'badge bg-danger text-white fw-bold px-2 py-1' : 'badge bg-success text-white fw-bold px-2 py-1'}"
+                                      th:text="${m.tipo == 'EGRESO' ? 'EGRESO' : 'INGRESO'}" style="font-size:0.7rem;">INGRESO</span>
+                            </td>
+                            <td class="fw-semibold text-dark" th:text="${m.concepto != null and m.concepto.startsWith('Manual: ') ? m.concepto.substring(8) : m.concepto}">Concepto Comercial</td>
+                            <td><span class="badge bg-light text-dark font-monospace border px-2 py-1" th:text="${#temporals.format(m.fecha, 'HH:mm')}">00:00</span></td>
+                            <td>
+                                <span th:class="${m.tipo == 'EGRESO' ? 'text-danger fw-bold' : 'text-success fw-bold'}" th:text="${'S/ ' + #numbers.formatDecimal(m.monto, 1, 2)}">S/ 0.00</span>
+                            </td>
+                            <td>
+                                <div th:with="mpago=${m.metodoPago != null ? m.metodoPago.name() : 'EFECTIVO'}" class="d-inline-block">
+
+        <span th:if="${mpago == 'EFECTIVO'}" class="badge-metodo-jama bm-efectivo">
+            <img th:src="@{/img/Efectivo.png}" alt="Efectivo"> Efectivo
+        </span>
+
+                                    <span th:if="${mpago == 'YAPE_PLIN' or mpago == 'YAPE' or mpago == 'PLIN'}" class="badge-metodo-jama bm-digital">
+            <img th:src="@{/img/YapePlin.png}" alt="Yape Plin"> Yape/Plin
+        </span>
+
+                                    <span th:if="${mpago == 'TARJETA'}" class="badge-metodo-jama bm-tarjeta">
+            <img th:src="@{/img/Tarjeta.png}" alt="Tarjeta"> Tarjeta
+        </span>
+
+                                </div>
+                            </td>
+                            <td class="text-end text-muted small fw-bold">👤 CAJERO</td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(todosLosMovimientosCaja)}">
+                            <td colspan="7" class="text-center py-4 text-muted small italic">No hay ingresos de sencillo ni gastos de proveedores registrados manualmente.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="jama-table-controls mt-3">
+                    <span id="infoPagMovimientos" class="text-muted small fw-bold">Mostrando 0 registros</span>
+                    <ul class="jama-pagination-wrapper" id="paginadorMovimientos"></ul>
+                </div>
             </div>
 
             <div class="jama-tab-panel" id="panel-historial">
-                <div class="jama-filtro-fechas">
-                    <div class="campo-fecha">
-                        <label>Desde:</label>
-                        <input type="date" id="historialFechaInicio" class="jama-input">
-                    </div>
-                    <div class="campo-fecha">
-                        <label>Hasta:</label>
-                        <input type="date" id="historialFechaFin" class="jama-input">
-                    </div>
-                    <button type="button" class="btn-filtro" onclick="consultarHistorialAsincrono()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px; vertical-align:middle;"><circle cx="11" cy="12" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Consultar Plazo
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-3 p-3 bg-light rounded-3 border" style="border-color: rgba(27,58,44,0.06) !important;">
+                    <div class="d-flex align-items-center gap-2"><label class="m-0 small fw-bold text-secondary">Desde:</label><input type="date" id="historialFechaInicio" class="form-control form-control-sm" style="width:auto; height:34px;"></div>
+                    <div class="d-flex align-items-center gap-2"><label class="m-0 small fw-bold text-secondary">Hasta:</label><input type="date" id="historialFechaFin" class="form-control form-control-sm" style="width:auto; height:34px;"></div>
+                    <button type="button" class="btn btn-sm text-white px-3 d-flex align-items-center gap-1" style="background:var(--lajama-green); border-radius:8px; height:34px;" onclick="consultarHistorialAsincrono()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        Consultar
                     </button>
                 </div>
-                <div class="jama-tabla-contenedor">
-                    <table class="jama-tabla" id="tablaHistorialCajas">
+                <div class="table-responsive-jama">
+                    <table class="table table-jama" id="tablaHistorialCajas">
                         <thead>
-                        <tr class="cabecera-oscura">
+                        <tr>
                             <th class="col-id">Turno ID</th>
                             <th>Apertura</th>
                             <th>Cierre</th>
@@ -186,15 +361,67 @@
                             <th>Vendido</th>
                             <th>Arqueo Físico</th>
                             <th>Descuadre</th>
-                            <th>Observación de Auditoría</th>
+                            <th class="text-end">Auditoría</th>
                         </tr>
                         </thead>
                         <tbody id="cuerpoHistorialCajas">
-                        <tr>
-                            <td colspan="8" style="text-align:center; padding:2rem; color:var(--lajama-secondary);">Haz clic en consultar para traer la bitácora financiera de La Jama.</td>
-                        </tr>
+                        <tr><td colspan="8" class="text-center py-4 text-muted small italic">Haz clic en consultar para traer la bitácora histórica de cierres de La Jama.</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <div class="jama-tab-panel" id="panel-historial-completo">
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-3 p-3 bg-light rounded-3 border" style="border-color: rgba(27,58,44,0.06) !important;">
+                    <div class="d-flex align-items-center gap-1"><label class="m-0 small fw-bold text-secondary">Desde:</label><input type="date" id="ticketFechaInicio" class="form-control form-control-sm" style="width:auto; height:31px;"></div>
+                    <div class="d-flex align-items-center gap-1"><label class="m-0 small fw-bold text-secondary">Hasta:</label><input type="date" id="ticketFechaFin" class="form-control form-control-sm" style="width:auto; height:31px;"></div>
+                    <div class="d-flex align-items-center gap-1">
+                        <select id="ticketFiltroMetodo" class="form-select form-select-sm" style="width:auto; height:31px; padding:0 1.8rem 0 0.5rem !important;">
+                            <option value="">-- Método --</option>
+                            <option value="EFECTIVO">Efectivo</option>
+                            <option value="YAPE">Yape / Plin</option>
+                            <option value="TARJETA">Tarjeta</option>
+                        </select>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <select id="ticketFiltroOrigen" class="form-select form-select-sm" style="width:auto; height:31px; padding:0 1.8rem 0 0.5rem !important;">
+                            <option value="">-- Origen --</option>
+                            <option value="LOCAL">Salón (Mesa)</option>
+                            <option value="DELIVERY">Delivery</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-sm text-white px-3 d-flex align-items-center gap-1" style="background:#2e7d32; border-radius:8px; height:31px;" onclick="paginaActualComprobantes=0; cargarComprobantesHistoricos();">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        Buscar
+                    </button>
+                </div>
+
+                <div class="table-responsive-jama">
+                    <table class="table table-jama" id="tablaHistorialComprobantesAsincronoMaster">
+                        <thead>
+                        <tr>
+                            <th class="col-id">ID Ticket</th>
+                            <th>Tipo Servicio</th>
+                            <th>Cliente / Origen</th>
+                            <th>Fecha Emisión</th>
+                            <th>Monto Cobrado</th>
+                            <th>Método Pago</th>
+                            <th class="text-center">Acciones</th>
+                            <th class="text-end">Estado</th>
+                        </tr>
+                        </thead>
+                        <tbody id="cuerpoHistorialComprobantesAsincrono">
+                        <tr><td colspan="8" class="text-center py-4 text-muted small italic">🔒 Parámetro seguro: Selecciona los rangos de fechas para extraer los comprobantes históricos.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="jama-table-controls mt-3">
+                    <span id="infoPaginacionComprobantes" class="text-muted small fw-bold">Mostrando 0 comprobantes</span>
+                    <ul class="jama-pagination-wrapper">
+                        <li class="page-item-jama"><button type="button" id="btnPrevPagina" class="page-link-jama" onclick="cambiarPaginaComprobantes(-1)" disabled>Anterior</button></li>
+                        <li class="page-item-jama"><button type="button" id="btnNextPagina" class="page-link-jama" onclick="cambiarPaginaComprobantes(1)" disabled>Siguiente</button></li>
+                    </ul>
                 </div>
             </div>
 
@@ -203,124 +430,138 @@
 </div>
 
 <div id="modales-caja">
-
-    <div class="jama-modal-overlay" id="modalMovimiento" onclick="if(event.target===this) cerrarModal('modalMovimiento')">
-        <div class="jama-modal-caja">
-            <div class="jama-modal-header">
-                <h5 class="jama-modal-titulo">Movimiento Manual de Caja</h5>
-                <button type="button" class="jama-modal-cerrar" onclick="cerrarModal('modalMovimiento')">✕</button>
-            </div>
-            <form th:action="@{/admin/caja/movimiento}" method="post">
-                <div class="jama-modal-body">
-                    <div style="margin-bottom:1.25rem;">
-                        <label class="jama-form-label">Tipo de Operación *</label>
-                        <select name="tipo" class="jama-form-control" required>
-                            <option value="INGRESO">Inyección de sencillo / vuelto</option>
-                            <option value="EGRESO">Gasto de pánico / Proveedor</option>
-                        </select>
-                    </div>
-                    <div style="margin-bottom:1.25rem;">
-                        <label class="jama-form-label">Monto Operación (S/.) *</label>
-                        <input type="number" step="0.10" name="monto" class="jama-form-control entry-monto" placeholder="0.00" required>
-                    </div>
-                    <div>
-                        <label class="jama-form-label">Concepto / Justificación Comercial *</label>
-                        <input type="text" name="concepto" class="jama-form-control" placeholder="Ej: Pago de verduras de urgencia" required>
-                    </div>
+    <div class="modal fade" id="modalMovimiento" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-arrow-left-right me-1"></i>Movimiento Manual de Caja</h5>
+                    <button type="button" class="btn-close btn-close-white" onclick="cerrarModalLocal('modalMovimiento')" aria-label="Close"></button>
                 </div>
-                <div class="jama-modal-footer">
-                    <button type="button" class="btn-pag-jama-block" onclick="cerrarModal('modalMovimiento')">Cancelar</button>
-                    <button type="submit" class="btn-pag-jama-block btn-pag-jama-active">Registrar en Libro</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="jama-modal-overlay" id="modalCierre" onclick="if(event.target===this) cerrarModal('modalCierre')">
-        <div class="jama-modal-caja">
-            <div class="jama-modal-header header-modal-danger">
-                <h5 class="jama-modal-titulo" style="color:white;">Arqueo Estricto y Cierre de Turno</h5>
-                <button type="button" class="jama-modal-cerrar" style="color:white;" onclick="cerrarModal('modalCierre')">✕</button>
-            </div>
-            <form th:action="@{/admin/caja/cerrar}" method="post">
-                <div class="jama-modal-body">
-                    <div class="jama-alerta alerta-error" style="margin-bottom:1.25rem;">
-                        <div class="alerta-cuerpo">
-                            <span class="alerta-texto">Al cerrar se contrastará tu arqueo físico contra el sistema para auditar descuadres de manera rigurosa.</span>
+                <form th:action="@{/admin/caja/movimiento}" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Tipo de Operación *</label>
+                            <select name="tipo" class="form-select" required>
+                                <option value="INGRESO">Inyección de sencillo / vuelto</option>
+                                <option value="EGRESO">Gasto de pánico / Proveedor</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Monto Operación (S/.) *</label>
+                            <input type="number" step="0.10" name="monto" class="form-control" placeholder="0.00" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Concepto / Justificación Comercial *</label>
+                            <input type="text" name="concepto" class="form-control" placeholder="Ej: Pago de verduras de urgencia" required>
                         </div>
                     </div>
-                    <div style="margin-bottom:1.25rem; text-align:center;">
-                        <label class="jama-form-label" style="font-weight:700;">Monto Contado Físicamente (Efectivo + Vouchers) *</label>
-                        <input type="number" step="0.10" name="montoCierre" class="jama-form-control entry-monto" style="font-size:1.8rem; text-align:center; color:var(--lajama-danger);" placeholder="0.00" required>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="cerrarModalLocal('modalMovimiento')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Registrar en Libro</button>
                     </div>
-                    <div>
-                        <label class="jama-form-label">Observaciones de Entrega de Turno</label>
-                        <textarea name="observaciones" class="jama-form-control" rows="3" placeholder="Detalles de entrega de efectivo o arqueo..."></textarea>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalCierre" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--lajama-brown) 0%, #702518 100%) !important;">
+                    <h5 class="modal-title text-white"><i class="bi bi-lock-fill me-1"></i>Arqueo Estricto y Cierre de Turno</h5>
+                    <button type="button" class="btn-close btn-close-white" onclick="cerrarModalLocal('modalCierre')" aria-label="Close"></button>
+                </div>
+                <form th:action="@{/admin/caja/cerrar}" method="post">
+                    <div class="modal-body">
+                        <div class="alert alert-warning border-0 p-3 mb-3" style="background-color: #fff3e0; color: #b76e00; border-radius:12px; font-size: 0.85rem;">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                                <span>Al cerrar se contrastará tu arqueo físico contra el sistema para auditar descuadres de manera rigurosa.</span>
+                            </div>
+                        </div>
+                        <div class="mb-3 text-center">
+                            <label class="form-label fw-bold d-block mb-2" style="font-size:0.9rem !important;">Monto Contado Físicamente (Efectivo + Vouchers) *</label>
+                            <input type="number" step="0.10" name="montoCierre" class="form-control text-center fw-bold fs-4 text-secondary mx-auto" style="max-width:280px; border-color:var(--lajama-skin) !important;" placeholder="0.00" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Observaciones de Entrega de Turno</label>
+                            <textarea name="observaciones" class="form-control" rows="3" placeholder="Detalles de entrega de efectivo o arqueo..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="cerrarModalLocal('modalCierre')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" style="background-color: var(--lajama-brown) !important;">Confirmar Arqueo y Cierre</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalPlanoMesasCaja" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 92%;">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-white border-bottom">
+                    <h5 class="modal-title text-dark fw-bold"><i class="bi bi-grid-3x3-gap-fill text-success me-2"></i>Monitor de Salón Espejo</h5>
+                    <button type="button" class="btn-close" onclick="cerrarModalLocal('modalPlanoMesasCaja')" aria-label="Close" style="filter:none !important;"></button>
+                </div>
+                <div class="modal-body p-0" style="height: 75vh;">
+                    <iframe src="/admin/mesas?embed=true" id="iframePlanoMesas" style="width:100%; height:100%; border:none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDetalleAuditoria" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-receipt me-1"></i>Auditoría de Orden #<span id="auditoriaIdPedido">0</span></h5>
+                    <button type="button" class="btn-close btn-close-white" onclick="cerrarModalLocal('modalDetalleAuditoria')" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between font-monospace text-muted mb-3 border-bottom pb-2" style="font-size:0.85rem;">
+                        <span><strong>Servicio:</strong> <span id="auditoriaTipo" class="text-dark fw-bold">-</span></span>
+                        <span><strong>Mesa:</strong> <span id="auditoriaMesa" class="text-dark fw-bold">-</span></span>
+                    </div>
+                    <div id="auditoriaListaPlatos" class="d-flex flex-column gap-2 mb-3" style="max-height: 260px; overflow-y:auto; padding-right:4px;"></div>
+                    <div class="p-3 bg-light-jama rounded-3 border text-end">
+                        <h5 class="m-0 fw-bold" style="color:var(--lajama-green);">Total Consumo: S/. <span id="auditoriaTotal">0.00</span></h5>
                     </div>
                 </div>
-                <div class="jama-modal-footer">
-                    <button type="button" class="btn-pag-jama-block" onclick="cerrarModal('modalCierre')">Cancelar</button>
-                    <button type="submit" class="jama-btn-danger-solid">Confirmar Arqueo y Cierre</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="jama-modal-overlay large" id="modalPlanoMesasCaja" onclick="if(event.target===this) cerrarModal('modalPlanoMesasCaja')">
-        <div class="jama-modal-caja large">
-            <div class="jama-modal-header bg-white border-bottom">
-                <h5 class="jama-modal-titulo" style="color: var(--lajama-success);">Monitor de Salón Espejo</h5>
-                <button type="button" class="jama-modal-cerrar text-dark" onclick="cerrarModal('modalPlanoMesasCaja')">✕</button>
-            </div>
-            <div class="jama-modal-body iframe-container">
-                <iframe src="/admin/mesas?embed=true" id="iframePlanoMesas"></iframe>
-            </div>
-        </div>
-    </div>
-
-    <div class="jama-modal-overlay" id="modalDetalleAuditoria" onclick="if(event.target===this) cerrarModal('modalDetalleAuditoria')">
-        <div class="jama-modal-caja">
-            <div class="jama-modal-header">
-                <h5 class="jama-modal-titulo">Auditoría de Orden #<span id="auditoriaIdPedido">0</span></h5>
-                <button type="button" class="jama-modal-cerrar" onclick="cerrarModal('modalDetalleAuditoria')">✕</button>
-            </div>
-            <div class="jama-modal-body">
-                <div style="display:flex; justify-content:space-between; margin-bottom:1.25rem; font-size:0.85rem; color:var(--lajama-secondary);">
-                    <span><strong>Servicio:</strong> <span id="auditoriaTipo">-</span></span>
-                    <span><strong>Mesa:</strong> <span id="auditoriaMesa">-</span></span>
-                </div>
-                <div id="auditoriaListaPlatos" style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1.25rem;"></div>
-                <div style="text-align:right; border-top:1px solid var(--lajama-peach); padding-top:0.75rem;">
-                    <h4 style="color:var(--lajama-success); margin:0; font-weight:700;">Total Consumo: S/. <span id="auditoriaTotal">0.00</span></h4>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary w-100 font-weight-bold" style="border-radius:10px;" onclick="cerrarModalLocal('modalDetalleAuditoria')">Cerrar Monitor</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="jama-modal-overlay" id="modalPrevisualizarCobroCaja" onclick="if(event.target===this) cerrarModal('modalPrevisualizarCobroCaja')">
-        <div class="jama-modal-caja" style="max-width: 550px;">
-            <div class="jama-modal-header" style="background-color: #1B3A2C; color: white;">
-                <h5 class="jama-modal-titulo" style="color: white;"><i class="bi bi-receipt-cutoff me-2"></i> Seleccionar Platos - Mesa #<span id="lblMesaPrevisualizarCaja">0</span></h5>
-                <button type="button" class="jama-modal-cerrar" style="color: white;" onclick="cerrarModal('modalPrevisualizarCobroCaja')">✕</button>
-            </div>
-            <div class="jama-modal-body">
-                <div class="alert alert-light border mb-3 rounded-3 small text-muted py-2 px-3" style="font-size: 0.85rem;">
-                    <i class="bi bi-info-circle-fill text-primary me-1"></i>
-                    Marque los platos que el cliente desea pagar en esta cuenta / ticket.
+    <div class="modal fade" id="modalPrevisualizarCobroCaja" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header" style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%) !important;">
+                    <h5 class="modal-title text-white">
+                        <i class="bi bi-ui-checks-grid me-2 text-warning"></i>Seleccionar Platos - Mesa #<span id="lblMesaPrevisualizarCaja">0</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" onclick="cerrarModalLocal('modalPrevisualizarCobroCaja')" aria-label="Close"></button>
                 </div>
+                <div class="modal-body">
+                    <div class="alert alert-info border-0 p-2 small text-dark d-flex align-items-center mb-3" style="background-color:#e0f2fe; border-radius:10px;">
+                        <i class="bi bi-info-circle-fill fs-5 me-2 text-primary flex-shrink-0"></i>
+                        <span>Marque los platos que el cliente desea pagar en esta cuenta parcial o total.</span>
+                    </div>
 
-                <div id="listaPlatosPrevisualizarCaja" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 300px; overflow-y: auto; padding-right: 5px;">
-                </div>
+                    <div id="listaPlatosPrevisualizarCaja" class="d-flex flex-column gap-2 pe-1 mb-3" style="max-height: 280px; overflow-y: auto;"></div>
 
-                <div style="text-align: right; border-top: 1px dashed var(--lajama-peach, #e9ecef); padding-top: 1rem; margin-top: 1rem;">
-                    <h5 style="color: #1B3A2C; margin-0; font-weight: 700;">Subtotal Seleccionado: S/. <span id="txtSubtotalElegidoCaja">0.00</span></h5>
+                    <div class="p-3 rounded-3 text-end" style="background-color: var(--lajama-cream); border:1px dashed var(--lajama-skin);">
+                        <h6 class="m-0 fw-bold font-monospace" style="color:var(--lajama-green);">Subtotal Seleccionado: S/. <span id="txtSubtotalElegidoCaja">0.00</span></h6>
+                    </div>
                 </div>
-            </div>
-            <div class="jama-modal-footer">
-                <button type="button" class="btn-pag-jama-block" onclick="cerrarModal('modalPrevisualizarCobroCaja')">Cancelar</button>
-                <button type="button" id="btnProcederPasarelaCaja" class="btn-pag-jama-block btn-pag-jama-active" onclick="avanzarALaquidacionDinamica()" style="background-color: #1B3A2C; color: white;">
-                    <i class="bi bi-cash-coin me-1"></i> Proceder al Pago
-                </button>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModalLocal('modalPrevisualizarCobroCaja')">Cancelar</button>
+                    <button type="button" id="btnProcederPasarelaCaja" class="btn btn-primary px-4 fw-bold" style="background-color:#111827 !important; border-radius:10px;" onclick="avanzarALaquidacionDinamica()">
+                        <i class="bi bi-credit-card-2-back-fill me-1"></i> Proceder al Pago
+                    </button>
+                </div>
             </div>
         </div>
     </div>

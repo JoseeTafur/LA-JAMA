@@ -1,59 +1,245 @@
 // =========================================================================
-// ENRUTAMIENTO DINÁMICO Y AUDITORÍA EN VIVO PARA LA CAJA (LA JAMA)
+// 💎 ENRUTAMIENTO DINÁMICO Y AUDITORÍA EN VIVO PARA LA CAJA (LA JAMA MAESTRO)
 // =========================================================================
+const LIMITE_ITEMS_PAGINA = 15;
+const registrosPorPagina = 8; // Mantenido por consistencia de plugins externos
+
 let selectedPedidoId = null;
 let paginaActual = 1;
-const registrosPorPagina = 8;
+let paginaActualComprobantes = 0;
 let datosPedidoActualCaja = null;
 
-// ── Helpers nativos de apertura y cierre de modales ──────────────────────
-function abrirModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.classList.add('mostrar-modal');
+// Variables globales para mantener el estado de cada pestaña indexada
+let estadoPaginacionCaja = {
+    'panel-por-cobrar': { pagina: 1, tablaId: 'tablaPorCobrarLocal', infoId: 'infoPagPorCobrar', paginadorId: 'paginadorPorCobrar' },
+    'panel-liquidados': { pagina: 1, tablaId: 'tablaHistorialLiquidadosTurno', infoId: 'infoPagLiquidados', paginadorId: 'paginadorLiquidados' },
+    'panel-movimientos-turno': { pagina: 1, tablaId: 'panel-movimientos-turno', infoId: 'infoPagMovimientos', paginadorId: 'paginadorMovimientos' }
+};
+
+// ── 1. GESTIÓN COHESIVA DE PESTAÑAS Y NAVEGACIÓN ──────────────────────
+function cambiarPestañaCaja(idPanel, boton) {
+    document.querySelectorAll('.jama-tab-panel').forEach(p => p.classList.remove('activo'));
+    document.querySelectorAll('.jama-tab-link').forEach(b => b.classList.remove('activo'));
+
+    const panel = document.getElementById(idPanel);
+    if (panel) panel.classList.add('activo');
+
+    if (boton && boton.classList.contains('jama-tab-link')) {
+        boton.classList.add('activo');
+    }
+    console.log(`📡 [Navegación] Desplazando foco a segmento: ${idPanel}`);
 }
 
-function cerrarModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.classList.remove('mostrar-modal');
+// ── 2. CONTROL CENTRALIZADO DE MODALES COHESIVOS (BOOTSTRAP 5 API) ──
+function abrirModalLocal(id) {
+    const modalElement = document.getElementById(id);
+    if (!modalElement) return;
+
+    let modalBootstrap = bootstrap.Modal.getInstance(modalElement);
+    if (!modalBootstrap) {
+        modalBootstrap = new bootstrap.Modal(modalElement);
+    }
+    modalBootstrap.show();
+    console.log(`📥 [Modales] Desplegando ventana: ${id}`);
 }
 
-// ── Inicializador del Módulo ───────────────────────────────────────────
+function cerrarModalLocal(id) {
+    const modalElement = document.getElementById(id);
+    if (!modalElement) return;
+
+    const modalBootstrap = bootstrap.Modal.getInstance(modalElement);
+    if (modalBootstrap) {
+        modalBootstrap.hide();
+    }
+}
+
+// Respaldo preventivo por herencia de botones antiguos
+function abrirModal(id) { abrirModalLocal(id); }
+function cerrarModal(id) { cerrarModalLocal(id); }
+
+// ── 3. MOTOR COMPLETO DE PAGINACIÓN LOCAL EN CAPA DE CLIENTE ──
+function ejecutarPaginacionUnificadaCaja(panelKey) {
+    const config = estadoPaginacionCaja[panelKey];
+    if (!config) return;
+
+    const contenedorPanel = document.getElementById(panelKey);
+    if (!contenedorPanel) return;
+
+    const tabla = contenedorPanel.querySelector('table');
+    const infoSpan = document.getElementById(config.infoId);
+    const paginadorUl = document.getElementById(config.paginadorId);
+
+    if (!tabla || !infoSpan || !paginadorUl) return;
+
+    // 🛡️ ADUANA CRÍTICA: Captura sólo filas válidas que pasaron el filtro asíncrono
+    const filas = Array.from(tabla.querySelectorAll('tbody tr')).filter(tr => {
+        return tr.classList.contains('fila-pedido-caja') && tr.getAttribute('data-excluido-filtro') !== 'true';
+    });
+
+    const totalRegistros = filas.length;
+    const totalPaginas = Math.ceil(totalRegistros / LIMITE_ITEMS_PAGINA) || 1;
+
+    if (config.pagina > totalPaginas) config.pagina = totalPaginas;
+    if (config.pagina < 1) config.pagina = 1;
+
+    // Ocultar de forma limpia todos los renglones
+    tabla.querySelectorAll('tbody tr.fila-pedido-caja').forEach(f => f.style.setProperty('display', 'none', 'important'));
+
+    const inicio = (config.pagina - 1) * LIMITE_ITEMS_PAGINA;
+    const fin = Math.min(inicio + LIMITE_ITEMS_PAGINA, totalRegistros);
+
+    // Encender el segmento exacto de la paginación líquida
+    for (let i = inicio; i < fin; i++) {
+        if (filas[i]) {
+            filas[i].style.removeProperty('display');
+        }
+    }
+
+    infoSpan.innerText = totalRegistros === 0
+        ? "Mostrando 0 registros"
+        : `Mostrando del ${inicio + 1} al ${fin} de ${totalRegistros} registros`;
+
+    paginadorUl.innerHTML = "";
+
+    // Botón Anterior
+    const liPrev = document.createElement('li');
+    liPrev.className = `page-item-jama ${config.pagina === 1 ? 'disabled' : ''}`;
+    liPrev.innerHTML = `<button type="button" class="page-link-jama">Anterior</button>`;
+    liPrev.onclick = function() {
+        if (config.pagina > 1) {
+            config.pagina--;
+            ejecutarPaginacionUnificadaCaja(panelKey);
+        }
+    };
+    paginadorUl.appendChild(liPrev);
+
+    // Números de páginas intercalados
+    for (let p = 1; p <= totalPaginas; p++) {
+        const liPag = document.createElement('li');
+        liPag.className = `page-item-jama ${p === config.pagina ? 'active' : ''}`;
+        liPag.innerHTML = `<button type="button" class="page-link-jama">${p}</button>`;
+        liPag.onclick = function() {
+            config.pagina = p;
+            ejecutarPaginacionUnificadaCaja(panelKey);
+        };
+        paginadorUl.appendChild(liPag);
+    }
+
+    // Botón Siguiente
+    const liNext = document.createElement('li');
+    liNext.className = `page-item-jama ${config.pagina === totalPaginas ? 'disabled' : ''}`;
+    liNext.innerHTML = `<button type="button" class="page-link-jama">Siguiente</button>`;
+    liNext.onclick = function() {
+        if (config.pagina < totalPaginas) {
+            config.pagina++;
+            ejecutarPaginacionUnificadaCaja(panelKey);
+        }
+    };
+    paginadorUl.appendChild(liNext);
+}
+
+// ── 4. FILTRADO MULTIVARIABLE EN CALIENTE (LIQUIDADOS) ──
+function ejecutarFiltradoHistorialEnCaliente() {
+    const textoInput = document.getElementById('filtroAsincronoTexto').value.toLowerCase();
+    const metodoInput = document.getElementById('filtroAsincronoMetodo').value;
+    const origenInput = document.getElementById('filtroAsincronoOrigen').value;
+
+    const tabla = document.getElementById('tablaHistorialLiquidadosTurno');
+    if (!tabla) return;
+
+    const filas = tabla.querySelectorAll('tbody tr.fila-pedido-caja');
+
+    filas.forEach(fila => {
+        const contenidoFila = fila.textContent.toLowerCase();
+
+        // 🕵️‍♂️ DETECCION SEGURA: En lugar de leer texto plano, detecta las clases de los nuevos cuadros
+        let metodoFila = 'EFECTIVO';
+        if (fila.querySelector('.bm-tarjeta')) {
+            metodoFila = 'TARJETA';
+        } else if (fila.querySelector('.bm-digital')) {
+            metodoFila = 'YAPE';
+        }
+
+        let origenFila = 'DELIVERY';
+        if (contenidoFila.includes('salón') || contenidoFila.includes('salon')) origenFila = 'SALON';
+
+        const coincideTexto = contenidoFila.includes(textoInput);
+        const coincideMetodo = (metodoInput === 'TODOS' || metodoFila === metodoInput);
+        const coincideOrigen = (origenInput === 'TODOS' || origenFila === origenInput);
+
+        if (coincideTexto && coincideMetodo && coincideOrigen) {
+            fila.removeAttribute('data-excluido-filtro');
+        } else {
+            fila.setAttribute('data-excluido-filtro', 'true');
+        }
+    });
+
+    // 🚀 Integración: Reseteamos a página 1 y re-paginamos dinámicamente
+    estadoPaginacionCaja['panel-liquidados'].pagina = 1;
+    ejecutarPaginacionUnificadaCaja('panel-liquidados');
+}
+
+function limpiarFiltrosHistorialAsincrono() {
+    document.getElementById('filtroAsincronoTexto').value = '';
+    document.getElementById('filtroAsincronoMetodo').value = 'TODOS';
+    document.getElementById('filtroAsincronoOrigen').value = 'TODOS';
+
+    ejecutarFiltradoHistorialEnCaliente();
+    AppUtils.showNotification("Filtros contables restaurados", "success");
+}
+
+// ── 5. INITIALIZER (DOM CONTENT LOADED - REACUPLADO COMPLETO) ──
 document.addEventListener('DOMContentLoaded', function() {
+    // A. Captura de Banners Operativos de Inyección
     if (document.getElementById('param-aprobado')) AppUtils.showNotification("Pedido enviado a cocina.", "success");
     if (document.getElementById('param-success')) AppUtils.showNotification("¡Cobro cuadrado e ingreso registrado!", "success");
 
-    // Buscador en caliente de comandas de salón
+    // B. Buscador de barra superior de Comandas Vivas
     const buscador = document.getElementById('buscadorPedido');
-    const tabla = document.getElementById('tablaCaja')?.getElementsByTagName('tbody')[0];
+    const tablaPorCobrar = document.getElementById('tablaPorCobrarLocal')?.getElementsByTagName('tbody')[0];
 
-    if (buscador && tabla) {
+    if (buscador && tablaPorCobrar) {
         buscador.addEventListener('keyup', function() {
             const texto = buscador.value.toLowerCase();
-            const filas = tabla.getElementsByTagName('tr');
+            const filas = tablaPorCobrar.getElementsByTagName('tr');
 
             Array.from(filas).forEach(fila => {
                 if(fila.classList.contains('fila-pedido-caja')) {
                     const coincide = fila.textContent.toLowerCase().includes(texto);
                     if (coincide) {
-                        fila.classList.remove('excluido-por-busqueda');
+                        fila.removeAttribute('data-excluido-filtro');
                     } else {
-                        fila.classList.add('excluido-por-busqueda');
+                        fila.setAttribute('data-excluido-filtro', 'true');
                     }
                 }
             });
-            paginaActual = 1;
-            inicializarPaginacionLocal();
+            estadoPaginacionCaja['panel-por-cobrar'].pagina = 1;
+            ejecutarPaginacionUnificadaCaja('panel-por-cobrar');
         });
     }
 
-    inicializarPaginacionLocal();
+    // C. Enlace de escuchadores para Filtros de Liquidados
+    const txtBusqueda = document.getElementById('filtroAsincronoTexto');
+    const selectMetodo = document.getElementById('filtroAsincronoMetodo');
+    const selectOrigen = document.getElementById('filtroAsincronoOrigen');
+
+    if (txtBusqueda && selectMetodo && selectOrigen) {
+        txtBusqueda.addEventListener('keyup', ejecutarFiltradoHistorialEnCaliente);
+        selectMetodo.addEventListener('change', ejecutarFiltradoHistorialEnCaliente);
+        selectOrigen.addEventListener('change', ejecutarFiltradoHistorialEnCaliente);
+    }
+
+    // D. Renderizado inicializado limpio de las 3 grillas del turno
+    ejecutarPaginacionUnificadaCaja('panel-por-cobrar');
+    ejecutarPaginacionUnificadaCaja('panel-liquidados');
+    ejecutarPaginacionUnificadaCaja('panel-movimientos-turno');
 });
 
-// ── Control de Dashboard ───────────────────────────────────────────────
+// ── 6. CONTROLADORES ASÍNCRONOS DE FLUJOS DE AUDITORÍA Y BACKEND ──
 function abrirPlanoMesasDesdeCaja() {
     const iframe = document.getElementById('iframePlanoMesas');
     if (iframe) iframe.contentWindow.location.reload();
-    abrirModal('modalPlanoMesasCaja');
+    abrirModalLocal('modalPlanoMesasCaja');
 }
 
 function verDetallesComandaAuditoria(btn) {
@@ -64,8 +250,6 @@ function verDetallesComandaAuditoria(btn) {
         .then(res => { if (!res.ok) throw new Error(); return res.json(); })
         .then(data => {
             AppUtils.showLoading(false);
-
-            // 🛡️ ADUANA ANTI-NULOS EN RENDERIZADO
             const totalSeguro = data.montoTotal ? parseFloat(data.montoTotal).toFixed(2) : "0.00";
 
             document.getElementById('auditoriaIdPedido').innerText = data.id;
@@ -82,14 +266,13 @@ function verDetallesComandaAuditoria(btn) {
                     const subtotalItem = d.subtotal ? parseFloat(d.subtotal).toFixed(2) : "0.00";
 
                     lista.innerHTML += `
-                        <div class="jama-detalle-item">
-                            <span class="detalle-qty">${d.cantidad}x</span>
-                            <span class="detalle-nombre">${d.producto?.nombre || 'Plato Desconocido'}</span>
-                            <span class="detalle-monto">S/. ${subtotalItem}</span>
+                        <div class="jama-detalle-item" style="display:flex; justify-content:space-between; font-size:0.9rem; padding:4px 0; border-bottom:1px dashed rgba(0,0,0,0.04);">
+                            <span><strong class="text-success">${d.cantidad}x</strong> ${d.producto?.nombre || 'Plato Desconocido'}</span>
+                            <span class="fw-bold">S/. ${subtotalItem}</span>
                         </div>`;
                 });
             }
-            abrirModal('modalDetalleAuditoria');
+            abrirModalLocal('modalDetalleAuditoria');
         })
         .catch(() => {
             AppUtils.showLoading(false);
@@ -97,7 +280,6 @@ function verDetallesComandaAuditoria(btn) {
         });
 }
 
-// ── Historial Asíncrono por rangos ─────────────────────────────────────
 function inicializarHistorialFechas() {
     const inputInicio = document.getElementById('historialFechaInicio');
     const inputFin = document.getElementById('historialFechaFin');
@@ -132,7 +314,7 @@ function consultarHistorialAsincrono() {
             cuerpoTabla.innerHTML = "";
 
             if (data.length === 0) {
-                cuerpoTabla.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--caja-secondary); font-size:0.85rem;">No se registraron cierres de caja en el rango seleccionado.</td></tr>`;
+                cuerpoTabla.innerHTML = `<tr><td colspan="8" class="text-center py-3 text-muted italic">No se registraron cierres de caja en el rango seleccionado.</td></tr>`;
                 return;
             }
 
@@ -140,24 +322,24 @@ function consultarHistorialAsincrono() {
                 const fApertura = t.fechaApertura.replace("T", " ").substring(0, 16);
                 const fCierre = t.fechaCierre !== "null" && t.fechaCierre ? t.fechaCierre.replace("T", " ").substring(0, 16) : "Abierto";
 
-                let badgeDiferencia = `<span class="texto-negrita" style="color:var(--caja-success);">S/. 0.00</span>`;
+                let badgeDiferencia = `<span class="fw-bold text-success">S/. 0.00</span>`;
                 if (t.diferencia > 0.05) {
-                    badgeDiferencia = `<span class="jama-badge status-ingreso">+ S/. ${t.diferencia.toFixed(2)} (Sobrante)</span>`;
+                    badgeDiferencia = `<span class="badge bg-success px-2 py-1 text-white fw-bold">+ S/. ${t.diferencia.toFixed(2)}</span>`;
                 } else if (t.diferencia < -0.05) {
-                    badgeDiferencia = `<span class="jama-badge status-egreso">S/. ${t.diferencia.toFixed(2)} (Faltante)</span>`;
+                    badgeDiferencia = `<span class="badge bg-danger px-2 py-1 text-white fw-bold">S/. ${t.diferencia.toFixed(2)}</span>`;
                 }
 
                 cuerpoTabla.innerHTML += `
-                    <tr>
-                        <td><span class="id-resaltado">#${t.id}</span></td>
-                        <td class="texto-atenuado">${fApertura}</td>
-                        <td class="texto-atenuado">${fCierre}</td>
-                        <td class="texto-negrita">S/. ${t.montoApertura.toFixed(2)}</td>
-                        <td class="monto-exito texto-negrita">S/. ${t.totalVendido.toFixed(2)}</td>
-                        <td class="texto-negrita" style="color:var(--caja-secondary);">S/. ${t.montoCierre.toFixed(2)}</td>
+                    <tr class="align-middle">
+                        <td><span class="badge bg-dark font-monospace">#${t.id}</span></td>
+                        <td class="text-muted small">${fApertura}</td>
+                        <td class="text-muted small">${fCierre}</td>
+                        <td class="fw-bold">S/. ${t.montoApertura.toFixed(2)}</td>
+                        <td class="fw-bold text-success">S/. ${t.totalVendido.toFixed(2)}</td>
+                        <td class="fw-bold text-secondary">S/. ${t.montoCierre.toFixed(2)}</td>
                         <td>${badgeDiferencia}</td>
-                        <td class="texto-atenuado" style="max-width:230px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${t.observaciones || ''}">
-                            ${t.observaciones || "<i>Sin apuntes de entrega</i>"}
+                        <td class="text-muted small text-truncate" style="max-width:200px;" title="${t.observaciones || ''}">
+                            ${t.observaciones || "<i>Sin apuntes</i>"}
                         </td>
                     </tr>`;
             });
@@ -168,184 +350,183 @@ function consultarHistorialAsincrono() {
         });
 }
 
-function cambiarPestañaCaja(idPanel, boton) {
-    document.querySelectorAll('.jama-tab-panel').forEach(p => p.classList.remove('activo'));
-    document.querySelectorAll('.jama-tab-link').forEach(b => b.classList.remove('activo'));
-
-    document.getElementById(idPanel).classList.add('activo');
-    boton.classList.add('activo');
+function cambiarPaginaComprobantes(direccion) {
+    paginaActualComprobantes += direccion;
+    cargarComprobantesHistoricos();
 }
 
-// =========================================================================
-// 🎛️ MOTOR DE PAGINACIÓN LOCAL (SÓLO APLICA A LA TABLA DE COMANDAS)
-// =========================================================================
-function inicializarPaginacionLocal() {
-    const tabla = document.getElementById('tablaCaja');
-    const infoStart = document.getElementById('pagStart');
-    const infoEnd = document.getElementById('pagEnd');
+function cargarComprobantesHistoricos() {
+    const fechaInicio = document.getElementById("ticketFechaInicio").value;
+    const fechaFin = document.getElementById("ticketFechaFin").value;
+    const metodoPago = document.getElementById("ticketFiltroMetodo").value;
+    const tipoServicio = document.getElementById("ticketFiltroOrigen").value;
 
-    if (!tabla) {
-        if (infoStart) infoStart.innerText = "0";
-        if (infoEnd) infoEnd.innerText = "0";
+    const tbody = document.getElementById("cuerpoHistorialComprobantesAsincrono");
+
+    if (!fechaInicio || !fechaFin) {
+        Swal.fire({ icon: 'warning', title: 'Parámetros Incompletos', text: 'Por favor, define un rango de fechas.', confirmButtonColor: '#2e7d32' });
         return;
     }
 
-    if (typeof $ !== 'undefined' && $.fn.DataTable && $.fn.DataTable.isDataTable('#tablaCaja')) {
-        try {
-            $('#tablaCaja').DataTable().destroy();
-        } catch(err) { console.log("Limpieza preventiva de DataTables realizada."); }
-    }
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-3 text-muted">🛸 Extrayendo comprobantes indexados desde Railway...</td></tr>`;
 
-    const filas = Array.from(tabla.querySelectorAll('tbody tr.fila-pedido-caja'));
-    const filasVisibles = filas.filter(f => !f.classList.contains('excluido-por-busqueda'));
+    let url = `/admin/caja/historial-comprobantes?inicio=${fechaInicio}&fin=${fechaFin}&pagina=${paginaActualComprobantes}`;
+    if (metodoPago) url += `&metodoPago=${metodoPago}`;
+    if (tipoServicio) url += `&tipoServicio=${tipoServicio}`;
 
-    const totalRegistros = filasVisibles.length;
-    const totalPaginas = Math.ceil(totalRegistros / registrosPorPagina) || 1;
+    fetch(url)
+        .then(response => { if (!response.ok) throw new Error(); return response.json(); })
+        .then(data => {
+            tbody.innerHTML = "";
+            const lista = data.comprobantes;
 
-    if (paginaActual > totalPaginas) paginaActual = totalPaginas;
-    if (paginaActual < 1) paginaActual = 1;
-
-    filas.forEach(f => {
-        f.style.removeProperty('display');
-        f.style.display = 'none';
-    });
-
-    const inicio = (paginaActual - 1) * registrosPorPagina;
-    const fin = Math.min(inicio + registrosPorPagina, totalRegistros);
-
-    for (let i = inicio; i < fin; i++) {
-        if (filasVisibles[i]) {
-            filasVisibles[i].style.display = '';
-        }
-    }
-
-    if (infoStart) infoStart.innerText = totalRegistros === 0 ? 0 : inicio + 1;
-    if (infoEnd) infoEnd.innerText = fin;
-
-    const contenedorPaginas = document.getElementById('contenedorPaginas');
-    if (contenedorPaginas) {
-        contenedorPaginas.innerHTML = "";
-        for (let p = 1; p <= totalPaginas; p++) {
-            const span = document.createElement('span');
-            span.className = `pag-numero ${p === paginaActual ? 'activo' : ''}`;
-            span.innerText = p;
-            span.onclick = function() { irAPaginaLocal(p); };
-            contenedorPaginas.appendChild(span);
-        }
-    }
-
-    const btnAnt = document.getElementById('btnPagAnterior');
-    const btnSig = document.getElementById('btnPagSiguiente');
-
-    if (btnAnt) {
-        btnAnt.onclick = null;
-        btnAnt.onclick = function() {
-            if (paginaActual > 1) {
-                paginaActual--;
-                inicializarPaginacionLocal();
+            if (!lista || lista.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted small">No se encontraron comprobantes liquidados ni anulados.</td></tr>`;
+                document.getElementById("infoPaginacionComprobantes").innerText = "Mostrando 0 de 0 comprobantes";
+                document.getElementById("btnPrevPagina").disabled = true;
+                document.getElementById("btnNextPagina").disabled = true;
+                return;
             }
-        };
-    }
-    if (btnSig) {
-        btnSig.onclick = null;
-        btnSig.onclick = function() {
-            if (paginaActual < totalPaginas) {
-                paginaActual++;
-                inicializarPaginacionLocal();
-            }
-        };
-    }
+
+            lista.forEach(p => {
+                const badgeServicio = (p.tipoServicio === 'DELIVERY') ? '🏍️ Delivery' : '🍽️ Salón';
+                const nombreCliente = p.cliente ? p.cliente : 'Cliente General';
+                const mesaDetalle = p.mesa ? `<br><small style="color:#777;">Mesa N° ${p.mesa}</small>` : '<br><small style="color:#aaa;">-</small>';
+
+                // 🌟 SE CORRIGIÓ AQUÍ: Generación de Cuadros Premium Idénticos a la Cabecera
+                let metodoHTML = '-';
+                if (p.metodoPago) {
+                    let mp = p.metodoPago.toUpperCase();
+                    if (mp === 'EFECTIVO') {
+                        metodoHTML = `<span class="badge-metodo-jama bm-efectivo"><img src="/img/Efectivo.png" alt="Efectivo"> Efectivo</span>`;
+                    } else if (mp === 'YAPE' || mp === 'PLIN' || mp === 'YAPE_PLIN') {
+                        metodoHTML = `<span class="badge-metodo-jama bm-digital"><img src="/img/YapePlin.png" alt="Yape Plin"> Yape/Plin</span>`;
+                    } else if (mp === 'TARJETA') {
+                        metodoHTML = `<span class="badge-metodo-jama bm-tarjeta"><img src="/img/Tarjeta.png" alt="Tarjeta"> Tarjeta</span>`;
+                    }
+                }
+
+                const badgeEstado = p.estado === 'PAGADO' || p.estado === 'LIQUIDADO'
+                    ? '<span class="badge bg-success text-white fw-bold px-3 py-2 rounded-pill" style="font-size:0.72rem;">LIQUIDADO</span>'
+                    : '<span class="badge bg-danger text-white fw-bold px-3 py-2 rounded-pill" style="font-size:0.72rem;">ANULADO</span>';
+
+                const fila = document.createElement("tr");
+                fila.className = "fila-pedido-caja";
+                fila.innerHTML = `
+                    <td><span class="texto-negrita">#${p.id}</span></td>
+                    <td><span class="texto-servicio">${badgeServicio}</span></td>
+                    <td>
+                        <div class="cliente-nombre">${nombreCliente}</div>
+                        <div class="cliente-meta-detalles">${mesaDetalle}</div>
+                    </td>
+                    <td><span class="badge bg-light text-dark font-monospace border px-2 py-1">${p.fecha} (${p.hora || '-'})</span></td>
+                    <td><span class="fw-bold text-success">S/ ${p.monto.toFixed(2)}</span></td>
+
+                    <td>${metodoHTML}</td>
+
+                    <td class="text-center">
+                        <div class="action-buttons-wrapper justify-content-center">
+                            <button type="button" class="action-jama-btn btn-action-edit" data-id="${p.id}" onclick="verDetallesComandaAuditoria(this)">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12s3-7 10-7 9 7 9 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                            <a href="/admin/caja/ticket-venta/${p.id}" target="_blank" class="action-jama-btn btn-action-edit bg-light-jama" style="border-color: rgba(27,58,44,0.15) !important;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                            </a>
+                        </div>
+                    </td>
+                    <td class="text-end">${badgeEstado}</td>
+                `;
+                tbody.appendChild(fila);
+            });
+
+            const totalElementos = data.totalElementos;
+            const pagina = data.paginaActual;
+            const totalPaginas = data.totalPaginas;
+
+            document.getElementById("infoPaginacionComprobantes").innerText = `Mostrando registros del ${(pagina * 20) + 1} al ${Math.min((pagina + 1) * 20, totalElementos)} (Total: ${totalElementos})`;
+            document.getElementById("btnPrevPagina").disabled = (pagina === 0);
+            document.getElementById("btnNextPagina").disabled = (pagina >= totalPaginas - 1);
+        })
+        .catch(err => {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-3">💥 Error al consultar la bitácora: ${err.message}</td></tr>`;
+        });
 }
 
-function irAPaginaLocal(numeroPagina) {
-    paginaActual = numeroPagina;
-    inicializarPaginacionLocal();
-}
-
-function abrirModalLocal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.classList.add('activo');
-}
-
-function cerrarModalLocal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.classList.remove('activo');
-}
-
+// 🚀 REPARADO CON AUDITORÍA: Captura flexible y logs explícitos de la estructura JSON
 async function abrirFlujoPagoDesdeFila(buttonElement) {
     const pedidoId = buttonElement.getAttribute('data-id');
     const numeroMesa = buttonElement.getAttribute('data-mesa') || "N/A";
 
-    console.log(`🛰️ [Aduana Caja] Trayendo platos de la Comanda #${pedidoId} para previsualización selectiva`);
-
-    // Guardamos los datos base en las variables globales que usarás más adelante
     currentPedidoId = parseInt(pedidoId);
     currentMesaNumero = numeroMesa;
     currentMesaId = buttonElement.getAttribute('data-mesa-id') || 1;
 
+    console.log(`🔎 [DEBUG JAMA] Iniciando cobro de Orden N° #${pedidoId} | Mesa: ${numeroMesa}`);
+
     try {
-        // Consumimos tu endpoint existente de auditoría para jalar el JSON real del pedido
         const response = await fetch(`/admin/caja/api/pedido/${pedidoId}`);
-        if (!response.ok) throw new Error("No se pudo obtener la estructura de la comanda");
+        if (!response.ok) throw new Error(`HTTP Error Status: ${response.status}`);
 
         datosPedidoActualCaja = await response.json();
 
-        // Seteamos el número de mesa en la cabecera del modal
+        // 🔬 MONITOR MAESTRO: Imprime el objeto real que viene desde Java para auditar sus variables
+        console.log("📦 [DEBUG JAMA] Objeto JSON recibido del Backend:", datosPedidoActualCaja);
+
         document.getElementById('lblMesaPrevisualizarCaja').innerText = numeroMesa;
-
         const contenedorPlatos = document.getElementById('listaPlatosPrevisualizarCaja');
-        contenedorPlatos.innerHTML = ''; // Limpiamos registros previos
+        contenedorPlatos.innerHTML = '';
 
-        if (datosPedidoActualCaja.detalles && datosPedidoActualCaja.detalles.length > 0) {
-            datosPedidoActualCaja.detalles.forEach((d) => {
-                // Omitimos platos mermados o cancelados
+        // Captura tolerante: Evaluamos si tu DTO lo empaquetó como "detalles" o "listaDetalles"
+        const arrayPlatosReceta = datosPedidoActualCaja.detalles || datosPedidoActualCaja.listaDetalles;
+
+        console.log("📋 [DEBUG JAMA] Detalles de platos extraídos:", arrayPlatosReceta);
+
+        if (arrayPlatosReceta && arrayPlatosReceta.length > 0) {
+            arrayPlatosReceta.forEach((d) => {
                 if (d.canceladoPorCliente) return;
 
-                // Creamos la fila del plato con el formato visual de La Jama
-                const rowPlato = document.createElement('div');
-                rowPlato.className = "d-flex align-items-center justify-content-between p-2 rounded-3";
-                rowSimuladaEstilo = d.pagado ? "background-color: #f3f4f6; opacity: 0.6;" : "background-color: #fff; border: 1px solid rgba(27,58,44,0.1);";
-                rowPlato.style = rowSimuladaEstilo;
+                // Extrae el nombre del plato buscando mapeos anidados o planos
+                let nombrePlatoComercial = "Plato Desconocido";
+                if (d.producto && d.producto.nombre) {
+                    nombrePlatoComercial = d.producto.nombre;
+                } else if (d.nombreProducto) {
+                    nombrePlatoComercial = d.nombreProducto;
+                }
 
-                // Si el plato ya fue pagado en un ticket anterior, el checkbox sale desmarcado y deshabilitado
+                // Aseguramos que el subtotal matemático no venga nulo
+                const subtotalSeguro = d.subtotal != null ? parseFloat(d.subtotal) : 0.00;
+
+                const rowPlato = document.createElement('div');
+                rowPlato.className = "d-flex align-items-center justify-content-between p-2 rounded-3 mb-1";
+                rowPlato.style = d.pagado ? "background-color: #f3f4f6; opacity: 0.6;" : "background-color: #fff; border: 1px solid rgba(27,58,44,0.1);";
+
                 const checkDisabled = d.pagado ? "disabled" : "";
                 const checkChecked = d.pagado ? "" : "checked";
                 const badgeEstado = d.pagado ? `<span class="badge bg-secondary">Pagado</span>` : `<span class="badge bg-success">En Mesa</span>`;
 
                 rowPlato.innerHTML = `
                     <div class="d-flex align-items-center gap-2">
-                        <input type="checkbox" class="chk-plato-caja-seleccion"
-                               value="${d.id}" ${checkChecked} ${checkDisabled}
-                               data-precio="${d.subtotal}"
-                               style="width: 19px; height: 19px; cursor: pointer; accent-color: #1B3A2C;"
-                               onchange="recalcularSubtotalModalCaja()">
-                        <span class="fw-bold text-dark" style="font-size: 0.9rem;">${d.cantidad}x</span>
-                        <span class="fw-semibold text-secondary" style="font-size: 0.9rem;">${d.producto.nombre}</span>
+                        <input type="checkbox" class="chk-plato-caja-seleccion" value="${d.id}" ${checkChecked} ${checkDisabled} data-precio="${subtotalSeguro}" style="width: 19px; height: 19px; cursor: pointer; accent-color: #1B3A2C;" onchange="recalcularSubtotalModalCaja()">
+                        <span class="fw-bold text-dark">${d.cantidad}x</span>
+                        <span class="fw-semibold text-secondary small">${nombrePlatoComercial}</span>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="fw-bold" style="color: #1B3A2C; font-size: 0.9rem;">S/. ${d.subtotal.toFixed(2)}</span>
+                        <span class="fw-bold" style="color: #1B3A2C;">S/. ${subtotalSeguro.toFixed(2)}</span>
                         ${badgeEstado}
-                    </div>
-                `;
+                    </div>`;
                 contenedorPlatos.appendChild(rowPlato);
             });
         } else {
-            contenedorPlatos.innerHTML = `<div class="text-muted text-center small py-3">No hay productos activos en esta comanda.</div>`;
+            // Si el array está vacío o indefinido, pintamos una alerta visual de contingencia
+            contenedorPlatos.innerHTML = `<div class="text-center py-3 text-danger small"><i class="bi bi-exclamation-circle me-1"></i> Alerta: El servidor retornó 0 platos activos para esta orden.</div>`;
         }
 
-        // Ejecutamos el primer cálculo del subtotal con los que nacen checkeados
         recalcularSubtotalModalCaja();
-
-        // 🌟 ABRIMOS ESTE MODAL INTERMEDIO NUEVO
-        // Si usas el sistema de clases nativo de tu css/caja.css (como cambiarPestañaCaja o abrirModal), lo disparamos
-        if (typeof abrirModal === 'function') {
-            abrirModal('modalPrevisualizarCobroCaja');
-        } else {
-            document.getElementById('modalPrevisualizarCobroCaja').classList.add('activo');
-        }
+        abrirModalLocal('modalPrevisualizarCobroCaja');
 
     } catch (error) {
-        console.error("💥 Error al abrir previsualización de cobro:", error);
+        console.error("💥 [DEBUG JAMA CRÍTICO] Falló el hilo de pre-cobro:", error);
+        Swal.fire({ icon: 'error', title: 'Fallo de Red', text: 'No se pudo parsear el listado contable del servidor.', confirmButtonColor: '#933D2D' });
     }
 }
 
@@ -359,8 +540,6 @@ function recalcularSubtotalModalCaja() {
     });
 
     document.getElementById('txtSubtotalElegidoCaja').innerText = sumaElegida.toFixed(2);
-
-    // Si el cajero desmarca absolutamente todo, bloqueamos el botón de proceder
     const btnProceder = document.getElementById('btnProcederPasarelaCaja');
     if (btnProceder) {
         btnProceder.disabled = (checkboxesMarcados === 0);
@@ -369,14 +548,8 @@ function recalcularSubtotalModalCaja() {
 }
 
 function avanzarALaquidacionDinamica() {
-    // 1. Cerramos el modal intermedio de selección
-    if (typeof cerrarModalLocal === 'function') {
-        cerrarModalLocal('modalPrevisualizarCobroCaja');
-    } else {
-        document.getElementById('modalPrevisualizarCobroCaja').classList.remove('activo');
-    }
+    cerrarModalLocal('modalPrevisualizarCobroCaja');
 
-    // 2. Preparamos el contenedor fantasma que leerá caja-movil.js
     let listaPrevisualizarCaja = document.getElementById('lista-platos-previsualizar');
     if (!listaPrevisualizarCaja) {
         listaPrevisualizarCaja = document.createElement('div');
@@ -384,38 +557,27 @@ function avanzarALaquidacionDinamica() {
         listaPrevisualizarCaja.style.display = 'none';
         document.body.appendChild(listaPrevisualizarCaja);
     }
-    listaPrevisualizarCaja.innerHTML = ''; // Limpiamos
+    listaPrevisualizarCaja.innerHTML = '';
 
     platosDisponibles = [];
     platosSeleccionadosParaCobro = [];
     let totalConsumoCalculado = 0;
     let indexCobro = 0;
 
-    // 3. Procesamos SÓLO los ítems que son elegibles para cobrar
     if (datosPedidoActualCaja && datosPedidoActualCaja.detalles) {
         datosPedidoActualCaja.detalles.forEach((d) => {
-            // Ignoramos completamente lo que ya fue mermado o pagado anteriormente
             if (d.canceladoPorCliente || d.pagado) return;
 
-            // Verificamos si el cajero dejó el check marcado en el modal intermedio
             const chk = document.querySelector(`.chk-plato-caja-seleccion[value="${d.id}"]`);
             const quiereCobrar = chk && chk.checked;
 
-            // Inyectamos el nodo HTML oculto para el motor de caja-movil
             const rowSimulada = document.createElement('div');
-            rowSimulada.setAttribute('data-estado', 'Entregado');
-            rowSimulada.innerHTML = `
-                <input type="checkbox" class="chk-mesa-confirmar" value="${d.id}" ${quiereCobrar ? 'checked' : ''}>
-                <span class="badge bg-dark">${d.cantidad}x</span>
-                <span class="fw-semibold">${d.producto.nombre}</span>
-                <span class="text-muted small fw-bold">S/. ${d.subtotal.toFixed(2)}</span>
-            `;
+            rowSimulada.innerHTML = `<input type="checkbox" class="chk-mesa-confirmar" value="${d.id}" ${quiereCobrar ? 'checked' : ''}>`;
             listaPrevisualizarCaja.appendChild(rowSimulada);
 
-            // Poblamos la matriz global
             platosDisponibles.push({
                 id: indexCobro,
-                productoId: d.producto.id, // Llave real para el backend
+                productoId: d.producto.id,
                 nombre: d.producto.nombre,
                 cantidad: d.cantidad,
                 subtotal: d.subtotal,
@@ -427,19 +589,15 @@ function avanzarALaquidacionDinamica() {
                 platosSeleccionadosParaCobro.push(indexCobro);
                 totalConsumoCalculado += d.subtotal;
             }
-
             indexCobro++;
         });
     }
 
     totalConsumoMesa = Math.round(totalConsumoCalculado * 100) / 100;
-
-    // 4. Inicializamos la pasarela nativa del sistema
     if (typeof inicializarFlujoCaja === 'function') {
         inicializarFlujoCaja(totalConsumoMesa, currentMesaNumero, 'BOLETA', '');
     }
 
-    // 5. Mostramos la ventana final de cobro con métodos de pago y splits
     if (typeof facturacionModal !== 'undefined' && facturacionModal) {
         facturacionModal.show();
     } else {

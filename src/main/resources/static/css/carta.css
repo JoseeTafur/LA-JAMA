@@ -145,6 +145,7 @@ body {
     width: 32px; height: 32px; background: var(--verde); color: white; border: none;
     border-radius: 50%; font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
     cursor: pointer; transition: background 0.2s, transform 0.1s; flex-shrink: 0;
+
 }
 .btn-add:hover { background: var(--rojo); }
 .btn-add:active { transform: scale(0.9); }
@@ -278,32 +279,6 @@ body {
 }
 .input-premium:focus { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(200,151,58,0.15); }
 
-/* -- Tarjetas de Selección (Delivery/Recojo y Yape/Plin) -- */
-.selection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.btn-selection {
-    background: white; border: 2px solid #eae5df; border-radius: 16px; padding: 1.2rem 0.5rem;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
-    cursor: pointer; transition: all 0.25s; box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-}
-.btn-selection:hover { border-color: #d0c8be; transform: translateY(-2px); }
-.btn-selection .icon-wrap {
-    width: 48px; height: 48px; border-radius: 50%; background: #f8f4f0;
-    display: flex; align-items: center; justify-content: center; font-size: 1.4rem; transition: all 0.3s;
-}
-.btn-selection.activo { border-color: var(--verde); background: rgba(27,58,44,0.03); box-shadow: 0 4px 15px rgba(27,58,44,0.1); }
-.btn-selection.activo .icon-wrap { background: var(--verde) !important; color: white !important; }
-.btn-selection.activo .icon-wrap i { color: white !important; }
-
-/* Logos de Pago */
-.brand-logo {
-    width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center;
-    justify-content: center; color: white; font-weight: 900; font-size: 1.4rem;
-}
-.bg-yape { background: var(--yape); }
-.bg-plin { background: var(--plin); }
-.btn-selection.activo.yape-btn { border-color: var(--yape); background: rgba(116,34,132,0.05); }
-.btn-selection.activo.plin-btn { border-color: var(--plin); background: rgba(0,220,240,0.05); }
-
 /* -- Buscador de Mapas (Paso 2) -- */
 .dir-input-premium {
     position: relative; display: flex; align-items: center; background: white;
@@ -412,3 +387,167 @@ body {
 .btn-primary-jama:hover { background: #132a20; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(27,58,44,0.35); }
 .btn-whatsapp { background: #25D366; color: white; border: none; flex: 1; box-shadow: 0 4px 12px rgba(37,211,102,0.3); }
 .btn-whatsapp:hover { background: #1ebe57; transform: translateY(-2px); }
+
+/* ======================================================== */
+/* 🏪 BOTONES DE RECOJO / DELIVERY (PASO 2)                 */
+/* ======================================================== */
+.btn-selection-premium {
+    position: relative;
+    background: #ffffff;
+    border: 1px solid #eae5df;
+    border-radius: 20px;
+    padding: 1.25rem 0.5rem;
+    cursor: pointer;
+    overflow: hidden;
+    width: 100%;
+    display: block;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.01);
+}
+
+.selection-premium-content {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.icon-wrap-premium {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    transition: all 0.4s ease;
+}
+.bg-local { background: #f0f7f4; color: var(--verde); }
+.bg-envio { background: #fdf2f0; color: var(--rojo); }
+
+.title-premium { font-size: 0.95rem; color: var(--verde); transition: color 0.3s; }
+.text-muted-premium { font-size: 0.75rem; color: #888; transition: color 0.3s; }
+
+/* Burbujas cinéticas internas */
+.esfera-logistica {
+    position: absolute;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(27, 58, 44, 0.08), transparent);
+    opacity: 0.3;
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1;
+}
+.e-l-1 { width: 65px; height: 65px; top: -20px; right: -20px; }
+.e-l-2 { width: 45px; height: 45px; bottom: -15px; left: 10%; }
+
+/* Hovers Logística */
+.btn-selection-premium:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(27, 58, 44, 0.06);
+    border-color: #d0c8be;
+}
+.btn-selection-premium:hover .e-l-1 { transform: translate(-6px, 6px) scale(1.1); }
+.btn-selection-premium:hover .e-l-2 { transform: translate(8px, -4px) scale(1.15); }
+
+/* Estados Activos (Conmutados por el JS) */
+.btn-selection-premium.activo {
+    border-color: var(--verde) !important;
+    background: radial-gradient(circle at 50% 50%, rgba(27, 58, 44, 0.03) 0%, #ffffff 100%) !important;
+    box-shadow: 0 6px 18px rgba(27, 58, 44, 0.1) !important;
+}
+.btn-selection-premium.activo .icon-wrap-premium {
+    background: var(--verde) !important;
+    color: white !important;
+}
+.btn-selection-premium.activo .icon-wrap-premium i { color: white !important; }
+.btn-selection-premium.activo .title-premium { font-weight: 800; }
+
+
+/* ======================================================== */
+/* 📱 BILLETERAS DIGITALES PREMIUM SUAVES (PASO 4)          */
+/* ======================================================== */
+.btn-pago-cliente-card {
+    position: relative;
+    height: 95px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    overflow: hidden;
+    padding: 1rem;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pago-cliente-content {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    height: 100%;
+}
+
+/* 🚀 FIX DE LOGO: Caja invisible y flexible sin recuadros forzados */
+.pago-cliente-logo-box {
+    width: 46px;
+    height: 46px;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pago-cliente-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
+}
+
+.pago-cliente-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    letter-spacing: 0.02em;
+}
+
+/* Burbujas de agua integradas */
+.esfera-bancaria {
+    position: absolute;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), transparent);
+    opacity: 0.25;
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1;
+}
+.e-b-1 { width: 70px; height: 75px; top: -20px; right: -20px; }
+.e-b-2 { width: 45px; height: 45px; bottom: -15px; left: 15%; }
+
+/* Degradados corporativos calibrados en tonos suaves llamativos */
+#btnYape { background: linear-gradient(135deg, #8E3096 0%, #611A67 100%); }
+#btnPlin { background: linear-gradient(135deg, #00C6BA 0%, #008A82 100%); }
+
+/* Hovers de Medios de Pago */
+.btn-pago-cliente-card:hover {
+    transform: translateY(-4px);
+}
+#btnYape:hover { box-shadow: 0 12px 24px rgba(142, 48, 150, 0.35), inset 0 0 15px rgba(255,255,255,0.15); }
+#btnPlin:hover { box-shadow: 0 12px 24px rgba(0, 198, 186, 0.35), inset 0 0 15px rgba(255,255,255,0.15); }
+
+.btn-pago-cliente-card:hover .e-b-1 { transform: translate(-8px, 8px) scale(1.15); opacity: 0.4; }
+.btn-pago-cliente-card:hover .e-b-2 { transform: translate(12px, -6px) scale(1.2); opacity: 0.4; }
+.btn-pago-cliente-card:hover .pago-cliente-logo-box { transform: scale(1.1) rotate(3deg); }
+
+/* Estado Activo Seleccionado */
+.btn-pago-cliente-card.activo {
+    border-color: #ffffff !important;
+    transform: translateY(-2px) scale(1.02);
+}
+#btnYape.activo { box-shadow: 0 10px 22px rgba(142, 48, 150, 0.45), inset 0 0 20px rgba(255,255,255,0.25) !important; }
+#btnPlin.activo { box-shadow: 0 10px 22px rgba(0, 198, 186, 0.45), inset 0 0 20px rgba(255,255,255,0.25) !important; }
+.btn-pago-cliente-card.activo .esfera-bancaria { opacity: 0.45; }

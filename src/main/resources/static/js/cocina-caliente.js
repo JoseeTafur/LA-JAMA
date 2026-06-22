@@ -11,7 +11,6 @@ stompClient.connect({}, function (frame) {
 
 function procesarAlertaCocina(mensaje) {
     if (mensaje.includes("🚨 ALERTA DE MERMA")) {
-        // Alarma ruidosa y visual para detener sartenes de forma inmediata
         var audioAlarma = new Audio('https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3');
         audioAlarma.play().catch(e => console.log("Sonido bloqueado por directiva de navegador"));
 
@@ -25,7 +24,6 @@ function procesarAlertaCocina(mensaje) {
             confirmButtonText: 'ENTENDIDO / LEÍDO',
             allowOutsideClick: false
         }).then(() => {
-            // Recargamos el monitor para limpiar el plato mermado y actualizar la UI asíncronamente
             window.location.reload();
         });
     }
@@ -79,36 +77,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-        const botonesImprimir = document.querySelectorAll('a[href^="/admin/cocina/ticket"]');
+    const botonesImprimir = document.querySelectorAll('a[href^="/admin/cocina/ticket"]');
 
-        botonesImprimir.forEach(btn => {
-            btn.addEventListener('click', function() {
-                // Solo recargamos si el botón estaba palpitando (tenía cosas NUEVAS por imprimir)
-                if (this.classList.contains('btn-alerta-ticket')) {
-                    // Cambiamos el texto del botón al instante para feedback visual del chef
-                    this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Procesando...';
-                    this.classList.remove('btn-danger', 'btn-alerta-ticket');
-                    this.classList.add('btn-secondary');
+    botonesImprimir.forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (this.classList.contains('btn-alerta-ticket')) {
+                this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Procesando...';
+                this.classList.remove('btn-danger', 'btn-alerta-ticket');
+                this.classList.add('btn-secondary');
 
-                    // Le damos 1.5 segundos al servidor para guardar en la BD y recargamos
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
-                }
-            });
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            }
         });
+    });
 
-    // Auto-recarga inteligente: Si hay un modal de merma activo, congela el reload automático para no molestar al chef
     setInterval(() => {
-        if (!Swal.isVisible()) {
-            console.log("Sincronizando monitor de cocina caliente en background...");
+        const tarjetasVivas = document.querySelectorAll('.pedidos-grid .card-pedido');
+        if (!Swal.isVisible() && tarjetasVivas.length === 0) {
+            console.log("Sincronizando monitor de cocina caliente vacío en background...");
             location.reload();
         }
     }, 45000);
 });
 
+// ─── 🚀 FUNCIÓN COMPLETA ACTUALIZADA COHESIVA (CERO REFRESH) ───
 function despacharItemCocina(pedidoId, detalleId, nombrePlato, elementoBoton) {
-    // 🛡️ CANDADO DE SEGURIDAD EN CALIENTE: Si el botón ya está procesando, bloqueamos la ejecución
     if (elementoBoton && (elementoBoton.disabled || elementoBoton.classList.contains('processing-jama'))) {
         return;
     }
@@ -122,7 +117,6 @@ function despacharItemCocina(pedidoId, detalleId, nombrePlato, elementoBoton) {
     }, async function() {
         AppUtils.showLoading(true);
 
-        // 🔒 Congelamos físicamente el botón en pantalla para evitar el doble clic accidental
         if (elementoBoton) {
             elementoBoton.disabled = true;
             elementoBoton.classList.add('processing-jama');
@@ -139,17 +133,42 @@ function despacharItemCocina(pedidoId, detalleId, nombrePlato, elementoBoton) {
                 method: 'POST',
                 body: params
             });
+
             if (res.ok) {
-                // 🚀 SOLUCIÓN: Le damos un respiro al hilo del navegador para que la BD consolide el commit
-                setTimeout(() => {
-                    window.location.reload();
-                }, 300);
+                AppUtils.showLoading(false);
+
+                // 👨‍🍳 ALERTA EXCLUSIVA PARA EL COCINERO (CERO F5 - CERO REBOTES)
+                if (window.AppUtils && AppUtils.showNotification) {
+                    AppUtils.showNotification(`✅ Despacho exitoso: "${nombrePlato}" enviado a barra.`, "success");
+                }
+
+                // ── 🪐 ENTORNO DINÁMICO REACTIVO DEL DOM ──
+                const contenedorPlato = elementoBoton.closest('.item-plato');
+                if (contenedorPlato) {
+                    contenedorPlato.classList.add('animate__animated', 'animate__fadeOutLeft');
+
+                    setTimeout(() => {
+                        const itemsListaContenedor = contenedorPlato.closest('.items-lista');
+                        contenedorPlato.remove();
+
+                        if (itemsListaContenedor && itemsListaContenedor.querySelectorAll('.item-plato').length === 0) {
+                            const tarjetaComandaCompleta = document.getElementById(`pedido-${pedidoId}`);
+                            if (tarjetaComandaCompleta) {
+                                tarjetaComandaCompleta.classList.add('animate__animated', 'animate__zoomOut');
+                                setTimeout(() => {
+                                    tarjetaComandaCompleta.remove();
+                                    actualizarContadorOrdenesPendientes();
+                                }, 400);
+                            }
+                        }
+                    }, 400);
+                }
+
             } else {
-                // Si el servidor falla, liberamos el botón para que el chef pueda reintentar
                 if (elementoBoton) {
                     elementoBoton.disabled = false;
                     elementoBoton.classList.remove('processing-jama');
-                    elementoBoton.innerHTML = '<i class="bi bi-check-lg"></i> Despachar';
+                    elementoBoton.innerHTML = '<i class="bi bi-check2-all"></i> Despachar';
                 }
                 AppUtils.showLoading(false);
                 AppUtils.showNotification("Error al despachar el plato", "error");
@@ -158,9 +177,34 @@ function despacharItemCocina(pedidoId, detalleId, nombrePlato, elementoBoton) {
             if (elementoBoton) {
                 elementoBoton.disabled = false;
                 elementoBoton.classList.remove('processing-jama');
+                elementoBoton.innerHTML = '<i class="bi bi-check2-all"></i> Despachar';
             }
             AppUtils.showLoading(false);
             console.error("Error en la petición asíncrona de cocina:", error);
+            AppUtils.showNotification("💥 Conexión interrumpida con el microservicio", "error");
         }
     });
+}
+
+function actualizarContadorOrdenesPendientes() {
+    const contadorSpan = document.querySelector('.status-badge-jama span');
+    const tarjetasVivas = document.querySelectorAll('.pedidos-grid .card-pedido');
+
+    if (contadorSpan) {
+        contadorSpan.innerText = tarjetasVivas.length;
+    }
+
+    if (tarjetasVivas.length === 0) {
+        const gridContenedor = document.querySelector('.pedidos-grid');
+        if (gridContenedor) {
+            gridContenedor.insertAdjacentHTML('beforebegin', `
+                <div class="text-center py-5 mt-5 text-muted animate__animated animate__fadeIn">
+                    <i class="bi bi-clipboard2-check-fill text-warning" style="font-size: 5rem; opacity: 0.8;"></i>
+                    <h3 class="mt-3 fw-bold text-dark">No hay pedidos recientes</h3>
+                    <p class="fs-5 text-muted">Los fogones están controlados y al día. ¡Buen trabajo equipo!</p>
+                </div>
+            `);
+            gridContenedor.remove();
+        }
+    }
 }

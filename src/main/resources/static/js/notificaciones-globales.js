@@ -1,8 +1,8 @@
 // =========================================================================
-// 🛰️ MOTOR DE PERSISTENCIA Y SEGMENTACIÓN POR ROL - LA JAMA
+// 🛰️ MOTOR DE PERSISTENCIA, WEBSOCKET Y APPIUTILS INTEGRADO - LA JAMA V4
 // =========================================================================
 let memoriaNotificaciones = [];
-window.ROL_USUARIO = "INVITADO"; // Se auto-configurará con la respuesta del servidor
+window.ROL_USUARIO = "INVITADO";
 
 var socketGlobal = new SockJS('/ws-restaurante');
 var stompGlobal = Stomp.over(socketGlobal);
@@ -15,7 +15,6 @@ stompGlobal.connect({}, function (frame) {
 });
 
 $(document).ready(function() {
-    // 🌟 Recuperar historial persistente al refrescar la pantalla
     cargarNotificacionesDeBaseDatos();
 });
 
@@ -28,7 +27,6 @@ function cargarNotificacionesDeBaseDatos() {
                 memoriaNotificaciones = [];
 
                 respuesta.data.forEach(notifDB => {
-                    // Mapeamos explícitamente el ID de la tabla persistente
                     const objetoMensaje = optimizarCopiaMensaje(notifDB.mensaje, notifDB.id);
                     objetoMensaje.timestamp = new Date(notifDB.fechaCreacion);
                     memoriaNotificaciones.push(objetoMensaje);
@@ -45,19 +43,16 @@ function optimizarCopiaMensaje(rawMsg, idDB = null) {
     let cuerpo = rawMsg;
     let badge = "Sistema";
 
-    // 1. Detectar alertas de aproximación o alertas de inicio inmediato (Para el Mesero)
     if (rawMsg.includes("empezar") || rawMsg.includes("⏳") || rawMsg.includes("Coordinar espacios") || rawMsg.includes("ya empezó") || rawMsg.includes("mesas libres")) {
         titulo = rawMsg.includes("empezar") ? "⏳ Reserva por Empezar" : "📅 ¡Cliente en Camino / Llegó!";
         badge = "Salón";
         cuerpo = rawMsg.replace(/⏳|🚨|📢/g, '').trim();
     }
-    // 2. Alertas de Cocina
     else if (rawMsg.includes("listo") || rawMsg.includes("barra") || rawMsg.includes("🍳")) {
         titulo = "🍳 ¡Pedido Listo en Barra!";
         badge = "Cocina";
         cuerpo = rawMsg.replace(/🍳|¡|!/g, '').trim() + ". ¡Corre antes de que se enfríe!";
     }
-    // 3. Alertas de Expiración (Vencidas)
     else if (rawMsg.includes("VENCIDA") || rawMsg.includes("EXPIRADA") || rawMsg.includes("⚠️") || rawMsg.includes("vencida")) {
         titulo = "❌ Reserva Vencida / Liberada";
         badge = "Control";
@@ -75,6 +70,20 @@ function optimizarCopiaMensaje(rawMsg, idDB = null) {
 }
 
 function procesarFlujoMensaje(mensajeCrudo, esHistorico = false) {
+    // ─── 🛡️ ADUANA INDESTRUCTIBLE POR ROL: EXCLUSIVIDAD ABSOLUTA PARA EL MESERO ───
+    const esAlertaDeBarra = mensajeCrudo.includes("listo") || mensajeCrudo.includes("barra") || mensajeCrudo.includes("🍳");
+    const rolActualSintonizado = (window.ROL_USUARIO || "").toUpperCase();
+
+    // Si es una alerta operativa de platos listos para servir, evaluamos estrictamente quién está mirando la pantalla
+    if (esAlertaDeBarra) {
+        // Si el usuario actual es de Cocina, Chef, o cualquier rol que NO sea el MESERO receptor...
+        if (rolActualSintonizado.includes("COCINA") || rolActualSintonizado.includes("CHEF") || !rolActualSintonizado.includes("MESERO")) {
+            console.log(`🛑 [Aduana Real-Time] Alerta de barra bloqueada para el rol: ${rolActualSintonizado}. Destino exclusivo: MESERO.`);
+            return; // Corta la ejecución en el acto: no se guarda en memoria local, no pinta el buzón ni lanza el AppUtils
+        }
+    }
+    // ──────────────────────────────────────────────────────────────────────────────
+
     const objetoMensaje = optimizarCopiaMensaje(mensajeCrudo);
 
     if (memoriaNotificaciones.length > 0 && memoriaNotificaciones[0].cuerpo === objetoMensaje.cuerpo) return;
@@ -83,40 +92,15 @@ function procesarFlujoMensaje(mensajeCrudo, esHistorico = false) {
     if (memoriaNotificaciones.length > 10) memoriaNotificaciones.pop();
 
     let tipo = 'success';
-    let icono = 'bi-check-circle-fill';
-    if (mensajeCrudo.includes("⏳") || mensajeCrudo.includes("📢") || mensajeCrudo.includes("reserva")) { tipo = 'warning'; icono = 'bi-calendar-event-fill'; }
-    if (mensajeCrudo.includes("⚠️") || mensajeCrudo.includes("🚨")) { tipo = 'error'; icono = 'bi-exclamation-octagon-fill'; }
+    if (mensajeCrudo.includes("⏳") || mensajeCrudo.includes("📢") || mensajeCrudo.includes("reserva")) { tipo = 'warning'; }
+    if (mensajeCrudo.includes("⚠️") || mensajeCrudo.includes("🚨")) { tipo = 'error'; }
 
-    if (!esHistorico) {
-        crearToastFlotanteDOM(objetoMensaje, tipo, icono);
+    // Únicamente el mesero en su tablet o terminal recibirá el aviso unificado con AppUtils
+    if (!esHistorico && window.AppUtils && AppUtils.showNotification) {
+        AppUtils.showNotification(`[${objetoMensaje.badge}] ${objetoMensaje.titulo}: ${objetoMensaje.cuerpo}`, tipo);
     }
+
     renderizarContenidoBuzon();
-}
-
-function crearToastFlotanteDOM(objMsg, tipo, icono) {
-    const container = document.getElementById('notification-container');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = `jama-modern-toast toast-${tipo}`;
-    toast.innerHTML = `
-        <div class="toast-icon"><i class="bi ${icono}"></i></div>
-        <div class="toast-content">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <span class="fw-bold" style="font-size: 0.85rem; color: #1e3a2b;">${objMsg.titulo}</span>
-                <span class="badge-jama-mini">${objMsg.badge}</span>
-            </div>
-            <p class="toast-message" style="font-weight: 500; font-size: 0.8rem; color: #4a5568;">${objMsg.cuerpo}</p>
-        </div>
-    `;
-
-    container.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 50);
-
-    setTimeout(() => {
-        toast.classList.remove('show');
-        toast.addEventListener('transitionend', () => toast.remove());
-    }, 6500);
 }
 
 function calcularTiempoRelativo(fecha) {
@@ -168,7 +152,6 @@ function renderizarContenidoBuzon() {
         if (msg.badge === "Salón") { claseItem = 'item-warning'; iconNode = '<i class="bi bi-calendar2-check"></i>'; }
         if (msg.badge === "Control") { claseItem = 'item-error'; iconNode = '<i class="bi bi-shield-exclamation"></i>'; }
 
-        // 🌟 CORRECCIÓN: Usamos el identificador único msg.id en lugar del index del bucle
         timelineHTML += `
             <div class="jama-timeline-node ${claseItem}" id="nodo-timeline-${msg.id}">
                 <div class="node-icon">${iconNode}</div>
@@ -182,8 +165,7 @@ function renderizarContenidoBuzon() {
                     </div>
                     <p class="node-desc">${msg.cuerpo}</p>
                 </div>
-            </div>
-        `;
+            </div>`;
     });
 
     timelineHTML += '</div>';
@@ -196,21 +178,16 @@ function renderizarContenidoBuzon() {
 }
 
 function borrarNotificacionIndividual(idNotificacion) {
-    // 1. Encontrar el nodo en el DOM de inmediato para no perder la referencia visual
     const nodo = document.getElementById(`nodo-timeline-${idNotificacion}`);
 
     if (nodo) {
-        // Ejecutamos la animación premium elástica hacia la izquierda de inmediato
         nodo.style.transform = 'translateX(-105%)';
         nodo.style.opacity = '0';
         nodo.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 1, 1)';
     }
 
-    // 2. Si es un ID legítimo de la Base de Datos (numérico o no generado por JS), impactamos el servidor
     const idStr = String(idNotificacion);
     if (idStr && !idStr.startsWith('notif-') && idStr !== "null" && idStr !== "undefined") {
-
-        // Disparamos el fetch al endpoint de tu controlador
         fetch(`/admin/notificaciones/api/marcar-leido-individual/${idStr}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
@@ -221,15 +198,10 @@ function borrarNotificacionIndividual(idNotificacion) {
         .catch(() => console.log("📡 Error de conexión con el repositorio de La Jama."));
     }
 
-    // 3. Esperamos a que la animación termine (350ms) para limpiar la memoria local y re-renderizar
     setTimeout(() => {
-        // Filtramos de la memoria local usando comparación limpia en string
         memoriaNotificaciones = memoriaNotificaciones.filter(n => String(n.id) !== idStr);
-
-        // Volvemos a pintar el buzón con los datos actualizados
         renderizarContenidoBuzon();
 
-        // Actualizamos el contador flotante exterior de la campana
         const badge = document.getElementById('contador-notif-buzon');
         if (badge) {
             if (memoriaNotificaciones.length === 0) {

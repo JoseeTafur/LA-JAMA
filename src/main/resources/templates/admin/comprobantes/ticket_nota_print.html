@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket Nota de Crédito</title>
+    <style>
+        @page { size: 80mm auto; margin: 0; }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            width: 72mm;
+            margin: 0 auto;
+            padding: 5mm 0;
+            font-size: 12px;
+            color: #000;
+            line-height: 1.3;
+        }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .linea-divisoria { border-top: 1px dashed #000; margin: 3mm 0; }
+        .fw-bold { font-weight: bold; }
+        .tabla-productos { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+        .tabla-productos th { border-bottom: 1px solid #000; text-align: left; }
+        .totales-wrapper { margin-top: 3mm; width: 100%; }
+        .totales-wrapper td { padding: 0.5mm 0; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="text-center">
+    <span class="fw-bold" style="font-size: 15px;">RESTAURANTE LA JAMA</span><br>
+    <span>DE: JOSÉ MARIO TAFUR DELGADO</span><br>
+    <span>R.U.C. 20000000001</span><br>
+    <span>CHICLAYO, LAMBAYEQUE</span><br>
+    <span class="fw-bold">NOTA DE CRÉDITO ELECTRÓNICA</span><br>
+    <span class="fw-bold" th:text="${pedido.comprobanteNotaNumero != null ? pedido.comprobanteNotaNumero : 'BC01-00000001'}">BC01-00000001</span>
+</div>
+
+<div class="linea-divisoria"></div>
+
+<div>
+    <strong>FECHA EMISIÓN:</strong> <span th:text="${#temporals.format(pedido.fechaCreacion, 'dd/MM/yyyy HH:mm')}">20/06/2026</span><br>
+    <strong>CLIENTE:</strong> <span th:text="${pedido.cliente}">CLIENTE VARIOS</span><br>
+    <strong>DOC. REFERENCIA:</strong> <span th:text="${pedido.comprobanteNumero}">B001-00000001</span><br>
+    <strong>MOTIVO REGISTRO:</strong> 01 - ERROR DE EMISIÓN
+</div>
+
+<div class="linea-divisoria"></div>
+
+<table class="tabla-productos">
+    <thead>
+    <tr>
+        <th>CANT</th>
+        <th>DESCRIPCIÓN</th>
+        <th class="text-right">TOTAL</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>1</td>
+        <td th:text="'ANULACIÓN TOTAL DE LA COMANDA NV-' + ${pedido.id}">ANULACIÓN TOTAL NV-126</td>
+        <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)}">S/. 20.00</td>
+    </tr>
+    </tbody>
+</table>
+
+<div class="linea-divisoria"></div>
+
+<table class="totales-wrapper">
+    <tr>
+        <td>OP. GRAVADA:</td>
+        <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(subtotal, 1, 2)}">S/. 16.95</td>
+    </tr>
+    <tr>
+        <td>IGV (18%):</td>
+        <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(igv, 1, 2)}">S/. 3.05</td>
+    </tr>
+    <tr class="fw-bold">
+        <td>TOTAL REVERTIDO:</td>
+        <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)}">S/. 20.00</td>
+    </tr>
+</table>
+
+<div class="linea-divisoria"></div>
+
+<div class="text-center" style="font-size: 10px; margin-top: 5mm;">
+    <span>Representación impresa de la Nota de Crédito.</span><br>
+    <span>Saneamiento Contable Local de La Jama.</span>
+</div>
+
+<script>
+    window.onload = function() {
+        window.print();
+    }
+</script>
+</body>
+</html>

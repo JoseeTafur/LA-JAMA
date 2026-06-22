@@ -1,17 +1,22 @@
 package com.web.restaurante.controller;
 
-import com.web.restaurante.model.MovimientoCaja;
-import com.web.restaurante.model.Pedido;
-import com.web.restaurante.model.TurnoCaja;
-import com.web.restaurante.repository.PedidoRepository;
-import com.web.restaurante.repository.TurnoCajaRepository;
+import com.web.restaurante.model.*;
+import com.web.restaurante.repository.*;
 import com.web.restaurante.service.*;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,6 +31,8 @@ public class CajaController {
     private final TurnoCajaService turnoCajaService;
     private final TurnoCajaRepository turnoCajaRepository;
     private final PedidoRepository pedidoRepository;
+    private final ProductoRepository productoRepository;
+    private final InsumoProductoRepository insumoProductoRepository;
 
     private LocalTime obtenerHoraActualSistema() {
         return LocalTime.now();
@@ -40,10 +47,9 @@ public class CajaController {
             model.addAttribute("montoSugerido", turnoCajaService.obtenerMontoAperturaSugerido());
             model.addAttribute("activeUri", "/admin/caja");
 
-            //Turno Día (8AM - 6PM) | Turno Noche (7PM - 7AM)
             boolean horarioPermitido =
-                    (horaActual.isAfter(LocalTime.of(8, 0)) && horaActual.isBefore(LocalTime.of(18, 0))) || // Guardia Día
-                            (horaActual.isAfter(LocalTime.of(19, 0)) || horaActual.isBefore(LocalTime.of(7, 0)));   // Guardia Noche (Cruza medianoche)
+                    (horaActual.isAfter(LocalTime.of(8, 0)) && horaActual.isBefore(LocalTime.of(18, 0))) ||
+                            (horaActual.isAfter(LocalTime.of(19, 0)) || horaActual.isBefore(LocalTime.of(7, 0)));
 
             if (!horarioPermitido) {
                 model.addAttribute("horarioBloqueado", true);
@@ -59,27 +65,20 @@ public class CajaController {
         TurnoCaja turnoActivo = turnoOpt.get();
         List<MovimientoCaja> movimientos = turnoCajaService.obtenerMovimientosDelTurnoActivo();
 
-        double totalVentas = movimientos.stream().filter(m -> "VENTA".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
-        double totalIngresos = movimientos.stream().filter(m -> "INGRESO".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
-        double totalEgresos = movimientos.stream().filter(m -> "EGRESO".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
-
-        double saldoTeorico = turnoActivo.getMontoApertura() + totalVentas + totalIngresos + totalEgresos;
-
-        model.addAttribute("turno", turnoActivo);
-        model.addAttribute("movimientos", movimientos);
-        model.addAttribute("saldoTeorico", saldoTeorico);
-
-        List<Pedido> porCobrar = pedidoRepository.findAll().stream()
-                .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.PAGADO
-                        && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
-                .filter(p -> p.getNumeroMesa() != null)
-                .filter(p -> p.getListaDetalles() != null && p.getListaDetalles().stream()
-                        .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isPagado()))
-                .sorted(Comparator.comparing(Pedido::getId).reversed())
-                .collect(Collectors.toList());
-
+        // ── 💵 PESTAÑA 2: HISTORIAL DEL TURNO (PROCESADO ANTICIPADO PARA KPI) ──
         List<Pedido> liquidados = pedidoRepository.findAll().stream()
-                .filter(p -> p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PAGADO)
+                .filter(p -> {
+                    // 🚀 ADUANA POS: Si no tiene mesa, es un pedido directo de caja que ya se cobró en caliente (nace liquidado)
+                    boolean pagoConfirmado = (p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PAGADO) || (p.getNumeroMesa() == null);
+                    boolean cartaCobradaAnticipada = (p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.PENDIENTE
+                            && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO
+                            && p.getNumeroMesa() == null);
+
+                    // 🚀 ADUANA CRÍTICA: Si el estado es ANULADO, se expulsa de la matemática de KPIs
+                    boolean noEstaAnulado = (p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.ANULADO);
+
+                    return (pagoConfirmado || cartaCobradaAnticipada) && noEstaAnulado;
+                })
                 .filter(p -> {
                     if (p.getFechaCreacion() == null || turnoActivo.getFechaApertura() == null) return false;
                     return p.getFechaCreacion().isAfter(turnoActivo.getFechaApertura());
@@ -87,12 +86,103 @@ public class CajaController {
                 .sorted(Comparator.comparing(Pedido::getId).reversed())
                 .collect(Collectors.toList());
 
+        // ── 📊 NUEVO STREAM: HISTORIAL COMPLETO PARA LA TABLA VISUAL (INCLUYE ANULADOS) ──
+        List<Pedido> pedidosHistorialVisual = pedidoRepository.findAll().stream()
+                .filter(p -> {
+                    if (p.getFechaCreacion() == null || turnoActivo.getFechaApertura() == null) return false;
+                    return p.getFechaCreacion().isAfter(turnoActivo.getFechaApertura());
+                })
+                .filter(p -> p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PAGADO
+                        || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.ANULADO
+                        || p.getNumeroMesa() == null) // 🚀 ADUANA POS: Se inyecta directo a la visualización del historial
+                .sorted(Comparator.comparing(Pedido::getId).reversed())
+                .collect(Collectors.toList());
+
+        // ── 📊 CLASIFICACIÓN DE FLUJOS POR MEDIO FINANCIERO TRADICIONAL (LA JAMA) ──
+        double ventasEfectivo = liquidados.stream()
+                .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.EFECTIVO)
+                .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0)
+                .sum();
+
+        double totalIngresosManuales = movimientos.stream()
+                .filter(m -> "INGRESO".equals(m.getTipo()) || ("VENTA".equals(m.getTipo()) && m.getConcepto() != null && m.getConcepto().toUpperCase().contains("VUELTO")))
+                .mapToDouble(MovimientoCaja::getMonto)
+                .sum();
+
+        double totalEgresos = movimientos.stream()
+                .filter(m -> "EGRESO".equals(m.getTipo()))
+                .mapToDouble(MovimientoCaja::getMonto)
+                .sum();
+
+        // El saldo en efectivo esperado suma el dinero real de gaveta (Ya resta los anulados automáticamente)
+        double efectivoEsperadoTotal = turnoActivo.getMontoApertura() + ventasEfectivo + totalIngresosManuales + totalEgresos;
+
+        // Canales digitales directos al banco (Ya restan los anulados automáticamente)
+        double yapePlinEsperado = liquidados.stream()
+                .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.YAPE || p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.PLIN)
+                .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0)
+                .sum();
+
+        double tarjetaEsperada = liquidados.stream()
+                .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.TARJETA)
+                .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0)
+                .sum();
+
+        double totalVentasPedidos = liquidados.stream()
+                .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0)
+                .sum();
+
+        double saldoTeoricoGlobal = turnoActivo.getMontoApertura() + totalVentasPedidos + totalIngresosManuales + totalEgresos;
+
+        // ── 👤 PESTAÑA 3: FILTRADO QUIRÚRGICO DE OPERACIONES MANUALES DE BOTÓN ──
+        List<MovimientoCaja> movimientosExclusivosCajero = movimientos.stream()
+                .filter(m -> {
+                    String concepto = m.getConcepto() != null ? m.getConcepto().toUpperCase() : "";
+
+                    if (concepto.contains("FONDO INICIAL") ||
+                            concepto.contains("LIQUIDACIÓN") ||
+                            concepto.contains("LIQUIDACION") ||
+                            concepto.contains("CARTA QR") ||
+                            concepto.contains("VENTA POS DIRECTO") || // ◄ Excluye Lomo Saltado/Bebidas cobradas en mostrador
+                            concepto.contains("ORDEN #")) {          // ◄ Filtro failsafe de respaldo por ID de orden
+                        return false;
+                    }
+
+                    return true;
+                })
+                .sorted(Comparator.comparing(MovimientoCaja::getId).reversed())
+                .collect(Collectors.toList());
+
+        model.addAttribute("turno", turnoActivo);
+        model.addAttribute("movimientos", movimientos);
+        model.addAttribute("todosLosMovimientosCaja", movimientosExclusivosCajero);
+        model.addAttribute("saldoTeorico", saldoTeoricoGlobal);
+        model.addAttribute("totalVentasCalculado", totalVentasPedidos + totalIngresosManuales);
+
+        // Sub-métricas inyectadas para precisión
+        model.addAttribute("efectivoEsperado", efectivoEsperadoTotal);
+        model.addAttribute("yapePlinEsperado", yapePlinEsperado);
+        model.addAttribute("tarjetaEsperada", tarjetaEsperada);
+
+        // ── 🍽️ PESTAÑA 1: COMANDAS VIVAS POR COBRAR (SALÓN NO PAGADO) ──
+        List<Pedido> porCobrar = pedidoRepository.findAll().stream()
+                .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.PENDIENTE
+                        && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.PAGADO
+                        && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
+                .filter(p -> p.getNumeroMesa() != null) // 🚀 ADUANA POS: Forzamos que solo lo de salón con mesa física ingrese aquí
+                .filter(p -> p.isTicketImpresoCocina())
+                .filter(p -> p.getListaDetalles() != null && p.getListaDetalles().stream()
+                        .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isPagado()))
+                .sorted(Comparator.comparing(Pedido::getId).reversed())
+                .collect(Collectors.toList());
+
+        System.out.println("📥 [AUDITORÍA FINANCIERA] Ventas: S/. " + totalVentasPedidos + " | Efectivo Gaveta: S/. " + efectivoEsperadoTotal);
+
         model.addAttribute("pedidosPorCobrar", porCobrar);
-        model.addAttribute("pedidosLiquidados", liquidados);
+        model.addAttribute("pedidosLiquidados", pedidosHistorialVisual);
 
         List<Pedido> todosLosPedidosHistorial = pedidoRepository.findAll();
         model.addAttribute("pedidosDiario", todosLosPedidosHistorial);
-
         model.addAttribute("pedidosPendientes", pedidoService.listarPendientesDeCarta());
         model.addAttribute("mesas", mesaService.obtenerMesasParaSalon());
         model.addAttribute("activeUri", "/admin/caja");
@@ -120,7 +210,6 @@ public class CajaController {
 
     @PostMapping("/cerrar")
     public String cerrarCaja(@RequestParam Double montoCierre, @RequestParam(required = false) String observaciones) {
-        // Purgamos la aduana de timbrado. Ahora el turno se cierra directamente validando las ventas operativas.
         turnoCajaService.cerrarTurno(montoCierre, observaciones);
         return "redirect:/admin/caja?cierreOk";
     }
@@ -137,10 +226,7 @@ public class CajaController {
         return "redirect:/admin/caja?rechazado";
     }
 
-    // ============================================================================
-    // 🚀 ENDPOINT RECEPTOR DE LIQUIDACIÓN MULTITICKET (RUTA RE-CALIBRADA)
-    // ============================================================================
-    @PostMapping("/api/mesas/comanda/liquidar-bloque-multiticket/{pedidoId}") // 🌟 CORREGIDO: Relativo al @RequestMapping base
+    @PostMapping("/api/mesas/comanda/liquidar-bloque-multiticket/{pedidoId}")
     @ResponseBody
     public ResponseEntity<?> liquidarMesaBloqueMultiticket(
             @PathVariable Long pedidoId,
@@ -164,8 +250,6 @@ public class CajaController {
             );
 
             mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, idsDetalles);
-            System.out.println("🎉 [CAJA MÓVIL] Transacción procesada con éxito en Base de Datos.");
-
             return ResponseEntity.ok(Map.of("success", true, "message", "Mesa liquidada operatively"));
 
         } catch (Exception e) {
@@ -178,7 +262,6 @@ public class CajaController {
     @ResponseBody
     public ResponseEntity<?> obtenerPrecuentaMesaDebug(@PathVariable Integer numeroMesa) {
         try {
-            // 🎯 Sincronizamos la búsqueda: Trae la orden que tenga platos encima consumiéndose en este instante
             List<Pedido> pedidosActivos = pedidoRepository.findAll().stream()
                     .filter(p -> p.getNumeroMesa() != null && p.getNumeroMesa().equals(numeroMesa))
                     .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.PAGADO
@@ -193,7 +276,6 @@ public class CajaController {
 
             Pedido pedidoTarget = pedidosActivos.get(0);
 
-            // Forzamos el recálculo dinámico matemático en caliente de los subtotales para auditoría
             if (pedidoTarget.getListaDetalles() != null) {
                 for (com.web.restaurante.model.DetallePedido d : pedidoTarget.getListaDetalles()) {
                     double precio = d.getPrecioUnitario() != null ? d.getPrecioUnitario() : 0.0;
@@ -222,12 +304,11 @@ public class CajaController {
             List<Map<String, Object>> detallesDTO = pedido.getListaDetalles().stream()
                     .map(d -> {
                         Map<String, Object> item = new HashMap<>();
-                        item.put("id", d.getId()); // 🌟 CRUCIAL: Identificador único del plato
+                        item.put("id", d.getId());
                         item.put("cantidad", d.getCantidad());
                         item.put("canceladoPorCliente", d.isCanceladoPorCliente());
-                        item.put("pagado", d.isPagado()); // 🌟 CRUCIAL: Estado contable real
+                        item.put("pagado", d.isPagado());
 
-                        // Estructuramos el producto para que JS no pierda la referencia
                         Map<String, Object> productoInfo = new HashMap<>();
                         if (d.getProducto() != null) {
                             productoInfo.put("id", d.getProducto().getId());
@@ -253,7 +334,77 @@ public class CajaController {
 
     @GetMapping("/delivery/nuevo")
     public String nuevoDelivery(Model model) {
+        model.addAttribute("activeUri", "/admin/caja/delivery/nuevo");
+
+        // 1. Extraer los platos/productos que están activos en la carta (estado = 1)
+        List<Producto> productosCarta = productoRepository.findByEstado(1);
+        model.addAttribute("productos", productosCarta);
+
+        // 2. Mapear las categorías reales asociadas sin duplicados (Usando la entidad Categoria)
+        List<com.web.restaurante.model.Categoria> listaCategorias = productosCarta.stream()
+                .map(Producto::getCategoria)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        model.addAttribute("categorias", listaCategorias);
+
+        // 3. Mapa de control de stock preventivo para evitar excepciones en las tarjetas
+        model.addAttribute("productosAgotados", new HashMap<Long, Boolean>());
+
         return "admin/cajero_delivery";
+    }
+
+    @PostMapping("/delivery/guardar")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> guardarPedidoCajeroDirecto(@RequestBody Pedido pedido, jakarta.servlet.http.HttpSession session) {
+        try {
+            // 1. Forzar parámetros estructurales de despacho inmediato para cocina
+            pedido.setFechaCreacion(LocalDateTime.now());
+            pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
+            pedido.setTicketImpresoCocina(false);
+
+            if (pedido.getListaDetalles() != null) {
+                for (DetallePedido detalle : pedido.getListaDetalles()) {
+
+                    // Buscamos la receta del producto para levantar el escudo virtual
+                    insumoProductoRepository.findByProductoId(detalle.getProducto().getId()).forEach(ip -> {
+                        if (ip.getInsumo() != null) {
+                            Insumo insumo = ip.getInsumo();
+                            double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
+                            double totalAComprometer = cantidadUsada * detalle.getCantidad();
+
+                            // Sumamos la reserva al escudo virtual
+                            double actualComprometido = (insumo.getStockComprometido() != null) ? insumo.getStockComprometido() : 0.0;
+                            insumo.setStockComprometido(actualComprometido + totalAComprometer);
+                        }
+                    });
+
+                }
+            }
+
+            // Guardamos el pedido y sus detalles limpiamente en la base de datos
+            // Esto enviará la orden de forma reactiva al monitor de cocina fría o caliente
+            Pedido pedidoGuardado = pedidoRepository.save(pedido);
+
+            // 💵 2. ARQUITECTURA FINANCIERA: Asentar el movimiento monetario en el turno de caja activo
+            if (pedidoGuardado.getMontoTotal() != null && pedidoGuardado.getMontoTotal() > 0) {
+                String conceptoCpe = "Venta POS Directo (" + pedidoGuardado.getMetodoPago() + ") - Orden #" + pedidoGuardado.getId();
+                turnoCajaService.registrarVenta(conceptoCpe, pedidoGuardado.getMontoTotal());
+                System.out.println("💰 [Caja POS] Transacción asentada directamente en el turno diario: S/. " + pedidoGuardado.getMontoTotal());
+            }
+
+            // Retornamos el objeto limpio mapeado para que el JavaScript limpie los inputs asíncronamente
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Comprobante emitido y enviado a producción de cocina exitosamente.",
+                    "id", pedidoGuardado.getId()
+            ));
+
+        } catch (Exception e) {
+            System.err.println("💥 Fallo en liquidación de caja directa: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+        }
     }
 
     @GetMapping("/historial-datos")
@@ -297,14 +448,11 @@ public class CajaController {
 
         model.addAttribute("pedido", pedido);
 
-        // 🚀 MOTOR DE CONSOLIDACIÓN VISUAL PARA EL TICKET
-        // Agrupamos los detalles activos por el ID del producto para unificar cantidades repetidas
         Collection<com.web.restaurante.model.DetallePedido> detallesAgrupados = pedido.getListaDetalles().stream()
                 .filter(d -> !d.isCanceladoPorCliente())
                 .collect(Collectors.toMap(
-                        d -> d.getProducto().getId(), // Clave de agrupación: ID del producto
+                        d -> d.getProducto().getId(),
                         d -> {
-                            // Creamos una copia temporal para no alterar la persistencia real de la BD
                             com.web.restaurante.model.DetallePedido copia = new com.web.restaurante.model.DetallePedido();
                             copia.setProducto(d.getProducto());
                             copia.setCantidad(d.getCantidad());
@@ -312,7 +460,6 @@ public class CajaController {
                             return copia;
                         },
                         (existente, nuevo) -> {
-                            // Si el producto ya se mapeó, sumamos las cantidades en la visualización
                             existente.setCantidad(existente.getCantidad() + nuevo.getCantidad());
                             return existente;
                         }
@@ -320,5 +467,45 @@ public class CajaController {
 
         model.addAttribute("detalles", detallesAgrupados);
         return "admin/caja/ticket_venta";
+    }
+
+    @GetMapping("/historial-comprobantes")
+    @ResponseBody
+    public ResponseEntity<?> obtenerHistorialComprobantes(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
+            @RequestParam(defaultValue = "0") int pagina) {
+        try {
+            System.out.println("🛰️ [AUDITORÍA HISTÓRICA] Consultando rango: " + inicio + " hasta " + fin + " | Página: " + pagina);
+
+            // Limitamos a 20 registros por página para proteger la RAM de Railway
+            Pageable pageable = PageRequest.of(pagina, 20);
+            Page<Pedido> pageResult = pedidoRepository.findHistorialNotasVenta(inicio, fin, pageable);
+
+            List<Map<String, Object>> listaDTO = pageResult.getContent().stream().map(p -> {
+                Map<String, Object> dto = new HashMap<>();
+                dto.put("id", p.getId());
+                dto.put("tipoServicio", p.getTipoPedido() != null ? p.getTipoPedido().name() : "LOCAL");
+                dto.put("cliente", p.getCliente() != null ? p.getCliente() : "Cliente General");
+                dto.put("mesa", p.getNumeroMesa());
+                dto.put("metodoPago", p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO");
+                dto.put("fecha", p.getFechaCreacion() != null ? p.getFechaCreacion().toLocalDate().toString() : "N/A");
+                dto.put("hora", p.getFechaCreacion() != null ? p.getFechaCreacion().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) : "N/A");
+                dto.put("monto", p.getMontoTotal() != null ? p.getMontoTotal() : 0.0);
+                dto.put("estado", p.getEstado().name());
+                return dto;
+            }).collect(Collectors.toList());
+
+            Map<String, Object> respuestaJson = new HashMap<>();
+            respuestaJson.put("comprobantes", listaDTO);
+            respuestaJson.put("paginaActual", pageResult.getNumber());
+            respuestaJson.put("totalPaginas", pageResult.getTotalPages());
+            respuestaJson.put("totalElementos", pageResult.getTotalElements());
+
+            return ResponseEntity.ok(respuestaJson);
+        } catch (Exception e) {
+            System.err.println("💥 Error en extractor histórico: " + e.getMessage());
+            return ResponseEntity.internalServerError().body("Error al extraer bitácora: " + e.getMessage());
+        }
     }
 }

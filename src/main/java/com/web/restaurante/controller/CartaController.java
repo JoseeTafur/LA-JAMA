@@ -102,41 +102,74 @@ public class CartaController {
                             "🚨 Fraude Detectado: La paleta cromática no corresponde a un voucher original de " + metodo + "."));
                 }
 
-                // ── 🛰️ EXTRACCIÓN DE TEXTO DESDE EL FRONTEND (CERO CONSUMO RAM) ──
+                // ── 🛰️ EXTRACCIÓN DE TEXTO DESDE EL FRONTEND ──
                 String textoExtraido = pedido.getTextoVoucherCrudo() != null ? pedido.getTextoVoucherCrudo().toLowerCase() : "";
                 System.out.println("🛰️ [AUDITORÍA EN RAILWAY] Texto recibido desde el cliente:\n" + textoExtraido);
 
-                // ── 💰 ADUANA 2: RECONOCIMIENTO DE PRECIO CON CANDADO ESTRICTO ──
                 Double montoRealPedido = pedido.getMontoTotal() != null ? pedido.getMontoTotal() : 0.0;
-                Double montoDetectado = -1.0;
 
-                java.util.regex.Pattern patternMontoStrict = java.util.regex.Pattern.compile("\\b([0-9]{1,4}\\.[0-9]{2})\\b");
-                java.util.regex.Matcher matcherMontoStrict = patternMontoStrict.matcher(textoExtraido);
+                String datoPrecio = "NO DETECTADO";
+                String datoFecha = "NO DETECTADO";
+                String datoOperacion = "NO DETECTADO";
 
-                boolean matchPerfecto = false;
-                while (matcherMontoStrict.find()) {
-                    try {
-                        double valorConstatado = Double.parseDouble(matcherMontoStrict.group(1));
-                        if (valorConstatado > 0.0 && valorConstatado != 2026.0) {
-                            montoDetectado = valorConstatado;
-                            if (Math.abs(montoDetectado - montoRealPedido) <= 0.05) {
-                                matchPerfecto = true;
-                                break;
+                String[] lineas = textoExtraido.split("\\n");
+
+                // 1. 💰 EXTRACCIÓN DEL PRECIO (Línea inmediata inferior a "yapeaste")
+                for (int i = 0; i < lineas.length; i++) {
+                    String lineaActual = lineas[i].trim();
+                    if (lineaActual.contains("yapeaste") || lineaActual.contains("¡yapeaste!")) {
+                        if ((i + 1) < lineas.length) {
+                            String posibleMonto = lineas[i + 1].replaceAll("[^0-9\\.]", "").trim();
+                            // Filtramos ruidos comunes como el año o textos vacíos
+                            if (!posibleMonto.isEmpty() && !posibleMonto.equals("2026") && posibleMonto.length() < 6) {
+                                datoPrecio = posibleMonto;
                             }
                         }
-                    } catch (Exception e) {}
+                        break;
+                    }
                 }
 
-                // ESCUDO ANTI-FRAUDE: Si el OCR leyó un monto real decimal y este difiere del pedido, bloqueo fulminante
-                if (montoDetectado > 0.0 && !matchPerfecto) {
-                    return ResponseEntity.badRequest().body(Map.of("success", false, "message",
-                            "⚠️ Alerta de Fraude: El monto leído ópticamente en tu voucher (S/. " + montoDetectado + ") no coincide con el total real de tu pedido (S/. " + montoRealPedido + ")."));
+                // Fallback por si el símbolo S/. se leyó en la misma línea
+                if ("NO DETECTADO".equals(datoPrecio)) {
+                    java.util.regex.Pattern pSoles = java.util.regex.Pattern.compile("(s/\\.?|s/\\s?)\\s?(\\d{1,4}(\\.\\d{2})?)");
+                    java.util.regex.Matcher mSoles = pSoles.matcher(textoExtraido);
+                    if (mSoles.find()) {
+                        datoPrecio = mSoles.group(2);
+                    }
                 }
 
-                // ── 📅 ADUANA 3: RECONOCIMIENTO DE FECHA LEGÍTIMA ──
+                // 2. 📅 EXTRACCIÓN DE LA FECHA
+                java.util.regex.Pattern pFecha = java.util.regex.Pattern.compile("(\\d{1,2}\\s(jun|ene|feb|mar|abr|may|jul|ago|set|oct|nov|dic|may\\.?))|(\\d{2}/\\d{2}/\\d{4})");
+                java.util.regex.Matcher mFecha = pFecha.matcher(textoExtraido);
+                if (mFecha.find()) {
+                    datoFecha = mFecha.group(0);
+                } else if (textoExtraido.contains("hoy")) {
+                    datoFecha = "hoy";
+                }
+
+                // 3. 🔢 EXTRACCIÓN DEL NÚMERO DE OPERACIÓN
+                java.util.regex.Pattern pOp = java.util.regex.Pattern.compile("(operación|nro|n°|ref|constancia|transacción)\\s?:?\\s?(\\d{6,12})");
+                java.util.regex.Matcher mOp = pOp.matcher(textoExtraido);
+                if (mOp.find()) {
+                    datoOperacion = mOp.group(2);
+                } else {
+                    java.util.regex.Pattern pOpSuelto = java.util.regex.Pattern.compile("\\b\\d{8}\\b");
+                    java.util.regex.Matcher mOpSuelto = pOpSuelto.matcher(textoExtraido);
+                    if (mOpSuelto.find()) {
+                        datoOperacion = mOpSuelto.group(0);
+                    }
+                }
+
+                // 🖨️ MONITOR EXPLICITO SOLICITADO
+                System.out.println("=====================================");
+                System.out.println("Precio: " + datoPrecio);
+                System.out.println("Fecha: " + datoFecha);
+                System.out.println("nroOperacion: " + datoOperacion);
+                System.out.println("=====================================");
+
                 java.time.LocalDate hoy = java.time.LocalDate.now();
-                String diaHoy = hoy.format(java.time.format.DateTimeFormatter.ofPattern("d"));
-                String mesHoy = hoy.format(java.time.format.DateTimeFormatter.ofPattern("MMM")).toLowerCase();
+                String diaHoy = hoy.format(java.time.format.DateTimeFormatter.ofPattern("d")); // "20"
+                String mesHoy = hoy.format(java.time.format.DateTimeFormatter.ofPattern("MMM")).toLowerCase(); // "jun"
                 String fechaSlashHoy = hoy.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
                 java.util.regex.Pattern patternFechaFlexible = java.util.regex.Pattern.compile(diaHoy + ".*?" + mesHoy);
@@ -145,41 +178,51 @@ public class CartaController {
                 boolean contieneFechaHoy = textoExtraido.contains(fechaSlashHoy) ||
                         matcherFechaFlexible.find() ||
                         textoExtraido.contains("hoy") ||
-                        textoExtraido.isEmpty(); // Si el OCR en el cliente vino vacío por error del Worker, pasa por resguardo visual
+                        "NO DETECTADO".equals(datoFecha);
 
-                if (!contieneFechaHoy) {
+                // 🚨 CANDADO 1: Si detecta una fecha antigua (como el 11 de mayo), se tumba el pedido inmediatamente
+                if (!"NO DETECTADO".equals(datoFecha) && !contieneFechaHoy) {
                     return ResponseEntity.badRequest().body(Map.of("success", false, "message",
-                            "🚨 Voucher Caducado: La fecha identificada en la imagen no corresponde al día de hoy. Suba una captura actual."));
+                            "🚨 Voucher Caducado: La fecha identificada en la captura (" + datoFecha + ") no corresponde al día de hoy. Por favor, use un voucher actual."));
                 }
 
-                // ── 🔢 ADUANA 4: NÚMERO DE OPERACIÓN Y AUDITORÍA ANTI-REUTILIZACIÓN ──
-                java.util.regex.Pattern patternOp = java.util.regex.Pattern.compile("(operación|nro|n°|ref\\.?|constancia)\\s?:?\\s?(\\d{6,12})");
-                java.util.regex.Matcher matcherOp = patternOp.matcher(textoExtraido);
-                String idTransaccionReal = null;
+                // ── 🛡️ ADUANA 2: VALIDACIÓN INTELIGENTE DE PRECIO (LA JAMA) ──
+                boolean requiereVerificacionManual = false;
 
-                if (matcherOp.find()) {
-                    idTransaccionReal = matcherOp.group(2);
-                } else {
-                    java.util.regex.Pattern patternSuelto = java.util.regex.Pattern.compile("\\b\\d{7,11}\\b");
-                    java.util.regex.Matcher matcherSuelto = patternSuelto.matcher(textoExtraido);
-                    if (matcherSuelto.find()) idTransaccionReal = matcherSuelto.group();
-                }
-
-                if (idTransaccionReal != null) {
-                    boolean yaSeUsoHoy = pedidoService.existeNumeroOperationHoy("V-" + idTransaccionReal);
-                    if (yaSeUsoHoy) {
-                        return ResponseEntity.badRequest().body(Map.of("success", false, "message",
-                                "🚨 Fraude Detectado: Este número de operación (" + idTransaccionReal + ") ya fue registrado hoy. No se permite duplicar capturas."));
+                if (!"NO DETECTADO".equals(datoPrecio)) {
+                    try {
+                        double precioLeido = Double.parseDouble(datoPrecio);
+                        if (Math.abs(precioLeido - montoRealPedido) > 0.05) {
+                            // 🌟 En lugar de rebotar por las alucinaciones del OCR (como el 723.50),
+                            // activamos la bandera de verificación para que el cajero lo revise manualmente en su panel.
+                            requiereVerificacionManual = true;
+                        }
+                    } catch (Exception e) {
+                        requiereVerificacionManual = true;
                     }
-                    // Si el monto no fue detectado por brillo, asignamos el sufijo de control visual para el panel de caja
-                    pedido.setCodigoPagoOperacion("V-" + idTransaccionReal + (matchPerfecto ? "" : "-CHECK-MANUAL"));
+                } else {
+                    requiereVerificacionManual = true;
+                }
+
+                // ── 🛡️ ADUANA 4: NÚMERO DE OPERACIÓN Y REUTILIZACIÓN ──
+                if (!"NO DETECTADO".equals(datoOperacion)) {
+                    boolean yaSeUsoHoy = pedidoService.existeNumeroOperationHoy("V-" + datoOperacion);
+                    if (yaSeUsoHoy) {
+                        // 🚨 CANDADO 2: Intentan reutilizar el mismo voucher dos veces (Bloqueo absoluto)
+                        return ResponseEntity.badRequest().body(Map.of("success", false, "message",
+                                "🚨 Fraude Detectado: Este número de operación (" + datoOperacion + ") ya fue registrado hoy. No se permiten duplicados."));
+                    }
+
+                    // Si el OCR falló o alucinó con el precio, le metemos el sufijo de control visual para la caja
+                    String sufijoControl = requiereVerificacionManual ? "-CHECK-MANUAL" : "";
+                    pedido.setCodigoPagoOperacion("V-" + datoOperacion + sufijoControl);
                 } else {
                     String hashFailsafe = String.valueOf(Math.abs(file.getOriginalFilename().hashCode() + file.getSize()));
                     pedido.setCodigoPagoOperacion("V-HASH-" + hashFailsafe);
                 }
             }
 
-            // 🧾 CONTROL DE NOTA DE VENTA: Nace en estado PENDIENTE, congelado hasta aprobación del cajero
+            // 🧾 CONTROL DE NOTA DE VENTA
             pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.PENDIENTE);
 
             Long id = pedidoService.guardarPedidoCarta(pedido);

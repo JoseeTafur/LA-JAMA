@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -62,6 +63,8 @@ public class Pedido {
     @Enumerated(EnumType.STRING)
     private TipoPedido tipoPedido;
 
+    private boolean ticketImpresoCocina = false;
+
     @Column(name = "numero_mesa")
     private Integer numeroMesa;
 
@@ -87,7 +90,29 @@ public class Pedido {
     private String preferenciaComprobante;
 
     private String comprobantePdfUrl;
+
     private String comprobanteA4Url;
+
+    @Lob
+    @Column(name = "comprobante_xml_contenido", columnDefinition = "LONGTEXT")
+    private String comprobanteXmlContenido;
+
+    //-------------------------------------------------------------------------------
+
+    @Column(name = "comprobante_nota_numero")
+    private String comprobanteNotaNumero;
+
+    @Column(name = "nota_pdf_url")
+    private String notaPdfUrl;
+
+    @Column(name = "nota_a4_url")
+    private String notaA4Url;
+
+    @Column(name = "nota_xml_contenido", columnDefinition = "LONGTEXT")
+    private String notaXmlContenido;
+
+    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<AuditoriaAnulacion> notasCredito = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "metodo_pago")

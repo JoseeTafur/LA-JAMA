@@ -90,14 +90,13 @@ public class CocinaController {
         Pedido pedido = pedidoService.obtenerPorId(pedidoId);
 
         // 1. Filtramos SOLO los platos que NO se han impreso, que NO son mermas y que son de esta estación
-        // 🚀 ADUANA ANTI-NULOS: Evaluamos que ni el producto ni la categoría rompan el flujo si vienen del Split
         List<DetallePedido> detallesAImprimir = pedido.getListaDetalles().stream()
                 .filter(d -> !d.isCanceladoPorCliente() && !d.isImpresoEnCocina())
                 .filter(d -> {
                     if (d.getProducto() == null ||
                             d.getProducto().getCategoria() == null ||
                             d.getProducto().getCategoria().getNombre() == null) {
-                        return false; // Si falta consistencia, lo salta de forma segura sin crashear
+                        return false;
                     }
                     String nombreCat = d.getProducto().getCategoria().getNombre().toUpperCase();
                     if ("caliente".equalsIgnoreCase(tipo)) return nombreCat.contains("CALIENTE");
@@ -113,18 +112,23 @@ public class CocinaController {
                         if (d.getProducto() == null ||
                                 d.getProducto().getCategoria() == null ||
                                 d.getProducto().getCategoria().getNombre() == null) {
-                            return false; // Escudo protector para la reimpresión
+                            return false;
                         }
                         String cat = d.getProducto().getCategoria().getNombre().toUpperCase();
                         return "caliente".equalsIgnoreCase(tipo) ? cat.contains("CALIENTE") : (cat.contains("FRI") || cat.contains("FRÍ"));
                     }).toList();
         } else {
-            // 3. Si SÍ había platos nuevos, los marcamos como impresos para que nunca más vuelvan a salir en un ticket nuevo
+            // 3. Si SÍ había platos nuevos, los marcamos como impresos
             for (DetallePedido d : detallesAImprimir) {
                 d.setImpresoEnCocina(true);
             }
-            pedidoService.guardar(pedido); // Guarda los cambios en BD
         }
+
+        // =====================================================================
+        // 🍳 REGLA DE ORO AUTOMÁTICA: Activamos el candado para habilitar el pago en Caja
+        // =====================================================================
+        pedido.setTicketImpresoCocina(true);
+        pedidoService.guardar(pedido); // Persistimos de forma segura tanto los ítems como la cabecera
 
         model.addAttribute("pedido", pedido);
         model.addAttribute("detalles", detallesAImprimir);

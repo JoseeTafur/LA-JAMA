@@ -1,230 +1,443 @@
 /**
- * LA JAMA - Módulo Delivery (OpenStreetMap Version)
+ * LA JAMA - Terminal de Pedidos para Cajero Directo
+ * Lógica 100% Vanilla JS (Cero Bootstrap). Sincronización estricta por pasos.
  */
-let carrito = [];
-let mapaPreview;
-let marcadorPreview = null;
-let tipoPedidoCajero = 'DELIVERY';
 
-document.addEventListener('DOMContentLoaded', () => {
-    initModuloEntrega();
-    configurarBuscadorProductos();
+let carrito = [];
+let tipoEntrega = 'DELIVERY'; // Alineado al HTML
+let metodoPago = 'YAPE';      // Alineado al HTML
+let etapaActual = 1;
+const totalEtapas = 4;        // 1:Carta, 2:Entrega, 3:Fiscal, 4:Pago
+let mapa = null;
+let marcador = null;
+
+window.addEventListener('load', () => {
+    if (typeof L !== 'undefined') {
+        setTimeout(iniciarMapaCajero, 300);
+    }
+    configurarBuscadorCarta();
+    renderizarCarritoCajero();
 });
 
-function initModuloEntrega() {
-    mapaPreview = L.map('mapa-preview').setView([-6.771, -79.838], 14);
+/* ======================================================== */
+/* 🛡️ 1. ADUANAS DE VALIDACIÓN EN TIEMPO REAL              */
+/* ======================================================== */
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-    }).addTo(mapaPreview);
+function validarPasoActual() {
+    // Validaciones al intentar salir del PASO 1 (Carta)
+    if (etapaActual === 1) {
+        const nombre = document.getElementById('cliente_nombre').value.trim();
 
-    const provider = new window.GeoSearch.OpenStreetMapProvider({
-        params: {
-            'accept-language': 'es',
-            countrycodes: 'pe',
-            viewbox: '-79.9500,-6.7000,-79.7400,-6.8500',
-            bounded: 1
+        if (carrito.length === 0) {
+            Swal.fire({ icon: 'warning', title: 'Comanda Vacía', text: 'Agrega al menos un plato a la orden antes de avanzar.', confirmButtonColor: '#1B3A2C' });
+            return false;
         }
-    });
-
-    const searchControl = new window.GeoSearch.GeoSearchControl({
-        provider: provider,
-        style: 'bar',
-        container: document.getElementById('search-container'),
-        showMarker: false,
-        autoClose: true,
-        searchLabel: 'Escribe calle o lugar en Chiclayo...'
-    });
-
-    mapaPreview.addControl(searchControl);
-
-    mapaPreview.on('geosearch/showlocation', (result) => {
-        const { x, y, label } = result.location;
-        actualizarPuntoEntrega(y, x, label);
-    });
-
-    mapaPreview.on('click', async (e) => {
-        const { lat, lng } = e.latlng;
-
-        document.getElementById('lat').value = lat.toFixed(6);
-        document.getElementById('lng').value = lng.toFixed(6);
-        document.getElementById('inputDireccion').value = "Obteniendo dirección exacta...";
-
-        dibujarMarcador(lat, lng, "Cargando dirección...");
-
-        try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`);
-            const data = await response.json();
-            const direccionReal = data.display_name ? data.display_name : `Coordenadas: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-            actualizarPuntoEntrega(lat, lng, direccionReal);
-
-        } catch (error) {
-            console.error("Error al obtener la dirección por click:", error);
-            actualizarPuntoEntrega(lat, lng, `Dirección seleccionada (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        if (!nombre) {
+            Swal.fire({ icon: 'warning', title: 'Falta Cliente', text: 'Ingresa el Nombre o Razón Social en el panel derecho.', confirmButtonColor: '#1B3A2C' });
+            document.getElementById('cliente_nombre').focus();
+            return false;
         }
-    });
+    }
+
+    // Validaciones al intentar salir del PASO 2 (Logística)
+    if (etapaActual === 2 && tipoEntrega === 'DELIVERY') {
+        const dir = document.getElementById('direccionCliente').value.trim();
+        const lat = document.getElementById('latCliente').value;
+
+        if (!dir || !lat || parseFloat(lat) === 0) {
+            Swal.fire({ icon: 'warning', title: 'Falta Dirección', text: 'Para envíos por delivery, busca y selecciona un punto en el mapa.', confirmButtonColor: '#1B3A2C' });
+            return false;
+        }
+    }
+
+    // Validaciones al intentar salir del PASO 3 (Fiscal)
+    if (etapaActual === 3) {
+        const tipoDoc = document.getElementById('preferenciaComprobante').value;
+        const numDoc = document.getElementById('numeroDocumento').value.trim();
+
+        if (tipoDoc === 'FACTURA') {
+            if (!numDoc || numDoc.length !== 11 || isNaN(numDoc)) {
+                Swal.fire({ icon: 'error', title: 'RUC Inválido', text: 'La Factura Electrónica requiere un RUC válido de 11 dígitos.', confirmButtonColor: '#933D2D' });
+                return false;
+            }
+            if (!numDoc.startsWith('10') && !numDoc.startsWith('20')) {
+                Swal.fire({ icon: 'error', title: 'Prefijo Incorrecto', text: 'El RUC debe iniciar con 10 o 20.', confirmButtonColor: '#933D2D' });
+                return false;
+            }
+        } else {
+            // 🚀 REPARADO AQUÍ: isNaN puro y conforme
+            if (numDoc && (numDoc.length !== 8 || isNaN(numDoc))) {
+                Swal.fire({ icon: 'error', title: 'DNI Inválido', text: 'El DNI debe contener exactamente 8 dígitos numéricos.', confirmButtonColor: '#933D2D' });
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
-function actualizarPuntoEntrega(lat, lng, direccion) {
-    document.getElementById('lat').value = lat;
-    document.getElementById('lng').value = lng;
-    document.getElementById('inputDireccion').value = direccion;
+/* ======================================================== */
+/* 🪐 2. MOTOR DE NAVEGACIÓN PROGRESIVA VANILLA JS          */
+/* ======================================================== */
 
-    dibujarMarcador(lat, lng, direccion);
-    mapaPreview.setView([lat, lng], 16);
-}
+function navegarEtapa(direccion) {
+    // Si intenta avanzar, trancamos con la aduana primero
+    if (direccion === 1 && !validarPasoActual()) {
+        return;
+    }
 
-function dibujarMarcador(lat, lng, textoPopup) {
-    if (marcadorPreview) mapaPreview.removeLayer(marcadorPreview);
+    let proximaEtapa = etapaActual + direccion;
+    if (proximaEtapa < 1 || proximaEtapa > totalEtapas) return;
 
-    marcadorPreview = L.marker([lat, lng]).addTo(mapaPreview)
-        .bindPopup(`<b>Punto de Entrega:</b><br>${textoPopup}`)
-        .openPopup();
-}
+    etapaActual = proximaEtapa;
 
-function agregarAlCarrito(id, nombre, precio) {
-    const existe = carrito.find(item => item.id === id);
-    if (existe) {
-        existe.cantidad++;
-        existe.subtotal = existe.cantidad * precio;
+    // 🚀 REPARADO: Conmutador que maneja las clases jama-hidden del CSS de forma impecable
+    for (let i = 1; i <= totalEtapas; i++) {
+        const divPaso = document.getElementById(`checkout-step-${i}`);
+        const nodoIndicador = document.getElementById(`indicator-step-${i}`);
+
+        if (divPaso) {
+            if (i === etapaActual) {
+                divPaso.classList.remove('jama-hidden');
+            } else {
+                divPaso.classList.add('jama-hidden');
+            }
+        }
+
+        if (nodoIndicador) {
+            if (i === etapaActual) {
+                nodoIndicador.className = 'jama-step-node paso-activo';
+            } else if (i < etapaActual) {
+                nodoIndicador.className = 'jama-step-node';
+                nodoIndicador.style.backgroundColor = 'var(--lajama-green-alpha)';
+                nodoIndicador.style.color = 'var(--lajama-green)';
+            } else {
+                nodoIndicador.className = 'jama-step-node paso-pendiente';
+                nodoIndicador.style.backgroundColor = '';
+                nodoIndicador.style.color = '';
+            }
+        }
+    }
+
+    // Fix dinámico del mapa al entrar al Paso 2
+    if (etapaActual === 2 && mapa && tipoEntrega === 'DELIVERY') {
+        setTimeout(() => { mapa.invalidateSize(); }, 250);
+    }
+
+    // Control de Botones Inferiores usando jama-hidden
+    const btnAtras = document.getElementById('btnAtrasStep');
+    const btnSiguiente = document.getElementById('btnSiguienteStep');
+    const btnFinalizar = document.getElementById('btnFinalizarPedido');
+
+    if (btnAtras) {
+        if (etapaActual === 1) btnAtras.classList.add('jama-hidden');
+        else btnAtras.classList.remove('jama-hidden');
+    }
+
+    if (etapaActual === totalEtapas) {
+        if (btnSiguiente) btnSiguiente.classList.add('jama-hidden');
+        if (btnFinalizar) btnFinalizar.classList.remove('jama-hidden');
     } else {
-        carrito.push({ id, nombre, precio, cantidad: 1, subtotal: precio });
+        if (btnSiguiente) btnSiguiente.classList.remove('jama-hidden');
+        if (btnFinalizar) btnFinalizar.classList.add('jama-hidden');
     }
-    renderizarCarrito();
 }
 
-function eliminarDelCarrito(id) {
-    carrito = carrito.filter(item => item.id !== id);
-    renderizarCarrito();
-}
+/* ======================================================== */
+/* 🍽️ 3. OPERACIONES DE COMANDA Y CARTA                     */
+/* ======================================================== */
 
-function renderizarCarrito() {
-    const tabla = document.getElementById('tabla-carrito');
-    const labelTotal = document.getElementById('label-total');
-    let html = '';
-    let total = 0;
+window.agregarDesdeCard = function(el) {
+    const id = el.getAttribute('data-id');
+    const nombre = el.getAttribute('data-nombre');
+    const precio = parseFloat(el.getAttribute('data-precio'));
 
-    carrito.forEach(item => {
-        total += item.subtotal;
-        html += `
-            <tr class="animate__animated animate__fadeIn">
-                <td><span class="badge bg-jama rounded-pill">${item.cantidad}</span></td>
-                <td class="small fw-bold">${item.nombre}</td>
-                <td class="text-ocre fw-bold">S/ ${item.subtotal.toFixed(2)}</td>
-                <td class="text-end">
-                    <i class="bi bi-trash3 text-danger cursor-pointer" onclick="eliminarDelCarrito(${item.id})"></i>
-                </td>
-            </tr>
-        `;
+    // 🚀 RESTAURADO: Flujo original en caliente sin condicionales ni bloqueos falsos
+    carrito.push({
+        idTemporal: Date.now() + Math.random(),
+        id: id,
+        nombre: nombre,
+        precio: precio
     });
 
-    tabla.innerHTML = html || '<tr><td colspan="4" class="text-center py-4 text-muted">Carrito vacío</td></tr>';
-    labelTotal.innerText = total.toFixed(2);
+    // Feedback kinetic
+    el.classList.add('jama-flash-active');
+    setTimeout(() => el.classList.remove('jama-flash-active'), 250);
+
+    renderizarCarritoCajero();
+};
+
+function removerItemCajero(index) {
+    carrito.splice(index, 1);
+    renderizarCarritoCajero();
 }
 
-function configurarBuscadorProductos() {
-    const input = document.getElementById('busqueda');
-    if (input) {
-        input.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            document.querySelectorAll('.item-producto').forEach(div => {
-                const nombre = div.getAttribute('data-nombre').toLowerCase();
-                div.style.display = nombre.includes(term) ? 'block' : 'none';
-            });
-        });
+function renderizarCarritoCajero() {
+    const tbody = document.getElementById('listaCarrito');
+    const lblTotal = document.getElementById('totalCarrito');
+    if (!tbody) return;
+
+    if (carrito.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center py-3 text-muted small border-bottom-0">Aún no hay platos en la comanda</td></tr>`;
+        lblTotal.textContent = '0.00';
+        return;
     }
+
+    let total = 0;
+    tbody.innerHTML = carrito.map((item, index) => {
+        total += item.precio;
+        return `
+            <tr>
+                <td class="fw-bold text-dark" style="font-size: 0.8rem;">${item.nombre}</td>
+                <td class="text-end fw-bold text-success" style="font-size: 0.85rem;">S/ ${item.precio.toFixed(2)}</td>
+                <td class="text-end"><i class="bi bi-trash3-fill text-danger cursor-pointer" onclick="removerItemCajero(${index})"></i></td>
+            </tr>`;
+    }).join('');
+
+    lblTotal.textContent = total.toFixed(2);
+    calcularVuelto();
 }
+
+/* ======================================================== */
+/* 🚚 4. MAPA LEAFLET Y LOGÍSTICA DE ENTREGA                */
+/* ======================================================== */
 
 function seleccionarTipo(tipo) {
-    tipoPedidoCajero = tipo;
-    const esDelivery = tipo === 'DELIVERY';
+    tipoEntrega = tipo;
+    const btnDelivery = document.getElementById('btnDelivery');
+    const btnRecoger = document.getElementById('btnRecoger');
+    const seccionDireccion = document.getElementById('seccionDireccion');
+    const inputDireccion = document.getElementById('direccionCliente');
 
-    document.getElementById('btnDelivery').style.background = esDelivery ? 'var(--lajama-brown)' : '#e9ecef';
-    document.getElementById('btnDelivery').style.color = esDelivery ? 'white' : '#333';
-    document.getElementById('btnParaLlevar').style.background = !esDelivery ? 'var(--lajama-brown)' : '#e9ecef';
-    document.getElementById('btnParaLlevar').style.color = !esDelivery ? 'white' : '#333';
-
-    document.getElementById('bloqueDir').style.display = esDelivery ? 'block' : 'none';
-    document.getElementById('mapa-preview').style.display = esDelivery ? 'block' : 'none';
-
-    document.getElementById('tituloEntrega').innerHTML = esDelivery
-        ? '<i class="bi bi-geo-alt-fill me-2"></i> Datos de Entrega'
-        : '<i class="bi bi-bag me-2"></i> Datos del Cliente';
+    if (tipo === 'DELIVERY') {
+        if (btnDelivery) btnDelivery.classList.add('active');
+        if (btnRecoger) btnRecoger.classList.remove('active');
+        if (seccionDireccion) seccionDireccion.style.display = 'flex';
+        if (inputDireccion) {
+            inputDireccion.value = '';
+            inputDireccion.readOnly = false;
+        }
+        if (mapa) setTimeout(() => { mapa.invalidateSize(); }, 200);
+    } else {
+        if (btnDelivery) btnDelivery.classList.remove('active');
+        if (btnRecoger) btnRecoger.classList.add('active');
+        if (seccionDireccion) seccionDireccion.style.display = 'none';
+        if (inputDireccion) {
+            inputDireccion.value = 'Recojo en tienda';
+            inputDireccion.readOnly = true;
+            document.getElementById('latCliente').value = "0.0";
+            document.getElementById('lngCliente').value = "0.0";
+        }
+    }
 }
 
-// --- ACOPLE INTERACTIVO CON APPUTILS LOGÍSTICA ---
-function confirmarPedido() {
-    const lat = document.getElementById('lat').value;
-    const lng = document.getElementById('lng').value;
-    const cliente = document.getElementById('cliente_nombre').value.trim();
-    const esDelivery = tipoPedidoCajero === 'DELIVERY';
+function iniciarMapaCajero() {
+    if (mapa) return;
+    mapa = L.map('mapa-pedido').setView([-6.7768, -79.8428], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
 
-    // 1. Validaciones usando las alertas estandarizadas de AppUtils
-    if (esDelivery && (!lat || !cliente || carrito.length === 0)) {
-        AppUtils.showNotification("⚠️ Datos incompletos: ingresa cliente, dirección en mapa y productos.", "warning");
-        return;
+    mapa.on('click', async (e) => {
+        fijarMarcador(e.latlng.lat, e.latlng.lng);
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}&accept-language=es`);
+            const data = await res.json();
+            if (data.display_name) document.getElementById('direccionCliente').value = data.display_name.split(',').slice(0, 3).join(',').trim();
+        } catch(err) {}
+    });
+
+    const inputDir = document.getElementById('direccionCliente');
+    const listaDir = document.getElementById('sugerencias-dir');
+    let timer = null;
+
+    inputDir.addEventListener('input', () => {
+        clearTimeout(timer);
+        const q = inputDir.value.trim();
+        if (q.length < 3) { listaDir.style.display = 'none'; return; }
+
+        timer = setTimeout(async () => {
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ', Chiclayo')}&countrycodes=pe&limit=5&accept-language=es`);
+                const data = await res.json();
+                if (!data.length) return;
+                listaDir.innerHTML = data.map(r => `<li style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 0.8rem;" onclick="elegirDir(${r.lat}, ${r.lon}, '${r.display_name.replace(/'/g, "\\'")}')"><i class="bi bi-geo-alt-fill text-danger me-2"></i>${r.display_name.split(',').slice(0, 3).join(',')}</li>`).join('');
+                listaDir.style.display = 'block';
+            } catch(err) {}
+        }, 350);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.position-relative')) if (listaDir) listaDir.style.display = 'none';
+    });
+}
+
+function elegirDir(lat, lng, completo) {
+    document.getElementById('direccionCliente').value = completo.split(',').slice(0, 3).join(',').trim();
+    document.getElementById('sugerencias-dir').style.display = 'none';
+    fijarMarcador(parseFloat(lat), parseFloat(lng));
+    mapa.setView([lat, lng], 16);
+}
+
+function fijarMarcador(lat, lng) {
+    document.getElementById('latCliente').value = lat;
+    document.getElementById('lngCliente').value = lng;
+    if (marcador) mapa.removeLayer(marcador);
+    marcador = L.marker([lat, lng]).addTo(mapa);
+}
+
+/* ======================================================== */
+/* 📄 5. FISCAL Y PAGOS                                     */
+/* ======================================================== */
+
+function conmutarTipoDocumento() {
+    const tipo = document.getElementById('preferenciaComprobante').value;
+    const label = document.getElementById('labelDocumento');
+    const input = document.getElementById('numeroDocumento');
+    input.value = "";
+
+    if (tipo === 'FACTURA') {
+        label.innerHTML = 'RUC (Obligatorio) *';
+        input.placeholder = 'Ej. 20601234567';
+        input.setAttribute('maxlength', '11');
+    } else {
+        label.innerHTML = 'DNI (Opcional)';
+        input.placeholder = 'Ej. 74589632';
+        input.setAttribute('maxlength', '8');
+    }
+}
+
+document.getElementById('numeroDocumento')?.addEventListener('input', function() {
+    this.value = this.value.replace(/[^0-9]/g, '');
+});
+
+function seleccionarPago(metodo) {
+    metodoPago = metodo;
+    const btns = ['btnPagoEfectivo', 'btnPagoYape', 'btnPagoPlin', 'btnPagoTarjeta'];
+    btns.forEach(id => {
+        const btn = document.getElementById(id);
+        if(btn) btn.classList.remove('active');
+    });
+
+    const btnActivo = document.getElementById(`btnPago${metodo.charAt(0) + metodo.slice(1).toLowerCase()}`);
+    if (btnActivo) btnActivo.classList.add('active');
+
+    const panelVuelto = document.getElementById('panelVuelto');
+    const panelMensaje = document.getElementById('panelMensajePagoDigital');
+
+    if (metodo === 'EFECTIVO') {
+        if(panelVuelto) panelVuelto.classList.remove('jama-hidden');
+        if(panelMensaje) panelMensaje.classList.add('jama-hidden');
+    } else {
+        if(panelVuelto) panelVuelto.classList.add('jama-hidden');
+        if(panelMensaje) panelMensaje.classList.remove('jama-hidden');
+    }
+    calcularVuelto();
+}
+
+function calcularVuelto() {
+    const total = carrito.reduce((s, item) => s + item.precio, 0);
+    const pagaCon = parseFloat(document.getElementById('inputPagaCon').value) || 0;
+    const lblVuelto = document.getElementById('lblVuelto');
+    if (lblVuelto) {
+        lblVuelto.textContent = (metodoPago === 'EFECTIVO' && pagaCon >= total) ? (pagaCon - total).toFixed(2) : '0.00';
+    }
+}
+
+/* ======================================================== */
+/* 🚀 6. DESPACHO AL SERVIDOR MULTIPART                     */
+/* ======================================================== */
+
+async function enviarPedidoFinal() {
+    const total = carrito.reduce((s, item) => s + item.precio, 0);
+    const nombre = document.getElementById('cliente_nombre').value.trim();
+    const correo = document.getElementById('cliente_correo').value.trim();
+    const prefComprobante = document.getElementById('preferenciaComprobante').value;
+    const numDocumento = document.getElementById('numeroDocumento').value.trim();
+    const direccion = tipoEntrega === 'RECOGER' ? 'Recojo en local' : document.getElementById('direccionCliente').value.trim();
+    const lat = document.getElementById('latCliente').value;
+    const lng = document.getElementById('lngCliente').value;
+
+    if (metodoPago === 'EFECTIVO') {
+        const pagaCon = parseFloat(document.getElementById('inputPagaCon').value) || 0;
+        if (pagaCon < total) {
+            Swal.fire({ icon: 'error', title: 'Dinero Insuficiente', text: 'El efectivo recibido es menor al total de la comanda.', confirmButtonColor: '#933D2D' });
+            return;
+        }
     }
 
-    if (!esDelivery && (!cliente || carrito.length === 0)) {
-        AppUtils.showNotification("⚠️ Datos incompletos: ingresa el nombre del cliente y añade productos.", "warning");
-        return;
-    }
+    const pedidoDataJson = {
+        cliente: nombre,
+        direccion: direccion,
+        latitud: lat ? parseFloat(lat) : 0.0,
+        longitud: lng ? parseFloat(lng) : 0.0,
+        montoTotal: parseFloat(total.toFixed(2)),
+        metodoPago: metodoPago,
+        tipoPedido: tipoEntrega === 'DELIVERY' ? 'DELIVERY' : 'LOCAL',
+        clienteCorreo: correo || null,
+        preferenciaComprobante: prefComprobante,
+        documentoCliente: numDocumento || null,
+        textoVoucherCrudo: "TRANSACCIÓN AUTORIZADA POR EL CAJERO INTERNO DE LA JAMA",
+        listaDetalles: carrito.map(item => ({
+            producto: { id: parseInt(item.id) },
+            cantidad: 1,
+            precioUnitario: item.precio,
+            subtotal: item.precio
+        }))
+    };
 
-    // 2. Cuadro de confirmación estructurado por callback
-    AppUtils.showConfirmationDialog({
-        title: esDelivery ? '¿Enviar a Despacho Delivery?' : '¿Enviar a Cocina Local?',
-        text: `Se registrará la comanda a nombre de ${cliente} por un total de S/ ${document.getElementById('label-total').innerText}`,
-        icon: 'question',
-        confirmButtonColor: '#1B3A2C',
-        confirmButtonText: 'Sí, confirmar comanda'
-    }, function() {
+    Swal.fire({ title: 'Timbrando CPE Directo...', text: 'Registrando comanda contable en el sistema.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-        // Activamos la pantalla de carga para evitar colisiones concurrentes en la persistencia
-        AppUtils.showLoading(true);
-
-        const data = {
-            cliente: cliente,
-            direccion: esDelivery ? document.getElementById('inputDireccion').value : 'Recojo en local',
-            latitud: esDelivery ? parseFloat(lat) : null,
-            longitud: esDelivery ? parseFloat(lng) : null,
-            montoTotal: parseFloat(document.getElementById('label-total').innerText),
-            tipoPedido: esDelivery ? 'DELIVERY' : 'LOCAL',
-            listaDetalles: carrito.map(i => ({
-                producto: { id: i.id },
-                cantidad: i.cantidad,
-                precioUnitario: i.precio,
-                subtotal: i.subtotal
-            }))
-        };
-
-        fetch('/admin/caja/delivery/guardar', {
+    try {
+        const resPedido = await fetch('/admin/caja/delivery/guardar', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        })
-        .then(res => {
-            AppUtils.showLoading(false);
-            if (res.ok) {
-                const msg = esDelivery ? 'Orden enviada a despacho con éxito' : 'Orden enviada a cocina con éxito';
-                const redirect = esDelivery ? '/admin/despacho' : '/admin/caja';
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(pedidoDataJson)
+        });
 
-                // Dispara el SweetAlert de confirmación final
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Comanda Registrada!',
-                    text: msg,
-                    confirmButtonColor: '#1B3A2C'
-                }).then(() => {
-                    window.location.href = redirect;
-                });
-            } else {
-                AppUtils.showNotification("❌ Error en el servidor al guardar comanda", "error");
-            }
-        })
-        .catch(err => {
-            AppUtils.showLoading(false);
-            console.error("Fallo de red:", err);
-            AppUtils.showNotification("❌ Fallo de conexión con el servidor", "error");
+        if (!resPedido.ok) {
+            const errorTexto = await resPedido.text();
+            throw new Error(errorTexto || "El servidor central rechazó la transacción directa.");
+        }
+
+        const dataPedido = await resPedido.json();
+
+        // Limpieza total y reactiva de la memoria del módulo
+        carrito = [];
+        renderizarCarritoCajero();
+        document.getElementById('cliente_nombre').value = '';
+        document.getElementById('cliente_correo').value = '';
+        document.getElementById('numeroDocumento').value = '';
+        document.getElementById('inputPagaCon').value = '';
+        if (marcador && mapa) mapa.removeLayer(marcador);
+
+        // Resetear visualmente el flujo al Paso 1 manipulando las clases jama-hidden del DOM
+        etapaActual = 1;
+        document.querySelectorAll('.jama-checkout-step').forEach((step, idx) => {
+            if (idx === 0) step.classList.remove('jama-hidden');
+            else step.classList.add('jama-hidden');
+        });
+
+        // Sincronizar los indicadores superiores de progreso
+        document.querySelectorAll('.jama-step-node').forEach((node, idx) => {
+            if (idx === 0) node.className = 'jama-step-node paso-activo';
+            else node.className = 'jama-step-node paso-pendiente';
+        });
+
+        Swal.fire({ icon: 'success', title: '¡Comanda Despachada!', text: `La comanda N° ${dataPedido.id || ''} fue timbrada y enviada a producción.`, confirmButtonColor: '#1B3A2C' });
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error Operativo', text: e.message, confirmButtonColor: '#d33' });
+    }
+}
+
+function configurarBuscadorCarta() {
+    const inputBuscar = document.getElementById('inputBuscar');
+    if (!inputBuscar) return;
+    inputBuscar.addEventListener('input', function () {
+        const termino = this.value.trim().toLowerCase();
+        document.querySelectorAll('.jama-card-cuadrada').forEach(card => {
+            const nombre = (card.getAttribute('data-nombre') || '').toLowerCase();
+            card.style.display = nombre.includes(termino) ? '' : 'none';
         });
     });
 }

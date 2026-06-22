@@ -184,15 +184,23 @@
                     <div class="form-group-premium">
                         <label><i class="bi bi-shop me-1"></i> ¿Cómo lo recibes? *</label>
                         <div class="selection-grid mb-4">
-                            <button type="button" class="btn-selection" id="btnRecoger" onclick="seleccionarTipo('RECOGER')">
-                                <span class="icon-wrap bg-light"><i class="bi bi-bag-heart-fill text-verde"></i></span>
-                                <span class="fw-bold">Recoger</span>
-                                <span class="small text-muted">En el local</span>
+                            <button type="button" class="btn-selection-premium" id="btnRecoger" onclick="seleccionarTipo('RECOGER')">
+                                <div class="esfera-logistica e-l-1"></div>
+                                <div class="esfera-logistica e-l-2"></div>
+                                <div class="selection-premium-content">
+                                    <span class="icon-wrap-premium bg-local"><i class="bi bi-bag-heart-fill text-verde"></i></span>
+                                    <span class="fw-bold title-premium">Recoger</span>
+                                    <span class="small text-muted-premium">En el local</span>
+                                </div>
                             </button>
-                            <button type="button" class="btn-selection" id="btnDelivery" onclick="seleccionarTipo('DELIVERY')">
-                                <span class="icon-wrap bg-light"><i class="bi bi-bicycle text-rojo"></i></span>
-                                <span class="fw-bold">Delivery</span>
-                                <span class="small text-muted">A tu puerta</span>
+                            <button type="button" class="btn-selection-premium" id="btnDelivery" onclick="seleccionarTipo('DELIVERY')">
+                                <div class="esfera-logistica e-l-1"></div>
+                                <div class="esfera-logistica e-l-2"></div>
+                                <div class="selection-premium-content">
+                                    <span class="icon-wrap-premium bg-envio"><i class="bi bi-bicycle text-rojo"></i></span>
+                                    <span class="fw-bold title-premium">Delivery</span>
+                                    <span class="small text-muted-premium">A tu puerta</span>
+                                </div>
                             </button>
                         </div>
 
@@ -246,15 +254,26 @@
 
                     <div class="form-group-premium">
                         <label><i class="bi bi-phone-vibrate-fill me-1"></i> Seleccione Billetera Digital *</label>
-
                         <div class="selection-grid mb-4">
-                            <button type="button" class="btn-selection yape-btn" id="btnYape" onclick="seleccionarPago('YAPE')">
-                                <div class="brand-logo bg-yape">Y</div>
-                                <span class="fw-bold">Yape</span>
+                            <button type="button" class="btn-pago-cliente-card" id="btnYape" onclick="seleccionarPago('YAPE')">
+                                <div class="esfera-bancaria e-b-1"></div>
+                                <div class="esfera-bancaria e-b-2"></div>
+                                <div class="pago-cliente-content">
+                                    <div class="pago-cliente-logo-box">
+                                        <img th:src="@{/img/Yape.png}" alt="Yape" class="pago-cliente-logo"/>
+                                    </div>
+                                    <span class="pago-cliente-title">Yape</span>
+                                </div>
                             </button>
-                            <button type="button" class="btn-selection plin-btn" id="btnPlin" onclick="seleccionarPago('PLIN')">
-                                <div class="brand-logo bg-plin">P</div>
-                                <span class="fw-bold">Plin</span>
+                            <button type="button" class="btn-pago-cliente-card" id="btnPlin" onclick="seleccionarPago('PLIN')">
+                                <div class="esfera-bancaria e-b-1"></div>
+                                <div class="esfera-bancaria e-b-2"></div>
+                                <div class="pago-cliente-content">
+                                    <div class="pago-cliente-logo-box">
+                                        <img th:src="@{/img/Plin.png}" alt="Plin" class="pago-cliente-logo"/>
+                                    </div>
+                                    <span class="pago-cliente-title">Plin</span>
+                                </div>
                             </button>
                         </div>
 

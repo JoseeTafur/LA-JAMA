@@ -44,7 +44,7 @@ function inicializarFlujoCaja(montoTotal, numeroMesa, preferenciaComprobante = '
 }
 
 // =======================================================
-// EXTRAER PLATOS DEL MODAL (CORREGIDO Y BLINDADO)
+// EXTRAER PLATOS DEL MODAL (BLINDADO HÍBRIDO MOSTRADOR/SALÓN)
 // =======================================================
 function extraerPlatosDelModal() {
     platosDisponibles = [];
@@ -52,62 +52,93 @@ function extraerPlatosDelModal() {
     let sumaSeleccionados = 0;
     let indexCobro = 0;
 
-    // Buscamos todas las filas de platos en el modal de gestión operativa
-    document.querySelectorAll('#lista-platos-previsualizar > div').forEach((row) => {
-        // 1. Ignoramos mermas / anulados
-        if(row.style.backgroundColor.includes('rgb(255, 229, 229)')) return;
+    // 🚀 ADUANA 1: Si venimos desde el mostrador de caja con el DTO JSON activo, leemos directo de memoria
+    if (typeof datosPedidoActualCaja !== 'undefined' && datosPedidoActualCaja && datosPedidoActualCaja.detalles) {
+        console.log("🎯 [La Jama POS] Procesando platos directamente desde el objeto JSON del pedido...");
 
-        // 2. FILTRO LOGÍSTICO EXTREMO: Si el plato NO está "Entregado", la caja lo ignora por completo
-        const estadoPlato = row.getAttribute('data-estado');
-        if (estadoPlato !== 'Entregado') return;
+        datosPedidoActualCaja.detalles.forEach((d) => {
+            if (d.canceladoPorCliente || d.pagado) return;
 
-        // 3. Buscamos el checkbox específico
-        const checkbox = row.querySelector('.chk-mesa-confirmar');
-        if (!checkbox || !checkbox.checked) return;
+            // Cruzamos con el checkbox real que el cajero marcó o desmarcó en la tabla visual anterior
+            const chkCajero = document.querySelector(`.chk-plato-caja-seleccion[value="${d.id}"]`);
+            const quiereCobrar = chkCajero ? chkCajero.checked : true;
 
-        // Extraemos la cantidad buscando el badge oscuro (ej: "1x", "2x")
-        const badgeCantidad = row.querySelector('.badge.bg-dark');
-        let cantidad = 1;
-        if (badgeCantidad) {
-            cantidad = parseInt(badgeCantidad.innerText.replace('x', '')) || 1;
-        }
+            if (!quiereCobrar) return;
 
-        // Extraemos el nombre del plato limpiando cualquier prefijo residual
-        const elementoNombre = row.querySelector('.fw-semibold');
-        let nombrePlato = elementoNombre ? elementoNombre.innerText : 'Producto';
-        nombrePlato = nombrePlato.replace(/^\d+x\s*/, '');
-
-        // Extraemos el subtotal buscando el texto que tiene el formato "S/. 00.00"
-        const elementoPrecio = row.querySelector('.text-muted.small.fw-bold') || row.querySelector('span.small.fw-bold');
-        let subtotalPlato = 0;
-        if (elementoPrecio) {
-            subtotalPlato = parseFloat(elementoPrecio.innerText.replace('S/. ', '')) || 0;
-        } else {
-            const todosLosSpans = row.querySelectorAll('.d-flex.align-items-center.gap-2 span');
-            for (let span of todosLosSpans) {
-                if (span.innerText.includes('S/.')) {
-                    subtotalPlato = parseFloat(span.innerText.replace('S/. ', '')) || 0;
-                    break;
-                }
+            let nombrePlato = "Producto";
+            if (d.producto && d.producto.nombre) {
+                nombrePlato = d.producto.nombre;
+            } else if (d.nombreProducto) {
+                nombrePlato = d.nombreProducto;
             }
-        }
 
-        // Estructuramos el objeto para la división de tickets
-        platosDisponibles.push({
-            id: indexCobro,
-            nombre: nombrePlato,
-            cantidad: cantidad,
-            subtotal: subtotalPlato,
-            idTicketAsignado: -1,
-            permitidoCobrar: true
+            platosDisponibles.push({
+                id: indexCobro,
+                productoId: d.producto ? d.producto.id : (d.productoId || d.id),
+                nombre: nombrePlato,
+                cantidad: d.cantidad || 1,
+                subtotal: parseFloat(d.subtotal) || 0,
+                idTicketAsignado: -1,
+                permitidoCobrar: true
+            });
+
+            platosSeleccionadosParaCobro.push(indexCobro);
+            sumaSeleccionados += parseFloat(d.subtotal) || 0;
+            indexCobro++;
         });
 
-        platosSeleccionadosParaCobro.push(indexCobro);
-        sumaSeleccionados += subtotalPlato;
-        indexCobro++;
-    });
+    } else {
+        // 🍽️ FALLBACK SALÓN: Si se ejecuta desde el plano de mesas físico, mantiene tu escaneo original
+        console.log("🍽️ [La Jama Salón] Ejecutando escaneo físico del DOM de mesas...");
+        document.querySelectorAll('#lista-platos-previsualizar > div').forEach((row) => {
+            if(row.style.backgroundColor.includes('rgb(255, 229, 229)')) return;
 
-    // Seteamos los totales globales del sistema de caja móvil
+            const estadoPlato = row.getAttribute('data-estado');
+            if (estadoPlato !== 'Entregado') return;
+
+            const checkbox = row.querySelector('.chk-mesa-confirmar');
+            if (!checkbox || !checkbox.checked) return;
+
+            const badgeCantidad = row.querySelector('.badge.bg-dark');
+            let cantidad = 1;
+            if (badgeCantidad) {
+                cantidad = parseInt(badgeCantidad.innerText.replace('x', '')) || 1;
+            }
+
+            const elementoNombre = row.querySelector('.fw-semibold');
+            let nombrePlato = elementoNombre ? elementoNombre.innerText : 'Producto';
+            nombrePlato = nombrePlato.replace(/^\d+x\s*/, '');
+
+            const elementoPrecio = row.querySelector('.text-muted.small.fw-bold') || row.querySelector('span.small.fw-bold');
+            let subtotalPlato = 0;
+            if (elementoPrecio) {
+                subtotalPlato = parseFloat(elementoPrecio.innerText.replace('S/. ', '')) || 0;
+            } else {
+                const todosLosSpans = row.querySelectorAll('.d-flex.align-items-center.gap-2 span');
+                for (let span of todosLosSpans) {
+                    if (span.innerText.includes('S/.')) {
+                        subtotalPlato = parseFloat(span.innerText.replace('S/. ', '')) || 0;
+                        break;
+                    }
+                }
+            }
+
+            platosDisponibles.push({
+                id: indexCobro,
+                nombre: nombrePlato,
+                cantidad: cantidad,
+                subtotal: subtotalPlato,
+                idTicketAsignado: -1,
+                permitidoCobrar: true
+            });
+
+            platosSeleccionadosParaCobro.push(indexCobro);
+            sumaSeleccionados += subtotalPlato;
+            indexCobro++;
+        });
+    }
+
+    // Seteamos los totales globales del sistema de caja móvil de manera unificada
     totalConsumoMesa = Math.round(sumaSeleccionados * 100) / 100;
 
     const txtTotalBase = document.getElementById('cobroTotalBase');

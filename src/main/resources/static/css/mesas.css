@@ -321,3 +321,158 @@
     box-shadow: none !important;
     border-color: rgba(0,0,0,0.1) !important;
 }
+
+/* ========================================================
+   ⚙️ BOTONES OPERATIVOS INTERACTIVOS (LA JAMA MANAGEMENT)
+   ======================================================== */
+
+.btn-jama-operativo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 16px;
+    border-radius: 20px; /* Bordes píldora premium */
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.2s ease,
+                border-color 0.2s ease;
+    outline: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.btn-jama-operativo svg {
+    transition: transform 0.3s ease;
+}
+
+/* 🟥 Variante 1: Liberar Bloque (Danger Elegante) */
+.btn-jama-danger {
+    background-color: rgba(220, 53, 69, 0.08);
+    color: #dc3545;
+    border-color: rgba(220, 53, 69, 0.2);
+}
+
+.btn-jama-danger:hover {
+    background-color: #dc3545;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2),
+                0 6px 16px rgba(220, 53, 69, 0.3);
+}
+
+/* 🪙 Variante 2: Asignar Bloque (Secondary Corporativo / Marrón - Oro) */
+.btn-jama-secondary {
+    background-color: rgba(108, 117, 125, 0.08);
+    color: #495057;
+    border-color: rgba(108, 117, 125, 0.2);
+}
+
+.btn-jama-secondary:hover {
+    background-color: #1b3a2c; /* Cambia a tu verde corporativo principal al activarse */
+    color: #faf6ee;
+    border-color: rgba(52, 211, 153, 0.3);
+    transform: translateY(-2px);
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.15),
+                0 6px 16px rgba(27, 58, 44, 0.25);
+}
+
+/* 💫 Efectos cinéticos adicionales */
+.btn-jama-operativo:hover svg {
+    transform: scale(1.15) rotate(-5deg); /* Ligera rotación juguetona del icono en hover */
+}
+
+.btn-jama-operativo:active {
+    transform: scale(0.95) translateY(0);
+}
+
+/* ========================================================
+   🛠️ BOTONES PREMIUM PARA BARRAS DE HERRAMIENTAS (LA JAMA)
+   ======================================================== */
+
+.btn-jama-operativo-barra {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.2s ease,
+                color 0.2s ease !important;
+}
+
+/* ⚪ Botón Cancelar de la Barra (Contorno Blanco Elegante) */
+.btn-barra-cancelar {
+    background-color: transparent;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-barra-cancelar:hover {
+    background-color: #ffffff;
+    color: var(--lajama-green);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 👑 Botón Confirmar de la Barra (Oro Brillante / Alerta Activa) */
+.btn-barra-confirmar {
+    background-color: #ffc107; /* El color amarillo/oro idéntico al modo unificación */
+    color: #17251d;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-barra-confirmar:hover:not(:disabled) {
+    background-color: #ffca2c;
+    transform: translateY(-2px);
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.3),
+                0 6px 16px rgba(255, 193, 7, 0.4);
+}
+
+/* 🔒 Comportamiento Seguro cuando el Botón esté bloqueado (sin selección) */
+.btn-barra-confirmar:disabled {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    color: rgba(255, 255, 255, 0.35) !important;
+    border-color: transparent !important;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Micro-animación de click */
+.btn-jama-operativo-barra:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+/* 🟥 Botón Confirmar Acción de Quitar (Danger Brillante controlado para fondo verde) */
+.btn-barra-quitar {
+    background-color: #dc3545; /* Rojo danger original */
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-barra-quitar:hover:not(:disabled) {
+    background-color: #e04353;
+    transform: translateY(-2px);
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2),
+                0 6px 16px rgba(220, 53, 69, 0.4);
+}
+
+/* 🔒 Comportamiento Seguro cuando el Botón esté bloqueado (sin selección) */
+.btn-barra-quitar:disabled {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    color: rgba(255, 255, 255, 0.35) !important;
+    border-color: transparent !important;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}

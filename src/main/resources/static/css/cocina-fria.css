@@ -1,9 +1,100 @@
-/* --- TARJETAS ESTILO TICKET PREMIUM (BARRA FRÍA) --- */
+/* ==========================================================================
+   🎨 LA JAMA IDENTITY — MONITOR BARRA FRÍA PREMIUM V4 (CREMA & CIAN MINIMALISTA)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Vollkorn:ital,wght@0,600;0,700;0,800;1,600&display=swap');
+
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-green-hover: #132b20;
+    --lajama-peach: #fed7aa;
+    --lajama-skin: #FFB38A;
+    --lajama-cream: #FFF7ED;
+    --lajama-white: #FFFFFF;
+    --lajama-gray: #f8fafc;
+    --lajama-dark: #1e293b;
+    --border-subtle: rgba(27, 58, 44, 0.08);
+
+    --font-serif: 'Vollkorn', serif;
+    --font-sans: 'Plus Jakarta Sans', sans-serif;
+}
+
+body, html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--lajama-cream);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+.wrapper {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    align-items: stretch;
+    background-color: var(--lajama-cream);
+}
+
+.main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-bottom: 40px;
+}
+
+#sidebar {
+    width: 260px;
+    min-height: 100vh;
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-subtle);
+    transition: width 0.3s ease;
+}
+
+.estacion-header {
+    background-color: var(--lajama-green);
+    padding: 1.2rem 2rem;
+    border-bottom: 4px solid #0dcaf0; /* Línea temática fría */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='12' viewBox='0 0 100 12'%3E%3Cpath d='M0,5 C25,-2 75,12 100,5 L100,12 L0,12 Z' fill='%23142d22'/%3E%3C/svg%3E");
+    background-position: bottom;
+    background-repeat: repeat-x;
+}
+
+.estacion-header h2 {
+    font-family: var(--font-serif);
+    color: var(--lajama-peach);
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+/* 📊 GRID DINÁMICO AUTO-AJUSTABLE ESTILO SHADCN */
+.pedidos-grid {
+    display: grid;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+}
+
+.status-badge-jama {
+    background-color: #0dcaf0 !important; /* Estilo Cian Frío */
+    color: var(--lajama-dark) !important;
+    font-family: var(--font-sans) !important;
+    font-weight: 700 !important;
+    font-size: 0.8rem !important;
+    border: 2px solid rgba(13, 202, 240, 0.3) !important;
+}
+
+/* --- TARJETAS ESTILO TICKET PREMIUM --- */
 .card-pedido {
     background: var(--lajama-white) !important;
-    border: 2px solid #b6effb !important; /* Borde celeste suave */
-    border-radius: 14px !important;
-    box-shadow: 0 6px 16px rgba(13, 202, 240, 0.05) !important;
+    border: 1px solid rgba(254, 215, 170, 0.5) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px rgba(27, 58, 44, 0.02) !important;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -14,15 +105,15 @@
 
 .card-pedido:hover {
     transform: translateY(-4px) !important;
-    box-shadow: 0 16px 28px rgba(13, 202, 240, 0.15) !important;
-    border-color: #31d2f2 !important; /* Borde celeste activo al pasar el mouse */
+    box-shadow: 0 16px 32px rgba(27, 58, 44, 0.05) !important;
+    border-color: var(--lajama-skin) !important;
 }
 
 /* Encabezado del Ticket */
 .card-header {
-    background: transparent !important;
-    border-bottom: 2px dashed #b6effb !important;
-    padding: 1rem 1.1rem 0.7rem 1.1rem !important;
+    background: var(--lajama-cream) !important;
+    border-bottom: 2px dashed rgba(254, 215, 170, 0.6) !important;
+    padding: 1.1rem 1.2rem 0.8rem 1.2rem !important;
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
@@ -37,31 +128,33 @@
 
 /* Temporizador */
 .timer-container {
-    color: #087990 !important; /* Tono azul oscuro */
-    font-family: var(--font-serif) !important;
-    font-weight: 700 !important;
-    font-size: 1.2rem !important;
+    color: #0284c7 !important;
+    font-family: var(--font-sans) !important;
+    font-weight: 800 !important;
+    font-size: 0.95rem !important;
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 2px 6px;
+    padding: 3px 8px;
     border-radius: 6px;
+    background-color: rgba(13, 202, 240, 0.06);
 }
 
 .timer-urgent {
-    background-color: #cff4fc; /* Fondo alerta cyan suave */
-    animation: pulso-urgente-frio 2.5s infinite ease-in-out;
+    background-color: #e0f2fe !important;
+    color: #0284c7 !important;
+    animation: pulso-urgente 2s infinite ease-in-out;
 }
 
-@keyframes pulso-urgente-frio {
-    0% { opacity: 1; }
-    50% { opacity: 0.6; }
-    100% { opacity: 1; }
+@keyframes pulso-urgente {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.75; transform: scale(0.98); }
+    100% { opacity: 1; transform: scale(1); }
 }
 
 /* Cuerpo del Ticket */
 .card-body {
-    padding: 1.1rem !important;
+    padding: 1.2rem !important;
     flex-grow: 1;
 }
 
@@ -69,8 +162,8 @@
     color: var(--lajama-green) !important;
     font-family: var(--font-serif) !important;
     font-weight: 800 !important;
-    font-size: 1.3rem !important;
-    margin-bottom: 1rem !important;
+    font-size: 1.25rem !important;
+    margin-bottom: 0.8rem !important;
 }
 
 /* Lista de Platos */
@@ -81,21 +174,22 @@
 }
 
 .item-plato {
-    border: 1px solid transparent;
-    background-color: #f8f9fa;
-    padding: 8px 10px !important;
+    border: 1px solid rgba(0, 0, 0, 0.02);
+    background-color: var(--lajama-gray);
+    padding: 10px 12px !important;
     border-radius: 8px !important;
     transition: all 0.2s ease !important;
 }
 
 .item-cantidad {
+    color: #0369a1 !important;
     font-family: var(--font-sans) !important;
     font-weight: 800 !important;
-    font-size: 1rem !important;
-    background-color: #f8f9fa !important;
-    padding: 2px 7px !important;
+    font-size: 0.92rem !important;
+    background-color: var(--lajama-cream) !important;
+    padding: 2px 8px !important;
     border-radius: 6px !important;
-    border: 1px solid;
+    border: 1px solid #bae6fd !important;
     margin-right: 10px;
     display: inline-block;
     text-align: center;
@@ -110,58 +204,84 @@
     max-width: 60%;
 }
 
-/* Badges y botones micro-compactos */
+/* Badges Micro-Compactos */
 .badge {
-    padding: 4px 6px !important;
+    padding: 4px 8px !important;
     font-size: 0.65rem !important;
     font-weight: 700 !important;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.4px;
     border-radius: 4px !important;
-    max-width: 95px;
-    white-space: nowrap;
-    overflow: hidden;
+}
+
+.badge.bg-info {
+    background-color: #e0f2fe !important;
+    color: #0369a1 !important;
 }
 
 .badge.bg-danger {
-    background-color: #dc3545 !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.15);
+    background-color: #fee2e2 !important;
+    color: #dc3545 !important;
+    border: 1px solid rgba(220, 53, 69, 0.1) !important;
 }
 
+/* Botones de Despacho */
 .item-plato button.btn-outline-info {
-    padding: 2px 6px !important;
-    font-size: 0.8rem !important;
-    border-radius: 5px !important;
+    padding: 4px 10px !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    background-color: #ffffff;
+    border: 1.5px solid #0dcaf0 !important;
+    color: #0369a1 !important;
+    transition: all 0.15s ease;
 }
-
-.item-plato button.hover-success:hover {
-    background-color: #198754 !important;
-    color: white !important;
-    border-color: #198754 !important;
+.item-plato button.btn-outline-info:hover {
+    background-color: #0dcaf0 !important;
+    color: var(--lajama-dark) !important;
 }
 
 /* Pie de Tarjeta */
 .card-footer {
-    border-top: 1px solid rgba(27, 58, 44, 0.05) !important;
+    border-top: 1px dashed rgba(254, 215, 170, 0.5) !important;
     padding: 0 !important;
-    background: transparent !important;
+    background: var(--lajama-gray) !important;
 }
 
-.footer-actions {
-    display: flex;
-    width: 100%;
+.btn-secondary {
+    background-color: #cbd5e1 !important;
+    color: #475569 !important;
 }
 
-.btn-printer, .footer-actions a {
+.btn-info.btn-alerta-ticket {
+    background-color: #0dcaf0 !important;
+    color: var(--lajama-dark) !important;
+}
+
+.footer-actions a {
     font-family: var(--font-sans) !important;
     font-weight: 700 !important;
-    font-size: 0.85rem !important;
+    font-size: 0.82rem !important;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding: 12px !important;
     border: none !important;
-    border-radius: 0 0 12px 12px !important;
+    border-radius: 0 0 14px 14px !important;
     transition: all 0.2s ease !important;
+}
+
+/* Media Queries Responsivos */
+@media (max-width: 992px) {
+    #sidebar { width: 70px; }
+    .pedidos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+        gap: 1rem;
+        padding: 1rem;
+    }
+}
+
+@media (min-width: 1600px) {
+    .pedidos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    }
 }

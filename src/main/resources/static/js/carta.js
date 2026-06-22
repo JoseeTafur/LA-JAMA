@@ -6,15 +6,12 @@ let modalCarrito = null;
 let tipoEntrega = 'DELIVERY'; // por defecto
 let metodoPago = 'YAPE';
 
-// Variables globales para el control del Multi-Step Wizard
 let etapaActualCheckout = 1;
 const totalEtapasCheckout = 4;
 
 const BASE_IMG_URL = '';
 
-// ============================================================================
-// 🚀 MOTOR CONTROLLER: MULTI-STEP WIZARD NAVEGACIÓN (LA JAMA)
-// ============================================================================
+
 function navegarEtapa(direccion) {
     // 🛡️ ADUANA FRONTEND: Validaciones estrictas antes de permitir avanzar de paso
     if (direccion === 1) {
@@ -242,7 +239,7 @@ function abrirCarrito() {
 
 /* ── MOTOR GEOLOCALIZACIÓN: MAPAS COBERTURA ── */
 function iniciarMapa() {
-    if (mapa) return; // Evita inicializaciones redundantes sobre el mismo contenedor
+    if (mapa) return;
 
     mapa = L.map('mapa-pedido').setView([-6.7768, -79.8428], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
@@ -354,7 +351,6 @@ async function enviarPedido() {
         default:     file = null;
     }
 
-    // Validaciones previas básicas en el Frontend
     if ((metodoPago === 'YAPE' || metodoPago === 'PLIN') && !file) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Por favor, añada la imagen del pago realizado.', confirmButtonColor: '#1B3A2C' });
         return;
@@ -376,32 +372,80 @@ ${detalle}
 
 💰 TOTAL: S/ ${total.toFixed(2)}`;
 
-    // Activamos la pantalla de bloqueo visual de La Jama
     if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
         AppUtils.showLoading(true);
     }
 
-    // ── 🔥 PASO MAESTRO: PROCESAMIENTO OCR EN EL NAVEGADOR DEL CLIENTE ──
-    let textoVoucherExtraido = "";
-    if (file && (metodoPago === 'YAPE' || metodoPago === 'PLIN')) {
-        Swal.fire({
-            title: 'Validando Parámetros Financieros...',
-            text: 'La IA está descifrando el monto y la fecha del voucher desde tu dispositivo de forma segura.',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
+    // ── 🔥 PASO MAESTRO: PROCESAMIENTO OCR EN EL NAVEGADOR CON PREPROCESADO ÓPTICO ──
+        let textoVoucherExtraido = "";
+        if (file && (metodoPago === 'YAPE' || metodoPago === 'PLIN')) {
+            Swal.fire({
+                title: 'Validando Parámetros Financieros...',
+                text: 'Optimizando el contraste del voucher para descifrar el monto de forma segura.',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
 
-        try {
-            // Inicialización local del Worker en el cliente sin consumir RAM en Railway
-            const resultadoOcr = await Tesseract.recognize(file, 'spa');
-            textoVoucherExtraido = resultadoOcr.data.text;
-            console.log("🛰️ [OCR FRONTEND] Texto extraído con éxito:\n", textoVoucherExtraido);
-        } catch (ocrError) {
-            console.warn("⚠️ Falló el motor OCR en el navegador, pasando a contingencia:", ocrError);
-            textoVoucherExtraido = ""; // Pasa vacío para que el backend lo marque como CHECK-MANUAL
+            try {
+                // 🎨 Creación de Canvas en memoria para procesamiento digital de imágenes
+                const imgElement = document.createElement('img');
+                imgElement.src = URL.createObjectURL(file);
+
+                await new Promise((resolve) => { imgElement.onload = resolve; });
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = imgElement.width;
+                canvas.height = imgElement.height;
+
+                ctx.drawImage(imgElement, 0, 0);
+
+                // Extraemos los píxeles de la imagen
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+
+                // FILTRO DE BINARIZACIÓN DE ALTO CONTRASTE (Blanco y Negro Puro)
+                for (let i = 0; i < data.length; i += 4) {
+                    // Fórmula de luminancia para escala de grises
+                    let gris = 0.34 * data[i] + 0.5 * data[i + 1] + 0.16 * data[i + 2];
+
+                    // Umbral (Threshold): Si el píxel es claro, va a blanco; si es oscuro, a negro puro
+                    let valorBinario = (gris > 128) ? 255 : 0;
+
+                    data[i]     = valorBinario; // R
+                    data[i + 1] = valorBinario; // G
+                    data[i + 2] = valorBinario; // B
+                }
+
+ctx.putImageData(imgData, 0, 0);
+            console.log("🎨 [CANVAS FRONTEND] Filtro binarizado aplicado con éxito. Renderizando píxeles puros.");
+
+            const blobProcesado = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+
+            console.log("🛰️ [TESSERACT] Enviando blob binario al procesador óptico...");
+            const resultadoOcr = await Tesseract.recognize(blobProcesado, 'spa');
+            let rawText = resultadoOcr.data.text ? resultadoOcr.data.text.toLowerCase() : "";
+
+            textoVoucherExtraido = rawText
+                .replace(/p\.?\s?m\.?/g, " p.m.")
+                .replace(/a\.?\s?m\.?/g, " a.m.")
+                .replace(/[\[\]\{\}\(\)]/g, "")
+                .split('\n')
+                .map(linea => linea.trim())
+                .filter(linea => linea.length > 0)
+                .join('\n');
+
+            console.log("🚀 [CONSOLA CLIENTE] Texto final mapeado para enviar al DTO de Java:\n", textoVoucherExtraido);
+
+                // Limpieza de memoria
+                URL.revokeObjectURL(imgElement.src);
+
+            } catch (ocrError) {
+                console.warn("⚠️ Falló el preprocesamiento del voucher, pasando a contingencia:", ocrError);
+                textoVoucherExtraido = "";
+            }
         }
-    }
 
     try {
         const formDataPayload = new FormData();
@@ -417,7 +461,7 @@ ${detalle}
             clienteCorreo: correoCliente ? correoCliente : null,
             preferenciaComprobante: prefComprobante,
             documentoCliente: numDocumento ? numDocumento : null,
-            textoVoucherCrudo: textoVoucherExtraido, // 🌟 INYECTAMOS EL TEXTO EXTRAÍDO EN EL JSON
+            textoVoucherCrudo: textoVoucherExtraido,
             listaDetalles: carrito.map(item => ({
                 producto:       { id: parseInt(item.id) },
                 cantidad:       1,
@@ -426,10 +470,8 @@ ${detalle}
             }))
         };
 
-        // Empaquetamos el json del DTO pedido
         formDataPayload.append("pedido", new Blob([JSON.stringify(pedidoDataJson)], { type: "application/json" }));
 
-        // Adjuntamos el archivo binario del voucher para el filtro cromático de seguridad en el backend
         if (file) {
             formDataPayload.append("voucher", file);
         }
@@ -441,7 +483,6 @@ ${detalle}
 
         const dataPedido = await resPedido.json();
 
-        // 🛡️ CONTROL DE ADUANA ANTIFRAUDE
         if (!resPedido.ok) {
             if (typeof AppUtils !== 'undefined' && AppUtils.showLoading) {
                 AppUtils.showLoading(false);
@@ -457,7 +498,6 @@ ${detalle}
 
         const id = dataPedido.id;
 
-        // Tu flujo regular con tablas internas de auditoría de vouchers
         const resGuardar = await fetch('/admin/pagos-digitales/api/guardar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -488,7 +528,6 @@ ${detalle}
             AppUtils.showLoading(false);
         }
 
-        // Limpieza y reseteo una vez que la transacción es exitosa
         localStorage.removeItem("carrito");
         carrito = [];
         actualizarUI();

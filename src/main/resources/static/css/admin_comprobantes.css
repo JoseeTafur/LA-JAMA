@@ -1,0 +1,321 @@
+/* ==========================================================================
+   💎 RETOQUES FINALES: AUDITORÍA CONTABLE Y COMPROBANTES SUNAT
+   ========================================================================== */
+
+/* Alerta de Error Semántica */
+.alert-danger-jama {
+    background-color: #fce8e6 !important;
+    color: #a51d24 !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(165, 29, 36, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(165, 29, 36, 0.02);
+}
+
+/* Badge Superior de Caja Abierta */
+.badge-caja-activa {
+    background-color: rgba(27, 58, 44, 0.06) !important;
+    color: var(--lajama-green) !important;
+    font-size: 0.76rem !important;
+    font-weight: 700 !important;
+    padding: 0.45rem 0.9rem !important;
+    border-radius: 9999px !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 1px solid rgba(27, 58, 44, 0.12) !important;
+    letter-spacing: 0.2px;
+}
+
+/* Panel Filtrador Estilo Shadcn Container */
+.card-filtrador-contable {
+    background-color: var(--lajama-cream) !important;
+    border-radius: 12px !important;
+    padding: 1.25rem !important;
+    border: 1px solid rgba(254, 215, 170, 0.45) !important;
+}
+
+.form-label-contable {
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    color: var(--text-dark) !important;
+    margin-bottom: 0.45rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.85;
+}
+
+.form-control-contable,
+.form-select-contable {
+    border-radius: 8px !important;
+    border: 1px solid rgba(27, 58, 44, 0.15) !important;
+    padding: 0.45rem 0.75rem !important;
+    font-size: 0.84rem !important;
+    color: var(--text-dark) !important;
+    background-color: var(--lajama-white) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    height: 36px !important;
+}
+
+.form-control-contable:focus,
+.form-select-contable:focus {
+    border-color: var(--lajama-green) !important;
+    box-shadow: 0 0 0 3px rgba(27, 58, 44, 0.08) !important;
+    outline: none !important;
+}
+
+/* Botones de Control del Buscador */
+.btn-filtrar-contable {
+    background-color: var(--lajama-green) !important;
+    color: var(--lajama-white) !important;
+    font-weight: 700 !important;
+    font-size: 0.82rem !important;
+    border-radius: 8px !important;
+    border: none !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: 100%;
+    height: 36px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn-filtrar-contable:hover {
+    background-color: #12281e !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(27, 58, 44, 0.15);
+}
+
+.btn-limpiar-contable {
+    background-color: #f1f5f9 !important;
+    color: #64748b !important;
+    font-weight: 700 !important;
+    font-size: 0.82rem !important;
+    border-radius: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: 100%;
+    height: 36px !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-limpiar-contable:hover {
+    background-color: #e2e8f0 !important;
+    color: #334155 !important;
+}
+
+/* Sistema de Pestañas (Tabs) Estilo Lineal */
+.custom-tabs-jama {
+    border-bottom: 2px solid var(--lajama-peach) !important;
+    gap: 0.25rem;
+}
+
+.custom-tabs-jama .nav-link {
+    color: rgba(27, 58, 44, 0.65) !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px;
+    border: none !important;
+    background: transparent !important;
+    padding: 0.75rem 1.25rem !important;
+    position: relative;
+    transition: color 0.2s ease;
+}
+
+.custom-tabs-jama .nav-link:hover {
+    color: var(--lajama-green) !important;
+}
+
+.custom-tabs-jama .nav-link.active {
+    color: var(--lajama-green) !important;
+}
+
+.custom-tabs-jama .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--lajama-green);
+    transform: scaleX(0);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: bottom center;
+}
+
+.custom-tabs-jama .nav-link.active::after {
+    transform: scaleX(1);
+}
+
+/* Badges Internos Rediseñados (Pastel Modern Style) */
+.badge-origen {
+    background-color: rgba(15, 23, 42, 0.06) !important;
+    color: #1e293b !important;
+    padding: 0.35rem 0.65rem !important;
+    border-radius: 6px !important;
+    font-weight: 700 !important;
+    font-size: 0.72rem !important;
+    border: 1px solid rgba(15, 23, 42, 0.1) !important;
+}
+
+.badge-metodo {
+    background-color: #f0f9ff !important;
+    color: #0369a1 !important;
+    font-weight: 800 !important;
+    font-size: 0.72rem !important;
+    padding: 0.35rem 0.75rem !important;
+    border-radius: 9999px !important;
+    border: 1px solid #bae6fd !important;
+}
+
+.badge-preferencia {
+    background-color: #fffbeb !important;
+    color: #b45309 !important;
+    font-weight: 800 !important;
+    font-size: 0.72rem !important;
+    padding: 0.35rem 0.75rem !important;
+    border-radius: 9999px !important;
+    border: 1px solid #fde68a !important;
+}
+
+.badge-estado-sunat {
+    background-color: #f0fdf4 !important;
+    color: #166534 !important;
+    font-weight: 800 !important;
+    font-size: 0.72rem !important;
+    padding: 0.35rem 0.75rem !important;
+    border-radius: 9999px !important;
+    border: 1px solid #bbf7d0 !important;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Texto de la serie del CPE oficial emitido */
+.text-success-cpe {
+    color: #15803d !important;
+}
+
+/* Botonera de Acciones Dinámicas en Filas */
+.action-jama-btn.btn-imprimir {
+    background-color: var(--lajama-white) !important;
+    border: 1px solid rgba(27, 58, 44, 0.15) !important;
+    color: #475569 !important;
+}
+
+.action-jama-btn.btn-imprimir:hover {
+    background-color: #f8fafc !important;
+    color: var(--text-dark) !important;
+    border-color: rgba(27, 58, 44, 0.3) !important;
+}
+
+.action-jama-btn.btn-timbrar {
+    background-color: var(--lajama-brown) !important;
+    border: 1px solid var(--lajama-brown) !important;
+    color: var(--lajama-white) !important;
+}
+
+.action-jama-btn.btn-timbrar:hover {
+    background-color: #793024 !important;
+    box-shadow: 0 4px 10px rgba(147, 61, 45, 0.2);
+}
+
+.action-jama-btn.btn-pdf {
+    background-color: #f0fdf4 !important;
+    border: 1px solid #bbf7d0 !important;
+    color: #166534 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-jama-btn.btn-pdf:hover {
+    background-color: #dcfce7 !important;
+    color: #14532d !important;
+}
+
+/* ==========================================================================
+   🏷️ BADGES DE MÉTODO DE PAGO CLICKEABLES EN EL FILTRADOR
+   ========================================================================== */
+
+.badge-metodo-filtro-jama {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #374151;
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.badge-metodo-filtro-jama:hover {
+    background-color: #e5e7eb;
+    border-color: #d1d5db;
+    transform: translateY(-1px);
+}
+
+.badge-metodo-filtro-jama.activo {
+    background-color: rgba(27, 58, 44, 0.08);
+    color: var(--lajama-green);
+    border-color: rgba(27, 58, 44, 0.25);
+    box-shadow: 0 0 0 2px rgba(27, 58, 44, 0.08);
+}
+
+/* ==========================================================================
+   🪟 ESTADO VACÍO DE TABLAS (NADA POR AQUÍ / SIN RESULTADOS)
+   ========================================================================== */
+
+.fila-vacia-jama td {
+    border: none !important;
+    background-color: transparent !important;
+}
+
+.fila-vacia-jama svg {
+    color: #9ca3af;
+    display: block;
+    margin: 0 auto 6px auto;
+}
+
+/* Reutilizados de caja.css — badges de método con imagen */
+.badge-metodo-jama {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.15);
+    font-family: var(--bs-font-monospace);
+    text-transform: uppercase;
+}
+.badge-metodo-jama.bm-efectivo {
+    background: linear-gradient(135deg, #13291E 0%, #1B3A2C 100%);
+    border-color: rgba(83,148,116,0.3);
+}
+.badge-metodo-jama.bm-digital {
+    background: linear-gradient(135deg, #4A148C 0%, #7B1FA2 100%);
+    border-color: rgba(234,128,252,0.3);
+}
+.badge-metodo-jama.bm-tarjeta {
+    background: linear-gradient(135deg, #0D47A1 0%, #1976D2 100%);
+    border-color: rgba(144,202,249,0.3);
+}
+
+.badge-metodo-jama.bm-plin {
+    background: linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%);
+    border-color: rgba(125, 211, 252, 0.3);
+}

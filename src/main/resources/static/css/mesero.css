@@ -1,215 +1,411 @@
+/* ==========================================================================
+   🎨 LA JAMA IDENTITY — SISTEMA DE COMANDAS PREMIUM (RESPIRABLE & PREMIUM)
+   ========================================================================== */
+
 :root {
     --lajama-green: #1B3A2C;
+    --lajama-green-hover: #132b20;
     --lajama-peach: #fed7aa;
     --lajama-skin: #FFB38A;
     --lajama-cream: #FFF7ED;
     --lajama-white: #FFFFFF;
     --lajama-gray: #f8fafc;
-    --lajama-dark: #0f172a;
+    --lajama-dark: #1e293b;
+    --border-subtle: rgba(27, 58, 44, 0.08);
 }
 
-/* --- LOGÍSTICA DE PANTALLA BASE --- */
-body, .main-content {
-    background-color: var(--lajama-cream) !important;
-    font-family: 'Inter', sans-serif;
-    color: var(--lajama-dark);
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
 }
 
-/* --- PANEL DE DOBLE COLUMNA (Estructura Principal) --- */
+.jama-mesero-container {
+    background-color: var(--lajama-cream);
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.checkbox-toggle-hidden {
+    display: none !important;
+}
+
+/* --- DISTRIBUCIÓN GRID PRINCIPAL ESCRITORIO --- */
 .comanda-wrapper {
     display: grid;
-    grid-template-columns: 1fr 380px;
-    gap: 24px;
-    align-items: start;
+    grid-template-columns: 1fr 390px;
+    gap: 16px;
+    padding: 16px;
+    height: calc(100vh - 75px);
+    box-sizing: border-box;
 }
 
-@media (max-width: 992px) {
-    .comanda-wrapper {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* --- SECCIÓN IZQUIERDA: MENÚ Y BUSCADOR --- */
+/* --- SECCIÓN DE PRODUCTOS (CARTA IZQUIERDA) --- */
 .productos-seccion {
     background: var(--lajama-white);
-    border: 2px solid var(--lajama-peach);
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 4px 24px rgba(27, 58, 44, 0.02);
+    border: 1px solid rgba(254, 215, 170, 0.3);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
-/* Barra de Búsqueda de Alta Gama */
-.search-box {
+/* 🔍 BUSCADOR INTERACTIVO KINETIC — ESTILO LA JAMA */
+.search-box-jama-wrapper {
+    margin-bottom: 18px;
+    flex-shrink: 0;
+    width: 100%;
+}
+.form-busqueda-jama {
+    --timing: 0.3s;
+    --height-of-input: 44px;
+    --border-height: 2.5px;
+    --input-bg: var(--lajama-gray);
+    --border-color: var(--lajama-green);
+    --border-radius: 12px;
+    --after-border-radius: 4px;
     position: relative;
-    margin-bottom: 24px;
+    width: 100%;
+    height: var(--height-of-input);
+    display: flex;
+    align-items: center;
+    padding-inline: 0.8em;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-subtle);
+    transition: background var(--timing) ease, border-radius 0.4s ease;
+    background: var(--input-bg);
+    box-sizing: border-box;
 }
-
-.search-box i {
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
+.form-busqueda-jama button {
+    border: none;
+    background: none;
     color: var(--lajama-green);
     opacity: 0.7;
-}
-
-.search-box input {
-    padding-left: 48px;
-    height: 52px;
-    border-radius: 14px;
-    border: 2px solid var(--lajama-cream) !important;
-    background-color: var(--lajama-gray);
-    font-weight: 500;
-    transition: all 0.25s ease;
-}
-
-.search-box input:focus {
-    border-color: var(--lajama-skin) !important;
-    background-color: var(--lajama-white);
-    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.15);
-}
-
-/* Tarjetas de la Carta (Grid) */
-.menu-item {
-    border: 1px solid var(--lajama-cream);
-    border-radius: 16px;
-    overflow: hidden;
     cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+.input-busqueda-jama {
+    font-size: 0.9rem;
+    font-weight: 600;
+    background-color: transparent;
+    width: 100%;
+    height: 100%;
+    padding-inline: 0.6em;
+    border: none !important;
+    color: var(--lajama-dark);
+}
+.input-busqueda-jama:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+.form-busqueda-jama:before {
+    content: "";
+    position: absolute;
+    background: var(--border-color);
+    transform: scaleX(0);
+    transform-origin: center;
+    width: 100%;
+    height: var(--border-height);
+    left: 0;
+    bottom: -1px;
+    border-radius: 4px;
+    transition: transform var(--timing) ease;
+}
+.form-busqueda-jama:focus-within {
+    border-radius: var(--border-radius) var(--border-radius) var(--after-border-radius) var(--after-border-radius);
     background: var(--lajama-white);
+    border-color: rgba(27, 58, 44, 0.15);
+}
+.form-busqueda-jama:focus-within:before { transform: scaleX(1); }
+.reset-buscar-jama { opacity: 0; visibility: hidden; transition: opacity var(--timing) ease, visibility var(--timing) ease; }
+.input-busqueda-jama:not(:placeholder-shown) ~ .reset-buscar-jama { opacity: 1; visibility: visible; }
+.form-busqueda-jama svg { width: 16px; height: 16px; }
+
+/* Rejilla de productos vertical y estable */
+.grid-productos-premium {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 16px;
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-bottom: 16px;
 }
 
-.menu-item:hover {
+/* Tarjetas Verticales Orgánicas con Presencia Real (No aplastadas) */
+.menu-item-premium {
+    background: var(--lajama-white);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(27, 58, 44, 0.01);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.menu-item-premium:hover {
     transform: translateY(-4px);
     border-color: var(--lajama-skin);
-    box-shadow: 0 10px 15px -3px rgba(27, 58, 44, 0.1) !important;
+    box-shadow: 0 12px 24px rgba(27, 58, 44, 0.06);
 }
-
-.menu-item img {
-    height: 140px;
+.menu-item-premium .img-container {
+    width: 100%;
+    height: 135px; /* Altura normalizada excelente para las imágenes */
+    overflow: hidden;
+    background-color: #f1f5f9;
+}
+.menu-item-premium .img-container img {
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    border-bottom: 1px solid var(--lajama-cream);
 }
-
-.text-ocre {
-    color: #c2410c !important;
+.item-details {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex-grow: 1;
 }
-
-/* --- SECCIÓN DERECHA: EL CARRITO COMPLEMENTARIO --- */
-.carrito-sidebar {
-    background: var(--lajama-white);
-    border: 2px solid var(--lajama-peach);
-    border-radius: 20px;
-    padding: 24px;
-    position: sticky;
-    top: 24px;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+.category-pill {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--lajama-green);
+    background: rgba(27, 58, 44, 0.05);
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    align-self: flex-start;
 }
-
-/* Inputs de Control (Mesa / Notas) */
-.carrito-sidebar .form-control {
-    border-radius: 12px;
-    border: 2px solid var(--lajama-cream);
-    background-color: var(--lajama-gray);
-    font-weight: 600;
+.product-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--lajama-dark);
+    margin: 6px 0;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.8em;
 }
-
-.carrito-sidebar .form-control:focus {
-    border-color: var(--lajama-skin);
-    box-shadow: none;
-    background-color: var(--lajama-white);
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
-
-/* Contenedor Flotante del Scroll de Comandas */
-.lista-items-scroll {
-    max-height: calc(100vh - 440px);
-    overflow-y: auto;
-    padding-right: 4px;
-    margin-top: 15px;
-    margin-bottom: 15px;
+.price-tag {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #16a34a;
 }
-
-/* Tarjetas Internas de Items en Carrito */
-.cart-item-card {
-    background: var(--lajama-gray);
-    border-left: 4px solid var(--lajama-green);
-    border-radius: 12px;
-    padding: 14px;
-    margin-bottom: 12px;
+.plus-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: var(--lajama-cream);
+    color: var(--lajama-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.2s ease;
 }
-
-.cart-item-card:hover {
-    background: var(--lajama-cream);
-    transform: translateX(2px);
+.menu-item-premium:hover .plus-action-btn {
+    background-color: var(--lajama-green);
+    color: var(--lajama-white);
 }
 
-/* --- COMPONENTES MODAL (Personalización de Insumos) --- */
-.modal-content {
-    background-color: var(--lajama-white);
-    border: 2px solid var(--lajama-peach);
+.item-agotado { cursor: not-allowed !important; }
+.item-agotado .img-container img { filter: grayscale(100%); opacity: 0.3; }
+.overlay-agotado { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.4); z-index: 4; display: flex; justify-content: center; align-items: center; }
+.badge-agotado-tag { background: #ef4444; color: #ffffff; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; }
+
+/* --- SECCIÓN PANEL DEL CARRITO (TICKET COMPACTO) --- */
+.carrito-sidebar-premium {
+    background: var(--lajama-white);
+    border-radius: 16px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 24px rgba(27, 58, 44, 0.02);
+    border: 1px solid rgba(254, 215, 170, 0.3);
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+.carrito-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed var(--lajama-peach);
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+.carrito-titulo {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--lajama-dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.modal-header {
-    background-color: var(--lajama-dark) !important;
-    border-bottom: none;
+.btn-close-carrito-movil, .carrito-mobile-trigger { display: none; }
+
+.carrito-inputs-group {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.form-floating-custom { position: relative; }
+.form-floating-custom svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--lajama-green); opacity: 0.5; }
+.form-floating-custom input { width: 100%; height: 40px; padding: 0 10px 0 36px; border-radius: 8px; border: 1.5px solid var(--lajama-gray); background-color: var(--lajama-gray); font-size: 0.85rem; font-weight: 700; box-sizing: border-box; color: var(--lajama-dark); }
+.form-floating-custom input:focus { border-color: var(--lajama-skin); background-color: var(--lajama-white); outline: none; }
+
+/* ── 🛒 CONTENEDOR DE LA COMANDA ACTIVA (TICKET FILA) ── */
+.lista-items-scroll {
+    flex-grow: 1;
+    overflow-y: auto;
+    margin: 12px 0;
+    padding-right: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-/* Switches y Checkboxes del Modal */
-.form-check-input:checked {
-    background-color: var(--lajama-green) !important;
-    border-color: var(--lajama-green) !important;
+/* 📦 RE-DISEÑO DE FILA: CERO CELESTE - MÁXIMO AIRE VISUAL FINTECH */
+.cart-item-premium-row {
+    background: var(--lajama-gray) !important;
+    border: 1px solid rgba(27, 58, 44, 0.05) !important;
+    border-left: 4px solid var(--lajama-green) !important; /* Cinturón izquierdo contable */
+    border-radius: 8px !important;
+    padding: 10px 14px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
 }
-
-.form-check-label {
-    user-select: none;
-    font-weight: 500;
+.cart-item-premium-row:hover {
+    background: var(--lajama-cream) !important;
+    border-color: var(--lajama-skin) !important;
 }
-
-/* --- BOTONES DE EJECUCIÓN (Estilo La Jama) --- */
-.btn-success {
-    background-color: var(--lajama-green) !important;
-    border: none !important;
-    border-radius: 14px !important;
+.item-ticket-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 70%;
+}
+.item-ticket-title {
+    font-size: 0.88rem !important;
     font-weight: 700 !important;
-    letter-spacing: 0.5px;
-    transition: all 0.2s ease !important;
+    color: var(--lajama-dark) !important;
+}
+.item-ticket-price-unit {
+    font-size: 0.75rem !important;
+    color: #64748b !important;
+    font-weight: 600;
+}
+.item-ticket-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    max-width: 30%;
+}
+.item-ticket-total {
+    font-size: 0.92rem !important;
+    font-weight: 800 !important;
+    color: var(--lajama-green) !important;
+    text-align: right;
+}
+.btn-trash-ticket {
+    background: transparent !important;
+    border: none !important;
+    color: #ef4444 !important;
+    padding: 0 !important;
+    cursor: pointer;
+    font-size: 1rem !important;
+    display: inline-flex;
+    align-items: center;
+}
+.btn-trash-ticket:hover {
+    color: #b91c1c !important;
+    transform: scale(1.08);
 }
 
-.btn-success:hover {
-    background-color: #0d231a !important;
-    transform: scale(1.02);
-    box-shadow: 0 4px 12px rgba(27, 58, 44, 0.2);
+.carrito-footer {
+    padding-top: 12px;
+    border-top: 1px dashed var(--lajama-peach);
+    flex-shrink: 0;
 }
-
-.btn-success:active {
-    transform: scale(0.98);
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
 }
+.total-label { font-weight: 700; color: #475569; font-size: 0.88rem; }
+.total-amount { font-size: 1.35rem; font-weight: 900; color: var(--lajama-green); }
 
-/* Botón Eliminar del Carrito */
-.cart-item-card .btn-sm i {
-    font-size: 1.1rem;
-    transition: color 0.15s ease;
-}
-
-.cart-item-card .btn-sm:hover i {
-    color: #991b1b !important;
-}
-
-/* --- SCROLLBAR PREMIUM PERSONALIZADA --- */
-.lista-items-scroll::-webkit-scrollbar,
-.scroll-productos::-webkit-scrollbar {
-    width: 6px;
-}
-
-.lista-items-scroll::-webkit-scrollbar-track,
-.scroll-productos::-webkit-scrollbar-track {
-    background: var(--lajama-cream);
+.send-cocina-btn {
+    width: 100%;
+    background-color: var(--lajama-green);
+    color: var(--lajama-white);
+    border: none;
     border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 12px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+.send-cocina-btn:hover { background-color: var(--lajama-green-hover); }
+
+/* --- RESPONSIVE MEDIA QUERIES --- */
+@media (max-width: 991.98px) {
+    .comanda-wrapper { grid-template-columns: 1fr; padding: 8px; height: calc(100vh - 60px); }
+    .productos-seccion { padding: 10px; }
+    .grid-productos-premium { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+
+    .carrito-sidebar-premium {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 52px;
+        z-index: 1050;
+        border-radius: 12px 16px 0 0;
+        padding: 0 16px;
+        border-top: 2px solid var(--lajama-peach);
+    }
+    .carrito-mobile-trigger { display: flex; justify-content: space-between; align-items: center; width: 100%; height: 52px; color: var(--lajama-green); cursor: pointer; }
+    .trigger-info { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 0.9rem; }
+    .carrito-inner-content { display: flex; flex-direction: column; height: calc(100% - 15px); opacity: 0; visibility: hidden; transition: all 0.2s ease; }
+    .btn-close-carrito-movil { display: flex; width: 26px; height: 26px; background: var(--lajama-gray); border-radius: 50%; align-items: center; justify-content: center; color: var(--lajama-dark); cursor: pointer; }
+
+    #toggle-carrito-movil:checked ~ .carrito-sidebar-premium { height: 75vh; }
+    #toggle-carrito-movil:checked ~ .carrito-sidebar-premium .carrito-inner-content { opacity: 1; visibility: visible; margin-top: -32px; }
+    #toggle-carrito-movil:checked ~ .carrito-sidebar-premium .carrito-mobile-trigger { opacity: 0; pointer-events: none; }
 }
 
-.lista-items-scroll::-webkit-scrollbar-thumb,
-.scroll-productos::-webkit-scrollbar-thumb {
-    background: var(--lajama-skin);
-    border-radius: 10px;
-}
+.lista-items-scroll::-webkit-scrollbar, .grid-productos-premium::-webkit-scrollbar { width: 4px; }
+.lista-items-scroll::-webkit-scrollbar-thumb, .grid-productos-premium::-webkit-scrollbar-thumb { background: var(--lajama-skin); border-radius: 10px; }

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout-gestion :: layout(title='Auditoría Contable y Comprobantes', content=~{::#contenido}, modals=~{::#modales}, js='/js/admin_comprobantes.js')}">
+<head>
+</head>
+<body>
+
+<div id="contenido">
+    <link th:href="@{/css/admin_comprobantes.css}" rel="stylesheet" />
+
+    <div th:if="${errorContable != null}" class="alert alert-danger-jama alert-dismissible fade show border-0 mb-4" role="alert">
+        <div class="d-flex align-items-center">
+            <svg class="me-2 flex-shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span class="fw-semibold small" th:text="${errorContable}"></span>
+        </div>
+        <button type="button" class="btn-close small" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div th:if="${exitoContable != null}" class="alert alert-success alert-dismissible fade show border-0 mb-4 rounded-4 shadow-sm" role="alert" style="background-color: #e6f4ea; color: #137333;">
+        <div class="d-flex align-items-center">
+            <svg class="me-2 flex-shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span class="fw-semibold small" th:text="${exitoContable}"></span>
+        </div>
+        <button type="button" class="btn-close small" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div class="card rounded-lg card-color1">
+        <div class="card-body p-4">
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="card-title h5 fw-bold mb-0 d-inline-flex align-items-center gap-2">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-jama-gold"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Auditoría Contable y Comprobantes
+                </h1>
+                <span class="badge-caja-activa">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    Caja
+                </span>
+            </div>
+
+            <div class="card-filtrador-contable mb-4" style="background: #ffffff; padding: 1.2rem; border-radius: 12px; border: 1px solid rgba(27,58,44,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label-contable fw-bold" style="font-size: 0.75rem; color: #1B3A2C;">Buscar Cliente / Documento / CPE</label>
+                        <input type="text" id="filtroCpeTexto" class="form-control form-control-sm form-control-contable" placeholder="DNI, RUC, Nombre o Serie...">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label-contable fw-bold" style="font-size: 0.75rem; color: #1B3A2C;">Fecha Inicial</label>
+                        <input type="date" id="filtroCpeFechaInicio"
+                               class="form-control form-control-sm form-control-contable"
+                               th:value="${fechaInicioParam}"
+                               min="2025-06-01"
+                               th:max="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label-contable fw-bold" style="font-size: 0.75rem; color: #1B3A2C;">Fecha Límite</label>
+                        <input type="date" id="filtroCpeFechaFin"
+                               class="form-control form-control-sm form-control-contable"
+                               th:value="${fechaFinParam}"
+                               min="2025-06-01"
+                               th:max="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label-contable fw-bold" style="font-size: 0.75rem; color: #1B3A2C;">Método de Pago</label>
+                        <select id="filtroCpeMetodo" class="form-select form-select-sm form-select-contable">
+                            <option value="TODOS">-- Todos --</option>
+                            <option value="EFECTIVO">Efectivo</option>
+                            <option value="YAPE">Yape / Plin</option>
+                            <option value="TARJETA">Tarjeta Crédito</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label-contable fw-bold" style="font-size: 0.75rem; color: #1B3A2C;">Origen Servicio</label>
+                        <select id="filtroCpeOrigen" class="form-select form-select-sm form-select-contable">
+                            <option value="TODOS">-- Todos --</option>
+                            <option value="SALON">🍽️ Salón (Mesa)</option>
+                            <option value="DELIVERY">🏍️ Delivery / Web</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="button" class="btn btn-sm w-100 btn-limpiar-contable fw-bold" style="background-color: #6b7280; color: #fff; height: 31px; font-size: 0.75rem;" onclick="limpiarFiltrosComprobantesAsincronos()">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 mt-2 ms-1" style="flex-wrap: wrap;">
+                    <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('EFECTIVO')" id="badge-EFECTIVO">
+                        <img th:src="@{/img/Efectivo.png}" alt="Efectivo" style="width:14px;height:14px;object-fit:contain;">
+                        Efectivo
+                    </span>
+                    <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('YAPE')" id="badge-YAPE">
+                        <img th:src="@{/img/Yape.png}" alt="Yape" style="width:14px;height:14px;object-fit:contain;">
+                        Yape
+                    </span>
+                    <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('YAPE')" id="badge-PLIN">
+                        <img th:src="@{/img/Plin.png}" alt="Plin" style="width:14px;height:14px;object-fit:contain;">
+                        Plin
+                    </span>
+                    <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('TARJETA')" id="badge-TARJETA">
+                        <img th:src="@{/img/Tarjeta.png}" alt="Tarjeta" style="width:14px;height:14px;object-fit:contain;">
+                        Tarjeta
+                    </span>
+                </div>
+            </div>
+
+            <ul class="nav nav-tabs custom-tabs-jama mb-4" id="comprobantesTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="pendientes-tab" data-bs-toggle="tab" data-bs-target="#tab-pendientes" type="button" role="tab" aria-controls="tab-pendientes" aria-selected="true">
+                        Por Emitir / Notas de Venta
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="emitidos-tab" data-bs-toggle="tab" data-bs-target="#tab-emitidos" type="button" role="tab" aria-controls="tab-emitidos" aria-selected="false">
+                        Comprobantes Emitidos (SUNAT)
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="anulados-tab" data-bs-toggle="tab" data-bs-target="#tab-anulados" type="button" role="tab" aria-controls="tab-anulados" aria-selected="false">
+                        Comprobantes Anulados
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="comprobantesTabsContent">
+
+                <!-- ── TAB: POR EMITIR ─────────────────────────────────────── -->
+                <div class="tab-pane fade show active" id="tab-pendientes" role="tabpanel" aria-labelledby="pendientes-tab">
+                    <div class="table-responsive-jama">
+                        <table class="table table-jama responsive" id="tablaPorEmitir" style="width: 100%">
+                            <thead>
+                            <tr>
+                                <th>Nro Nota</th>
+                                <th>Fecha / Hora</th>
+                                <th>Origen / Mesa</th>
+                                <th>Cliente</th>
+                                <th>Monto Total</th>
+                                <th>Método</th>
+                                <th>Preferencia</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="comp : ${listaComprobantes}" th:if="${comp.comprobanteNumero == null}">
+                                <td class="fw-bold text-dark" th:text="'NV-' + ${comp.id}">NV-1045</td>
+                                <td th:text="${#temporals.format(comp.fechaCreacion, 'dd/MM/yyyy HH:mm')}">20/06/2026 14:32</td>
+                                <td>
+                                    <span class="badge-origen" th:text="${comp.numeroMesa != null} ? 'Mesa #' + ${comp.numeroMesa} : 'Carta Web'">Mesa #4</span>
+                                </td>
+                                <td class="fw-bold text-dark text-start" th:text="${comp.cliente}">José Mario Tafur</td>
+                                <td class="fw-bold text-jama-gold" th:text="'S/. ' + ${#numbers.formatDecimal(comp.montoTotal, 1, 2)}">S/. 45.50</td>
+                                <td>
+                                    <span th:with="mp=${comp.metodoPago != null ? comp.metodoPago.name() : 'EFECTIVO'}">
+                                        <span th:if="${mp == 'EFECTIVO'}" class="badge-metodo-jama bm-efectivo">
+                                            <img th:src="@{/img/Efectivo.png}" style="width:13px;height:13px;object-fit:contain;"> Efectivo
+                                        </span>
+                                        <span th:if="${mp == 'YAPE'}" class="badge-metodo-jama bm-digital">
+                                            <img th:src="@{/img/Yape.png}" style="width:13px;height:13px;object-fit:contain;"> Yape
+                                        </span>
+                                        <span th:if="${mp == 'PLIN'}" class="badge-metodo-jama bm-plin">
+                                            <img th:src="@{/img/Plin.png}" style="width:13px;height:13px;object-fit:contain;"> Plin
+                                        </span>
+                                        <span th:if="${mp == 'YAPE_PLIN'}" class="badge-metodo-jama bm-digital">
+                                            <img th:src="@{/img/YapePlin.png}" style="width:13px;height:13px;object-fit:contain;"> Yape/Plin
+                                        </span>
+                                        <span th:if="${mp == 'TARJETA'}" class="badge-metodo-jama bm-tarjeta">
+                                            <img th:src="@{/img/Tarjeta.png}" style="width:13px;height:13px;object-fit:contain;"> Tarjeta
+                                        </span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-preferencia" th:text="${comp.preferenciaComprobante != null ? comp.preferenciaComprobante.toUpperCase() : 'BOLETA'}">BOLETA</span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="action-buttons-wrapper justify-content-center">
+                                        <button type="button" class="action-jama-btn btn-imprimir" th:onclick="|verTicketTermico(${comp.id})|" title="Imprimir Ticket Previo">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                        </button>
+                                        <button type="button" class="action-jama-btn btn-timbrar btn-timbrar-trigger"
+                                                th:data-id="${comp.id}"
+                                                th:data-preferencia="${comp.preferenciaComprobante}"
+                                                th:data-documento="${comp.documentoCliente}"
+                                                onclick="capturarYTimbrar(this)" title="Emitir CPE Oficial">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 15c.1-.7.3-1.4.3-2.2a8 8 0 0 0-16 0c0 .8.1 1.5.3 2.2"></path><path d="M12 11v9"></path><polyline points="8 16 12 20 16 16"></polyline></svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="jama-table-controls mt-3">
+                        <span id="infoPagPorEmitir" class="text-muted small fw-bold">Mostrando 0 registros</span>
+                        <ul class="jama-pagination-wrapper" id="paginadorPorEmitir"></ul>
+                    </div>
+                </div>
+
+                <!-- ── TAB: EMITIDOS ───────────────────────────────────────── -->
+                <div class="tab-pane fade" id="tab-emitidos" role="tabpanel" aria-labelledby="emitidos-tab">
+                    <div class="table-responsive-jama">
+                        <table class="table table-jama responsive" id="tablaEmitidos" style="width: 100%">
+                            <thead>
+                            <tr>
+                                <th>Nro Nota / CPE</th>
+                                <th>Origen / Mesa</th>
+                                <th>Cliente</th>
+                                <th class="text-end">Monto Total</th>
+                                <th>Método</th>
+                                <th>Estado SUNAT</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="comp : ${listaComprobantes}" th:if="${comp.comprobanteNumero != null && comp.estado.name() != 'ANULADO'}">
+                                <td>
+                                    <div class="fw-bold text-dark">
+                                        <span th:text="'NV-' + ${comp.id}">NV-130</span>
+                                        <span class="badge bg-secondary ms-1 font-monospace" th:text="${comp.comprobanteNumero}">B001-00000007</span>
+                                    </div>
+                                    <small class="text-muted" th:text="${#temporals.format(comp.fechaCreacion, 'dd/MM/yyyy HH:mm')}">20/06/2026 15:43</small>
+                                </td>
+                                <td>
+                                    <span class="badge-origen" th:text="${comp.numeroMesa != null} ? 'Mesa #' + ${comp.numeroMesa} : 'Carta Web'">Mesa #13</span>
+                                </td>
+                                <td class="fw-bold text-dark text-start" th:text="${comp.cliente}">José Mario Tafur</td>
+                                <td class="fw-bold text-jama-gold text-end" th:text="'S/. ' + ${#numbers.formatDecimal(comp.montoTotal, 1, 2)}">S/. 100.00</td>
+                                <td>
+                                    <span th:with="mp=${comp.metodoPago != null ? comp.metodoPago.name() : 'EFECTIVO'}">
+                                        <span th:if="${mp == 'EFECTIVO'}" class="badge-metodo-jama bm-efectivo">
+                                            <img th:src="@{/img/Efectivo.png}" style="width:13px;height:13px;object-fit:contain;"> Efectivo
+                                        </span>
+                                        <span th:if="${mp == 'YAPE'}" class="badge-metodo-jama bm-digital">
+                                            <img th:src="@{/img/Yape.png}" style="width:13px;height:13px;object-fit:contain;"> Yape
+                                        </span>
+                                        <span th:if="${mp == 'PLIN'}" class="badge-metodo-jama bm-plin">
+                                            <img th:src="@{/img/Plin.png}" style="width:13px;height:13px;object-fit:contain;"> Plin
+                                        </span>
+                                        <span th:if="${mp == 'YAPE_PLIN'}" class="badge-metodo-jama bm-digital">
+                                            <img th:src="@{/img/YapePlin.png}" style="width:13px;height:13px;object-fit:contain;"> Yape/Plin
+                                        </span>
+                                        <span th:if="${mp == 'TARJETA'}" class="badge-metodo-jama bm-tarjeta">
+                                            <img th:src="@{/img/Tarjeta.png}" style="width:13px;height:13px;object-fit:contain;"> Tarjeta
+                                        </span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-estado-sunat">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                        EMITIDO
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="action-buttons-wrapper justify-content-center" style="display: flex; gap: 6px; align-items: center;">
+                                        <a th:href="${comp.comprobanteA4Url != null ? comp.comprobanteA4Url : '#'}" th:target="${comp.comprobanteA4Url != null ? '_blank' : '_self'}" class="action-jama-btn bg-primary border-primary text-light" th:styleappend="${comp.comprobanteA4Url == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}" title="Ver Factura/Boleta Oficial (A4)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></a>
+                                        <a th:href="${comp.comprobantePdfUrl != null ? comp.comprobantePdfUrl : '#'}" th:target="${comp.comprobantePdfUrl != null ? '_blank' : '_self'}" class="action-jama-btn bg-success border-success text-light" th:styleappend="${comp.comprobantePdfUrl == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}" title="Imprimir Ticket (80mm)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a>
+                                        <a th:href="@{/admin/comprobantes/xml/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado SUNAT"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></a>
+                                        <button type="button" class="action-jama-btn bg-danger border-danger text-light" th:data-id="${comp.id}" th:data-cpe="${comp.comprobanteNumero}" onclick="capturarYAnular(this)" title="Emitir Nota de Crédito Total"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="jama-table-controls mt-3">
+                        <span id="infoPagEmitidos" class="text-muted small fw-bold">Mostrando 0 registros</span>
+                        <ul class="jama-pagination-wrapper" id="paginadorEmitidos"></ul>
+                    </div>
+                </div>
+
+                <!-- ── TAB: ANULADOS ───────────────────────────────────────── -->
+                <div class="tab-pane fade" id="tab-anulados" role="tabpanel" aria-labelledby="anulados-tab">
+                    <div class="table-responsive-jama">
+                        <table class="table table-jama responsive" id="tablaAnulados" style="width: 100%">
+                            <thead>
+                            <tr>
+                                <th>Nro Nota / CPE Original</th>
+                                <th>Nota de Crédito SUNAT</th>
+                                <th>Fecha / Hora</th>
+                                <th>Cliente</th>
+                                <th class="text-end">Monto Revertido</th>
+                                <th>Estado SUNAT</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <th:block th:each="comp : ${listaComprobantes}" th:if="${comp.comprobanteNumero != null && comp.estado.name() == 'ANULADO'}">
+
+                                <tr class="align-middle text-muted" style="cursor: pointer; background-color: #fdf2f2;"
+                                    th:data-bs-toggle="collapse" th:data-bs-target="'#desglose-anulado-' + ${comp.id}">
+                                    <td>
+                                        <div class="fw-bold">
+                                            <span th:text="'NV-' + ${comp.id}">NV-1045</span>
+                                            <span class="badge bg-secondary ms-1 font-monospace" style="text-decoration: line-through;" th:text="${comp.comprobanteNumero}">B001-00000012</span>
+                                        </div>
+                                    </td>
+                                    <td class="fw-bold text-danger font-monospace" th:text="${comp.comprobanteNotaNumero != null ? comp.comprobanteNotaNumero : 'Generando...'}">FC01-00000001</td>
+                                    <td th:text="${#temporals.format(comp.fechaCreacion, 'dd/MM/yyyy HH:mm')}">20/06/2026 14:32</td>
+                                    <td class="fw-semibold text-start text-dark" th:text="${comp.cliente}">José Mario Tafur</td>
+                                    <td class="fw-bold text-danger text-end" th:text="'S/. ' + ${#numbers.formatDecimal(comp.montoTotal, 1, 2)}">S/. 45.50</td>
+                                    <td>
+                                        <span class="badge bg-danger text-light fw-bold px-2 py-1 rounded-pill small" style="font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                                            ANULADO (CPE)
+                                        </span>
+                                    </td>
+                                    <td class="text-center" onclick="event.stopPropagation();">
+                                        <div class="action-buttons-wrapper justify-content-center" style="display: flex; gap: 6px; align-items: center;">
+                                            <a th:href="@{/admin/comprobantes/imprimir-nota-a4/{id}(id=${comp.id})}" target="_blank"
+                                               class="action-jama-btn bg-primary border-primary text-light" title="Ver Nota de Crédito Oficial (A4)">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                                            </a>
+                                            <a th:href="@{/admin/comprobantes/imprimir-nota/{id}(id=${comp.id})}" target="_blank"
+                                               class="action-jama-btn bg-success border-success text-light" title="Imprimir Ticket Nota de Crédito (80mm)">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                            </a>
+                                            <a th:href="@{/admin/comprobantes/xml-nota/{id}(id=${comp.id})}" target="_blank"
+                                               class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado de la Nota de Crédito">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                                            </a>
+                                            <button type="button" class="action-jama-btn text-light shadow-sm"
+                                                    th:onclick="|abrirEditorReemision(${comp.id})|"
+                                                    title="Editar y Emitir Nuevo Comprobante Corregido"
+                                                    style="background-color: #d97706; border-color: #b45309;">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr th:id="'desglose-anulado-' + ${comp.id}" class="collapse bg-light">
+                                    <td colspan="7" class="p-3" style="background-color: #FFF5F5; border-left: 4px solid #dc2626;">
+                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                            <div>
+                                                <span class="fw-bold small text-muted text-uppercase d-block mb-2">Historial de Auditoría Interna:</span>
+                                                <div class="p-2 border rounded-3 bg-white font-monospace text-secondary" style="font-size: 0.82rem;">
+                                                    • CPE Referencia: <span th:text="${comp.comprobanteNumero}">B001-00000012</span><br>
+                                                    • NC Liquidadora: <span class="fw-bold text-danger" th:text="${comp.comprobanteNotaNumero}">FC01-00000001</span><br>
+                                                    • Total Devuelto: S/. <span th:text="${#numbers.formatDecimal(comp.montoTotal, 1, 2)}">45.50</span>
+                                                </div>
+                                            </div>
+                                            <div class="text-end" onclick="event.stopPropagation();">
+                                                <span class="fw-bold small text-muted text-uppercase d-block mb-2 text-md-end">Documentos del CPE Original Afectado:</span>
+                                                <div class="action-buttons-wrapper justify-content-md-end" style="display: flex; gap: 6px; align-items: center;">
+                                                    <a th:href="${comp.comprobanteA4Url != null ? comp.comprobanteA4Url : '#'}"
+                                                       th:target="${comp.comprobanteA4Url != null ? '_blank' : '_self'}"
+                                                       class="action-jama-btn bg-primary border-primary text-light"
+                                                       th:styleappend="${comp.comprobanteA4Url == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}"
+                                                       title="Ver CPE Original (A4)">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                                                        <span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver PDF A4</span>
+                                                    </a>
+                                                    <a th:href="${comp.comprobantePdfUrl != null ? comp.comprobantePdfUrl : '#'}"
+                                                       th:target="${comp.comprobantePdfUrl != null ? '_blank' : '_self'}"
+                                                       class="action-jama-btn bg-success border-success text-light"
+                                                       th:styleappend="${comp.comprobantePdfUrl == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}"
+                                                       title="Imprimir Ticket Original (80mm)">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                                        <span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver Ticket</span>
+                                                    </a>
+                                                    <a th:href="@{/admin/comprobantes/xml/{id}(id=${comp.id})}"
+                                                       target="_blank"
+                                                       class="action-jama-btn bg-dark border-dark text-light"
+                                                       title="Ver XML Firmado CPE Original">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                                                        <span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver XML</span>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                            </th:block>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="jama-table-controls mt-3">
+                        <span id="infoPagAnulados" class="text-muted small fw-bold">Mostrando 0 registros</span>
+                        <ul class="jama-pagination-wrapper" id="paginadorAnulados"></ul>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="modales">
+    <div th:fragment="modalReemision" class="modal fade" id="modalEdicionReemision" tabindex="-1" aria-labelledby="modalReemisionLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content border-0 shadow-lg" style="background-color: #FFF7ED; border-radius: 16px;">
+
+                <div class="modal-header border-0 pb-0" style="padding: 20px 24px 10px 24px;">
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="modalReemisionLabel" style="color: #1B3A2C; font-size: 1.25rem;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="text-jama-gold"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        Refacturación y Corrección de Comprobante Electrónico (SUNAT)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="font-size: 0.8rem;"></button>
+                </div>
+
+                <div class="modal-body" style="padding: 10px 24px 20px 24px;">
+                    <p class="text-muted small mb-3">
+                        Modifique los parámetros del documento original <strong id="reemision-nv-origen" class="text-dark">---</strong> antes de re-timbrar el nuevo correlativo.
+                    </p>
+
+                    <input type="hidden" id="reemision-pedido-id" />
+
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <div class="p-3 border rounded-3 bg-white h-100 shadow-sm" style="border-color: #ffedd5 !important;">
+                                <span class="fw-bold small d-block mb-3" style="color: #933D2D;">1. Encabezado e Identificación Fiscal</span>
+
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">CLIENTE / RAZÓN SOCIAL:</label>
+                                    <input type="text" id="reemision-cliente-nombre" class="form-control form-control-sm" placeholder="Mesa # o Nombre del Cliente..." />
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">CORREO ELECTRÓNICO (ENVÍO CPE):</label>
+                                    <input type="email" id="reemision-cliente-correo" class="form-control form-control-sm" placeholder="ejemplo@correo.com (Opcional)..." />
+                                </div>
+
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">DOCUMENTO (DNI/RUC):</label>
+                                        <input type="text" id="reemision-cliente-doc" class="form-control form-control-sm font-monospace" placeholder="Vacío si no tiene..." />
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">DIRECCIÓN:</label>
+                                        <input type="text" id="reemision-cliente-dir" class="form-control form-control-sm" value="Chiclayo, Lambayeque" />
+                                    </div>
+                                </div>
+
+                                <hr style="border-color: #ffedd5;" />
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">TIPO COMPROBANTE:</label>
+                                        <select id="reemision-cpe-tipo" class="form-select form-select-sm">
+                                            <option value="BOLETA">BOLETA DE VENTA</option>
+                                            <option value="FACTURA">FACTURA ELECTRÓNICA</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">MEDIO DE PAGO:</label>
+                                        <select id="reemision-cpe-medio" class="form-select form-select-sm">
+                                            <option value="EFECTIVO">EFECTIVO / CONTADO</option>
+                                            <option value="YAPE">YAPE</option>
+                                            <option value="PLIN">PLIN</option>
+                                            <option value="TARJETA">TARJETA CREDITO</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">OBSERVACIÓN TICKET:</label>
+                                        <input type="text" id="reemision-cpe-obs" class="form-control form-control-sm" placeholder="Opcional..." />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-7">
+                            <div class="p-3 border rounded-3 bg-white h-100 shadow-sm" style="border-color: #ffedd5 !important;">
+                                <span class="fw-bold small d-block mb-2" style="color: #933D2D;">2. Detalle de Ítems, Cantidades y Precios</span>
+                                <div id="reemision-contenedor-platos" class="pe-1" style="max-height: 240px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 p-3 rounded-3 shadow-sm" style="background-color: #ffffff; border: 1px dashed #933D2D;">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-md-7">
+                                <span class="d-block text-muted font-monospace fw-bold" id="reemision-texto-letras" style="font-size: 0.8rem;">SON: OCHO CON 00/100 SOLES</span>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="d-flex flex-column align-items-end gap-1 font-monospace text-secondary" style="font-size: 0.8rem;">
+                                    <div>GRAVADAS: <span class="fw-bold text-dark" id="resumen-gravada">S/ 0.00</span></div>
+                                    <div>IGV (18%): <span class="fw-bold text-dark" id="resumen-igv">S/ 0.00</span></div>
+                                    <div class="border-top pt-1 mt-1 fs-6 text-dark fw-bold">TOTAL COMPROBANTE: <span class="text-jama-gold" id="reemision-monto-total">S/ 0.00</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 pt-0" style="padding: 0 24px 20px 24px;">
+                    <button type="button" class="btn btn-sm btn-secondary px-3" data-bs-dismiss="modal" style="font-size: 0.85rem; border-radius: 6px;">Cancelar</button>
+                    <button type="button" class="btn btn-sm text-light px-3" onclick="procesarTimbradoCorregido()" style="background-color: #1B3A2C; font-size: 0.85rem; border-radius: 6px;">
+                        Emitir y Firmar CPE Nuevo
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

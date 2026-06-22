@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Nota de Crédito Electrónica - A4</title>
+    <style>
+        @page { size: A4; margin: 15mm; }
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            font-size: 13px;
+            line-height: 1.4;
+            margin: 0;
+        }
+        .header-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
+        .logo-box { width: 55%; vertical-align: top; }
+        .rno-box {
+            width: 45%;
+            border: 2px solid #333;
+            text-align: center;
+            padding: 15px;
+            vertical-align: middle;
+            background-color: #fcfcfc;
+        }
+        .info-box {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 20px;
+            background-color: #fafafa;
+        }
+        .info-box td { padding: 4px 0; vertical-align: top; }
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+        .data-table th { background-color: #333; color: #fff; padding: 8px; text-align: left; font-size: 12px; }
+        .data-table td { padding: 10px 8px; border-bottom: 1px solid #ddd; }
+        .bottom-wrapper { width: 100%; border-collapse: collapse; }
+        .totales-box { width: 40%; float: right; }
+        .totales-table { width: 100%; border-collapse: collapse; }
+        .totales-table td { padding: 5px 8px; border: 1px solid #ddd; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .fw-bold { font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<!-- CABECERA PRINCIPAL -->
+<table class="header-table">
+    <tr>
+        <td class="logo-box">
+            <span class="fw-bold" style="font-size: 22px; color: #111;">RESTAURANTE LA JAMA S.A.C.</span><br>
+            <span style="color: #666;">Chiclayo, Lambayeque, Perú</span><br>
+            <span>Sede Central Contable</span><br>
+            <span>Telf: 978654321</span>
+        </td>
+        <td class="rno-box">
+            <span class="fw-bold" style="font-size: 16px;">R.U.C. 20000000001</span><br>
+            <span class="fw-bold" style="font-size: 18px; display: block; margin: 8px 0; color: #bd2130;">NOTA DE CRÉDITO ELECTRÓNICA</span><br>
+            <span class="fw-bold" style="font-size: 16px;" th:text="${pedido.comprobanteNotaNumero != null ? pedido.comprobanteNotaNumero : 'BC01-00000001'}">BC01-00000001</span>
+        </td>
+    </tr>
+</table>
+
+<!-- CAJA DE INFORMACIÓN DEL RECEPTOR Y REFERENCIA -->
+<div class="info-box">
+    <table style="width: 100%;">
+        <tr>
+            <td class="fw-bold" style="width: 18%;">CLIENTE:</td>
+            <td style="width: 42%;" th:text="${pedido.cliente}">MESA #10 (TICKET 1)</td>
+            <td class="fw-bold" style="width: 22%;">FECHA EMISIÓN:</td>
+            <td style="width: 18%;" th:text="${#temporals.format(pedido.fechaCreacion, 'dd/MM/yyyy HH:mm')}">20/06/2026 13:11</td>
+        </tr>
+        <tr>
+            <td class="fw-bold">DOCUMENTO:</td>
+            <td th:text="${pedido.documentoCliente != null && pedido.documentoCliente != '' ? pedido.documentoCliente : 'SIN DOCUMENTO'}">SIN DOCUMENTO</td>
+            <td class="fw-bold">MONEDA:</td>
+            <td>SOLES (PEN)</td>
+        </tr>
+        <tr>
+            <td class="fw-bold">DIRECCIÓN:</td>
+            <td th:text="${pedido.documentoCliente != null && pedido.documentoCliente.length() == 11 ? 'CHICLAYO, LAMBAYEQUE' : 'CHICLAYO'}">CHICLAYO</td>
+            <td class="fw-bold">DOC. RELACIONADO:</td>
+            <td class="fw-bold" th:text="${pedido.comprobanteNumero}">BOLETA B001-00000005</td>
+        </tr>
+        <tr>
+            <td class="fw-bold">MOTIVO EMISIÓN:</td>
+            <td colspan="3">01 - ERROR DE EMISION</td>
+        </tr>
+    </table>
+</div>
+
+<!-- TABLA DE ITEMS -->
+<table class="data-table">
+    <thead>
+    <tr>
+        <th style="width: 10%;" class="text-center">ITEM</th>
+        <th style="width: 15%;" class="text-center">CANTIDAD</th>
+        <th style="width: 55%;">DESCRIPCIÓN</th>
+        <th style="width: 20%;" class="text-right">IMPORTE</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td class="text-center">1</td>
+        <td class="text-center">1</td>
+        <td th:text="'ANULACION TOTAL DE LA ORDEN DE SERVICIO NV-' + ${pedido.id}">ANULACION TOTAL DE LA ORDEN DE SERVICIO NV-126</td>
+        <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)}">S/. 20.00</td>
+    </tr>
+    </tbody>
+</table>
+
+<!-- SECCIÓN INFERIOR DE TOTALES -->
+<div style="width: 100%; overflow: hidden;">
+    <div style="width: 55%; float: left;">
+        <p class="fw-bold" th:text="'SON: ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)} + ' SOLES'"></p>
+        <p style="font-size: 11px; color: #55px; margin-top: 15px;">
+            Consulte su documento electrónico en: <span class="fw-bold">https://www.sunat.gob.pe</span><br>
+            Representación impresa oficial de la Nota de Crédito Electrónica sin trazas de advertencia de pasarela externa.
+        </p>
+    </div>
+
+    <div class="totales-box">
+        <table class="totales-table">
+            <tr>
+                <td>Op. Gravada:</td>
+                <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(subtotal, 1, 2)}">S/. 16.95</td>
+            </tr>
+            <tr>
+                <td>Op. Exonerada:</td>
+                <td class="text-right">S/. 0.00</td>
+            </tr>
+            <tr>
+                <td>Op. Inafecta:</td>
+                <td class="text-right">S/. 0.00</td>
+            </tr>
+            <tr>
+                <td>IGV (18%):</td>
+                <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(igv, 1, 2)}">S/. 3.05</td>
+            </tr>
+            <tr class="fw-bold" style="background-color: #f5f5f5;">
+                <td>Total:</td>
+                <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)}">S/. 20.00</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<!-- Script de auto-disparo de impresión -->
+<script>
+    window.onload = function() {
+        window.print();
+    }
+</script>
+</body>
+</html>

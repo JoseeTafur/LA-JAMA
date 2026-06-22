@@ -83,6 +83,8 @@ public class LoginController {
                     rolParaSesion = "CAJERO";
                 } else if (nombreCargo.contains("MESERO")) {
                     rolParaSesion = "MESERO";
+                } else if (nombreCargo.contains("CONTADOR")) { // 🌟 NUEVO: Captura al empleado Contador
+                    rolParaSesion = "CONTADOR";
                 }
             } else {
                 rolParaSesion = nombrePerfil;
@@ -91,18 +93,17 @@ public class LoginController {
             session.setAttribute("rol", rolParaSesion);
             empOpt.ifPresent(empleado -> session.setAttribute("empleadoLogueado", empleado));
 
-            // Carga inicial completa de opciones mapeadas en la BD
+// Carga inicial completa de opciones mapeadas en la BD
             List<Opcion> opcionesMenu = usuarioEncontrado.getPerfil().getOpciones().stream()
                     .sorted(Comparator.comparing(Opcion::getId))
                     .collect(Collectors.toList());
 
-            // Filtros de seguridad según el rol de la sesión
+// Filtros de seguridad según el rol de la sesión
             if ("REPARTIDOR".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") || op.getRuta().contains("/entregas") || op.getRuta().contains("/MiPerfil"))
                         .collect(Collectors.toList());
 
-// 🟩 2. FILTRO PARA CAJERO
             } else if ("CAJERO".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") ||
@@ -111,17 +112,26 @@ public class LoginController {
                                 op.getRuta().contains("/despacho") ||
                                 op.getRuta().contains("/productos") ||
                                 op.getRuta().contains("/pagos-digitales") ||
-                                op.getRuta().contains("/MiPerfil")) // ➔ Luz verde para el perfil
+                                op.getRuta().contains("/comprobantes") ||
+                                op.getRuta().contains("/reservas") || // ➔ Asegurado aquí
+                                op.getRuta().contains("/MiPerfil"))
                         .collect(Collectors.toList());
 
-// 🟩 3. FILTRO PARA MESERO
             } else if ("MESERO".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") ||
                                 op.getRuta().equals("/admin/mesas") ||
                                 op.getRuta().contains("/mesero") ||
-                                op.getRuta().contains("/MiPerfil")) // ➔ Luz verde para el perfil
+                                op.getRuta().contains("/MiPerfil"))
                         .collect(Collectors.toList());
+
+            } else if ("CONTADOR".equals(rolParaSesion)) { // 🌟 NUEVO: Filtro restrictivo para la vista del Contador
+                opcionesMenu = opcionesMenu.stream()
+                        .filter(op -> op.getRuta().equals("/dashboard") ||
+                                op.getRuta().contains("/comprobantes") || // Acceso a su módulo principal
+                                op.getRuta().contains("/MiPerfil"))
+                        .collect(Collectors.toList());
+
             } else if ("COCINA".equals(rolParaSesion) && empOpt.isPresent()) {
                 String cargoExacto = empOpt.get().getCargo().getNombre().toUpperCase();
                 opcionesMenu = opcionesMenu.stream()
@@ -156,23 +166,45 @@ public class LoginController {
             Map<String, List<Opcion>> menuAgrupado = new LinkedHashMap<>();
             List<Opcion> opcionesIndependientes = new ArrayList<>();
 
-            // 🔄 SISTEMA DE AGRUPACIÓN ADAPTATIVO CON CAPTURA DE RUTAS MAESTRAS
+// 🔄 SISTEMA DE AGRUPACIÓN REMASTERIZADO (ADIÓS "ADMIN", BIENVENIDO "RESERVAS" A CAJERO)
             for (Opcion opcion : opcionesMenu) {
                 String ruta = opcion.getRuta();
+
+                // Solución Mi Perfil Independiente
+                if (ruta.contains("/MiPerfil")) {
+                    opcionesIndependientes.add(opcion);
+                    continue;
+                }
+
                 String[] partesRuta = ruta.split("/");
 
                 if (partesRuta.length > 2) {
                     String grupo;
                     if (ruta.contains("/cocina")) {
-                        grupo = "cocina";
-                    } else if (ruta.contains("/mesero")) {
-                        grupo = "mesero";
-                    } else if (ruta.contains("/productos")) {
-                        grupo = "almacen";
+                        grupo = "Cocina";
+                    } else if (ruta.contains("/mesero") || ruta.contains("/mesas")) {
+                        grupo = "Salón";
+                    } else if (ruta.contains("/productos") || ruta.contains("/almacen")) {
+                        grupo = "Almacén";
+                    } else if (ruta.contains("/comprobantes")) {
+                        grupo = "Contabilidad"; // ➔ Forzamos clave exacta para Contabilidad
+                    }
+                    // 💳 FUSIÓN INQUEBRANTABLE: Añadimos "/reservas" para que no caiga en el "else" de admin
+                    else if (ruta.contains("/caja") || ruta.contains("/cajero") ||
+                            ruta.contains("/delivery") || ruta.contains("/despacho") ||
+                            ruta.contains("/pagos-digitales") || ruta.contains("/reservas")) {
+                        grupo = "Cajero"; // ➔ Todo el flujo operativo del Cajero unificado aquí
                     } else {
-                        grupo = partesRuta[1];
+                        // Failsafe: Si alguna ruta extraña usa /admin/algo, evitamos crear la carpeta "Admin"
+                        // y la mandamos a un grupo genérico o a su respectivo módulo.
+                        if (partesRuta[1].equalsIgnoreCase("admin")) {
+                            grupo = partesRuta.length > 3 ? partesRuta[2] : "Gestión";
+                        } else {
+                            grupo = partesRuta[1];
+                        }
                     }
 
+                    // Capitalizar de forma segura
                     String nombreGrupo = grupo.substring(0, 1).toUpperCase() + grupo.substring(1).toLowerCase();
                     menuAgrupado.computeIfAbsent(nombreGrupo, k -> new ArrayList<>()).add(opcion);
                 } else {
@@ -194,6 +226,7 @@ public class LoginController {
             if ("MESERO".equals(rolParaSesion)) return "redirect:/admin/mesas";
             if ("REPARTIDOR".equals(rolParaSesion)) return "redirect:/admin/entregas/mis-pedidos";
             if ("CAJERO".equals(rolParaSesion)) return "redirect:/admin/despacho";
+            if ("CONTADOR".equals(rolParaSesion)) return "redirect:/admin/comprobantes";
             if ("COCINA".equals(rolParaSesion) && empOpt.isPresent()) {
                 String cargoExacto = empOpt.get().getCargo().getNombre().toUpperCase();
                 if (cargoExacto.contains("FRÍO") || cargoExacto.contains("FRIO")) return "redirect:/admin/cocina/fria";

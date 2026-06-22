@@ -97,11 +97,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputMinimoNuevo = formNuevoInsumo.querySelector('input[name="stockMinimo"]');
         if (inputMinimoNuevo) {
             inputMinimoNuevo.min = "0";
+            inputMinimoNuevo.step = "1"; // 🎯 Aseguramos el step aquí también
             inputMinimoNuevo.type = "number";
         }
         formNuevoInsumo.addEventListener('submit', (e) => {
             const inputNombre = formNuevoInsumo.querySelector('input[name="nombre"]')?.value.trim();
-            const valMinimo = parseFloat(inputMinimoNuevo?.value);
+
+            // 🎯 Cambiado a Number para atrapar decimales
+            const valMinimoRaw = inputMinimoNuevo?.value;
+            const valMinimo = Number(valMinimoRaw);
+
             const regexLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$/;
             if (!inputNombre || !regexLetras.test(inputNombre)) {
                 e.preventDefault();
@@ -113,6 +118,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 AppUtils.showNotification('El stock mínimo no puede ser negativo.', 'error');
                 return false;
             }
+
+            // 🌟 NUEVA VALIDACIÓN: Bloqueo final para el formulario de nuevo insumo
+            if (!Number.isInteger(valMinimo) || valMinimoRaw.includes('.') || valMinimoRaw.includes(',')) {
+                e.preventDefault();
+                AppUtils.showNotification('El stock mínimo debe ser un número entero.', 'error');
+                return false;
+            }
+
             AppUtils.showLoading(true);
         });
     }
@@ -273,14 +286,27 @@ function abrirModalNuevoInsumo() {
 }
 
 function prepararEdicionInsumo(id, nombre, categoria, unidadMedida, stockMinimo) {
+    // Carga de datos principales en los inputs
     document.getElementById('editInsumoId').value = id;
     document.getElementById('editInsumoNombre').value = nombre ? nombre.trim() : "";
-    document.getElementById('editInsumoUnidad').value = unidadMedida;
-    document.getElementById('editInsumoStockMinimo').value = stockMinimo;
+
+    // Forzamos que el valor inicial sea entero al renderizarlo en el input de edición
+    document.getElementById('editInsumoStockMinimo').value = parseInt(stockMinimo) || 0;
 
     const selectCategoria = document.getElementById('editarCategoria');
+    const selectUnidad = document.getElementById('editInsumoUnidad');
+
+    // Sincronizamos la categoría que viene de la base de datos
     if (selectCategoria && categoria) {
         selectCategoria.value = categoria.toUpperCase().trim();
+    }
+
+    // 🌟 REGLA DE NEGOCIO: Aplicamos el filtro de unidades inmediatamente al abrir el modal
+    simplificarUnidadesPorProteina(selectCategoria, selectUnidad);
+
+    // Asignamos la unidad de medida original del insumo (si no es proteína, se seleccionará su UND, LT, etc.)
+    if (selectUnidad && unidadMedida) {
+        selectUnidad.value = unidadMedida;
     }
 
     const formEditar = document.getElementById('formEditarInsumo') || document.querySelector('#modalEditarInsumo form');
@@ -288,13 +314,18 @@ function prepararEdicionInsumo(id, nombre, categoria, unidadMedida, stockMinimo)
         const inputMinimoEdit = formEditar.querySelector('input[name="stockMinimo"]') || document.getElementById('editInsumoStockMinimo');
         if (inputMinimoEdit) {
             inputMinimoEdit.min = "0";
+            inputMinimoEdit.step = "1"; // Aseguramos que el step en JS también sea 1
             inputMinimoEdit.type = "number";
         }
 
         formEditar.onsubmit = function (e) {
             const nombreVal = document.getElementById('editInsumoNombre').value.trim();
-            const minimoVal = parseFloat(inputMinimoEdit?.value);
 
+            // Pasamos a usar Number() para evaluar si tiene decimales reales
+            const minimoValRaw = inputMinimoEdit?.value;
+            const minimoVal = Number(minimoValRaw);
+
+            // Validaciones de formato del Nombre
             const regexLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$/;
             if (!nombreVal || !regexLetras.test(nombreVal)) {
                 e.preventDefault();
@@ -302,9 +333,17 @@ function prepararEdicionInsumo(id, nombre, categoria, unidadMedida, stockMinimo)
                 return false;
             }
 
+            // Validaciones de Stock Mínimo (No Negativos)
             if (isNaN(minimoVal) || minimoVal < 0) {
                 e.preventDefault();
                 AppUtils.showNotification('No se pudo guardar: El stock mínimo no puede ser un número negativo.', 'error');
+                return false;
+            }
+
+            // VALIDACIÓN DE ENTEROS: Bloqueo final si metieron decimales de alguna forma
+            if (!Number.isInteger(minimoVal) || minimoValRaw.includes('.') || minimoValRaw.includes(',')) {
+                e.preventDefault();
+                AppUtils.showNotification('No se pudo guardar: El stock mínimo debe ser un número entero (sin decimales).', 'error');
                 return false;
             }
 
@@ -521,6 +560,56 @@ function actualizarSemaforoVisualStock(celdaStock, nuevoStock, esProteina) {
         else { celdaStock.classList.remove('text-danger'); celdaStock.classList.add('text-dark'); }
     }
 }
+
+const UNIDADES_RESPALDO = [
+    { value: "KG", text: "Kilogramos (KG)" },
+    { value: "UND", text: "Unidades (UND)" },
+    { value: "LT", text: "Litros (LT)" }
+];
+
+// 🥩 2. FUNCIÓN ULTRA SIMPLIFICADA PARA FILTRAR PROTEÍNAS
+function simplificarUnidadesPorProteina(selectCategoria, selectUnidad) {
+    if (!selectCategoria || !selectUnidad) return;
+
+    const categoria = selectCategoria.value.toUpperCase().trim();
+
+    // Limpiamos el combo de unidades por completo
+    selectUnidad.innerHTML = "";
+
+    if (categoria === "PROTEÍNAS" || categoria === "PROTEINAS") {
+        // Si es Proteínas, solo creamos e insertamos la opción única de KG
+        const opt = document.createElement("option");
+        opt.value = "KG";
+        opt.text = "Kilogramos (KG)";
+        selectUnidad.appendChild(opt);
+    } else {
+        // Si es cualquier otra categoría, restauramos todas las unidades del respaldo
+        UNIDADES_RESPALDO.forEach(unidad => {
+            const opt = document.createElement("option");
+            opt.value = unidad.value;
+            opt.text = unidad.text;
+            selectUnidad.appendChild(opt);
+        });
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    // Para el formulario de Registrar Nuevo
+    const catNueva = document.getElementById("nuevoInsumoCategoria") || document.querySelector('#formNuevoInsumo select[name="categoria"]');
+    const uniNueva = document.getElementById("nuevoInsumoUnidad") || document.querySelector('#formNuevoInsumo select[name="unidadMedida"]');
+
+    if (catNueva && uniNueva) {
+        catNueva.addEventListener("change", () => simplificarUnidadesPorProteina(catNueva, uniNueva));
+    }
+
+    // Para el formulario de Editar (Cuando el usuario cambie el select manualmente estando el modal abierto)
+    const catEditar = document.getElementById("editarCategoria");
+    const uniEditar = document.getElementById("editInsumoUnidad");
+
+    if (catEditar && uniEditar) {
+        catEditar.addEventListener("change", () => simplificarUnidadesPorProteina(catEditar, uniEditar));
+    }
+});
 
 // ─── EXPORTACIÓN GLOBAL DE MANEJADORES PARA EL HTML (LA JAMA 2026) ───
 window.manejadorModalLote        = manejadorModalLote;
