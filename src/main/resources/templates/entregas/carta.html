@@ -172,10 +172,6 @@
                         <span class="total-monto">S/ <span id="totalCarrito">0.00</span></span>
                     </div>
                 </div>
-                <div class="form-group-premium">
-                    <label for="nombreCliente"><i class="bi bi-person-badge me-1"></i> ¿A nombre de quién va el pedido? *</label>
-                    <input type="text" id="nombreCliente" class="input-premium" placeholder="Ej: María García" required>
-                </div>
             </div>
 
             <!-- PASO 2: LOGÍSTICA DE REPARTO -->
@@ -236,13 +232,19 @@
                         </select>
                     </div>
                     <div class="form-group-premium">
-                        <label id="labelDocumento" for="numeroDocumento">DNI (Opcional)</label>
-                        <input type="text" id="numeroDocumento" class="input-premium" placeholder="Ej: 74589632" maxlength="11">
+                        <label id="labelDocumento" for="numeroDocumento"><i class="bi bi-card-id me-1"></i>DNI (Opcional):</label>
+                        <input type="text" id="numeroDocumento" class="input-premium" placeholder="Ej: 74589632" maxlength="8">
                     </div>
                 </div>
-                <div class="form-group-premium">
-                    <label for="clienteCorreo"><i class="bi bi-envelope-at-fill me-1"></i> Correo Electrónico (Ticket digital) *</label>
-                    <input type="email" id="clienteCorreo" class="input-premium" placeholder="ejemplo@correo.com" required>
+
+                <div class="form-group-premium mt-3">
+                    <label for="nombreCliente"><i class="bi bi-person-badge me-1"></i> Nombre Completo / Razón Social *</label>
+                    <input type="text" id="nombreCliente" class="input-premium" placeholder="Ej: JUAN PEREZ" required>
+                </div>
+
+                <div class="form-group-premium mt-3">
+                    <label for="clienteCorreo"><i class="bi bi-envelope-at-fill me-1"></i> Correo Electrónico (Opcional)</label>
+                    <input type="email" id="clienteCorreo" class="input-premium" placeholder="ejemplo@correo.com">
                 </div>
             </div>
 
@@ -375,24 +377,75 @@
     <div class="f-dato"><i class="bi bi-whatsapp me-1"></i>+51 955 563 199</div>
 </div>
 
-<!-- Scripts de Terceros y Control del Negocio -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://checkout.culqi.com/js/v4"></script>
 
-<!-- 🛡️ CAPA DE COMPATIBILIDAD TRANSPARENTE: Evita que carta.js arroje errores de Bootstrap -->
-<script>
-    window.bootstrap = {
-        Modal: function(element) {
-            return {
-                show: function() { element.classList.add('show'); },
-                hide: function() { element.classList.remove('show'); }
-            };
+<script type="module">
+    import { agregarDesdeCard, removerItem, renderCarrito, actualizarUI } from '/js/carta/core-cart.js';
+    import { estadoCheckout, navegarEtapa } from '/js/carta/checkout-wizard.js';
+    // 🔥 REPARACIÓN 1: Añadimos la importación explícita de enviarPedidoFinal que faltaba aquí
+    import { iniciarMapa, enviarPedidoFinal } from '/js/carta/api-client.js';
+    import { inicializarAutocompletadoDocumentos } from '/js/carta/document-listener.js';
+    // 🔥 REPARACIÓN 2: Importamos el disparador de Culqi
+    import { iniciarPasarelaCulqi } from '/js/carta/culqi-client.js';
+
+    window.agregarDesdeCard = agregarDesdeCard;
+    window.removerItemCarta = removerItem;
+
+    window.abrirCarrito = () => {
+        renderCarrito();
+        window.navegarEtapa(0);
+        document.getElementById('modalCarrito').classList.add('show');
+    };
+
+    window.navegarEtapa = (dir) => navegarEtapa(dir, iniciarMapa);
+
+    window.seleccionarTipo = (tipo) => {
+        estadoCheckout.tipoEntrega = tipo;
+        document.getElementById('btnRecoger').className = 'btn-selection-premium' + (tipo === 'RECOGER' ? ' activo' : '');
+        document.getElementById('btnDelivery').className = 'btn-selection-premium' + (tipo === 'DELIVERY' ? ' activo' : '');
+        document.getElementById('seccionDireccion').style.display = tipo === 'DELIVERY' ? 'block' : 'none';
+        if (tipo === 'DELIVERY' && estadoCheckout.etapa === 2) iniciarMapa();
+    };
+
+    window.seleccionarPago = (metodo) => {
+        estadoCheckout.metodoPago = metodo;
+        document.getElementById('btnYape').className = 'btn-pago-cliente-card' + (metodo === 'YAPE' ? ' activo' : '');
+        document.getElementById('btnPlin').className = 'btn-pago-cliente-card' + (metodo === 'PLIN' ? ' activo' : '');
+        document.getElementById('seccionYape').style.display = metodo === 'YAPE' ? 'block' : 'none';
+        document.getElementById('seccionPlin').style.display = metodo === 'PLIN' ? 'block' : 'none';
+    };
+
+    // 🔥 REPARACIÓN 3: El gatillo final ahora abre la pasarela de Culqi en Sandbox de forma transparente
+    window.enviarPedido = () => {
+        iniciarPasarelaCulqi();
+    };
+
+    window.conmutarTipoDocumento = () => {
+        const tipo = document.getElementById('preferenciaComprobante').value;
+        const label = document.getElementById('labelDocumento');
+        const input = document.getElementById('numeroDocumento');
+        const inputNombre = document.getElementById('nombreCliente');
+
+        inputNombre.value = "";
+        inputNombre.removeAttribute("readonly");
+        input.value = "";
+
+        if (tipo === 'FACTURA') {
+            label.innerHTML = '<i class="bi bi-building me-1"></i>RUC:';
+            input.placeholder = 'Ej: 20601234567';
+            input.setAttribute('maxlength', '11');
+        } else {
+            label.innerHTML = '<i class="bi bi-card-id me-1"></i>DNI (Opcional):';
+            input.placeholder = 'Ej: 74589632';
+            input.setAttribute('maxlength', '8');
         }
     };
-</script>
 
-<script th:src="@{/js/validation.js}"></script>
-<script th:src="@{/js/carta.js}"></script>
+    inicializarAutocompletadoDocumentos();
+    actualizarUI();
+</script>
 </body>
 </html>

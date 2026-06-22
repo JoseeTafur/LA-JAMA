@@ -33,6 +33,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/**")
                 .excludePathPatterns(
                         "/carta/**",
+                        "/api/documentos/**",
                         "/admin/pagos-digitales/api/guardar",
                         "/admin/pagos-digitales/api/actualizar-imagen/**",
                         "/css/**",
