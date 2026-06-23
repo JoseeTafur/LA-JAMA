@@ -32,8 +32,11 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(sessionInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns(
-                        "/carta/**",
                         "/api/documentos/**",
+                        "/api/v1/dni/**",
+                        "/api/v1/ruc/**",
+                        "/api/**",
+                        "/carta/**",
                         "/admin/pagos-digitales/api/guardar",
                         "/admin/pagos-digitales/api/actualizar-imagen/**",
                         "/css/**",

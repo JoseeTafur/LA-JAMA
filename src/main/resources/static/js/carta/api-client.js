@@ -56,7 +56,7 @@ window.seleccionarSugerencia = (lat, lng, nombre) => {
     mapa.setView([lat, lng], 16);
 };
 
-export async function enviarPedidoFinal(tokenCulqi = null, emailCulqi = null) {
+export async function enviarPedidoFinal() {
     let file = estadoCheckout.metodoPago === 'YAPE' ? document.getElementById('yapeImgInput').files[0] : document.getElementById('plinImgInput').files[0];
     if ((estadoCheckout.metodoPago === 'YAPE' || estadoCheckout.metodoPago === 'PLIN') && !file) {
         Swal.fire({ icon: 'error', title: 'Falta Voucher', text: 'Suba la captura del pago.' });

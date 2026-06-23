@@ -380,17 +380,15 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="https://checkout.culqi.com/js/v4"></script>
 
 <script type="module">
     import { agregarDesdeCard, removerItem, renderCarrito, actualizarUI } from '/js/carta/core-cart.js';
     import { estadoCheckout, navegarEtapa } from '/js/carta/checkout-wizard.js';
-    // 🔥 REPARACIÓN 1: Añadimos la importación explícita de enviarPedidoFinal que faltaba aquí
     import { iniciarMapa, enviarPedidoFinal } from '/js/carta/api-client.js';
+    // 🔥 Importamos el nuevo listener modularizado
     import { inicializarAutocompletadoDocumentos } from '/js/carta/document-listener.js';
-    // 🔥 REPARACIÓN 2: Importamos el disparador de Culqi
-    import { iniciarPasarelaCulqi } from '/js/carta/culqi-client.js';
 
+    // Hacer funciones accesibles desde el HTML nativo
     window.agregarDesdeCard = agregarDesdeCard;
     window.removerItemCarta = removerItem;
 
@@ -418,10 +416,7 @@
         document.getElementById('seccionPlin').style.display = metodo === 'PLIN' ? 'block' : 'none';
     };
 
-    // 🔥 REPARACIÓN 3: El gatillo final ahora abre la pasarela de Culqi en Sandbox de forma transparente
-    window.enviarPedido = () => {
-        iniciarPasarelaCulqi();
-    };
+    window.enviarPedido = enviarPedidoFinal;
 
     window.conmutarTipoDocumento = () => {
         const tipo = document.getElementById('preferenciaComprobante').value;
@@ -444,6 +439,7 @@
         }
     };
 
+    // 🔥 Disparar los listeners modulares de forma segura y aislada
     inicializarAutocompletadoDocumentos();
     actualizarUI();
 </script>
