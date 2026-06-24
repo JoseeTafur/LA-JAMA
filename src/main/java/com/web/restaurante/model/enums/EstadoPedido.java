@@ -7,6 +7,7 @@ public enum EstadoPedido {
     PREPARADO("Preparado"),
     ASIGNADO("Asignado"),
     EN_CAMINO("En Camino"),
+    ENVIADO("Enviado"),
     ENTREGADO("Entregado"),
     PENDIENTE("Pendiente"),
     EN_COCINA("En Cocina"),

@@ -452,7 +452,7 @@ function cargarComprobantesHistoricos() {
         });
 }
 
-// 🚀 REPARADO CON AUDITORÍA: Captura flexible y logs explícitos de la estructura JSON
+// 🚀 REPARADO CON AUDITORÍA EXCLUSIVA: Inyección de Checkboxes RiccardoReutilizables
 async function abrirFlujoPagoDesdeFila(buttonElement) {
     const pedidoId = buttonElement.getAttribute('data-id');
     const numeroMesa = buttonElement.getAttribute('data-mesa') || "N/A";
@@ -485,7 +485,7 @@ async function abrirFlujoPagoDesdeFila(buttonElement) {
             arrayPlatosReceta.forEach((d) => {
                 if (d.canceladoPorCliente) return;
 
-                // Extrae el nombre del plato buscando mapeos anidados o planos
+                // Extrae el nombre del plato buscando mapeos aninados o planos
                 let nombrePlatoComercial = "Plato Desconocido";
                 if (d.producto && d.producto.nombre) {
                     nombrePlatoComercial = d.producto.nombre;
@@ -504,14 +504,28 @@ async function abrirFlujoPagoDesdeFila(buttonElement) {
                 const checkChecked = d.pagado ? "" : "checked";
                 const badgeEstado = d.pagado ? `<span class="badge bg-secondary">Pagado</span>` : `<span class="badge bg-success">En Mesa</span>`;
 
+                // 🛠️ ID único dinámico por renglón de cobro de caja
+                const idCheckCajaUnico = `cbx_caja_${d.id}`;
+
+                // 🌟 INYECCIÓN DE ARQUITECTURA DE CHECKBOX PREMIUM LIQUIDA (JELLY ANIMATED)
                 rowPlato.innerHTML = `
-                    <div class="d-flex align-items-center gap-2">
-                        <input type="checkbox" class="chk-plato-caja-seleccion" value="${d.id}" ${checkChecked} ${checkDisabled} data-precio="${subtotalSeguro}" style="width: 19px; height: 19px; cursor: pointer; accent-color: #1B3A2C;" onchange="recalcularSubtotalModalCaja()">
-                        <span class="fw-bold text-dark">${d.cantidad}x</span>
-                        <span class="fw-semibold text-secondary small">${nombrePlatoComercial}</span>
+                    <div class="cntr">
+                        <input type="checkbox"
+                               id="${idCheckCajaUnico}"
+                               class="hidden-xs-up chk-plato-caja-seleccion"
+                               value="${d.id}"
+                               ${checkChecked}
+                               ${checkDisabled}
+                               data-precio="${subtotalSeguro}"
+                               onchange="recalcularSubtotalModalCaja()">
+                        <label for="${idCheckCajaUnico}" class="cbx"></label>
+                        <label for="${idCheckCajaUnico}" class="lbl d-inline-flex align-items-center gap-2" style="cursor:pointer;">
+                            <span class="fw-bold text-dark">${d.cantidad}x</span>
+                            <span class="fw-semibold text-secondary small">${nombrePlatoComercial}</span>
+                        </label>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="fw-bold" style="color: #1B3A2C;">S/. ${subtotalSeguro.toFixed(2)}</span>
+                        <span class="fw-bold font-monospace" style="color: #1B3A2C; font-size: 0.95rem;">S/. ${subtotalSeguro.toFixed(2)}</span>
                         ${badgeEstado}
                     </div>`;
                 contenedorPlatos.appendChild(rowPlato);
@@ -530,6 +544,7 @@ async function abrirFlujoPagoDesdeFila(buttonElement) {
     }
 }
 
+// 🛠️ ACTUALIZACIÓN DE ADUANA: Intercepta la clase .chk-plato-caja-seleccion oculta por la animación jelly
 function recalcularSubtotalModalCaja() {
     let sumaElegida = 0;
     let checkboxesMarcados = 0;

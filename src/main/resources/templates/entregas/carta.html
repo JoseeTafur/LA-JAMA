@@ -439,6 +439,30 @@
         }
     };
 
+    window.previewImageYape = (event) => {
+    const reader = new FileReader();
+    const preview = document.getElementById('imgPreviaYape');
+    reader.onload = () => {
+        if (preview) {
+            preview.src = reader.result;
+            preview.style.display = 'block';
+        }
+    };
+    if (event.target.files[0]) reader.readAsDataURL(event.target.files[0]);
+};
+
+window.previewImagePlin = (event) => {
+    const reader = new FileReader();
+    const preview = document.getElementById('imgPreviaPlin');
+    reader.onload = () => {
+        if (preview) {
+            preview.src = reader.result;
+            preview.style.display = 'block';
+        }
+    };
+    if (event.target.files[0]) reader.readAsDataURL(event.target.files[0]);
+};
+
     // 🔥 Disparar los listeners modulares de forma segura y aislada
     inicializarAutocompletadoDocumentos();
     actualizarUI();

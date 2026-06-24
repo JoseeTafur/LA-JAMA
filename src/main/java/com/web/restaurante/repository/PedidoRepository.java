@@ -80,7 +80,10 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     @Query("SELECT p FROM Pedido p WHERE "
             + "CAST(p.fechaCreacion AS date) BETWEEN :fechaInicio AND :fechaFin AND "
-            + "p.estado IN (com.web.restaurante.model.enums.EstadoPedido.PAGADO, com.web.restaurante.model.enums.EstadoPedido.ANULADO) "
+            + "( "
+            + "  (p.numeroMesa IS NOT NULL AND p.estado IN (com.web.restaurante.model.enums.EstadoPedido.PAGADO, com.web.restaurante.model.enums.EstadoPedido.ANULADO)) OR "
+            + "  (p.numeroMesa IS NULL AND p.estado IN (com.web.restaurante.model.enums.EstadoPedido.PAGADO, com.web.restaurante.model.enums.EstadoPedido.ANULADO, com.web.restaurante.model.enums.EstadoPedido.EN_COCINA, com.web.restaurante.model.enums.EstadoPedido.PREPARADO)) "
+            + ") "
             + "ORDER BY p.fechaCreacion DESC")
     Page<Pedido> findHistorialComprobantes(
             @Param("fechaInicio") LocalDate fechaInicio,
@@ -89,8 +92,11 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     @Query("SELECT p FROM Pedido p WHERE "
             + "CAST(p.fechaCreacion AS date) BETWEEN :fechaInicio AND :fechaFin AND "
-            + "p.estado IN (com.web.restaurante.model.enums.EstadoPedido.PAGADO, com.web.restaurante.model.enums.EstadoPedido.ANULADO) AND "
-            + "(p.comprobanteTipo IS NULL OR p.comprobanteTipo = 'NOTA_VENTA') " // 🚨 Filtro de exclusión fiscal
+            + "( "
+            + "  (p.numeroMesa IS NOT NULL AND p.estado IN (com.web.restaurante.model.enums.EstadoPedido.PAGADO, com.web.restaurante.model.enums.EstadoPedido.ANULADO)) OR "
+            + "  (p.numeroMesa IS NULL AND p.estado IN (com.web.restaurante.model.enums.EstadoPedido.PAGADO, com.web.restaurante.model.enums.EstadoPedido.ANULADO, com.web.restaurante.model.enums.EstadoPedido.EN_COCINA, com.web.restaurante.model.enums.EstadoPedido.PREPARADO)) "
+            + ") AND "
+            + "(p.comprobanteTipo IS NULL OR p.comprobanteTipo = 'NOTA_VENTA') "
             + "ORDER BY p.fechaCreacion DESC")
     Page<Pedido> findHistorialNotasVenta(
             @Param("fechaInicio") LocalDate fechaInicio,

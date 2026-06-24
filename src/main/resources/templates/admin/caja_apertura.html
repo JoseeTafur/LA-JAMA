@@ -1,31 +1,28 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout-gestion :: layout(
+          title='La Jama - Apertura de Caja',
+          activeUri='/admin/caja',
+          titleHeader='Módulo de Caja',
+          content=~{::#contenido-apertura},
+          modals=~{},
+          js=null
+      )}">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Apertura de Caja | La Jama</title>
-    <th:block th:replace="~{links :: headLinks}"></th:block>
-    <link rel="stylesheet" th:href="@{/css/caja.css}">
 </head>
 <body>
 
-<div class="jama-wrapper-apertura">
-    <!-- Mantenemos tus fragmentos estructurales intactos -->
-    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/caja')}"></div>
+<div id="contenido-apertura">
+    <link rel="stylesheet" th:href="@{/css/caja.css}">
+    <div class="jama-container-apertura">
 
-    <main id="main-content" class="main-content-apertura">
-        <div th:replace="~{sidebar :: logistica_header('Módulo de Caja')}"></div>
-
-        <div class="jama-container-apertura">
-
-            <!-- 🚨 ALERTA DE CONTROL DE SEGURIDAD (HORARIO BLOQUEADO) -->
-            <div th:if="${horarioBloqueado}"
-                 class="jama-card-bloqueo animate__animated animate__headShake">
-                <div class="alerta-icono-bloqueo">
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#B83A3A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                </div>
-                <h4 class="fw-bold text-dark mb-1">Control de Seguridad: Caja Bloqueada</h4>
-                <p class="text-muted small">
+        <div th:if="${horarioBloqueado}" class="jama-card-bloqueo animate__animated animate__headShake">
+            <div class="alerta-icono-bloqueo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E05252" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="alerta-bloqueo-cuerpo">
+                <h4 class="jama-bloqueo-titulo">Control de Seguridad: Caja Bloqueada</h4>
+                <p class="jama-bloqueo-texto">
                     Por políticas estrictas de auditoría, la plataforma no permite inicializar operaciones antes de las
                     <strong class="text-danger">[[${horaAperturaPermitida}]]</strong>.
                 </p>
@@ -33,77 +30,62 @@
                     Reloj del Sistema: [[${horaActualSimulada}]]
                 </div>
             </div>
+        </div>
 
-            <!-- 📦 TARJETA PRINCIPAL DE APERTURA -->
-            <div class="card-jama-apertura animate__animated animate__fadeInUp">
-                <div class="card-header-apertura">
-                    <div class="icon-circle-apertura">
-                        <!-- SVG Llave Activa / Candado Bloqueado -->
-                        <svg th:if="${horarioBloqueado}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B83A3A" stroke-width="2.5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        <svg th:unless="${horarioBloqueado}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2A7B4C" stroke-width="2.5"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3M14 6l3 3"/></svg>
-                    </div>
-                    <h4 class="fw-bold text-white mb-1">Apertura de Turno</h4>
-                    <p class="mb-0 text-white-50 small">Inicia las operaciones financieras del día</p>
+        <div class="card-jama-apertura animate__animated animate__fadeInUp">
+            <div class="card-header-apertura" th:style="${horarioBloqueado} ? 'border-left: 5px solid #E05252' : 'border-left: 5px solid #198754'">
+                <div class="icon-circle-apertura" th:style="${horarioBloqueado} ? 'background: rgba(224,82,82,0.1)' : 'background: rgba(25,135,84,0.1)'">
+                    <svg th:if="${horarioBloqueado}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E05252" stroke-width="2.5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <svg th:unless="${horarioBloqueado}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#198754" stroke-width="2.5"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3M14 6l3 3"/></svg>
                 </div>
-
-                <div class="card-body-apertura">
-
-                    <!-- INFO MONTO SUGERIDO -->
-                    <div th:if="${!horarioBloqueado}" class="jama-alerta-sugerido">
-                        <div class="alerta-icono">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2A7B4C" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                        </div>
-                        <div class="alerta-cuerpo">
-                            <span class="d-block small text-uppercase fw-bold opacity-75">Monto de Cierre Anterior:</span>
-                            <span class="h5 fw-bold mb-0" th:text="${'S/ ' + #numbers.formatDecimal(montoSugerido, 1, 2)}">S/ 0.00</span>
-                        </div>
-                    </div>
-
-                    <!-- FORMULARIO -->
-                    <form th:action="@{/admin/caja/abrir}" method="post" id="formAperturaCaja">
-                        <div class="mb-4">
-                            <label for="montoApertura" class="form-label-jama">Fondo Inicial de Caja (S/.)</label>
-
-                            <div class="jama-input-group">
-                                <span class="jama-input-group-text">S/</span>
-                                <input type="number" step="0.10" id="montoApertura" name="montoApertura"
-                                       class="form-control-jama entry-monto"
-                                       th:value="${montoSugerido}" placeholder="0.00" required min="0"
-                                       th:disabled="${horarioBloqueado}">
-                            </div>
-
-                            <div class="text-muted small mt-2">
-                                * Este efectivo se utilizará exclusivamente para el fondo de vuelto del salón.
-                            </div>
-                        </div>
-
-                        <div class="d-grid mt-4">
-                            <button type="submit"
-                                    th:class="${horarioBloqueado ? 'btn-jama-apertura inhabilitado' : 'btn-jama-apertura habilitado'}"
-                                    th:disabled="${horarioBloqueado}">
-                                <!-- Icono Dinámico en el Botón -->
-                                <svg th:if="${horarioBloqueado}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px; vertical-align:middle;"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                                <svg th:unless="${horarioBloqueado}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px; vertical-align:middle;"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
-                                [[${horarioBloqueado ? 'Apertura Inhabilitada' : 'Confirmar y Abrir Caja'}]]
-                            </button>
-                        </div>
-                    </form>
+                <div class="header-texto-apertura">
+                    <h3 class="apertura-titulo">Apertura de Turno</h3>
+                    <p class="apertura-subtitulo">Inicia las operaciones financieras del día</p>
                 </div>
             </div>
 
+            <div class="card-body-apertura">
+                <div th:if="${!horarioBloqueado}" class="jama-alerta-sugerido">
+                    <div class="alerta-icono">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#198754" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    </div>
+                    <div class="alerta-cuerpo">
+                        <span class="sugerido-etiqueta">Monto de Cierre Anterior:</span>
+                        <span class="sugerido-monto" th:text="${'S/ ' + #numbers.formatDecimal(montoSugerido, 1, 2)}">S/ 0.00</span>
+                    </div>
+                </div>
+
+                <form th:action="@{/admin/caja/abrir}" method="post" id="formAperturaCaja">
+                    <div class="jama-form-group">
+                        <label for="montoApertura" class="form-label-jama">Fondo Inicial de Caja</label>
+
+                        <div class="jama-input-group">
+                            <span class="jama-input-group-text">S/</span>
+                            <input type="number" step="0.10" id="montoApertura" name="montoApertura"
+                                   class="form-control-jama entry-monto"
+                                   th:value="${montoSugerido}" placeholder="0.00" required min="0"
+                                   th:disabled="${horarioBloqueado}">
+                        </div>
+
+                        <div class="jama-form-help">
+                            * Este efectivo se utilizará exclusivamente para el fondo de vuelto del salón.
+                        </div>
+                    </div>
+
+                    <div class="jama-action-container">
+                        <button type="submit"
+                                th:class="${horarioBloqueado ? 'btn-jama-apertura inhabilitado' : 'btn-jama-apertura habilitado'}"
+                                th:disabled="${horarioBloqueado}">
+                            <svg th:if="${horarioBloqueado}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:8px;"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <svg th:unless="${horarioBloqueado}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:8px;"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                            [[${horarioBloqueado ? 'Apertura Inhabilitada' : 'Confirmar y Abrir Caja'}]]
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </main>
+    </div>
 </div>
 
-<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
-<script>
-    document.getElementById('formAperturaCaja')?.addEventListener('submit', function(e) {
-        if (this.querySelector('button[type="submit"]').disabled) {
-            e.preventDefault();
-            return false;
-        }
-        AppUtils.showLoading(true);
-    });
-</script>
 </body>
 </html>

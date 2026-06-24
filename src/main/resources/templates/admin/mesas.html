@@ -4,7 +4,7 @@
           title='La Jama - Control de Mesas',
           content=~{::#contenido-mesas},
           modals=~{::#modales-mesas},
-          js='/js/mesas.js'
+          js='/js/mesas/index.js'
       )}">
 
 
@@ -459,12 +459,12 @@
             if (typeof cancelarModoUnificacion === 'function') cancelarModoUnificacion();
             if (typeof cancelarModoReservaMasiva === 'function') cancelarModoReservaMasiva();
 
-            const vistaSalon = document.getElementById('vista-salon');
-            const vistaGrupos = document.getElementById('vista-grupos');
+            const vistaSalon    = document.getElementById('vista-salon');
+            const vistaGrupos   = document.getElementById('vista-grupos');
             const vistaReservas = document.getElementById('vista-reservas');
 
-            if (vistaSalon) vistaSalon.classList.toggle('d-none', vistaSeleccionada !== 'salon');
-            if (vistaGrupos) vistaGrupos.classList.toggle('d-none', vistaSeleccionada !== 'grupos');
+            if (vistaSalon)    vistaSalon.classList.toggle('d-none', vistaSeleccionada !== 'salon');
+            if (vistaGrupos)   vistaGrupos.classList.toggle('d-none', vistaSeleccionada !== 'grupos');
             if (vistaReservas) vistaReservas.classList.toggle('d-none', vistaSeleccionada !== 'reservas');
 
             if (vistaSeleccionada === 'reservas' && typeof refrescarPestañaMesasReservadas === 'function') {
@@ -479,28 +479,28 @@
                 const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar');
                 if (sidebar) sidebar.remove();
 
-                const header = document.querySelector('.main-content header') || document.querySelector('.header-jama') || document.querySelector('div[th\:replace*="logistica_header"]');
+                const header = document.querySelector('.main-content header') || document.querySelector('.header-jama') || document.querySelector('div[th\\:replace*="logistica_header"]');
                 if (header) header.remove();
 
                 const wrapper = document.querySelector('.wrapper');
                 if (wrapper) {
                     wrapper.style.display = "block";
-                    wrapper.style.width = "100%";
+                    wrapper.style.width   = "100%";
                 }
 
                 const mainContent = document.getElementById('main-content') || document.querySelector('.main-content');
                 if (mainContent) {
-                    mainContent.style.marginLeft = "0px";
-                    mainContent.style.padding = "0px";
-                    mainContent.style.width = "100%";
-                    mainContent.style.minHeight = "auto";
+                    mainContent.style.marginLeft      = "0px";
+                    mainContent.style.padding         = "0px";
+                    mainContent.style.width           = "100%";
+                    mainContent.style.minHeight       = "auto";
                     mainContent.style.backgroundColor = "transparent";
                 }
 
                 const container = document.querySelector('.container-fluid');
                 if (container) {
-                    container.style.padding = "10px";
-                    container.style.maxWidth = "100%";
+                    container.style.padding   = "10px";
+                    container.style.maxWidth  = "100%";
                 }
 
                 const banner = document.querySelector('.recaudacion-banner');
@@ -516,6 +516,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script th:src="@{/js/caja-movil.js}"></script>
+
+    <!-- ↓ Módulos de mesas (orden de dependencias estricto) -->
+    <script th:src="@{/js/mesas/websocket.js}"></script>
+    <script th:src="@{/js/mesas/plano.js}"></script>
+    <script th:src="@{/js/mesas/comanda.js}"></script>
+    <script th:src="@{/js/mesas/modal-mesa.js}"></script>
+    <script th:src="@{/js/mesas/unificacion.js}"></script>
+    <script th:src="@{/js/mesas/reservas.js}"></script>
+    <script th:src="@{/js/mesas/acciones-mesa.js}"></script>
 </div>
 
 </body>

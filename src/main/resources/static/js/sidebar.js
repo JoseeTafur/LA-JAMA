@@ -115,3 +115,27 @@ $(document).ready(function () {
         localStorage.removeItem('menu_abierto_' + this.id);
     });
 });
+
+// ========================================================
+    // 🌓 PERSISTENCIA INTEGRADA AL HEADER (ID: INPUT)
+    // ========================================================
+    const $darkModeInput = $('#input');
+
+    if (localStorage.getItem('jama_dark_mode') === 'true') {
+        $('body').addClass('dark-mode');
+        $darkModeInput.prop('checked', true);
+    } else {
+        $('body').removeClass('dark-mode');
+        $darkModeInput.prop('checked', false);
+    }
+
+    $('body').on('change', '#input', function () {
+        const esOscuro = this.checked;
+        if (esOscuro) {
+            $('body').addClass('dark-mode');
+            localStorage.setItem('jama_dark_mode', 'true');
+        } else {
+            $('body').removeClass('dark-mode');
+            localStorage.setItem('jama_dark_mode', 'false');
+        }
+    });

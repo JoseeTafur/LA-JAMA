@@ -393,3 +393,240 @@
     transform: translate(12px, -8px) scale(1.1);
     opacity: 0.22 !important;
 }
+
+/* =========================================================================
+   ESTILOS DE APERTURA DE CAJA - LA JAMA (CSS NATIVO PURO)
+   ========================================================================= */
+
+.jama-container-apertura {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 550px;
+    margin: 40px auto;
+    padding: 0 20px;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* 🚨 TARJETA DE BLOQUEO HORARIO */
+.jama-card-bloqueo {
+    display: flex;
+    gap: 16px;
+    background: #FFF5F5;
+    border: 1px solid #F8C4C4;
+    border-left: 5px solid #E05252;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(224, 82, 82, 0.08);
+}
+
+.alerta-icono-bloqueo {
+    display: flex;
+    align-items: center;
+}
+
+.alerta-bloqueo-cuerpo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.jama-bloqueo-titulo {
+    margin: 0;
+    font-size: 16px;
+    color: #1e1e1e;
+    font-weight: 700;
+}
+
+.jama-bloqueo-texto {
+    margin: 0;
+    font-size: 14px;
+    color: #555555;
+    line-height: 1.4;
+}
+
+.jama-badge-reloj {
+    align-self: flex-start;
+    background: #E05252;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-top: 4px;
+}
+
+/* 📦 TARJETA DE APERTURA */
+.card-jama-apertura {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.card-header-apertura {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    background: #1a1d20; /* Color corporativo oscuro */
+    color: #ffffff;
+}
+
+.icon-circle-apertura {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.header-texto-apertura {
+    display: flex;
+    flex-direction: column;
+}
+
+.apertura-titulo {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+}
+
+.apertura-subtitulo {
+    margin: 0;
+    font-size: 13px;
+    color: #a0aec0;
+}
+
+.card-body-apertura {
+    padding: 30px;
+}
+
+/* 💵 ALERTA MONTO SUGERIDO */
+.jama-alerta-sugerido {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #F0FDF4;
+    border: 1px solid #BBF7D0;
+    padding: 16px;
+    border-radius: 10px;
+    margin-bottom: 24px;
+}
+
+.alerta-cuerpo {
+    display: flex;
+    flex-direction: column;
+}
+
+.sugerido-etiqueta {
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #166534;
+    letter-spacing: 0.5px;
+}
+
+.sugerido-monto {
+    font-size: 20px;
+    font-weight: 700;
+    color: #14532d;
+}
+
+/* フォーム CONTROLADORES FORM */
+.jama-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-label-jama {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.jama-input-group {
+    display: flex;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+
+.jama-input-group:focus-within {
+    border-color: #198754;
+}
+
+.jama-input-group-text {
+    background: #f1f5f9;
+    padding: 12px 16px;
+    font-weight: 700;
+    color: #64748b;
+    border-right: 1px solid #cbd5e1;
+    user-select: none;
+}
+
+.form-control-jama {
+    flex: 1;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    outline: none;
+    background: #ffffff;
+}
+
+.form-control-jama:disabled {
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.jama-form-help {
+    font-size: 12px;
+    color: #64748b;
+    font-style: italic;
+    margin-top: 4px;
+}
+
+/* 🚀 BOTÓN ACCIÓN */
+.jama-action-container {
+    margin-top: 28px;
+}
+
+.btn-jama-apertura {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-jama-apertura.habilitado {
+    background: #198754;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.2);
+}
+
+.btn-jama-apertura.habilitado:hover {
+    background: #146c43;
+    transform: translateY(-1px);
+}
+
+.btn-jama-apertura.inhabilitado {
+    background: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+}

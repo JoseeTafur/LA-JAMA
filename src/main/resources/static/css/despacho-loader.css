@@ -1,0 +1,115 @@
+/* ==========================================================================
+   🌌 ESCUDO DE DESENFOQUE LOGÍSTICO PREMIUM - LA JAMA
+   ========================================================================== */
+
+.despacho-blur-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 15, 12, 0.72); /* Fondo oscuro translúcido */
+    backdrop-filter: blur(8px);        /* 🔥 Desenfoque de entorno premium */
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100000;                     /* Por encima de barras de herramientas y modales */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInClean 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.despacho-loader-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    text-center: center;
+}
+
+.despacho-loading-text {
+    color: #ffffff;
+    font-family: 'Vollkorn', serif;
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: 0.02em;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* ── ⚙️ MOTOR VECTORES KINETIC (NAWSOME ENGINE) ── */
+.pl-logistica {
+    display: block;
+    width: 8em;
+    height: 8em;
+}
+
+.pl__arrows,
+.pl__ring-rotate,
+.pl__ring-stroke,
+.pl__tick {
+    animation-duration: 2s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+.pl__arrows {
+    animation-name: arrows42;
+    transform: rotate(45deg);
+    transform-origin: 16px 52px;
+}
+
+.pl__ring-rotate,
+.pl__ring-stroke {
+    transform-origin: 80px 80px;
+}
+
+.pl__ring-rotate {
+    animation-name: ringRotate42;
+}
+
+.pl__ring-stroke {
+    animation-name: ringStroke42;
+    transform: rotate(-45deg);
+}
+
+.pl__tick {
+    animation-name: tick42;
+}
+
+.pl__tick:nth-child(2) { animation-delay: -1.75s; }
+.pl__tick:nth-child(3) { animation-delay: -1.5s; }
+.pl__tick:nth-child(4) { animation-delay: -1.25s; }
+.pl__tick:nth-child(5) { animation-delay: -1s; }
+.pl__tick:nth-child(6) { animation-delay: -0.75s; }
+.pl__tick:nth-child(7) { animation-delay: -0.5s; }
+.pl__tick:nth-child(8) { animation-delay: -0.25s; }
+
+/* ── 🎬 KEYFRAMES DE ANIMACIÓN ORIGINAL DE LA BRÚJULA ── */
+@keyframes arrows42 {
+    from { transform: rotate(45deg); }
+    to { transform: rotate(405deg); }
+}
+@keyframes ringRotate42 {
+    from { transform: rotate(0); }
+    to { transform: rotate(720deg); }
+}
+@keyframes ringStroke42 {
+    from, to { stroke-dashoffset: 452; transform: rotate(-45deg); }
+    50% { stroke-dashoffset: 169.5; transform: rotate(-180deg); }
+}
+@keyframes tick42 {
+    from, 3%, 47%, to { stroke-dashoffset: -12; }
+    14%, 36% { stroke-dashoffset: 0; }
+}
+
+/* Transiciones de salida limpias */
+@keyframes fadeInClean {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.fade-out-clean {
+    animation: fadeOutCleanAnim 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes fadeOutCleanAnim {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.95); }
+}

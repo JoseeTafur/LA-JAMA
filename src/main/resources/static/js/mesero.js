@@ -67,16 +67,24 @@ async function abrirModalInsumos(elemento) {
     } else {
         let html = '';
         insumosModificables.forEach(ins => {
+            // 💡 ID Único Dinámico combinando prefijo y código de insumo
+            const idCheckboxDinamico = `cbx_${ins.idInsumo}`;
+
+            // 🛠️ Integración limpia de la estructura Uiverse de RiccardoRapelli (Reciclable)
             html += `
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox"
-                           id="ins_${ins.idInsumo}"
-                           value="${ins.idInsumo}"
-                           data-nombre="${ins.nombreInsumo}"
-                           checked>
-                    <label class="form-check-label small cursor-pointer" for="ins_${ins.idInsumo}">
-                        ${ins.nombreInsumo} <span class="text-muted">(${ins.cantidadUsada} ${ins.unidadMedida})</span>
-                    </label>
+                <div class="d-flex align-items-center mb-3">
+                    <div class="cntr">
+                        <input type="checkbox"
+                               id="${idCheckboxDinamico}"
+                               class="hidden-xs-up"
+                               value="${ins.idInsumo}"
+                               data-nombre="${ins.nombreInsumo}"
+                               checked>
+                        <label for="${idCheckboxDinamico}" class="cbx"></label>
+                        <label for="${idCheckboxDinamico}" class="lbl">
+                            ${ins.nombreInsumo} <span class="text-muted" style="font-weight: 500; font-size: 0.85rem;">(${ins.cantidadUsada} ${ins.unidadMedida})</span>
+                        </label>
+                    </div>
                 </div>`;
         });
         document.getElementById('listaInsumosModal').innerHTML = html;
@@ -96,7 +104,8 @@ function confirmarAgregarAlCarrito() {
     const nombresSinDescontar = [];
 
     insumosProductoActual.forEach(ins => {
-        const checkbox = document.getElementById('ins_' + ins.idInsumo);
+        // Interceptamos el ID adaptado dinámicamente
+        const checkbox = document.getElementById('cbx_' + ins.idInsumo);
         if (checkbox && !checkbox.checked) {
             idsSinDescontar.push(ins.idInsumo);
             nombresSinDescontar.push(ins.nombreInsumo); // Capturamos el nombre para la UX visual

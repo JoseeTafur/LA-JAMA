@@ -1,99 +1,113 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout-gestion :: layout(
+          title='La Jama - Monitor Logístico',
+          activeUri='/admin/despacho',
+          titleHeader='Monitor de Rutas y Despacho',
+          content=~{::#contenido-despacho},
+          modals=~{::#modales-despacho},
+          js='/js/despacho-operaciones.js'
+      )}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor Logístico | La Jama</title>
+</head>
+<body>
 
-    <th:block th:replace="~{links :: headLinks}"></th:block>
+<div id="contenido-despacho" class="jama-modulo-logistica">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <link rel="stylesheet" th:href="@{/css/despacho-estilo.css}">
-</head>
-<body class="cocina-body">
 
-<div class="wrapper">
-    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/despacho')}"></div>
+    <div class="jama-layout-despacho">
 
-    <main id="main-content" class="main-content">
-        <div th:replace="~{sidebar :: logistica_header('Monitor de Rutas')}"></div>
+        <aside class="jama-panel-lateral">
+            <div class="panel-cabecera">
+                <i class="bi bi-box-seam icono-preparados"></i>
+                <h2>Preparados</h2>
+            </div>
 
-        <div class="container-fluid py-3 px-4">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <div class="panel-blanco shadow-sm d-flex flex-column" style="height: calc(100vh - 120px);">
-                        <h6 class="panel-title"><i class="bi bi-box-seam me-2"></i>Preparados</h6>
-                        <div class="scroll-v flex-grow-1" id="col-pedidos">
-                            <div th:each="p : ${pedidos}" class="tarjeta-pedido" th:id="'pedido-' + ${p.id}"
-                                 th:data-id="${p.id}" th:data-cliente="${p.cliente}" th:data-direccion="${p.direccion}"
-                                 th:data-lat="${p.latitud}" th:data-lng="${p.longitud}" onclick="seleccionarPedido(this)">
-                                <div class="d-flex justify-content-between">
-                                    <span class="id-pedido small fw-bold">#[[${p.id}]]</span>
-                                    <span class="monto-pedido fw-bold">S/ [[${p.montoTotal}]]</span>
-                                </div>
-                                <h6 class="cliente-nombre mb-1 fw-bold" style="font-family: 'Vollkorn';">[[${p.cliente}]]</h6>
-                                <p class="direccion-texto small text-muted mb-0">[[${p.direccion}]]</p>
-                            </div>
-                        </div>
-                        <button class="btn btn-success w-100 py-3 mt-3 fw-bold rounded-3 shadow-sm text-uppercase"
-                                style="background-color: var(--lajama-green); border: none;"
-                                onclick="abrirConfirmacion()">
-                            <i class="bi bi-send-check-fill me-2"></i> Despachar Rutas
-                        </button>
+            <div class="scroll-v lista-items" id="col-pedidos">
+                <div th:each="p : ${pedidos}" class="tarjeta-pedido"
+                     th:id="'pedido-' + ${p.id}"
+                     th:data-id="${p.id}"
+                     th:data-cliente="${p.cliente}"
+                     th:data-direccion="${p.direccion}"
+                     th:data-lat="${p.latitud}"
+                     th:data-lng="${p.longitud}"
+                     onclick="seleccionarPedido(this)">
+                    <div class="tarjeta-meta">
+                        <span class="id-pedido" th:text="${p.comprobanteNotaNumero != null ? p.comprobanteNotaNumero : '#ORD-' + p.id}">#ORD-0</span>
+                        <span class="monto-pedido">S/ [[${p.montoTotal}]]</span>
                     </div>
+                    <h4 class="cliente-nombre">[[${p.cliente}]]</h4>
+                    <p class="direccion-texto">[[${p.direccion}]]</p>
                 </div>
 
-                <div class="col-md-6">
-                    <div class="panel-blanco p-0 overflow-hidden shadow-sm" style="border: 2px solid var(--lajama-green);">
-                        <div id="mapa-principal" style="height: 100%; width: 100%;"></div>
-                    </div>
-                </div>
-
-                <div class="col-md-3">
-                    <div class="panel-blanco shadow-sm" style="height: calc(100vh - 120px);">
-                        <h6 class="panel-title"><i class="bi bi-person-badge me-2"></i>Personal</h6>
-                        <div class="scroll-v" id="col-repartidores">
-                            <div th:each="r, iterStat : ${repartidores}"
-                                 class="tarjeta-repartidor"
-                                 th:data-id="${r.id}"
-                                 onclick="vincularRepartidor(this)">
-                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar-sm me-3 d-flex align-items-center justify-content-center"
-                                             th:text="${#strings.substring(r.nombre,0,1)}">R</div>
-                                        <div>
-                                            <h6 class="mb-0 fw-bold nombre-tag" style="font-size: 0.9rem;" th:data-nombre-original="${r.nombre}">[[${r.nombre}]]</h6>
-                                            <small class="estado-texto text-success fw-bold">Libre</small>
-                                        </div>
-                                    </div>
-                                    <input type="color"
-                                           class="form-control form-control-color border-0 bg-transparent p-0"
-                                           th:id="'color-' + ${r.id}"
-                                           th:value="${iterStat.index == 0 ? '#933D2D' : (iterStat.index == 1 ? '#1B3A2C' : '#4e73df')}"
-                                           title="Color de ruta"
-                                           onclick="event.stopPropagation()"
-                                           onchange="cambiarColorRepartidor(this)">
-                                </div>
-                                <div class="contenedor-asignados" th:id="'asignados-rep-' + ${r.id}"></div>
-                            </div>
-                        </div>
-                    </div>
+                <div th:if="${#lists.isEmpty(pedidos)}" class="mensaje-lista-vacia">
+                    No hay órdenes en espera de despacho logístico.
                 </div>
             </div>
-        </div>
-    </main>
+
+            <button class="btn-despacho-kinetic" onclick="abrirConfirmacion()">
+                <i class="bi bi-send-check-fill"></i> Despachar Rutas
+            </button>
+        </aside>
+
+        <main class="jama-contenedor-mapa">
+            <div id="mapa-principal"></div>
+        </main>
+
+        <aside class="jama-panel-lateral">
+            <div class="panel-cabecera">
+                <i class="bi bi-person-badge icono-flota"></i>
+                <h2>Personal / Flota</h2>
+            </div>
+
+            <div class="scroll-v lista-items" id="col-repartidores">
+                <div th:each="r, iterStat : ${repartidores}"
+                     class="tarjeta-repartidor"
+                     th:data-id="${r.id}"
+                     onclick="vincularRepartidor(this)">
+                    <div class="repartidor-info-bloque">
+                        <div class="repartidor-perfil">
+                            <div class="avatar-circulo" th:text="${#strings.substring(r.nombre,0,1)}">R</div>
+                            <div class="repartidor-detalles">
+                                <h3 class="nombre-tag" th:data-nombre-original="${r.nombre}">[[${r.nombre}]]</h3>
+                                <span class="estado-texto estado-libre">Libre</span>
+                            </div>
+                        </div>
+                        <input type="color"
+                               class="selector-color-jama"
+                               th:id="'color-' + ${r.id}"
+                               th:value="${iterStat.index == 0 ? '#933D2D' : (iterStat.index == 1 ? '#1B3A2C' : '#4e73df')}"
+                               title="Color de ruta"
+                               onclick="event.stopPropagation()"
+                               onchange="cambiarColorRepartidor(this)">
+                    </div>
+                    <div class="contenedor-asignados" th:id="'asignados-rep-' + ${r.id}"></div>
+                </div>
+
+                <div th:if="${#lists.isEmpty(repartidores)}" class="mensaje-lista-vacia">
+                    No hay repartidores configurados en el turno.
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <script th:inline="javascript">
+        const PEDIDOS_DATA = /*[[${pedidosJS}]]*/ [];
+        const ORIGEN_COORDS = { lat: -6.787382, lng: -79.842961 };
+    </script>
 </div>
 
-<script th:inline="javascript">
-    const PEDIDOS_DATA = /*[[${pedidosJS}]]*/ [];
-    const ORIGEN_COORDS = { lat: -6.787382, lng: -79.842961 };
-</script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
-<script th:src="@{/js/despacho-operaciones.js}"></script>
-<script th:src="@{/js/utiles-comunes.js}"></script>
+<div id="modales-despacho">
+    <th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <link rel="stylesheet" th:href="@{/css/despacho-loader.css}">
+    <script th:src="@{/js/despacho-loader.js}"></script>
+    <script th:src="@{/js/utiles-comunes.js}"></script>
+</div>
 
 </body>
 </html>

@@ -1,312 +1,305 @@
+/* ==========================================================================
+   📊 HOJA DE ESTILOS PREMIUM DEL DASHBOARD INTEGRADA A LAYOUT-GESTION
+   Responsabilidad: Control de rejillas responsivas, KPIs y alineación espacial
+   ========================================================================== */
+
 :root {
     --lajama-green: #1B3A2C;
     --lajama-peach: #fed7aa;
     --lajama-skin: #FFB38A;
     --lajama-cream: #FFF7ED;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
+    --transition-bounce: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Fondo general del Dashboard */
-.main-content {
-    background-color: var(--lajama-cream);
+/* ── 📏 CONTENEDOR CORE Y ALINEACIÓN ESPACIAL COHESIVA ── */
+.jama-modulo-dashboard {
+    width: 100%;
+    position: relative;
+    z-index: 10; /* 🚀 Forzamos una capa controlada abajo de la cabecera (z-index: 1050) */
+    box-sizing: border-box;
 }
 
-/* Sección de Bienvenida */
+/* ── 🌅 SECCIÓN DE BIENVENIDA PREMIUM (CON GRADIENTE KINETIC) ── */
 .welcome-section {
-    background-color: var(--lajama-green);
-    color: white;
+    background: radial-gradient(circle at top left, #234b39 0%, var(--lajama-green) 100%);
+    color: #ffffff;
     border-left: 8px solid var(--lajama-skin);
+    position: relative;
+    overflow: hidden;
 }
 
 .text-jama {
-    color: white !important;
+    color: #ffffff !important;
+    font-family: 'Vollkorn', serif;
+    letter-spacing: -0.5px;
 }
 
 .date-badge-jama {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(5px);
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     color: var(--lajama-peach);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-family: 'JetBrains Mono', monospace;
 }
 
-/* Tarjetas KPI Normales */
+/* ── 📈 TARJETAS DE IDENTIFICACIÓN KPI TRADICIONALES ── */
 .card-jama-kpi {
-    background-color: white;
-    border: 2px solid var(--lajama-peach) !important;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background-color: #ffffff;
+    border: 2px solid rgba(254, 213, 170, 0.4) !important;
+    transition: var(--transition-bounce);
 }
 
 .card-jama-kpi:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(27, 58, 44, 0.1) !important;
+    transform: translateY(-4px);
+    border-color: var(--lajama-peach) !important;
+    box-shadow: 0 8px 24px rgba(27, 58, 44, 0.04) !important;
 }
 
 .card-jama-kpi p {
     color: var(--lajama-green);
+    letter-spacing: 0.05em;
+}
+
+.card-jama-kpi h3 {
+    color: var(--text-main);
+    font-size: 1.8rem;
+    letter-spacing: -1px;
 }
 
 .icon-box-kpi {
-    width: 50px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 12px;
-    font-size: 1.5rem;
+    font-size: 1.35rem;
+    transition: var(--transition-fast);
 }
 
 .bg-jama-light {
-    background-color: var(--lajama-cream);
+    background-color: rgba(255, 247, 237, 0.6);
     color: var(--lajama-green);
-    border: 1px solid var(--lajama-peach);
+    border: 1px solid rgba(254, 213, 170, 0.3);
 }
 
-/* Tarjeta KPI Destacada (Ingresos) */
+/* 🌟 KPI DESTACADO: INGRESOS DIRECTOS DE GAVETA */
 .card-jama-kpi-highlight {
-    background-color: var(--lajama-skin);
+    background: linear-gradient(135deg, var(--lajama-skin) 0%, #fca876 100%);
     color: var(--lajama-green);
-    transition: transform 0.3s ease;
+    border: none !important;
+    transition: var(--transition-bounce);
 }
 
 .card-jama-kpi-highlight:hover {
-    transform: translateY(-5px);
-    background-color: #fca876;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(252, 168, 118, 0.25) !important;
 }
 
-.bg-white-translucent {
-    background-color: rgba(255, 255, 255, 0.4);
-    color: var(--lajama-green);
-}
-
-/* Ajustes de tipografía */
-h3 {
+.card-jama-kpi-highlight h3 {
+    font-size: 1.8rem;
     letter-spacing: -1px;
 }
 
+.bg-white-translucent {
+    background-color: rgba(255, 255, 255, 0.35);
+    color: var(--lajama-green);
+    backdrop-filter: blur(4px);
+}
+
+/* ── 📊 SECCIÓN DE MÉTRICAS AVANZADAS (100% GRID NATIVO SIN BOOTSTRAP) ── */
+.jama-grid-metricas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.tarjeta-grafico-premium {
+    background: #ffffff;
+    border: 2px solid rgba(254, 213, 170, 0.3);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.01);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 340px;
+    box-sizing: border-box;
+    transition: var(--transition-bounce);
+}
+
+.tarjeta-grafico-premium:hover {
+    transform: translateY(-4px);
+    border-color: var(--lajama-peach);
+    box-shadow: 0 8px 24px rgba(27, 58, 44, 0.04);
+}
+
+.grafico-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    margin-bottom: 1.25rem;
+}
+
+.grafico-cabecera h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--lajama-green);
+    letter-spacing: -0.3px;
+}
+
+.grafico-cabecera i {
+    font-size: 1.15rem;
+}
+
+/* Contenedores Kinetic para aislar el cálculo responsivo de Chart.js */
+.contenedor-canvas-doughnut {
+    position: relative;
+    width: 100%;
+    max-width: 180px;
+    height: 180px;
+    flex-grow: 1;
+}
+
+.contenedor-canvas-bar {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    flex-grow: 1;
+}
+
+.grafico-leyenda {
+    display: flex;
+    justify-content: center;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+    font-size: 0.8rem;
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.punto-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.punto-color.verde { background-color: #10b981; }
+.punto-color.rojo { background-color: #ef4444; }
+
 
 /* ========================================================
-   🖼️ TELÓN PREMIUM AHUMADO CON TRANSPARENCIA (DASHBOARD)
+   🖼Screen DE BIENVENIDA: TELÓN PREMIUM AHUMADO CON BLUR
    ======================================================== */
 .premium-entrance-overlay {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 999999 !important;
-
-  /* 🌟 SUAVIZADO: Dejamos de usar negro sólido (#050807) y pasamos a un
-     antracita oscuro con 85% de opacidad para que el panel se intuya de fondo */
-  background: rgba(10, 15, 13, 0.85) !important;
-
-  /* Agregamos desenfoque ambiental para dar un acabado acrílico premium */
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  opacity: 1;
-  pointer-events: auto;
-  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-              backdrop-filter 0.6s ease;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 999999 !important;
+    background: rgba(10, 15, 13, 0.82) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), backdrop-filter 0.5s ease;
 }
 
-/* Transición de desvanecimiento hacia la luz */
 .premium-entrance-overlay:not(.active) {
-  opacity: 0;
-  backdrop-filter: blur(0px) !important;
-  -webkit-backdrop-filter: blur(0px) !important;
-  pointer-events: none;
-}
-
-.premium-entrance-overlay video {
-  width: 250px !important;
-  height: 250px !important;
-  display: block !important;
-  background: transparent !important;
-  filter: drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 5px #fff7ed);
-  mix-blend-mode: screen;
-}
-
-.entrance-text-jama {
-  color: #fed7aa !important;
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: 1px;
+    opacity: 0;
+    backdrop-filter: blur(0px) !important;
+    -webkit-backdrop-filter: blur(0px) !important;
+    pointer-events: none;
 }
 
 .video-wrapper-jama {
-  position: relative;
-  width: 250px;
-  height: 250px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    position: relative;
+    width: 240px;
+    height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* 🖼️ La silueta estática que se pinta en el milisegundo cero */
 .entrance-static-brand {
-  position: absolute;
-  width: 200px; /* Ajusta al tamaño ideal de tu isotipo/logo */
-  height: auto;
-  opacity: 1;
-  filter: drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 5px #fff7ed);
-  transition: opacity 0.4s ease, transform 0.4s ease;
-  z-index: 2;
+    position: absolute;
+    width: 180px;
+    height: auto;
+    opacity: 1;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5)) drop-shadow(0 0 8px var(--lajama-cream));
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 2;
 }
 
-/* El video arranca camuflado */
 #entrance-video.waiting {
-  opacity: 0;
-  transform: scale(0.98);
+    opacity: 0;
+    transform: scale(0.96);
 }
 
-/* Cuando la GPU da el play real, el video emerge con suavidad encima de la foto */
 #entrance-video:not(.waiting) {
-  opacity: 1;
-  transform: scale(1);
-  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: 3;
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 3;
 }
 
-/* ========================================================
-   📊 LOADER ESTILO MATRIZ / SHADCN (INTEGRADO A LA JAMA)
-   ======================================================== */
+.premium-entrance-overlay video {
+    width: 240px !important;
+    height: 240px !important;
+    display: block !important;
+    background: transparent !important;
+    mix-blend-mode: screen;
+}
+
+/* LOADER MATRIZ VECTORIAL */
 .loader-matrix-jama {
-  width: 45px;
-    height: 40px;
-    background: linear-gradient(#0000 calc(1*100%/6),#fff 0 calc(3*100%/6),#0000 0),
-              linear-gradient(#0000 calc(2*100%/6),#fff 0 calc(4*100%/6),#0000 0),
-              linear-gradient(#0000 calc(3*100%/6),#fff 0 calc(5*100%/6),#0000 0);
-    background-size: 10px 400%;
+    width: 40px;
+    height: 35px;
+    background: linear-gradient(#0000 calc(1*100%/6), #fff 0 calc(3*100%/6), #0000 0),
+                linear-gradient(#0000 calc(2*100%/6), #fff 0 calc(4*100%/6), #0000 0),
+                linear-gradient(#0000 calc(3*100%/6), #fff 0 calc(5*100%/6), #0000 0);
+    background-size: 8px 400%;
     background-repeat: no-repeat;
     animation: matrix 1s infinite linear;
-  }
+}
 
-  @keyframes matrix {
-    0% {
-      background-position: 0% 100%, 50% 100%, 100% 100%
+@keyframes matrix {
+    0% { background-position: 0% 100%, 50% 100%, 100% 100% }
+    100% { background-position: 0% 0%, 50% 0%, 100% 0% }
+}
+
+/* ── 📱 CONFIGURACIÓN DE PANTALLAS MÓVILES (ANTI-BLOQUEOS) ── */
+@media (max-width: 767.98px) {
+    /* 🛡️ EL SECRETO: Forzamos que los punteros ignoren las capas fantasmas laterales pos-animación */
+    .jama-modulo-dashboard {
+        position: relative;
+        z-index: 5;
     }
 
-    100% {
-      background-position: 0% 0%, 50% 0%, 100% 0%
+    .rounded-pill {
+        font-size: 0.8rem;
+        padding: 0.5rem 1rem !important;
     }
-  }
-
-
-  /* ========================================================
-     📱 REGLAS DE RESPONSIVIDAD PARA EL SIDEBAR FLOTANTE
-     ======================================================== */
-  @media (max-width: 767.98px) {
-    /* Forzamos al menú a salir de la pantalla por defecto */
-    .sidebar {
-      position: fixed !important;
-      top: 0;
-      left: -280px; /* Escondido */
-      width: 280px;
-      height: 100vh;
-      z-index: 1050 !important; /* Por encima de todo el contenido */
-      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-      background-color: var(--lajama-green, #1B3A2C) !important;
-    }
-
-    /* Clase dinámica que inyecta el JS */
-    .sidebar.active {
-      left: 0 !important;
-    }
-
-    /* El velo oscuro translúcido protector */
-    .sidebar-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(5, 8, 7, 0.5);
-      backdrop-filter: blur(4px);
-      z-index: 1040; /* Justo abajo del sidebar */
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-
-    .sidebar-overlay.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
-  }
-
-  /* En escritorios escondemos el velo por completo */
-  @media (min-width: 768px) {
-    .sidebar-overlay {
-      display: none !important;
-    }
-  }
-
-  /* ==========================================================================
-     👑 2. TOP HEADER BANNER - INTERACTIVIDAD DE CUADRADOS (ENCAPSULADO)
-     ========================================================================== */
-  .main-header-banner {
-      height: var(--header-height);
-      width: 100%;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 32px;
-      background: radial-gradient(circle at top center, #26503d 0%, #173125 100%);
-      box-shadow:
-          0 0.4em 1em rgba(0, 0, 0, 0.15),
-          0 1px 3px rgba(0, 0, 0, 0.05);
-      overflow: hidden;
-      z-index: 1;
-  }
-
-  /* 🌟 CORRECCIÓN: Agregamos el padre para que NO altere al Sidebar */
-  .main-header-banner .header-bg-glow {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-      pointer-events: none;
-      transition: background 0.1s ease;
-  }
-
-  /* 🌟 CORRECCIÓN: Agregamos el padre para aislar la cuadrícula de la cabecera */
-  .main-header-banner .header-ripple-grid {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-      grid-auto-rows: 40px;
-      z-index: 1;
-      -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 40%, rgba(0,0,0,0.4) 95%);
-      mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 40%, rgba(0,0,0,0.4) 95%);
-  }
-
-  /* 🌟 CORRECCIÓN: Aislamos las celdas del banner superior */
-  .main-header-banner .header-ripple-grid .ripple-cell {
-      border-right: 1px solid rgba(255, 247, 237, 0.03);
-      border-bottom: 1px solid rgba(255, 247, 237, 0.03);
-      mix-blend-mode: overlay;
-      opacity: 0.7;
-      background-color: transparent;
-      transition: background-color 0.2s ease, opacity 0.3s ease;
-      cursor: crosshair;
-  }
-
-  .main-header-banner .header-ripple-grid .ripple-cell:hover {
-      background-color: rgba(254, 215, 170, 0.10);
-      opacity: 1;
-  }
-
-  .main-header-banner .header-ripple-grid .ripple-cell.animate-ripple {
-      animation: cell-ripple-header 600ms ease-out none 1 var(--delay, 0ms);
-  }
+}

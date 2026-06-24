@@ -128,7 +128,17 @@ public class CocinaController {
         // 🍳 REGLA DE ORO AUTOMÁTICA: Activamos el candado para habilitar el pago en Caja
         // =====================================================================
         pedido.setTicketImpresoCocina(true);
-        pedidoService.guardar(pedido); // Persistimos de forma segura tanto los ítems como la cabecera
+
+        // 🛑 CAMBIO DE SEGURIDAD: Solo pasamos a EN_COCINA si el pedido estaba ENVIADO
+        // Importamos tu enum: com.web.restaurante.model.enums.EstadoPedido;
+        if (pedido.getEstado() == com.web.restaurante.model.enums.EstadoPedido.ENVIADO) {
+            pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
+            System.out.println("DEBUG COCINA: El pedido #" + pedidoId + " cambió de ENVIADO a EN_COCINA por impresión.");
+        } else {
+            System.out.println("DEBUG COCINA: Se reimprimió el ticket del pedido #" + pedidoId + " manteniendo su estado actual: " + pedido.getEstado());
+        }
+
+        pedidoService.guardar(pedido);
 
         model.addAttribute("pedido", pedido);
         model.addAttribute("detalles", detallesAImprimir);

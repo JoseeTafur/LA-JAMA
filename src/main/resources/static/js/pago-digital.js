@@ -73,7 +73,11 @@ $(document).ready(function () {
                         }
                     }
                 },
-                { data: 'observacion', render: (data) => data?.trim() ? data : '-' },
+                // Busca esta línea exacta en las columnas de tu DataTable y cámbiala por esta:
+                {
+                    data: 'observacion',
+                    render: (data) => (data && typeof data === 'string' && data.trim()) ? data : '-'
+                },
                 {
                     data: null, orderable: false, searchable: false,
                     render: (data, type, row) => createActionButtons(row)
@@ -257,20 +261,35 @@ $(document).ready(function () {
                 let rawImgUrl = res.data.imgUrl;
                 let imgUrl = '';
 
-                if (rawImgUrl) {
-                    if (rawImgUrl.includes('pagodigital/')) {
-                        const partes = rawImgUrl.split('/');
-                        rawImgUrl = partes[partes.length - 1];
-                    }
+                // ✅ CORRECCIÓN DE EXTENSIÓN INTELIGENTE PARA VOUCHERS
+                    if (rawImgUrl) {
+                            // 1. Si la URL guardada ya es un enlace completo (empieza con http o https), úsala tal cual
+                            if (rawImgUrl.startsWith('http://') || rawImgUrl.startsWith('https://')) {
+                                imgUrl = rawImgUrl;
+                            }
+                            // 2. Si contiene la estructura nativa de Cloudinary, la usamos directa de forma segura
+                            else if (rawImgUrl.includes('cloudinary.com') || rawImgUrl.includes('image/upload')) {
+                                imgUrl = rawImgUrl;
+                            }
+                            // 3. Fallback: Si solo es el nombre del archivo (ej: "48.jpeg" o "23_eg4mmq.png")
+                            else {
+                                const cleanBase = baseImgUrl.endsWith('/') ? baseImgUrl : `${baseImgUrl}/`;
 
-                    if (rawImgUrl.startsWith('http://') || rawImgUrl.startsWith('https://')) {
-                        imgUrl = rawImgUrl;
-                    } else {
-                        const cleanBase = baseImgUrl.endsWith('/') ? baseImgUrl : `${baseImgUrl}/`;
-                        imgUrl = `${cleanBase}${rawImgUrl}.jpg`;
-                    }
+                                // Limpiamos si por error se coló la ruta parcial antigua
+                                if (rawImgUrl.includes('pagodigital/')) {
+                                    const partes = rawImgUrl.split('/');
+                                    rawImgUrl = partes[partes.length - 1];
+                                }
 
-                    console.log("🖼️ [AUDITORÍA] Solicitando imagen real a Cloudinary:", imgUrl);
+                                const tieneExtension = /\.(jpg|jpeg|png|gif|webp)$/i.test(rawImgUrl);
+                                if (tieneExtension) {
+                                    imgUrl = `${cleanBase}${rawImgUrl}`;
+                                } else {
+                                    imgUrl = `${cleanBase}${rawImgUrl}.jpg`;
+                                }
+                            }
+
+                            console.log("🖼️ [AUDITORÍA] Renderizando URL final en el modal:", imgUrl);
 
                     let settled = false;
                     const finish = (showImg, errorMsg = '') => {

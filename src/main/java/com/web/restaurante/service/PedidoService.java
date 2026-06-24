@@ -29,6 +29,7 @@ public class PedidoService {
     private final InsumoService insumoService;
     private final InsumoProductoRepository insumoProductoRepository;
     private final TurnoCajaService turnoCajaService;
+    private final NotaVentaSequenceService notaVentaSequenceService;
 
     private final double LAT_LOCAL = -6.787382;
     private final double LON_LOCAL = -79.842961;
@@ -382,21 +383,24 @@ public class PedidoService {
         Pedido pedido = pedidoRepository.findById(pedidoId)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado con ID: " + pedidoId));
 
-        // 🚀 Seteamos el estado de producción para cocina
         pedido.setEstado(EstadoPedido.EN_COCINA);
 
-        // 📅 Seteamos la hora exacta del pago para que la recoja el HTML de la caja
         pedido.setFechaEntrega(LocalDateTime.now());
 
-        // 💵 Registramos el ingreso real en el libro de movimientos de la caja activa
+        if (pedido.getComprobanteNotaNumero() == null || pedido.getComprobanteNotaNumero().isEmpty()) {
+            String siguienteNota = notaVentaSequenceService.generarSiguienteNota();
+            pedido.setComprobanteNotaNumero(siguienteNota);
+            System.out.println("🔥 [SERVICE] Secuencia formal interna asignada: " + siguienteNota);
+        }
+
         if (pedido.getMontoTotal() != null && pedido.getMontoTotal() > 0) {
-            String conceptoVenta = "Carta QR (" + pedido.getMetodoPago() + ") - Orden #" + pedido.getId();
+            String conceptoVenta = "Carta QR (" + pedido.getMetodoPago() + ") - " + pedido.getComprobanteNotaNumero();
             turnoCajaService.registrarVenta(conceptoVenta, pedido.getMontoTotal());
-            System.out.println("💰 [SERVICE] Venta registrada en caja para pedido de carta #" + pedido.getId());
+            System.out.println("💰 [SERVICE] Venta registrada en caja para comprobante: " + pedido.getComprobanteNotaNumero());
         }
 
         pedidoRepository.save(pedido);
-        System.out.println("✅ [SERVICE] Pedido de carta #" + pedidoId + " aprobado con marcas temporales y financieras.");
+        System.out.println("✅ [SERVICE] Pedido de carta #" + pedidoId + " aprobado con marcas temporales, financieras y secuenciales.");
     }
 
     public List<DetallePedido> obtenerDetallesPorTipo(Long pedidoId, String tipoCocina) {

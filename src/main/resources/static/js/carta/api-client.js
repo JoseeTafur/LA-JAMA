@@ -73,18 +73,28 @@ export async function enviarPedidoFinal() {
             const result = await scanner.recognize(blobProcesado);
             textoOcr = result.data.text ? result.data.text : "";
             await scanner.terminate();
-        } catch (err) { console.error("OCR Error, pasando a failsafe", err); }
+        } catch (err) {
+            console.error("OCR Error, pasando a failsafe", err);
+        }
     }
 
     const total = carrito.reduce((s, i) => s + i.precio, 0);
-    const pedidoPayload = {
-        cliente: document.getElementById('nombreCliente').value.trim(),
-        direccion: estadoCheckout.tipoEntrega === 'RECOGER' ? 'Recojo local' : document.getElementById('direccionCliente').value.trim(),
+
+        const pedidoPayload = {
+        cliente: document.getElementById('nombreCliente').value.trim(), // ✅ Regresa a 'cliente'
+        direccion: estadoCheckout.tipoEntrega === 'RECOGER' ? 'Recojo local' : document.getElementById('direccionCliente').value.trim(), // ✅ Regresa a 'direccion'
         latitud: parseFloat(document.getElementById('latCliente').value) || null,
         longitud: parseFloat(document.getElementById('lngCliente').value) || null,
         montoTotal: total,
         metodoPago: estadoCheckout.metodoPago,
         textoVoucherCrudo: textoOcr,
+        tipoPedido: estadoCheckout.tipoEntrega === 'RECOGER' ? 'LOCAL' : 'DELIVERY',
+
+        // 🔥 Conservamos tus nuevos campos de metadata fiscal perfectamente mapeados:
+        clienteCorreo: document.getElementById('clienteCorreo') ? document.getElementById('clienteCorreo').value.trim() : null,
+        preferenciaComprobante: document.getElementById('preferenciaComprobante') ? document.getElementById('preferenciaComprobante').value : 'BOLETA',
+        documentoCliente: document.getElementById('numeroDocumento') ? document.getElementById('numeroDocumento').value.trim() : null,
+
         listaDetalles: carrito.map(i => ({ producto: { id: parseInt(i.id) }, cantidad: 1, precioUnitario: i.precio, subtotal: i.precio }))
     };
 

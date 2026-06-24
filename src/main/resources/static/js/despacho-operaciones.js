@@ -6,6 +6,8 @@ let marcadoresPendientes = [];
 const coloresRepartidores = {};
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 🚀 EFECTO PREMUM: Suavizamos la carga inicial mientras se renderiza Leaflet
+    DespachoLoader.lanzar("");
     initMapa();
     actualizarMapaCompleto();
 
@@ -136,7 +138,7 @@ function vincularRepartidor(elRepartidor) {
         miniCard.innerHTML = `
                     <div style="font-size: 0.75rem; line-height: 1.2;">
                         <b class="d-block text-dark">${cliente}</b>
-                        <span class="text-muted"><i class="bi bi-geo-alt-fill" style="font-size: 0.7rem;"></i> ${direccionCorta}</span>
+                        <span class="text-muted"><i class="bi bi-geo-alt-fill" style="font-size: 0.7 macro;"></i> ${direccionCorta}</span>
                     </div>
                     <i class="bi bi-trash3 text-danger cursor-pointer ms-2" onclick="quitarAsignacion(event, '${pId}')"></i>
                 `;
@@ -264,8 +266,8 @@ function initMapa() {
     }).addTo(mapa).bindPopup("<b>La Jama</b><br>Punto de Origen");
 }
 
-// --- REFACTORIZACIÓN COMPLETA A APPUTILS CONTROLLER ---
 function abrirConfirmacion() {
+    // 🚀 ADUANA INMEDIATA: Trancamos primero si el panel de rutas está vacío, sin disparar efectos visuales en vano
     if (asignaciones.length === 0) {
         AppUtils.showNotification("⚠️ Debes asignar al menos un pedido antes de despachar.", "warning");
         return;
@@ -286,11 +288,14 @@ function abrirConfirmacion() {
         confirmButtonColor: '#1B3A2C',
         confirmButtonText: 'Sí, Despachar'
     }, () => {
+        // 🎯 UBICACIÓN CORRECTA: El difuminado se gatilla exactamente al confirmar la salida en el modal
+        DespachoLoader.lanzar("");
         ejecutarEnvioFinal();
     });
 }
 
 function ejecutarEnvioFinal() {
+    // Levantamos el segundo anillo de seguridad por si la API de red demora más de 1 segundo
     AppUtils.showLoading(true);
 
     const agrupado = asignaciones.reduce((acc, cur) => {

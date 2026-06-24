@@ -1,148 +1,276 @@
+/* ==========================================================================
+   🎨 LA JAMA - MONITOR LOGÍSTICO Y DESPACHO PREMIUM NATIVO (SIN BOOTSTRAP)
+   ========================================================================== */
+
 :root {
-    --lajama-green: #1B3A2C;
-    --lajama-peach: #fed7aa;
-    --lajama-skin: #FFB38A;
-    --lajama-cream: #FFF7ED;
-    --lajama-brown: #933D2D;
+    --jama-bg-panel: #ffffff;
+    --jama-border: rgba(27, 58, 44, 0.08);
+    --jama-text-main: #1f2937;
+    --jama-text-muted: #6b7280;
+    --jama-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --font-monospace: 'JetBrains Mono', 'Courier New', monospace;
 }
 
-/* Fondo principal */
-.main-content {
-    background-color: var(--lajama-cream);
+/* ── 🏗️ MALLA DE DISEÑO GRID PRINCIPAL ── */
+.jama-modulo-logistica {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
 }
 
-/* Paneles laterales */
-.panel-blanco {
-    background-color: #ffffff;
-    border: 2px solid var(--lajama-peach);
-    border-radius: 20px;
-    padding: 1.5rem;
-    height: calc(100vh - 160px);
+.jama-layout-despacho {
+    display: grid;
+    grid-template-columns: 22rem 1fr 22rem; /* Configuración proporcional fija de paneles laterales */
+    gap: 1.25rem;
+    height: calc(100vh - 120px);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ── 📦 ARQUITECTURA DE PANELES LATERALES ── */
+.jama-panel-lateral {
+    background: var(--jama-bg-panel);
+    border-radius: 16px;
+    border: 1px solid var(--jama-border);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.015);
+    padding: 1.25rem;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
-.panel-title {
-    color: var(--lajama-green);
-    font-weight: 800;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    border-bottom: 2px solid var(--lajama-cream);
-    padding-bottom: 10px;
-    margin-bottom: 1rem;
+.panel-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
 }
 
-.scroll-v {
+.panel-cabecera h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--jama-text-main);
+}
+
+.icono-preparados { color: var(--lajama-green); font-size: 1.2rem; }
+.icono-flota { color: #4e73df; font-size: 1.2rem; }
+
+.lista-items {
     flex-grow: 1;
     overflow-y: auto;
+    padding-right: 0.25rem;
 }
 
-.scroll-v::-webkit-scrollbar { width: 5px; }
-.scroll-v::-webkit-scrollbar-thumb { background: var(--lajama-peach); border-radius: 10px; }
-
-/* Tarjetas de Pedido */
+/* ── 🎫 TARJETAS DE PEDIDOS KINETIC ── */
 .tarjeta-pedido {
-    background-color: var(--lajama-cream);
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 10px;
+    background: #fbfcfb;
+    border: 1px solid var(--jama-border);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
     cursor: pointer;
-    border: 2px solid transparent;
-    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    transition: var(--jama-transition);
+}
+
+.tarjeta-pedido::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background-color: #d1d5db;
+    transition: var(--jama-transition);
 }
 
 .tarjeta-pedido:hover {
-    border-color: var(--lajama-skin);
     transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(27, 58, 44, 0.05);
+    border-color: rgba(27, 58, 44, 0.15);
+    background: #ffffff;
 }
 
 .tarjeta-pedido.selected {
+    background: rgba(27, 58, 44, 0.02);
     border-color: var(--lajama-green);
-    background-color: #ffffff;
-    box-shadow: 0 4px 12px rgba(27, 58, 44, 0.1);
+}
+
+.tarjeta-pedido.selected::before {
+    background-color: var(--lajama-green);
+}
+
+.tarjeta-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
 }
 
 .id-pedido {
-    background-color: var(--lajama-green);
-    color: #ffffff;
-    padding: 2px 8px;
-    border-radius: 6px;
+    font-family: var(--font-monospace);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--jama-text-muted);
 }
 
 .monto-pedido {
-    color: var(--lajama-brown);
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--lajama-green);
 }
 
 .cliente-nombre {
-    color: var(--lajama-green);
+    margin: 0 0 0.25rem 0;
+    font-family: 'Vollkorn', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--jama-text-main);
 }
 
-/* Tarjetas de Repartidor */
-.tarjeta-repartidor {
-    background-color: #ffffff;
-    border: 1px solid var(--lajama-peach);
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: background 0.2s;
+.direccion-texto {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--jama-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.tarjeta-repartidor:hover {
-    background-color: var(--lajama-cream);
-}
-
-.avatar-sm {
-    width: 35px;
-    height: 35px;
-    background-color: var(--lajama-green) !important;
+/* ── 🚀 BOTÓN DE ACCIÓN DESPACHO ── */
+.btn-despacho-kinetic {
+    width: 100%;
+    padding: 1rem;
+    margin-top: 1rem;
+    background-color: var(--lajama-green);
     color: #ffffff;
-    border-radius: 8px;
-    font-weight: bold;
-}
-
-/* Badge de asignados */
-.contenedor-asignados .badge {
-    background-color: var(--lajama-skin) !important;
-    color: var(--lajama-green);
-    margin: 2px;
-}
-
-/* --- TARJETAS DE PEDIDO (Ajuste para estado Seleccionado) --- */
-.tarjeta-pedido {
-    background-color: var(--lajama-cream);
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 10px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
     cursor: pointer;
-    border: 2px solid transparent; /* Reserva el espacio para el borde */
-    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(27, 58, 44, 0.15);
+    transition: var(--jama-transition);
 }
 
-/* Estado cuando pasas el mouse */
-.tarjeta-pedido:hover {
-    border-color: var(--lajama-skin);
-    transform: translateY(-2px);
+.btn-despacho-kinetic:hover {
+    background-color: #142b20;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(27, 58, 44, 0.25);
 }
 
-/* ESTADO PRESIONADO / SELECCIONADO */
-.tarjeta-pedido.selected {
-    border-color: var(--lajama-green) !important; /* Verde oscuro de La Jama */
-    background-color: #ffffff !important;        /* Fondo blanco para resaltar */
-    box-shadow: 0 4px 15px rgba(27, 58, 44, 0.2) !important; /* Sombra más fuerte */
-    transform: scale(1.02); /* Crece un poquito para indicar selección */
+/* ── 👤 SECCIÓN DE REPARTIDORES ── */
+.tarjeta-repartidor {
+    background: #ffffff;
+    border: 1px solid var(--jama-border);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: var(--jama-transition);
+    cursor: pointer;
 }
 
-/* Añade esto a tu despacho-estilo.css */
-.repartidor-ocupado {
-    opacity: 0.8;
-    background-color: var(--lajama-cream) !important;
-    cursor: default;
+.repartidor-info-bloque {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.repartidor-perfil {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.avatar-circulo {
+    width: 34px;
+    height: 34px;
+    background-color: var(--lajama-cream);
+    color: var(--lajama-green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    border: 1px solid var(--jama-border);
+}
+
+.repartidor-detalles h3 {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--jama-text-main);
+}
+
+.estado-texto {
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.estado-libre { color: #10b981; }
+.estado-texto.text-warning { color: #f59e0b; }
+
+.selector-color-jama {
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+/* ── 💊 PÍLDORAS ASIGNADAS (MINI-CARDS) ── */
+.contenedor-asignados {
+    margin-top: 0.5rem;
 }
 
 .mini-pedido-asignado {
-    background-color: white !important;
-    border-left: 4px solid var(--lajama-green);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f9fafb;
+    border-left: 4px solid #933D2D;
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
+
+/* ── 🗺️ CONTENEDOR CENTRAL DEL MAPA LEAFLET ── */
+.jama-contenedor-mapa {
+    border: 2px solid var(--lajama-green);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02);
+}
+
+#mapa-principal {
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Fallback de listas vacías */
+.mensaje-lista-vacia {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--jama-text-muted);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* Minimalist Scrollbar */
+.scroll-v::-webkit-scrollbar { width: 5px; }
+.scroll-v::-webkit-scrollbar-track { background: transparent; }
+.scroll-v::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 10px; }
+.scroll-v::-webkit-scrollbar-thumb:hover { background: rgba(27,58,44,0.15); }

@@ -24,6 +24,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MesaService {
 
+    private final NotaVentaSequenceService notaVentaSequenceService;
     private final MesaRepository mesaRepository;
     private final PedidoRepository pedidoRepository;
     private final MesaMapper mesaMapper;
@@ -560,15 +561,16 @@ public class MesaService {
 
             Pedido pedidoComprobante = new Pedido();
 
-            // 🌟 CORRECCIÓN: Para que el HTML sepa el origen, heredamos el Tipo de Pedido y la Mesa original como texto o ID
+            String siguienteNotaVenta = notaVentaSequenceService.generarSiguienteNota();
+            pedidoComprobante.setComprobanteNotaNumero(siguienteNotaVenta);
+
             pedidoComprobante.setCliente(pedidoPadre.getCliente() + " (Ticket " + (i + 1) + ")");
             pedidoComprobante.setDireccion("Salón");
-            pedidoComprobante.setTipoPedido(pedidoPadre.getTipoPedido()); // Conserva SALON
-            pedidoComprobante.setNumeroMesa(mesaPrincipal.getNumero()); // 🌟 Mantiene el número para que el HTML no se confunda
-
-            pedidoComprobante.setFechaCreacion(LocalDateTime.now()); // Hora exacta del pago
+            pedidoComprobante.setTipoPedido(pedidoPadre.getTipoPedido());
+            pedidoComprobante.setNumeroMesa(mesaPrincipal.getNumero());
+            pedidoComprobante.setFechaCreacion(LocalDateTime.now());
             pedidoComprobante.setFechaEntrega(LocalDateTime.now());
-            pedidoComprobante.setEstado(EstadoPedido.PAGADO); // Nace liquidado para la rejilla de caja
+            pedidoComprobante.setEstado(EstadoPedido.PAGADO);
             pedidoComprobante.setMontoTotal(t.getConsumoFinal());
             pedidoComprobante.setPreferenciaComprobante(t.getTipoDoc().toUpperCase());
             pedidoComprobante.setDocumentoCliente(t.getNumDoc() != null ? t.getNumDoc().trim() : "");
