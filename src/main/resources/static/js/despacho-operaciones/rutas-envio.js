@@ -131,3 +131,4 @@ function ejecutarEnvioFinal() {
             console.error("Error al despachar:", err);
             AppUtils.showNotification("❌ Error: " + err.message, "error");
         });
+ }
