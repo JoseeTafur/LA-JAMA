@@ -158,5 +158,5 @@ $(document).ready(function () {
                     });
                 } else { AppUtils.showNotification('Error al cargar perfiles', 'error'); }
             }).catch(error => console.error('Error cargando perfiles:', error));
-    }
+    }});
 

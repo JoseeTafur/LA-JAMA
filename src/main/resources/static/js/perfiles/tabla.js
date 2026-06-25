@@ -264,5 +264,5 @@ $(document).ready(function () {
                     .finally(() => AppUtils.showLoading(false));
             }
         });
-    }
+    }});
 

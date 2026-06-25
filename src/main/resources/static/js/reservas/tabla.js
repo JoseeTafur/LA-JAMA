@@ -188,5 +188,5 @@ $(document).ready(function () {
         if (!horaStr) return true;
         const minutos = parseInt(horaStr.split(':')[1]);
         return (minutos % 15 !== 0); // Failsafe: devuelve true si no es múltiplo de 15
-    }
+    }});
 

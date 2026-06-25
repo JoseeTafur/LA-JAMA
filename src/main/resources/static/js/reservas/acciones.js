@@ -178,7 +178,7 @@
         ['rNombre','rTelefono','rPersonas','rFecha','rHora','rObservacion'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         ['rNombre','rTelefono','rPersonas','rFecha','rHora'].forEach(id => { const el = document.getElementById(id + '-error'); if (el) el.textContent = ''; });
         document.getElementById('mesasInfo').style.display = 'none';
-    }
-});
+    };
+
 
 // (Conexión asíncrona stompReservas intacta al final...)

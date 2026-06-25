@@ -155,3 +155,4 @@ function claseColor(origen) {
 
 function claseBoton(origen) {
     return 'btn-' + claseColor(origen);
+ }
