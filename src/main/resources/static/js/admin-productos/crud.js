@@ -177,3 +177,4 @@ function eliminarProducto(id) {
         AppUtils.showLoading(true);
         window.location.href = `/admin/productos/eliminar/${id}`;
     });
+ }
