@@ -54,7 +54,6 @@
     setTimeout(construirCuadradosSiderbar, 50);
 })();
 
-// ─── 2. MOTOR DE EVENTOS Y PERSISTENCIA (JQUERY Y COMPUTADORES) ───────────────────────────
 $(document).ready(function () {
     const $sidebar              = $('#sidebar');
     const $openSidebarBtn       = $('#open-sidebar');
@@ -63,24 +62,16 @@ $(document).ready(function () {
     const $toggleSidebarDesktop = $('#toggle-sidebar-desktop');
     const $body                 = $('body');
 
-    // 🌟 COMPORTAMIENTO LOCALSTORAGE: Carga el estado guardado del menú en PC
     if (localStorage.getItem('jama_sidebar_collapsed') === 'true') {
         $body.addClass('sidebar-collapsed');
-        console.log("💼 [SIDEBAR] Cargando estado contraído desde persistencia.");
     }
 
-    // ========================================================
-    // GATILLO DE COLAPSO PARA COMPUTADORAS (DESKTOP)
-    // ========================================================
     if ($toggleSidebarDesktop.length) {
         $toggleSidebarDesktop.on('click', function () {
-            // Alternamos la clase en el body para que afecte tanto al nav como al layout del main-content
             $body.toggleClass('sidebar-collapsed');
-
             const isCollapsed = $body.hasClass('sidebar-collapsed');
             localStorage.setItem('jama_sidebar_collapsed', isCollapsed);
 
-            // Re-calculamos los cuadraditos por el cambio de ancho
             setTimeout(() => {
                 const trigger = document.getElementById("sidebar-ripple");
                 if(trigger) trigger.click();
@@ -88,37 +79,66 @@ $(document).ready(function () {
         });
     }
 
-    // ========================================================
-    // CONTROLADOR DE EVENTOS EN PANTALLAS MÓVILES
-    // ========================================================
     if ($openSidebarBtn.length && $sidebar.length) {
         $openSidebarBtn.on('click', function () {
             $sidebar.addClass('active');
             if ($sidebarOverlay.length) $sidebarOverlay.addClass('active');
-            console.log("📱 [SIDEBAR] Menú móvil desplegado.");
         });
 
         function cerrarMenuMovil() {
             $sidebar.removeClass('active');
             if ($sidebarOverlay.length) $sidebarOverlay.removeClass('active');
-            console.log("🧼 [SIDEBAR] Menú móvil ocultado.");
         }
 
         if ($closeSidebarBtn.length) $closeSidebarBtn.on('click', cerrarMenuMovil);
         if ($sidebarOverlay.length) $sidebarOverlay.on('click', cerrarMenuMovil);
     }
 
-    // Persistencia de submenús desplegables
-    $('.sidebar .collapse').on('shown.bs.collapse', function () {
-        localStorage.setItem('menu_abierto_' + this.id, 'true');
-    }).on('hidden.bs.collapse', function () {
-        localStorage.removeItem('menu_abierto_' + this.id);
+    $('.btn-toggle-grupo-jama').on('click', function (e) {
+        e.preventDefault();
+
+        const targetId = $(this).attr('data-target-collapse');
+        const $targetCollapse = $(targetId);
+
+        if ($targetCollapse.length) {
+            const isOpen = $targetCollapse.is(':visible');
+
+            if (isOpen) {
+                $targetCollapse.slideUp(250, function() {
+                    $targetCollapse.removeClass('show');
+                    localStorage.removeItem('menu_abierto_' + targetId.replace('#', ''));
+                });
+                $(this).attr('aria-expanded', 'false');
+                $(this).removeClass('active-uiverse');
+                $(this).find('.jama-radio-hidden').prop('checked', false);
+            } else {
+                $('.collapse.show').each(function() {
+                    $(this).slideUp(200).removeClass('show');
+                    localStorage.removeItem('menu_abierto_' + this.id);
+                });
+                $('.btn-toggle-grupo-jama').attr('aria-expanded', 'false').removeClass('active-uiverse');
+
+                $targetCollapse.slideDown(250, function() {
+                    $targetCollapse.addClass('show');
+                    localStorage.setItem('menu_abierto_' + targetId.replace('#', ''), 'true');
+                });
+                $(this).attr('aria-expanded', 'true');
+                $(this).addClass('active-uiverse');
+                $(this).find('.jama-radio-hidden').prop('checked', true);
+            }
+        }
+    });
+
+    $('.collapse').each(function () {
+        if (localStorage.getItem('menu_abierto_' + this.id) === 'true') {
+            $(this).show().addClass('show');
+            $(`[data-target-collapse="#${this.id}"]`).addClass('active-uiverse').attr('aria-expanded', 'true');
+            $(`[data-target-collapse="#${this.id}"]`).find('.jama-radio-hidden').prop('checked', true);
+        }
     });
 });
 
-// ========================================================
-    // 🌓 PERSISTENCIA INTEGRADA AL HEADER (ID: INPUT)
-    // ========================================================
+$(document).ready(function () {
     const $darkModeInput = $('#input');
 
     if (localStorage.getItem('jama_dark_mode') === 'true') {
@@ -139,3 +159,4 @@ $(document).ready(function () {
             localStorage.setItem('jama_dark_mode', 'false');
         }
     });
+});

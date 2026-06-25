@@ -4,6 +4,7 @@
 
 function renderizarPlatos() {
     const contenedor = document.getElementById('lista-items-repartir');
+    if (!contenedor) return;
     contenedor.innerHTML = '';
 
     platosDisponibles.forEach(p => {
@@ -225,23 +226,87 @@ function actualizarVista() {
     const tieneTicketsVacios = ticketsDeCobro.some(t => Math.round((t.montoPlatos + t.montoLibre) * 100) / 100 <= 0);
 
     if (platosSeleccionadosParaCobro.length === 0) {
-        labelPorAsignar.innerText = "Marque los platos a cobrar";
-        labelPorAsignar.className = "jama-txt-status status-danger";
-        btnCierre.disabled = true;
-    } else if (desfase === 0 && !tieneTicketsVacios) {
-        labelPorAsignar.innerText = "S/. 0.00 (Cuadrado)";
-        labelPorAsignar.className = "jama-txt-status status-success";
-        btnCierre.disabled = false;
-    } else {
-        if (desfase !== 0) {
-            const signo = desfase > 0 ? "Falta" : "Sobra";
-            labelPorAsignar.innerText = `${signo} S/. ${Math.abs(desfase).toFixed(2)}`;
-        } else {
-            labelPorAsignar.innerText = "Hay tickets vacíos en S/. 0.00";
+        if (labelPorAsignar) {
+            labelPorAsignar.innerText = "Marque los platos a cobrar";
+            labelPorAsignar.className = "jama-txt-status status-danger";
         }
-        labelPorAsignar.className = "jama-txt-status status-danger";
-        btnCierre.disabled = true;
+        if (btnCierre) btnCierre.disabled = true;
+    } else if (desfase === 0 && !tieneTicketsVacios) {
+        if (labelPorAsignar) {
+            labelPorAsignar.innerText = "S/. 0.00 (Cuadrado)";
+            labelPorAsignar.className = "jama-txt-status status-success";
+        }
+        if (btnCierre) btnCierre.disabled = false;
+    } else {
+        if (labelPorAsignar) {
+            if (desfase !== 0) {
+                const signo = desfase > 0 ? "Falta" : "Sobra";
+                labelPorAsignar.innerText = `${signo} S/. ${Math.abs(desfase).toFixed(2)}`;
+            } else {
+                labelPorAsignar.innerText = "Hay tickets vacíos en S/. 0.00";
+            }
+            labelPorAsignar.className = "jama-txt-status status-danger";
+        }
+        if (btnCierre) btnCierre.disabled = true;
     }
 
     generarPrevisualizacionCajero();
+}
+
+function generarPrevisualizacionCajero() {
+    const visor = document.getElementById('visualizador-ticket-cajero');
+    if (!visor) return;
+
+    if (ticketsDeCobro.length === 0 || platosSeleccionadosParaCobro.length === 0) {
+        visor.innerHTML = "// [TESTING] Esperando selección de platos o inicialización de canastas...";
+        return;
+    }
+
+    const payloadDePrueba = ticketsDeCobro.map(t => {
+        const consumoFinalTicket = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
+        const ratioRealTicket = totalConsumoMesa > 0 ? (consumoFinalTicket / totalConsumoMesa) : 0;
+        const esFlujoCompartidoDinero = t.esCompartidoPorMonto || !platosDisponibles.some(p => p.idTicketAsignado === t.id);
+        let listaPlatosModificados = [];
+
+        if (esFlujoCompartidoDinero && ratioRealTicket > 0) {
+            listaPlatosModificados = platosDisponibles
+                .filter(p => platosSeleccionadosParaCobro.includes(p.id))
+                .map(p => {
+                    const subtotalProrrateado = Math.round(p.subtotal * ratioRealTicket * 100) / 100;
+                    return {
+                        productoId: p.productoId || p.id,
+                        nombre: p.nombre.trim(),
+                        cantidad: p.cantidad,
+                        precioUnitarioCalculado: Math.round((subtotalProrrateado / p.cantidad) * 100) / 100,
+                        subtotalAsignado: subtotalProrrateado
+                    };
+                });
+        } else {
+            listaPlatosModificados = platosDisponibles
+                .filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id))
+                .map(p => ({
+                    productoId: p.productoId || p.id,
+                    nombre: p.nombre.trim(),
+                    cantidad: p.cantidad,
+                    precioUnitario: Math.round((p.subtotal / p.cantidad) * 100) / 100,
+                    subtotalAsignado: Math.round(p.subtotal * 100) / 100
+                }));
+        }
+
+        listaPlatosModificados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+        return {
+            ticketId: t.id + 1,
+            tipoDoc: t.tipoDoc,
+            metodoPago: t.metodoPago,
+            consumoFinalSunat: consumoFinalTicket,
+            subtotalNeto: Math.round((consumoFinalTicket / (1 + TASA_IGV)) * 100) / 100,
+            igvCalculado: Math.round((consumoFinalTicket - Math.round((consumoFinalTicket / (1 + TASA_IGV)) * 100) / 100) * 100) / 100,
+            numItemsEnviados: listaPlatosModificados.length,
+            listaDetalles: listaPlatosModificados
+        };
+    });
+
+    visor.textContent = `// MATRIZ DE COBRO ENVIADA A LA COLA DE FACTURACIÓN\n\n` +
+                        JSON.stringify(payloadDePrueba, null, 2);
 }

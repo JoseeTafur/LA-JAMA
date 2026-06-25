@@ -385,10 +385,8 @@
     import { agregarDesdeCard, removerItem, renderCarrito, actualizarUI } from '/js/carta/core-cart.js';
     import { estadoCheckout, navegarEtapa } from '/js/carta/checkout-wizard.js';
     import { iniciarMapa, enviarPedidoFinal } from '/js/carta/api-client.js';
-    // 🔥 Importamos el nuevo listener modularizado
     import { inicializarAutocompletadoDocumentos } from '/js/carta/document-listener.js';
 
-    // Hacer funciones accesibles desde el HTML nativo
     window.agregarDesdeCard = agregarDesdeCard;
     window.removerItemCarta = removerItem;
 
@@ -401,7 +399,7 @@
     window.navegarEtapa = (dir) => navegarEtapa(dir, iniciarMapa);
 
     window.seleccionarTipo = (tipo) => {
-        estadoCheckout.tipoEntrega = tipo;
+        estadoCheckout.tipoEntrega = (tipo === 'RECOGER') ? 'LLEVAR' : 'DELIVERY';
         document.getElementById('btnRecoger').className = 'btn-selection-premium' + (tipo === 'RECOGER' ? ' activo' : '');
         document.getElementById('btnDelivery').className = 'btn-selection-premium' + (tipo === 'DELIVERY' ? ' activo' : '');
         document.getElementById('seccionDireccion').style.display = tipo === 'DELIVERY' ? 'block' : 'none';

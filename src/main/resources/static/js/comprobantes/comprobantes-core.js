@@ -1,13 +1,19 @@
 /**
- * COMPROBANTES - TIMBRADO, ANULACIÓN Y RE-EMISIÓN
+ * 📊 LA JAMA - MOTOR CONTABLE CENTRAL (comprobantes-core.js)
+ * Lógica de Emisión, Timbrado y Auditoría de Comprobantes Electrónicos (SUNAT)
  */
 
+// Buffer en memoria de la orden seleccionada para cálculos en caliente del modal
 let detallesPedidoEdicionBuffer = [];
 
+/**
+ * 🚀 EMISIÓN / TIMBRADO DE COMPROBANTES ELECTRÓNICOS ACTIVOS
+ */
 function capturarYTimbrar(boton) {
-    const idPedido   = boton.getAttribute('data-id');
+    const idPedido = boton.getAttribute('data-id');
     const preferencia = boton.getAttribute('data-preferencia');
-    const documento  = boton.getAttribute('data-documento');
+    const documento = boton.getAttribute('data-documento');
+
     abrirPanelTimbrado(idPedido, preferencia, documento);
 }
 
@@ -42,11 +48,16 @@ async function abrirPanelTimbrado(idPedido, preferencia, documento) {
         });
 
         try {
-            const res  = await fetch(`/admin/pedido/aprobar?idPedido=${idPedido}`, { method: 'POST' });
+            const res = await fetch(`/admin/pedido/aprobar?idPedido=${idPedido}`, { method: 'POST' });
             const data = await res.json();
 
             if (res.ok && data.success) {
-                await Swal.fire({ icon: 'success', title: '¡Timbrado Exitoso!', text: data.message, confirmButtonColor: '#1B3A2C' });
+                if (typeof apputil !== 'undefined' && apputil.mostrarMensaje) {
+                    Swal.close();
+                    apputil.mostrarMensaje("¡Timbrado Exitoso!", data.message, "success");
+                } else {
+                    await Swal.fire({ icon: 'success', title: '¡Timbrado Exitoso!', text: data.message, confirmButtonColor: '#1B3A2C' });
+                }
                 window.location.reload();
             } else {
                 Swal.fire({ icon: 'error', title: '🚨 Falla en Homologación SUNAT', text: data.message || 'El CPE fue rechazado.', confirmButtonColor: '#933D2D' });
@@ -58,15 +69,25 @@ async function abrirPanelTimbrado(idPedido, preferencia, documento) {
 }
 
 function verTicketTermico(pedidoId) {
+    console.log(`🖨️ [La Jama] Despachando comando de impresión para la Nota de Venta #${pedidoId}`);
     const urlTicket = `/admin/caja/ticket-venta/${pedidoId}`;
     const ventanaImpresion = window.open(urlTicket, '_blank', 'width=400,height=600,top=100,left=100,menubar=no,toolbar=no,location=no,status=no');
+
     if (ventanaImpresion) {
         ventanaImpresion.focus();
     } else {
-        Swal.fire({ icon: 'warning', title: 'Pop-up Bloqueado', text: 'Por favor, permite las ventanas emergentes en tu navegador.', confirmButtonColor: '#1B3A2C' });
+        Swal.fire({
+            icon: 'warning',
+            title: 'Pop-up Bloqueado',
+            text: 'Por favor, permite las ventanas emergentes en tu navegador para que se abra la orden de impresión térmica automáticamente.',
+            confirmButtonColor: '#1B3A2C'
+        });
     }
 }
 
+/**
+ * 📑 AUDITORÍA: ANULACIÓN TOTAL DIRECTA CON CONFIRMACIÓN
+ */
 async function capturarYAnular(boton) {
     const idPedido = boton.getAttribute('data-id');
     const cpeNumero = boton.getAttribute('data-cpe');
@@ -94,20 +115,33 @@ async function capturarYAnular(boton) {
         confirmButtonText: 'Sí, Anular Totalmente',
         cancelButtonText: 'Cancelar',
         preConfirm: () => {
-            const motivo   = document.getElementById('swal-motivo').value;
+            const motivo = document.getElementById('swal-motivo').value;
             const sustento = document.getElementById('swal-sustento').value.trim();
             if (!sustento) {
                 Swal.showValidationMessage('Por favor, ingrese un sustento explicativo para la baja.');
                 return false;
             }
-            return { motivo, sustento };
+            return { motivo: motivo, sustento: sustento };
         }
     });
 
     if (formValues) {
-        Swal.fire({ title: 'Procesando Nota de Crédito...', text: 'Comunicando la baja estructural a miapi.cloud.', background: '#FFF7ED', allowOutsideClick: false, showConfirmButton: false, didOpen: () => { Swal.showLoading(); } });
+        Swal.fire({
+            title: 'Procesando Nota de Crédito...',
+            text: 'Comunicando la baja estructural a miapi.cloud.',
+            background: '#FFF7ED',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
 
-        const payload = { pedidoId: idPedido, motivo: formValues.motivo, tipoNota: 'TOTAL', sustento: formValues.sustento, generarNuevoComprobante: 'NO' };
+        const payload = {
+            pedidoId: idPedido,
+            motivo: formValues.motivo,
+            tipoNota: 'TOTAL',
+            sustento: formValues.sustento,
+            generarNuevoComprobante: 'NO'
+        };
 
         try {
             const response = await fetch('/admin/comprobantes/api/pedido/procesar-anulacion', {
@@ -120,17 +154,26 @@ async function capturarYAnular(boton) {
             const data = await response.json();
 
             if (data.success) {
-                await Swal.fire({ icon: 'success', title: '¡Anulado!', text: 'El documento fue revertido con éxito.', confirmButtonColor: '#1B3A2C' });
+                if (typeof apputil !== 'undefined' && apputil.mostrarMensaje) {
+                    Swal.close();
+                    apputil.mostrarMensaje("¡Anulado!", "Comprobante dado de baja correctamente.", "success");
+                } else {
+                    await Swal.fire({ icon: 'success', title: '¡Anulado!', text: 'El documento fue revertido con éxito.', confirmButtonColor: '#1B3A2C' });
+                }
                 window.location.reload();
             } else {
                 Swal.fire({ icon: 'error', title: 'Error Operativo', text: data.message, confirmButtonColor: '#933D2D' });
             }
         } catch (error) {
+            console.error("Error en flujo de anulación:", error);
             Swal.fire({ icon: 'error', title: 'Error Crítico', text: 'No se pudo conectar con el servidor de auditoría.', confirmButtonColor: '#933D2D' });
         }
     }
 }
 
+/**
+ * 📥 PRECARGA Y APERTURA CON CONTROL FISCAL DE RE-EMISIÓN
+ */
 async function abrirEditorReemision(pedidoId) {
     detallesPedidoEdicionBuffer = [];
     const contenedor = document.getElementById('reemision-contenedor-platos');
@@ -141,7 +184,12 @@ async function abrirEditorReemision(pedidoId) {
             <span class="small text-muted ms-2">Estructurando ticket original...</span>
         </div>`;
 
-    const modalBootstrap = new bootstrap.Modal(document.getElementById('modalEdicionReemision'));
+    // Reutilizar instancia del modal para evitar duplicación de eventos en memoria
+    const modalElement = document.getElementById('modalEdicionReemision');
+    let modalBootstrap = bootstrap.Modal.getInstance(modalElement);
+    if (!modalBootstrap) {
+        modalBootstrap = new bootstrap.Modal(modalElement);
+    }
     modalBootstrap.show();
 
     try {
@@ -149,26 +197,32 @@ async function abrirEditorReemision(pedidoId) {
         if (!response.ok) throw new Error("No se pudo obtener la orden.");
         const data = await response.json();
 
-        document.getElementById('reemision-pedido-id').value      = data.id;
-        document.getElementById('reemision-nv-origen').innerText  = `NV-${data.id}`;
+        document.getElementById('reemision-pedido-id').value = data.id;
+        document.getElementById('reemision-nv-origen').innerText = `NV-${data.id}`;
         document.getElementById('reemision-cliente-nombre').value = data.cliente || `Mesa #${data.numeroMesa || ''}`;
 
         const doc = data.documentoCliente;
-        document.getElementById('reemision-cliente-doc').value  = (doc && doc !== 'null' && doc !== 'SIN DOCUMENTO') ? doc : '';
-        document.getElementById('reemision-cpe-tipo').value     = data.comprobanteTipo || 'BOLETA';
-        document.getElementById('reemision-cpe-medio').value    = data.metodoPago || 'EFECTIVO';
-        document.getElementById('reemision-cpe-obs').value      = '';
+        document.getElementById('reemision-cliente-doc').value = (doc && doc !== 'null' && doc !== 'SIN DOCUMENTO') ? doc : '';
+        document.getElementById('reemision-cpe-tipo').value = data.comprobanteTipo || 'BOLETA';
+        document.getElementById('reemision-cpe-medio').value = data.metodoPago || 'EFECTIVO';
+        document.getElementById('reemision-cpe-obs').value = '';
+
         if (document.getElementById('reemision-cliente-dir')) {
             document.getElementById('reemision-cliente-dir').value = data.direccion || 'Chiclayo, Lambayeque';
         }
 
         detallesPedidoEdicionBuffer = data.detalles;
         rebuildListaPlatosReemision();
+
     } catch (error) {
+        console.error("Error al precargar datos:", error);
         contenedor.innerHTML = `<p class="text-danger small text-center py-3">⚠️ Error de red al leer la orden.</p>`;
     }
 }
 
+/**
+ * 🔄 RENDERIZADOR Y CÁLCULO CONTABLE DE TOTALES
+ */
 function rebuildListaPlatosReemision() {
     const contenedor = document.getElementById('reemision-contenedor-platos');
     let htmlRows = '';
@@ -198,7 +252,8 @@ function rebuildListaPlatosReemision() {
                                ${esEliminado ? 'disabled' : ''}
                                onchange="alterarCantidadReemision(${index}, this.value)" />
                         <span class="fw-bold text-jama-gold text-end ms-2" style="width: 80px;">S/ ${item.subtotal.toFixed(2)}</span>
-                        <button type="button" class="btn btn-sm p-1 border-0" onclick="alternarEliminacionItem(${index})"
+                        <button type="button" class="btn btn-sm p-1 border-0"
+                                onclick="alternarEliminacionItem(${index})"
                                 title="${esEliminado ? 'Restaurar Plato' : 'Eliminar Plato'}">
                             ${esEliminado ? '➕' : '❌'}
                         </button>
@@ -210,10 +265,13 @@ function rebuildListaPlatosReemision() {
     contenedor.innerHTML = htmlRows || '<p class="text-muted small text-center py-3">Sin ítems activos</p>';
 
     const baseGravada = totalComprobante / 1.18;
-    const igv         = totalComprobante - baseGravada;
+    const igv = totalComprobante - baseGravada;
+
     if (document.getElementById('resumen-gravada')) document.getElementById('resumen-gravada').innerText = `S/ ${baseGravada.toFixed(2)}`;
-    if (document.getElementById('resumen-igv'))     document.getElementById('resumen-igv').innerText     = `S/ ${igv.toFixed(2)}`;
+    if (document.getElementById('resumen-igv')) document.getElementById('resumen-igv').innerText = `S/ ${igv.toFixed(2)}`;
+
     document.getElementById('reemision-monto-total').innerText = `S/ ${totalComprobante.toFixed(2)}`;
+
     if (document.getElementById('reemision-texto-letras')) {
         document.getElementById('reemision-texto-letras').innerText = `SON: ${numeroALetras(totalComprobante)} SOLES`;
     }
@@ -222,6 +280,7 @@ function rebuildListaPlatosReemision() {
 function alterarCantidadReemision(index, nuevaCantidad) {
     let cantidad = parseInt(nuevaCantidad);
     if (isNaN(cantidad) || cantidad < 0) cantidad = 0;
+
     const item = detallesPedidoEdicionBuffer[index];
     item.cantidad = cantidad;
     item.subtotal = cantidad * item.precioUnitarioBase;
@@ -230,6 +289,7 @@ function alterarCantidadReemision(index, nuevaCantidad) {
 
 function alternarEliminacionItem(index) {
     const item = detallesPedidoEdicionBuffer[index];
+
     if (item.cantidad > 0) {
         item.cantidadAnterior = item.cantidad;
         item.cantidad = 0;
@@ -241,25 +301,35 @@ function alternarEliminacionItem(index) {
     rebuildListaPlatosReemision();
 }
 
+/**
+ * 🚀 ENVÍO DE DATA DE RE-EMISIÓN CORREGIDA AL BACKEND
+ */
 async function procesarTimbradoCorregido() {
-    const idPedido      = document.getElementById('reemision-pedido-id').value;
-    const nuevoCliente  = document.getElementById('reemision-cliente-nombre').value.trim();
-    const nuevoCorreo   = document.getElementById('reemision-cliente-correo') ? document.getElementById('reemision-cliente-correo').value.trim() : '';
-    const nuevoDoc      = document.getElementById('reemision-cliente-doc').value.trim();
-    const nuevoTipoCpe  = document.getElementById('reemision-cpe-tipo').value;
+    const idPedido = document.getElementById('reemision-pedido-id').value;
+    const nuevoCliente = document.getElementById('reemision-cliente-nombre').value.trim();
+    const nuevoCorreo = document.getElementById('reemision-cliente-correo') ? document.getElementById('reemision-cliente-correo').value.trim() : '';
+    const nuevoDoc = document.getElementById('reemision-cliente-doc').value.trim();
+    const nuevoTipoCpe = document.getElementById('reemision-cpe-tipo').value;
     const nuevoMedioPago = document.getElementById('reemision-cpe-medio').value;
-    const observacion   = document.getElementById('reemision-cpe-obs') ? document.getElementById('reemision-cpe-obs').value.trim() : '';
-    const direccion     = document.getElementById('reemision-cliente-dir') ? document.getElementById('reemision-cliente-dir').value.trim() : 'Chiclayo, Lambayeque';
+    const observacion = document.getElementById('reemision-cpe-obs') ? document.getElementById('reemision-cpe-obs').value.trim() : '';
+    const direccion = document.getElementById('reemision-cliente-dir') ? document.getElementById('reemision-cliente-dir').value.trim() : 'Chiclayo, Lambayeque';
 
-    if (nuevoTipoCpe === 'FACTURA' && (!nuevoDoc || nuevoDoc.length !== 11 || isNaN(nuevoDoc))) {
-        Swal.fire({ icon: 'warning', title: 'RUC Inválido', text: 'Para emitir una Factura Electrónica es obligatorio un número de RUC válido de 11 dígitos.', confirmButtonColor: '#933D2D' });
-        return;
+    if (nuevoTipoCpe === 'FACTURA') {
+        if (!nuevoDoc || nuevoDoc.length !== 11 || isNaN(nuevoDoc)) {
+            Swal.fire({ icon: 'warning', title: 'RUC Inválido', text: 'Para emitir una Factura Electrónica es obligatorio un número de RUC válido de 11 dígitos.', confirmButtonColor: '#933D2D' });
+            return;
+        }
     }
-    if (nuevoTipoCpe === 'BOLETA' && nuevoDoc.length > 0 && (nuevoDoc.length !== 8 || isNaN(nuevoDoc))) {
-        Swal.fire({ icon: 'warning', title: 'DNI Inválido', text: 'El número de DNI debe contener exactamente 8 dígitos numéricos.', confirmButtonColor: '#933D2D' });
-        return;
+
+    if (nuevoTipoCpe === 'BOLETA' && nuevoDoc.length > 0) {
+        if (nuevoDoc.length !== 8 || isNaN(nuevoDoc)) {
+            Swal.fire({ icon: 'warning', title: 'DNI Inválido', text: 'El número de DNI debe contener exactamente 8 dígitos numéricos.', confirmButtonColor: '#933D2D' });
+            return;
+        }
     }
-    if (!detallesPedidoEdicionBuffer.some(item => item.cantidad > 0)) {
+
+    const tienePlatosActivos = detallesPedidoEdicionBuffer.some(item => item.cantidad > 0);
+    if (!tienePlatosActivos) {
         Swal.fire({ icon: 'warning', title: 'Comanda Vacía', text: 'No puedes emitir un nuevo comprobante sin ningún plato activo.', confirmButtonColor: '#933D2D' });
         return;
     }
@@ -276,7 +346,14 @@ async function procesarTimbradoCorregido() {
         detallesModificados: detallesPedidoEdicionBuffer.filter(item => item.cantidad > 0)
     };
 
-    Swal.fire({ title: 'Generando Nuevo Comprobante...', text: 'Se enviará la nueva estructura de venta corregida a miapi.cloud.', background: '#FFF7ED', allowOutsideClick: false, showConfirmButton: false, didOpen: () => { Swal.showLoading(); } });
+    Swal.fire({
+        title: 'Generando Nuevo Comprobante...',
+        text: 'Se enviará la nueva estructura de venta corregida a miapi.cloud.',
+        background: '#FFF7ED',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
 
     try {
         const response = await fetch('/admin/comprobantes/api/pedido/reemitir-corregido', {
@@ -287,22 +364,29 @@ async function procesarTimbradoCorregido() {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            const modalBootstrap = bootstrap.Modal.getInstance(document.getElementById('modalEdicionReemision'));
+            const modalElement = document.getElementById('modalEdicionReemision');
+            const modalBootstrap = bootstrap.Modal.getInstance(modalElement);
             if (modalBootstrap) modalBootstrap.hide();
+
             await Swal.fire({ icon: 'success', title: '¡Nuevo CPE Emitido!', text: data.message, confirmButtonColor: '#1B3A2C' });
             window.location.reload();
         } else {
             Swal.fire({ icon: 'error', title: 'Error en Timbrado', text: data.message || 'SUNAT rechazó las modificaciones.', confirmButtonColor: '#933D2D' });
         }
     } catch (error) {
+        console.error("Error al reemitir:", error);
         Swal.fire({ icon: 'error', title: 'Error Crítico', text: 'Incapacidad de establecer comunicación con el servidor contable.', confirmButtonColor: '#933D2D' });
     }
 }
 
+/**
+ * 🔤 CONVERTIDOR MONETARIO A LETRAS AUTOMÁTICO
+ */
 function numeroALetras(numero) {
     const deman = Math.floor(numero);
     const centavos = Math.round((numero - deman) * 100);
     const textoCentavos = `${centavos.toString().padStart(2, '0')}/100`;
+
     const unidades = ["CERO", "UN", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE", "DIEZ"];
     if (deman <= 10) return `${unidades[deman]} CON ${textoCentavos}`;
     return `${deman.toString().toUpperCase()} CON ${textoCentavos}`;

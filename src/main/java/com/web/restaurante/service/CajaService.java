@@ -131,9 +131,6 @@ public class CajaService {
         return metricas;
     }
 
-    /**
-     * 🛒 FLUJO TRANSACCIONAL: Guardado POS y Generación de Nota de Venta
-     */
     @Transactional
     public Pedido guardarVentaDirectaPOS(Pedido pedido) {
         LocalDateTime ahora = LocalDateTime.now();
@@ -183,18 +180,14 @@ public class CajaService {
         return pedidoGuardado;
     }
 
-    /**
-     * 📊 REPOSITORIO DE DATOS: Obtiene y formatea Historial de Comprobantes para el Buscador Global
-     */
     public Map<String, Object> obtenerHistorialComprobantesPaginado(LocalDate inicio, LocalDate fin, Pageable pageable) {
         Page<Pedido> pageResult = pedidoRepository.findHistorialNotasVenta(inicio, fin, pageable);
 
         List<Map<String, Object>> listaDTO = pageResult.getContent().stream().map(p -> {
             Map<String, Object> dto = new HashMap<>();
 
-            // 🚀 CONEXIÓN VISUAL EN DATATABLES: Pintamos la Nota de Venta Real
-            dto.put("id", p.getComprobanteNotaNumero() != null ? p.getComprobanteNotaNumero() : "NV-" + p.getId());
-
+            dto.put("comprobante", p.getComprobanteNotaNumero() != null ? p.getComprobanteNotaNumero() : "NV-" + p.getId());
+            dto.put("id", p.getId());
             dto.put("cliente", p.getCliente() != null ? p.getCliente() : "Cliente General");
             dto.put("metodoPago", p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO");
             dto.put("fecha", p.getFechaCreacion() != null ? p.getFechaCreacion().toLocalDate().toString() : "N/A");
@@ -210,14 +203,15 @@ public class CajaService {
             }
 
             if (p.getNumeroMesa() != null) {
-                dto.put("tipoServicio", "Salón");
+                dto.put("tipoServicio", "SALON");
                 dto.put("mesa", "Mesa " + p.getNumeroMesa());
             } else {
-                String tipoEnum = p.getTipoPedido() != null ? p.getTipoPedido().name() : "LOCAL";
-                if ("LOCAL".equalsIgnoreCase(tipoEnum)) {
-                    dto.put("tipoServicio", "Recojo en Local");
+                String tipoEnum = p.getTipoPedido() != null ? p.getTipoPedido().name().toUpperCase() : "LLEVAR";
+
+                if ("LOCAL".equals(tipoEnum) || "LLEVAR".equals(tipoEnum)) {
+                    dto.put("tipoServicio", "LLEVAR");
                 } else {
-                    dto.put("tipoServicio", "Delivery");
+                    dto.put("tipoServicio", "DELIVERY");
                 }
                 dto.put("mesa", "Carta Web");
             }

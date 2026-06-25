@@ -207,8 +207,6 @@ public class InsumoService {
             double totalTeorico = cantidadUsada * cantidadPedida;
             String detalleVenta = "Despacho a cocina: " + cantidadPedida + "x " + ip.getProducto().getNombre();
 
-            // 🛡️ REGLA DE INTEGRIDAD REFORZADA:
-            // Si NO es una proteína, registramos el movimiento histórico pero NO tocamos el stock maestro (Sacos/Cajas fijos)
             if (insumo.getCategoria() == null || !insumo.getCategoria().toUpperCase().contains("PROTEIN")) {
                 double stockEstatico = (insumo.getStockActual() != null) ? insumo.getStockActual() : 0.0;
 
@@ -217,15 +215,13 @@ public class InsumoService {
                 movGeneral.setCantidad(totalTeorico);
                 movGeneral.setTipo("EGRESO");
                 movGeneral.setMotivo(detalleVenta);
-                movGeneral.setStockResultante(stockEstatico); // Mantiene el stock actual del saco intacto
+                movGeneral.setStockResultante(stockEstatico);
                 movGeneral.setFecha(java.time.LocalDateTime.now());
 
                 movimientoRepository.saveAndFlush(movGeneral);
-                System.out.println("[La Jama - Auditoría] Huella de venta registrada para insumo general: " + insumo.getNombre() + " sin alterar su stock.");
-                continue; // Saltamos al siguiente ingrediente sin restar en el maestro
+                continue;
             }
 
-            // 🥩 Si es proteína, sigue su curso normal hacia el canal unificado de porciones
             registrarMovimientoPorId(insumo.getId(), totalTeorico, "EGRESO", detalleVenta);
         }
     }
@@ -238,34 +234,26 @@ public class InsumoService {
         double stockActual = (insumoPersistido.getStockActual() != null) ? insumoPersistido.getStockActual() : 0.0;
         double nuevoStock = stockActual;
 
-        // 🥩 CASO PROTEÍNA: Sigue con su descuento lineal automático de porciones
         if (insumoPersistido.getCategoria() != null && insumoPersistido.getCategoria().toUpperCase().contains("PROTEIN")) {
             nuevoStock = tipo.equals("INGRESO") ? stockActual + cantidad : stockActual - cantidad;
             insumoPersistido.setStockActual(nuevoStock);
             insumoRepository.saveAndFlush(insumoPersistido);
         } else {
-            // 🛒 CASO GENERAL (Arroz, Verduras, Papas):
             if ("INGRESO".equals(tipo)) {
-                // Los lotes manuales o aperturas sí actualizan el stock maestro
                 nuevoStock = stockActual + cantidad;
                 insumoPersistido.setStockActual(nuevoStock);
                 insumoRepository.saveAndFlush(insumoPersistido);
+            } else if ("EGRESO".equals(tipo)) {
+                nuevoStock = stockActual;
             }
-            // 🚨 SI ES EGRESO (VENTA): El stock físico NO se toca.
-            // nuevoStock se queda valiendo exactamente lo mismo que stockActual.
         }
 
-        // Guardamos el registro histórico para tus KPIs
         MovimientoInsumo mov = new MovimientoInsumo();
         mov.setInsumo(insumoPersistido);
-
-        // 🌟 CLAVE PARA KPIS: Guardamos la cantidad como dato informativo positivo
-        // para que sume en tus reportes de consumo sin simular una resta física.
         mov.setCantidad(cantidad);
-
         mov.setTipo(tipo);
         mov.setMotivo(motivo);
-        mov.setStockResultante(nuevoStock); // El saldo visual se mantendrá estático (Ej: 5.00 -> 5.00)
+        mov.setStockResultante(nuevoStock);
         mov.setFecha(java.time.LocalDateTime.now());
 
         movimientoRepository.saveAndFlush(mov);

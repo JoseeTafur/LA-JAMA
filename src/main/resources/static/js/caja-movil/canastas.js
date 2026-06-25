@@ -4,6 +4,7 @@
 
 function configurarSelectorPersonas() {
     const select = document.getElementById('selectNumTickets');
+    if (!select) return;
     select.innerHTML = '';
     for (let i = 1; i <= 6; i++) {
         const txt = i === 1 ? '1 Comprobante (Único)' : `${i} Personas / Tickets`;
@@ -13,7 +14,7 @@ function configurarSelectorPersonas() {
 }
 
 function reconstruirCanastas(preferenciaComprobante = 'BOLETA', documentoCliente = '') {
-    const numTickets = parseInt(document.getElementById('selectNumTickets').value);
+    const numTickets = parseInt(document.getElementById('selectNumTickets').value) || 1;
     const estadosPrevios = ticketsDeCobro.map(t => ({ id: t.id, tipoDoc: t.tipoDoc, numDoc: t.numDoc, metodoPago: t.metodoPago }));
 
     platosDisponibles.forEach(p => p.idTicketAsignado = -1);
@@ -51,6 +52,7 @@ async function distribuirSaldos(metodo) {
         const baseCalculo = saldoSobrante <= 0 ? totalConsumoMesa : saldoSobrante;
         const totalTickets = ticketsDeCobro.length;
         const factorParticipacion = 1 / totalTickets;
+
         let centimosTotales = Math.round(baseCalculo * 100);
         const porcionBaseCentimos = Math.floor(centimosTotales / totalTickets);
         let acumuladoCentimos = 0;
@@ -180,6 +182,12 @@ async function preguntarDestinoPlato(platoId) {
 
         const hayAsignados = platosDisponibles.some(p => p.idTicketAsignado !== -1);
         document.getElementById('selectNumTickets').disabled = hayAsignados;
+
+        console.group(`📌 PLATOS: Asignación Individual`);
+        console.log(`🍔 Producto: "${plato.nombre}"`);
+        console.log(`🎟️ Destino: ${plato.idTicketAsignado === -1 ? "Liberado a la mesa" : `Ticket #${plato.idTicketAsignado + 1}`}`);
+        console.log(`💰 Subtotal: S/. ${plato.subtotal.toFixed(2)}`);
+        console.groupEnd();
 
         recalcularMatriz();
     }

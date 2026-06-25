@@ -74,11 +74,10 @@
     )}">
 
                             <label th:for="${'radio-' + idGrupo}"
-                                   class="jama-uiverse-item text-between"
+                                   class="jama-uiverse-item text-between btn-toggle-grupo-jama"
                                    th:classappend="${isGroupActive} ? 'active-uiverse' : ''"
-                                   data-bs-toggle="collapse"
-                                   th:data-bs-target="${'#collapse-' + idGrupo}"
                                    th:aria-expanded="${isGroupActive ? 'true' : 'false'}"
+                                   th:data-target-collapse="${'#collapse-' + idGrupo}"
                                    th:data-module="${folder}">
 
                                 <input class="jama-radio-hidden"
@@ -90,12 +89,12 @@
                                 <div class="d-flex align-items-center gap-3">
                                     <i class="bi jama-uiverse-icon"
                                        th:classappend="${folder == 'cocina' ? 'bi-fire' :
-                                   folder == 'salón' ? 'bi-shop' :
-                                   folder == 'cajero' ? 'bi-cash-coin' :
-                                   folder == 'almacén' ? 'bi-archive-fill' :
-                                   folder == 'seguridad' ? 'bi-shield-check' :
-                                   folder == 'logística' ? 'bi-truck' :
-                                   folder == 'contabilidad' ? 'bi-journal-check' : 'bi-folder-fill'}"></i>
+                               folder == 'salón' ? 'bi-shop' :
+                               folder == 'cajero' ? 'bi-cash-coin' :
+                               folder == 'almacén' ? 'bi-archive-fill' :
+                               folder == 'seguridad' ? 'bi-shield-check' :
+                               folder == 'logística' ? 'bi-truck' :
+                               folder == 'contabilidad' ? 'bi-journal-check' : 'bi-folder-fill'}"></i>
                                     <span class="jama-uiverse-text" th:text="${grupo.key}">Grupo</span>
                                 </div>
                                 <i class="bi bi-chevron-down jama-uiverse-arrow"></i>

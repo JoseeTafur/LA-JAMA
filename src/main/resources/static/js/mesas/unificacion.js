@@ -1,6 +1,7 @@
-// =======================================================
-// UNIFICACIÓN DE MESAS
-// =======================================================
+// =========================================================================
+// 💎 LA JAMA MASTER - MOTOR DE UNIFICACIÓN Y DESFRAGMENTACIÓN EN CALIENTE
+// =========================================================================
+
 function activarModoSeleccionUnificacion() {
     if (!currentMesaId) return;
     modoUnificacionActivo = true;
@@ -186,18 +187,50 @@ function procesarDesvincular() {
     });
 }
 
+// ─── 🚀 BOTÓN DESAGRUPAR TODO: REFACTORIZADO Y BLINDADO EN VIVO (SIN F5) ───
 function procesarDesfragmentacionGrupo() {
     if (!currentMesaId) return;
 
+    // 1. Extraemos dinámicamente los números de las mesas hijas desde los badges antes de disolver el grupo
+    const tarjetaGrupo = document.querySelector(`#contenedor-tarjetas-unificadas [data-numero="${currentMesaNumero}"]`);
+    let numerosHijas = [];
+    if (tarjetaGrupo) {
+        tarjetaGrupo.querySelectorAll('.badge').forEach(badge => {
+            const numTexto = badge.innerText.replace('#', '').trim();
+            if (numTexto && numTexto !== currentMesaNumero) {
+                numerosHijas.push(numTexto);
+            }
+        });
+    }
+
     AppUtils.showConfirmationDialog({
         title: '¿Desagrupar Todo el Bloque?',
-        text: 'Se disolverá el grupo de mesas colectivas.',
+        text: 'Se disolverá el grupo de mesas colectivas de forma inmediata.',
         icon: 'warning',
         confirmButtonColor: '#1B3A2C',
         confirmButtonText: 'Sí, desagrupar todo'
     }, async function () {
         AppUtils.showLoading(true);
         try {
+            // Detectamos en qué entorno de pestaña se encuentra operando el mesero (Salón o Reservas)
+            const vistaActual = document.getElementById('vista-salon').classList.contains('d-none') ? 'reservas' : 'salon';
+
+            // 🛡️ ACTIVACIÓN DEL ESCUDO ANTI-WEBSOCKET EN LA MESA PADRE
+            const tarjetaPadreDOM = document.getElementById(`mesa-card-${currentMesaId}`) || document.querySelector(`.mesa-box[data-numero="${currentMesaNumero}"]`);
+            if (tarjetaPadreDOM) {
+                tarjetaPadreDOM.setAttribute('data-bloqueo-reserva-live', 'true');
+            }
+
+            // 🛡️ ACTIVACIÓN DEL ESCUDO EN CADA UNA DE LAS MESAS HIJAS ENCONTRADAS
+            let tarjetasHijasDOM = [];
+            numerosHijas.forEach(num => {
+                const cajaHijaDOM = document.querySelector(`.mesa-box[data-numero="${num}"]`);
+                if (cajaHijaDOM) {
+                    cajaHijaDOM.setAttribute('data-bloqueo-reserva-live', 'true');
+                    tarjetasHijasDOM.push(cajaHijaDOM);
+                }
+            });
+
             const res = await fetch(`/admin/mesas/desagrupar-grupo/${currentMesaId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
@@ -210,7 +243,7 @@ function procesarDesfragmentacionGrupo() {
                 if (dataText.includes("éxito")) {
                     AppUtils.showNotification("Grupo disuelto con éxito", "success");
 
-                    const tarjetaGrupo = document.querySelector(`#contenedor-tarjetas-unificadas [data-numero="${currentMesaNumero}"]`);
+                    // Remoción limpia de la tarjeta colectiva del panel lateral
                     if (tarjetaGrupo) {
                         tarjetaGrupo.remove();
                         actualizarContadorBadgePestaña();
@@ -229,7 +262,63 @@ function procesarDesfragmentacionGrupo() {
                         }
                     }
 
-                    actualizarEstadoMesaEnPlano(currentMesaNumero, 'disponible', null, 'NINGUNO');
+                    // ─── 🛠️ RE-CONSTRUCCIÓN SÍNCRONA COMPLETA (BYPASS DEL F5) ───
+
+                    // A. Restauración milimétrica de la Mesa Padre
+                    if (tarjetaPadreDOM) {
+                        tarjetaPadreDOM.setAttribute('data-es-padre', 'NO');
+                        tarjetaPadreDOM.removeAttribute('data-id-mesa-padre');
+
+                        const pId = tarjetaPadreDOM.getAttribute('data-pedido-id') || '';
+                        const pEst = tarjetaPadreDOM.getAttribute('data-pedido-estado') || 'NINGUNO';
+                        const tienePedidoPadre = pId !== '' && pId !== 'null' && pEst !== 'NINGUNO';
+
+                        let colorPadre = 'disponible';
+                        let iconoPadre = (vistaActual === 'reservas') ? 'bi-calendar-check-fill' : 'bi-cup-hot-fill';
+
+                        if (tienePedidoPadre) {
+                            if (tarjetaPadreDOM.classList.contains('lista-para-recoger')) { colorPadre = 'lista-para-recoger'; iconoPadre = 'bi-bell-fill'; }
+                            else if (tarjetaPadreDOM.classList.contains('lista-para-pagar')) { colorPadre = 'lista-para-pagar'; iconoPadre = 'bi-person-check-fill'; }
+                            else { colorPadre = 'ocupada'; iconoPadre = 'bi-cup-hot-fill'; }
+                        }
+
+                        tarjetaPadreDOM.className = `mesa-box shadow-sm ${colorPadre}`;
+                        const iconI = tarjetaPadreDOM.querySelector('.mesa-icon-wrapper i');
+                        if (iconI) iconI.className = `bi ${iconoPadre}`;
+
+                        if (typeof actualizarEstadoMesaEnPlano === 'function') {
+                            actualizarEstadoMesaEnPlano(currentMesaNumero, colorPadre, pId !== '' ? pId : null, pEst);
+                        }
+                    }
+
+                    // B. Restauración individual de cada una de las Mesas Hijas
+                    tarjetasHijasDOM.forEach(hijaDOM => {
+                        hijaDOM.setAttribute('data-es-padre', 'NO');
+                        hijaDOM.removeAttribute('data-id-mesa-padre');
+
+                        const hId = hijaDOM.getAttribute('data-pedido-id') || '';
+                        const hEst = hijaDOM.getAttribute('data-pedido-estado') || 'NINGUNO';
+                        const tienePedidoHija = hId !== '' && hId !== 'null' && hEst !== 'NINGUNO';
+
+                        let colorHija = 'disponible';
+                        let iconoHija = (vistaActual === 'reservas') ? 'bi-calendar-check-fill' : 'bi-cup-hot-fill';
+
+                        if (tienePedidoHija) {
+                            if (hijaDOM.classList.contains('lista-para-recoger')) { colorHija = 'lista-para-recoger'; iconoHija = 'bi-bell-fill'; }
+                            else if (hijaDOM.classList.contains('lista-para-pagar')) { colorHija = 'lista-para-pagar'; iconoHija = 'bi-person-check-fill'; }
+                            else { colorHija = 'ocupada'; iconoHija = 'bi-cup-hot-fill'; }
+                        }
+
+                        // Re-establecemos clases e iconos correspondientes según la pestaña activa
+                        hijaDOM.className = `mesa-box shadow-sm ${colorHija}`;
+                        const iconI = hijaDOM.querySelector('.mesa-icon-wrapper i');
+                        if (iconI) iconI.className = `bi ${iconoHija}`;
+
+                        if (typeof actualizarEstadoMesaEnPlano === 'function') {
+                            actualizarEstadoMesaEnPlano(hijaDOM.getAttribute('data-numero'), colorHija, hId !== '' ? hId : null, hEst);
+                        }
+                    });
+
                     if (mesaModal) mesaModal.hide();
                 } else {
                     Swal.fire({
@@ -242,6 +331,13 @@ function procesarDesfragmentacionGrupo() {
             } else {
                 AppUtils.showNotification("Error de comunicación con el servidor.", "error");
             }
+
+            // 🛡️ LIBERACIÓN PROGRESIVA DE LOS CANDADOS PROTECTORES DE RED
+            setTimeout(() => {
+                if (tarjetaPadreDOM) tarjetaPadreDOM.removeAttribute('data-bloqueo-reserva-live');
+                tarjetasHijasDOM.forEach(hijaDOM => hijaDOM.removeAttribute('data-bloqueo-reserva-live'));
+            }, 1500);
+
         } catch (error) {
             AppUtils.showLoading(false);
             console.error("Error al intentar desagrupar bloque:", error);

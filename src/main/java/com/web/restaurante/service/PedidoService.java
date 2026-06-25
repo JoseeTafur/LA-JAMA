@@ -96,7 +96,7 @@ public class PedidoService {
 
             if (pedido.getTipoPedido() == null) {
                 System.out.println("⚠️ [SERVICE] Pedido detectado sin Tipo. Seteando TipoPedido.LOCAL de forma automática.");
-                pedido.setTipoPedido(TipoPedido.LOCAL);
+                pedido.setTipoPedido(TipoPedido.SALON);
             }
         }
 
@@ -163,25 +163,18 @@ public class PedidoService {
         if (!detalleTarget.isCocinado()) {
             detalleTarget.setCocinado(true);
 
-            // 🔍 REEMPLAZA ESTE BLOQUE EXACTO DENTRO DE despacharPlatoIndividual():
             insumoProductoRepository.findByProductoId(detalleTarget.getProducto().getId()).forEach(ip -> {
                 if (ip.getInsumo() != null && ip.getInsumo().getCategoria() != null) {
                     Insumo insumo = ip.getInsumo();
                     double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
                     double totalTeorico = cantidadUsada * detalleTarget.getCantidad();
 
-                    // 🚀 PASO MAESTRO: Liberamos el escudo virtual (Resta del comprometido)
                     double comprometidoActual = (insumo.getStockComprometido() != null) ? insumo.getStockComprometido() : 0.0;
                     insumo.setStockComprometido(Math.max(0.0, comprometidoActual - totalTeorico));
 
                     if (insumo.getCategoria().toUpperCase().contains("PROTEIN")) {
-                        // 🥩 CASO PROTEÍNA: Sigue a tu canal de porciones (Resta stockActual + Kardex Porciones)
                         proteinaService.registrarKardexPorVenta(insumo.getId(), detalleTarget.getCantidad(), p.getId());
                     } else {
-                        // 🛒 CASO GENERAL: Descuento físico real del almacén
-                        double stockFisicoActual = (insumo.getStockActual() != null) ? insumo.getStockActual() : 0.0;
-                        insumo.setStockActual(stockFisicoActual - totalTeorico);
-
                         String detalleVenta = "Despacho a cocina (Gasto Real): " + detalleTarget.getCantidad() + "x " + detalleTarget.getProducto().getNombre();
                         insumoService.registrarMovimientoPorId(insumo.getId(), totalTeorico, "EGRESO", detalleVenta);
                     }
@@ -299,15 +292,12 @@ public class PedidoService {
                     if ((esFriaCorrespondiente || esCalienteCorrespondiente) && !d.isCocinado()) {
                         d.setCocinado(true);
 
-                        // 🚀 RECORRIDO INTEGRAL PARA EL DESPACHO MASIVO DE LA ESTACIÓN
                         insumoProductoRepository.findByProductoId(d.getProducto().getId()).forEach(ip -> {
                             if (ip.getInsumo() != null && ip.getInsumo().getCategoria() != null) {
 
                                 if (ip.getInsumo().getCategoria().toUpperCase().contains("PROTEIN")) {
-                                    // 🥩 CASO PROTEÍNA
                                     proteinaService.registrarKardexPorVenta(ip.getInsumo().getId(), d.getCantidad(), p.getId());
                                 } else {
-                                    // 🛒 CASO GENERAL (Arroz/Verduras)
                                     double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
                                     double totalTeorico = cantidadUsada * d.getCantidad();
                                     String detalleVenta = "Despacho a cocina: " + d.getCantidad() + "x " + d.getProducto().getNombre();

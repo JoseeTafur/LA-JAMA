@@ -1,13 +1,8 @@
-/**
- * LA JAMA - MÓDULO PRINCIPAL DEL DASHBOARD (MÉTRICAS PREMIUM VIVAS)
- */
-
 document.addEventListener("DOMContentLoaded", function () {
     const fadeInOverlay = document.getElementById("fade-in-overlay");
     const entranceVideo = document.getElementById("entrance-video");
     const entranceSpacer = document.getElementById("entrance-spacer");
 
-    // ── 🎬 1. CONTROL LOGEO / TELÓN DE ENTRADA ──
     if (fadeInOverlay) {
         const navigationEntries = performance.getEntriesByType("navigation");
         const isBackNavigation = navigationEntries.length > 0 && navigationEntries[0].type === "back_forward";
@@ -15,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (isBackNavigation || yaSeLogeo === "true") {
             fadeInOverlay.remove();
-            inicializarGraficosLaJama(); // Levantamos gráficos directo si no hay telón
+            cargarMetricasYGraficosRealtime();
             return;
         }
 
@@ -43,120 +38,156 @@ document.addEventListener("DOMContentLoaded", function () {
                             entranceVideo.load();
                         } catch(e) {}
                         fadeInOverlay.remove();
-                        inicializarGraficosLaJama(); // Levantamos gráficos al abrir el telón
+                        cargarMetricasYGraficosRealtime();
                     }, 600);
                 }, 1000);
             }, { once: true });
         }
     } else {
-        inicializarGraficosLaJama();
+        cargarMetricasYGraficosRealtime();
     }
 });
 
-// ── 📊 2. MOTOR CORE DE COMPILACIÓN GRÁFICOS (CHART.JS) ──
-function inicializarGraficosLaJama() {
+if (typeof chartMesasInstance === 'undefined') {
+    var chartMesasInstance = null;
+}
+if (typeof chartInsumosInstance === 'undefined') {
+    var chartInsumosInstance = null;
+}
+if (typeof chartCanalesInstance === 'undefined') {
+    var chartCanalesInstance = null;
+}
 
-    // Gráfico A: Ocupación del Salón (Doughnut)
-    const ctxMesas = document.getElementById('chartMesasSalon');
-    if (ctxMesas) {
-        const libres = parseInt(document.getElementById('valMesasLibres')?.textContent) || 0;
-        const ocupadas = parseInt(document.getElementById('valMesasOcupadas')?.textContent) || 0;
+async function cargarMetricasYGraficosRealtime() {
+    try {
+        const res = await fetch('/api/admin/metricas/dashboard');
+        if (!res.ok) throw new Error("Error de comunicación API");
+        const data = await res.json();
 
-        new Chart(ctxMesas, {
-            type: 'doughnut',
-            data: {
-                labels: ['Libres', 'Ocupadas'],
-                datasets: [{
-                    data: [libres, ocupadas],
-                    backgroundColor: ['#10b981', '#ef4444'],
-                    borderWidth: 2,
-                    borderColor: '#ffffff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                cutout: '72%'
-            }
-        });
-    }
+        if (document.getElementById('kpiPlatosVendidosHoy')) {
+            document.getElementById('kpiPlatosVendidosHoy').innerText = data.totalPedidosHoy;
+        }
 
-    // Gráfico B: Insumos Más Demandados (Barras Horizontales)
-    const ctxInsumos = document.getElementById('chartTopInsumos');
-    if (ctxInsumos) {
-        new Chart(ctxInsumos, {
-            type: 'bar',
-            data: {
-                labels: ['Lomo Fino', 'Papa Amarilla', 'Arroz Extra', 'Cebolla Roja', 'Ají Amarillo'],
-                datasets: [{
-                    data: [18.5, 34.2, 22.0, 14.8, 28.5],
-                    backgroundColor: '#1B3A2C', // Verde oficial La Jama
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false }, ticks: { color: '#1B3A2C' } },
-                    y: { grid: { display: false }, ticks: { font: { weight: 'bold' }, color: '#1B3A2C' } }
-                }
-            }
-        });
-    }
+const ctxMesas = document.getElementById('chartMesasSalon');
+        if (ctxMesas) {
+            const libres    = parseInt(data.estadoMesas.DISPONIBLE) || 0;
+            const ocupadas  = parseInt(data.estadoMesas.OCUPADA) || 0;
+            const reserva   = parseInt(data.estadoMesas.RESERVADA) || 0;
+            const unificada = parseInt(data.estadoMesas.UNIFICADA) || 0;
 
-    // Gráfico C: Canales de Venta (Polar Area Logístico)
-    const ctxCanales = document.getElementById('chartCanalesVenta');
-    if (ctxCanales) {
-        new Chart(ctxCanales, {
-            type: 'polarArea',
-            data: {
-                labels: ['Salón', 'Delivery', 'Carta Web QR'],
-                datasets: [{
-                    data: [60, 25, 15],
-                    backgroundColor: [
-                        'rgba(27, 58, 44, 0.85)',  // Verde Jama
-                        'rgba(78, 115, 223, 0.85)', // Azul Logístico
-                        'rgba(255, 179, 138, 0.85)' // Skin / Peach
-                    ],
-                    borderColor: '#ffffff',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { boxWidth: 10, font: { size: 11 } }
-                    }
+            // ─── 🚀 INYECCIÓN EN ELEMENTOS DE TEXTO LATERALES (LEYENDA) ───
+            const elLibres = document.getElementById('valMesasLibres');
+            if (elLibres) elLibres.innerText = libres;
+
+            const elOcupadas = document.getElementById('valMesasOcupadas');
+            if (elOcupadas) elOcupadas.innerText = ocupadas;
+
+            // Si tienes etiquetas en tu HTML para reservas y grupos, también las actualizamos:
+            const elReservas = document.getElementById('valMesasReservadas');
+            if (elReservas) elReservas.innerText = reserva;
+
+            const elUnificadas = document.getElementById('valMesasUnificadas');
+            if (elUnificadas) elUnificadas.innerText = unificada;
+
+
+            if (chartMesasInstance) chartMesasInstance.destroy();
+
+            chartMesasInstance = new Chart(ctxMesas, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Libres', 'Ocupadas', 'Reservadas', 'Grupos'],
+                    datasets: [{
+                        data: [libres, ocupadas, reserva, unificada],
+                        backgroundColor: ['#10b981', '#ef4444', '#6b7280', '#4c1d95'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
                 },
-                scales: {
-                    r: { ticks: { display: false }, grid: { color: 'rgba(27, 58, 44, 0.05)' } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    cutout: '72%'
                 }
-            }
-        });
+            });
+        }
+
+const ctxInsumos = document.getElementById('chartTopInsumos');
+        if (ctxInsumos) {
+            const platosLabels = Object.keys(data.topPlatos || {});
+            const platosValores = Object.values(data.topPlatos || {});
+
+            if (chartInsumosInstance) chartInsumosInstance.destroy();
+
+            chartInsumosInstance = new Chart(ctxInsumos, {
+                type: 'bar',
+                data: {
+                    labels: platosLabels.length > 0 ? platosLabels : ['Sin platos vendidos'],
+                    datasets: [{
+                        data: platosValores.length > 0 ? platosValores : [0],
+                        backgroundColor: '#1B3A2C',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#1B3A2C', stepSize: 1 } },
+                        y: { grid: { display: false }, ticks: { font: { weight: 'bold' }, color: '#1B3A2C' } }
+                    }
+                }
+            });
+        }
+
+        const ctxCanales = document.getElementById('chartCanalesVenta');
+        if (ctxCanales) {
+            const salonVentas    = parseInt(data.canalesVenta.SALON) || 0;
+            const deliveryVentas = parseInt(data.canalesVenta.DELIVERY) || 0;
+            const qrVentas       = parseInt(data.canalesVenta.CARTA_QR) || 0;
+
+            if (chartCanalesInstance) chartCanalesInstance.destroy();
+
+            chartCanalesInstance = new Chart(ctxCanales, {
+                type: 'polarArea',
+                data: {
+                    labels: ['Salón', 'Delivery', 'Carta Web QR'],
+                    datasets: [{
+                        data: [salonVentas, deliveryVentas, qrVentas],
+                        backgroundColor: [
+                            'rgba(27, 58, 44, 0.85)',
+                            'rgba(78, 115, 223, 0.85)',
+                            'rgba(255, 179, 138, 0.85)'
+                        ],
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 10, font: { size: 11 } }
+                        }
+                    },
+                    scales: {
+                        r: { ticks: { display: false }, grid: { color: 'rgba(27, 58, 44, 0.05)' } }
+                    }
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error("💥 Error en sincronización de métricas del Dashboard:", error);
     }
 }
 
-// ── 🔄 3. SINOPSIS SÍNCRONA DE ACCESOS/KPIS (JQUERY) ──
-$(document).ready(function () {
-    if (document.getElementById('kpiIngresosHoy') || document.getElementById('kpiPlatosVendidosHoy')) {
-        setInterval(function () {
-            $.get('/dashboard/kpis', function (data) {
-                if (data.totalVentasHoy !== undefined) {
-                    $('#kpiIngresosHoy').text(parseFloat(data.totalVentasHoy).toFixed(2));
-                }
-                if (data.platosVendidosHoy !== undefined) {
-                    $('#kpiPlatosVendidosHoy').text(data.platosVendidosHoy);
-                }
-            }).fail(function () {
-                // Fail-safe silencioso
-            });
-        }, 60000);
-    }
-});
+if (typeof bucleMetricasDashboard === 'undefined') {
+    var bucleMetricasDashboard = setInterval(function () {
+        cargarMetricasYGraficosRealtime();
+    }, 60000);
+}

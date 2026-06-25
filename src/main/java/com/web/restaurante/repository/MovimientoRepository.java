@@ -8,4 +8,6 @@ public interface MovimientoRepository extends JpaRepository<MovimientoInsumo, Lo
     // 🔥 Agregado Top50 para proteger el historial de insumos generales
     List<MovimientoInsumo> findTop50ByInsumoIdOrderByFechaDesc(Long insumoId);
     void deleteByInsumoId(Long insumoId);
+
+
 }

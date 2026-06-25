@@ -97,8 +97,6 @@ public class Pedido {
     @Column(name = "comprobante_xml_contenido", columnDefinition = "LONGTEXT")
     private String comprobanteXmlContenido;
 
-    //-------------------------------------------------------------------------------
-
     @Column(name = "comprobante_nota_numero")
     private String comprobanteNotaNumero;
 
@@ -118,15 +116,10 @@ public class Pedido {
     @Column(name = "metodo_pago")
     private MetodoPago metodoPago;
 
-    // =========================================================================
-    // ⚙️ LÓGICA ORIGINAL CONSERVADA (Módulos de Delivery, Despacho y Reparto)
-    // =========================================================================
     public boolean isListoParaServir() {
-        // Listo para servir si está PREPARADO o ASIGNADO (pedidos locales del mesero)
         if (this.estado == EstadoPedido.PREPARADO || this.estado == EstadoPedido.ASIGNADO) {
             return true;
         }
-        // Para pedidos aún en cocina (EN_COCINA), verificar si frío y caliente están listos
         if (this.estado != EstadoPedido.EN_COCINA) {
             return false;
         }
@@ -159,13 +152,6 @@ public class Pedido {
         return false;
     }
 
-    // =========================================================================
-    // 🎨 NUEVA LOGÍSTICA MICROSCÓPICA (Control del Plano de Mesas en Salón)
-    // =========================================================================
-
-    /**
-     * CONDICIÓN AMARILLA (Para Recoger): El plano interroga si hay platos listos esperando en barra.
-     */
     public boolean tienePlatosMicroParaRecoger() {
         if (this.listaDetalles == null || this.listaDetalles.isEmpty()) {
             return false;
@@ -174,9 +160,6 @@ public class Pedido {
                 .anyMatch(d -> d.isCocinado() && !d.isEntregado());
     }
 
-    /**
-     * CONDICIÓN ROJA (En Cocina): El plano interroga si aún quedan platos crudos/pendientes.
-     */
     public boolean tienePlatosMicroEnCocina() {
         if (this.listaDetalles == null || this.listaDetalles.isEmpty()) {
             return false;
@@ -185,14 +168,23 @@ public class Pedido {
                 .anyMatch(d -> !d.isCocinado());
     }
 
-    /**
-     * CONDICIÓN BLANCA (Listo para Pagar): El plano interroga si ya se sirvió el 100% en mesa.
-     */
     public boolean todosPlatosMicroEntregados() {
         if (this.listaDetalles == null || this.listaDetalles.isEmpty()) {
             return false;
         }
         return this.listaDetalles.stream()
                 .allMatch(DetallePedido::isEntregado);
+    }
+
+    public String getOrigenFormateado() {
+        if (this.tipoPedido == null) {
+            return "LOCAL";
+        }
+        switch (this.tipoPedido) {
+            case SALON:    return "LOCAL";
+            case DELIVERY: return "DELIVERY";
+            case LLEVAR:   return "LLEVAR";
+            default:       return "LOCAL";
+        }
     }
 }

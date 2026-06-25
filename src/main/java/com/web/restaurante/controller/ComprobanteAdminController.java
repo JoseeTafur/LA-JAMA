@@ -579,6 +579,7 @@ public class ComprobanteAdminController {
         List<Map<String, Object>> dto = lista.stream().map(p -> {
             Map<String, Object> m = new java.util.LinkedHashMap<>();
             m.put("id",                   p.getId());
+            m.put("numeroNotaVenta",      "NV01-" + String.format("%08d", p.getId()));
             m.put("fechaCreacion",        p.getFechaCreacion() != null
                     ? p.getFechaCreacion().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
                     : "");

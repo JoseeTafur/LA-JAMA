@@ -53,24 +53,33 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                         return;
                     }
 
-                    let badgeColor = 'bg-danger';
-                    let badgeTexto = ticketImpreso ? 'En cocina' : 'Enviado';
+                    // ─── 🚀 ASIGNACIÓN ESTRICTA Y LIMPIA DE JERARQUÍA DE ESTADOS ───
+                    let badgeColor = 'bg-primary text-white'; // Por defecto: Enviado (Azul)
+                    let badgeTexto = 'Enviado';
 
-                    if (d.cocinado && d.entregado)  {
-                        badgeColor = 'bg-secondary';
+                    // 1. Validamos estados finales de entrega
+                    if (d.cocinado && d.entregado) {
+                        badgeColor = 'bg-secondary text-white';
                         badgeTexto = 'Entregado';
-                    } else if (d.cocinado) {
-                        badgeColor = 'bg-success';
+                    }
+                    // 2. Validamos si el plato ya fue terminado de cocinar
+                    else if (d.cocinado) {
+                        badgeColor = 'bg-success text-white';
                         badgeTexto = 'Listo';
-                    } else if (!ticketImpreso) {
-                        badgeColor = 'bg-info text-dark';
+                    }
+                    // 3. Validamos si ya se imprimió (revisando el flag del pedido O si el detalle individual ya viene marcado)
+                    else if (ticketImpreso === true || d.impresoEnCocina === true) {
+                        badgeColor = 'bg-danger text-white';
+                        badgeTexto = 'En cocina';
                     }
 
+                    // ─── 🛠️ RENDERIZADO DEL BOTÓN DE ANULACIÓN / ELIMINACIÓN ───
                     let btnEliminarHTML = '';
                     if (!d.cocinado) {
                         const esMerma = ticketImpreso ? 'true' : 'false';
-                        // Si ya se imprimió, muestra el triángulo de advertencia de merma; si no, el tacho de basura común
-                        const icono   = ticketImpreso ? 'bi-exclamation-triangle-fill text-warning' : 'bi-trash3-fill text-danger';
+                        // Si ya se imprimió, el icono alerta peligro (triángulo); si no, tacho de basura común
+                        const icono = ticketImpreso ? 'bi-exclamation-triangle-fill text-warning' : 'bi-trash3-fill text-danger';
+
                         btnEliminarHTML = `
                             <button class="btn btn-sm btn-link p-1 ms-1" title="${ticketImpreso ? 'Declarar merma' : 'Anular plato'}"
                                     onclick="eliminarItemComanda(${currentPedidoId}, ${d.id}, '${d.producto.nombre}', ${esMerma})">
@@ -90,13 +99,12 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                             </button>`;
                     }
 
+                    // ─── 🎛️ ESTRUCTURA DE CHECKBOX PREMIUM DESDE CHECKBOX.CSS ───
                     let checkboxHTML = '';
                     if (!d.canceladoPorCliente) {
                         const precioSeguro = d.subtotal ? d.subtotal : (d.precioUnitario ? d.precioUnitario : 0);
-                        // 🛠️ ID Único Dinámico combinando prefijo y código del detalle de la mesa
                         const idCheckModalMesa = `cbx_modal_${d.id}`;
 
-                        // 🌟 INYECCIÓN DE ARQUITECTURA DE CHECKBOX PREMIUM REUTILIZABLE DESDE CHECKBOX.CSS
                         checkboxHTML = `
                             <div class="cntr" style="margin-left: 10px;">
                                 <input type="checkbox"
@@ -112,6 +120,7 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                         checkboxHTML = `<div style="width:28px;"></div>`;
                     }
 
+                    // ─── 🖼️ INYECCIÓN EN LA PREVISUALIZACIÓN DE LA COMANDA ───
                     listaPlatos.innerHTML += `
                         <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border item-plato-comanda"
                              data-estado="${badgeTexto}"

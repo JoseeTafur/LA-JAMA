@@ -155,13 +155,17 @@ public class CajaController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("id", pedido.getId());
-            response.put("tipoPedido", pedido.getTipoPedido() != null ? pedido.getTipoPedido().name() : "LOCAL");
+
+            // 🚀 CORRECCIÓN: Si el tipo de pedido existe mandamos su nombre original, sino usamos LLEVAR como precaución de mostrador
+            response.put("tipoPedido", pedido.getTipoPedido() != null ? pedido.getTipoPedido().name() : "LLEVAR");
+
             response.put("numeroMesa", pedido.getNumeroMesa());
             response.put("montoTotal", pedido.getMontoTotal() != null ? pedido.getMontoTotal() : 0.0);
 
             List<Map<String, Object>> detallesDTO = pedido.getListaDetalles().stream().map(d -> {
                 Map<String, Object> item = new HashMap<>();
                 item.put("id", d.getId());
+                item.put("node_num", d.getCantidad()); // Mantener compatibilidad si usas componentes
                 item.put("cantidad", d.getCantidad());
                 item.put("canceladoPorCliente", d.isCanceladoPorCliente());
                 item.put("pagado", d.isPagado());

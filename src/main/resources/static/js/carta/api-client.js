@@ -81,16 +81,14 @@ export async function enviarPedidoFinal() {
     const total = carrito.reduce((s, i) => s + i.precio, 0);
 
         const pedidoPayload = {
-        cliente: document.getElementById('nombreCliente').value.trim(), // ✅ Regresa a 'cliente'
-        direccion: estadoCheckout.tipoEntrega === 'RECOGER' ? 'Recojo local' : document.getElementById('direccionCliente').value.trim(), // ✅ Regresa a 'direccion'
+        cliente: document.getElementById('nombreCliente').value.trim(),
+        direccion: estadoCheckout.tipoEntrega === 'LLEVAR' ? 'Recojo local - Mostrador' : document.getElementById('direccionCliente').value.trim(),
         latitud: parseFloat(document.getElementById('latCliente').value) || null,
         longitud: parseFloat(document.getElementById('lngCliente').value) || null,
         montoTotal: total,
         metodoPago: estadoCheckout.metodoPago,
         textoVoucherCrudo: textoOcr,
-        tipoPedido: estadoCheckout.tipoEntrega === 'RECOGER' ? 'LOCAL' : 'DELIVERY',
-
-        // 🔥 Conservamos tus nuevos campos de metadata fiscal perfectamente mapeados:
+        tipoPedido: estadoCheckout.tipoEntrega,
         clienteCorreo: document.getElementById('clienteCorreo') ? document.getElementById('clienteCorreo').value.trim() : null,
         preferenciaComprobante: document.getElementById('preferenciaComprobante') ? document.getElementById('preferenciaComprobante').value : 'BOLETA',
         documentoCliente: document.getElementById('numeroDocumento') ? document.getElementById('numeroDocumento').value.trim() : null,

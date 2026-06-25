@@ -41,11 +41,10 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     List<Pedido> buscarPedidosPorCocina(@Param("categoria") String categoria);
 
     @Query("SELECT p FROM Pedido p WHERE " +
-            // 1. 🌐 FLUJO CARTA DIGITAL (Delivery y Recojo en Local):
+            // 1. 🌐 FLUJO CARTA DIGITAL (Delivery y el nuevo canal Recojo/Para Llevar):
             "(p.numeroMesa IS NULL AND p.estado IN (com.web.restaurante.model.enums.EstadoPedido.EN_COCINA, com.web.restaurante.model.enums.EstadoPedido.PREPARADO)) " +
             "OR " +
-            // 2. 🍽️ FLUJO PRESENCIAL (Salón) [REPARADO AMBOS ESTADOS]:
-            // Ahora acepta pedidos PAGADOS listos para timbrar, y pedidos PREPARADOS que fueron anulados para corregir.
+            // 2. 🍽️ FLUJO PRESENCIAL (Salón):
             "(p.numeroMesa IS NOT NULL AND p.estado IN (com.web.restaurante.model.enums.EstadoPedido.PAGADO, com.web.restaurante.model.enums.EstadoPedido.PREPARADO) AND (p.comprobanteNumero IS NULL OR p.comprobanteNumero = '')) " +
             "ORDER BY p.fechaCreacion ASC")
     List<Pedido> listarPedidosPorCobrar();
@@ -65,11 +64,13 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             "ORDER BY p.fechaCreacion ASC")
     List<Pedido> findDeliveryPendientesConCoordenadas();
 
+    // 🛠️ REPARADO: Ahora escucha de manera elástica los 3 flujos en la cola de aprobación de la carta digital
     @Query("SELECT p FROM Pedido p WHERE p.tipoPedido IN (" +
-        "com.web.restaurante.model.enums.TipoPedido.DELIVERY, " +
-        "com.web.restaurante.model.enums.TipoPedido.LOCAL) " +
-        "AND p.estado = com.web.restaurante.model.enums.EstadoPedido.PENDIENTE " +
-        "ORDER BY p.fechaCreacion ASC")
+            "com.web.restaurante.model.enums.TipoPedido.DELIVERY, " +
+            "com.web.restaurante.model.enums.TipoPedido.SALON, " +
+            "com.web.restaurante.model.enums.TipoPedido.LLEVAR) " +
+            "AND p.estado = com.web.restaurante.model.enums.EstadoPedido.PENDIENTE " +
+            "ORDER BY p.fechaCreacion ASC")
     List<Pedido> findPedidosPendientesDeCarta();
 
     @Query("SELECT p FROM Pedido p WHERE p.fechaCreacion > :fechaApertura AND ("

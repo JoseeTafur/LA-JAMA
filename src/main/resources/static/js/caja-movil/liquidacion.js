@@ -43,12 +43,13 @@ function procesarLiquidacion() {
         let listaPlatosModificados = [];
 
         if (esFlujoCompartidoDinero && ratioRealTicket > 0) {
+            // 📊 Caso A: Cuenta Compartida Proporcional
             listaPlatosModificados = platosDisponibles
                 .filter(p => platosSeleccionadosParaCobro.includes(p.id))
                 .map(p => {
                     const subtotalProrrateado = Math.round(p.subtotal * ratioRealTicket * 100) / 100;
                     return {
-                        productoId: p.id,
+                        productoId: p.productoId || p.id, // ◄ LLAVE INTEGRAL RECUPERADA (No colapsa el id del loop)
                         nombre: p.nombre.trim(),
                         cantidad: p.cantidad,
                         precioUnitario: Math.round((subtotalProrrateado / p.cantidad) * 100) / 100,
@@ -56,10 +57,11 @@ function procesarLiquidacion() {
                     };
                 });
         } else {
+            // 💵 Caso B: División por Ítems Individuales
             listaPlatosModificados = platosDisponibles
                 .filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id))
                 .map(p => ({
-                    productoId: p.id,
+                    productoId: p.productoId || p.id, // ◄ LLAVE INTEGRAL RECUPERADA
                     nombre: p.nombre.trim(),
                     cantidad: p.cantidad,
                     precioUnitario: Math.round((p.subtotal / p.cantidad) * 100) / 100,
@@ -80,8 +82,9 @@ function procesarLiquidacion() {
         };
     });
 
-    let segundosRestantes = 5;
+    console.log("📦 PAYLOAD SINCRONIZADO ENVIADO A SPRING BOOT:", payloadTickets);
 
+    let segundosRestantes = 5;
     Swal.fire({
         title: '<span style="color: #1B3A2C; font-weight: 800;">¿Confirmar Pago de Consumos?</span>',
         text: `Procesando ${ticketsDeCobro.length} tickets tributarios con IGV de forma segura. Por favor, verifique detalladamente los montos en la pantalla.`,
@@ -142,11 +145,18 @@ async function ejecutarEnvioBackend(payloadTickets) {
 
         if (res.ok) {
             limpiarInstanciaCaja();
+
+            if (typeof cargarLiquidadosTurnoAsincrono === 'function') {
+                            cargarLiquidadosTurnoAsincrono();
+            }
+
             Swal.fire({
                 icon: 'success',
                 title: '¡Cobro Procesado!',
                 text: 'Los comprobantes fiscales han sido enviados a cola de timbrado de forma segura.',
                 confirmButtonColor: '#1B3A2C'
+            }).then(() => {
+                console.log("✔ Transmisión asíncrona completada. Mesa liberada por evento reactivo.");
             });
         } else {
             const txtError = await res.text();
@@ -171,7 +181,6 @@ function evaluarBotonConfirmarPago() {
     if (!btnDesocupar) return;
 
     const checksMarcados = document.querySelectorAll('.chk-mesa-confirmar:checked');
-
     if (checksMarcados.length === 0) {
         btnDesocupar.classList.add('disabled');
         btnDesocupar.disabled = true;
@@ -213,62 +222,4 @@ function recalcularSubtotalElegido() {
     });
 
     txtElegido.innerText = sumaAcumulada.toFixed(2);
-}
-
-function generarPrevisualizacionCajero() {
-    const visor = document.getElementById('visualizador-ticket-cajero');
-    if (!visor) return;
-
-    if (ticketsDeCobro.length === 0 || platosSeleccionadosParaCobro.length === 0) {
-        visor.innerHTML = "// [TESTING] Esperando selección de platos o inicialización de canastas...";
-        return;
-    }
-
-    const payloadDePrueba = ticketsDeCobro.map(t => {
-        const consumoFinalTicket = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
-        const ratioRealTicket = totalConsumoMesa > 0 ? (consumoFinalTicket / totalConsumoMesa) : 0;
-        const esFlujoCompartidoDinero = t.esCompartidoPorMonto || !platosDisponibles.some(p => p.idTicketAsignado === t.id);
-        let listaPlatosModificados = [];
-
-        if (esFlujoCompartidoDinero && ratioRealTicket > 0) {
-            listaPlatosModificados = platosDisponibles
-                .filter(p => platosSeleccionadosParaCobro.includes(p.id))
-                .map(p => {
-                    const subtotalProrrateado = Math.round(p.subtotal * ratioRealTicket * 100) / 100;
-                    return {
-                        productoId: p.productoId || p.id,
-                        nombre: p.nombre.trim(),
-                        cantidad: p.cantidad,
-                        precioUnitarioCalculado: Math.round((subtotalProrrateado / p.cantidad) * 100) / 100,
-                        subtotalAsignado: subtotalProrrateado
-                    };
-                });
-        } else {
-            listaPlatosModificados = platosDisponibles
-                .filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id))
-                .map(p => ({
-                    productoId: p.productoId || p.id,
-                    nombre: p.nombre.trim(),
-                    cantidad: p.cantidad,
-                    precioUnitario: Math.round((p.subtotal / p.cantidad) * 100) / 100,
-                    subtotalAsignado: Math.round(p.subtotal * 100) / 100
-                }));
-        }
-
-        listaPlatosModificados.sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-        return {
-            ticketId: t.id + 1,
-            tipoDoc: t.tipoDoc,
-            metodoPago: t.metodoPago,
-            consumoFinalSunat: consumoFinalTicket,
-            subtotalNeto: Math.round((consumoFinalTicket / (1 + TASA_IGV)) * 100) / 100,
-            igvCalculado: Math.round((consumoFinalTicket - Math.round((consumoFinalTicket / (1 + TASA_IGV)) * 100) / 100) * 100) / 100,
-            numItemsEnviados: listaPlatosModificados.length,
-            listaDetalles: listaPlatosModificados
-        };
-    });
-
-    visor.textContent = `// MATRIZ DE COBRO ENVIADA A LA COLA DE FACTURACIÓN\n\n` +
-                        JSON.stringify(payloadDePrueba, null, 2);
 }

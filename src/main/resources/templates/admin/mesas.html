@@ -354,11 +354,6 @@
                                     <span>Seleccionar Todo</span>
                                 </button>
 
-                                <button type="button" id="btnDesocupar" class="btn-jama-kinetic btn-kinetic-red justify-content-center disabled" onclick="validarDesocupar()" disabled>
-                                    <i class="bi bi-cash-coin"></i>
-                                    <span>Confirmar Pago</span>
-                                </button>
-
                                 <button type="button" id="btnDesvincularMesa" class="btn-jama-kinetic btn-kinetic-danger-outline justify-content-center d-none" onclick="procesarDesvincular()">
                                     <i class="bi bi-scissors"></i>
                                     <span>Desunificar Mesa</span>
@@ -372,6 +367,16 @@
                                 <button type="button" id="btnMudarAReserva" class="btn-jama-kinetic btn-kinetic-dark justify-content-center" onclick="transferirMesaModuloReservas()">
                                     <i class="bi bi-calendar-plus"></i>
                                     <span>Mudar a Reservas</span>
+                                </button>
+
+                                <button type="button" id="btnLiberarReservaIndividual" class="btn-jama-kinetic btn-kinetic-red justify-content-center d-none" onclick="ejecutarLiberacionIndividualDesdeModal()">
+                                    <i class="bi bi-unlock-fill"></i>
+                                    <span>Quitar de Reserva</span>
+                                </button>
+
+                                <button type="button" id="btnDesocupar" class="btn-jama-kinetic btn-kinetic-red justify-content-center disabled" onclick="validarDesocupar()" disabled>
+                                    <i class="bi bi-cash-coin"></i>
+                                    <span>Confirmar Pago</span>
                                 </button>
                             </div>
                         </div>
@@ -515,7 +520,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script th:src="@{/js/caja-movil.js}"></script>
+
+    <script th:src="@{/js/caja-movil/estado.js}"></script>
+    <script th:src="@{/js/caja-movil/canastas.js}"></script>
+    <script th:src="@{/js/caja-movil/render.js}"></script>
+    <script th:src="@{/js/caja-movil/liquidacion.js}"></script>
 
     <!-- ↓ Módulos de mesas (orden de dependencias estricto) -->
     <script th:src="@{/js/mesas/websocket.js}"></script>

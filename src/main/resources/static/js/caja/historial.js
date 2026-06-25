@@ -149,16 +149,38 @@ function cargarComprobantesHistoricos() {
             }
 
             lista.forEach(p => {
-                const badgeServicio  = (p.tipoServicio === 'DELIVERY') ? '🏍️ Delivery' : '🍽️ Salón';
-                const nombreCliente  = p.cliente || 'Cliente General';
-                const mesaDetalle    = p.mesa ? `<br><small style="color:#777;">Mesa N° ${p.mesa}</small>` : '<br><small style="color:#aaa;">-</small>';
+                const servicioCrudo = p.tipoServicio ? p.tipoServicio.toString().toUpperCase().trim() : 'SALON';
+
+                let textoServicioFinal = 'Salón';
+                let origenBadgeHTML    = `<i class="bi bi-shop me-1"></i> Atendido en Local`;
+
+                if (servicioCrudo === 'DELIVERY') {
+                    textoServicioFinal = 'Delivery';
+                    origenBadgeHTML    = `<i class="bi bi-truck me-1"></i> Delivery / Reparto`;
+                } else if (servicioCrudo === 'LLEVAR') {
+                    textoServicioFinal = 'Para Llevar';
+                    origenBadgeHTML    = `<i class="bi bi-bag-heart-fill me-1"></i> Recojo en Local`;
+                }
+
+                let nombreIdentificador = "Cliente General";
+                if (p.cliente && p.cliente.trim() !== "" && !p.cliente.includes("Mesa")) {
+                    nombreIdentificador = p.cliente;
+                } else if (p.mesa && p.mesa.trim() !== "" && p.mesa !== "0" && p.mesa !== "--" && !p.mesa.toUpperCase().includes("CARTA")) {
+                    nombreIdentificador = p.mesa;
+                } else {
+                    nombreIdentificador = "Orden #" + p.id;
+                }
 
                 let metodoHTML = '-';
                 if (p.metodoPago) {
                     const mp = p.metodoPago.toUpperCase();
-                    if (mp === 'EFECTIVO')                          metodoHTML = `<span class="badge-metodo-jama bm-efectivo"><img src="/img/Efectivo.png" alt="Efectivo"> Efectivo</span>`;
-                    else if (mp === 'YAPE' || mp === 'YAPE_PLIN')  metodoHTML = `<span class="badge-metodo-jama bm-digital"><img src="/img/YapePlin.png" alt="Yape Plin"> Yape/Plin</span>`;
-                    else if (mp === 'TARJETA')                     metodoHTML = `<span class="badge-metodo-jama bm-tarjeta"><img src="/img/Tarjeta.png" alt="Tarjeta"> Tarjeta</span>`;
+                    if (mp === 'EFECTIVO') {
+                        metodoHTML = `<span class="badge-metodo-jama bm-efectivo"><img src="/img/Efectivo.png" alt="Efectivo"> Efectivo</span>`;
+                    } else if (mp === 'YAPE' || mp === 'YAPE_PLIN' || mp === 'PLIN') {
+                        metodoHTML = `<span class="badge-metodo-jama bm-digital"><img src="/img/YapePlin.png" alt="Yape Plin"> Yape/Plin</span>`;
+                    } else if (mp === 'TARJETA') {
+                        metodoHTML = `<span class="badge-metodo-jama bm-tarjeta"><img src="/img/Tarjeta.png" alt="Tarjeta"> Tarjeta</span>`;
+                    }
                 }
 
                 const badgeEstado = (p.estado === 'PAGADO' || p.estado === 'LIQUIDADO')
@@ -168,23 +190,23 @@ function cargarComprobantesHistoricos() {
                 const fila = document.createElement("tr");
                 fila.className = "fila-pedido-caja";
                 fila.innerHTML = `
-                    <td><span class="texto-negrita">#${p.id}</span></td>
-                    <td><span class="texto-servicio">${badgeServicio}</span></td>
+                    <td><span class="texto-negrita">#${p.comprobante || ('NV-' + p.id)}</span></td>
+                    <td><span class="texto-servicio">${textoServicioFinal}</span></td>
                     <td>
-                        <div class="cliente-nombre">${nombreCliente}</div>
-                        <div class="cliente-meta-detalles">${mesaDetalle}</div>
+                        <div class="cliente-nombre fw-bold text-dark">${nombreIdentificador}</div>
+                        <div class="text-muted small fw-semibold" style="font-size:0.78rem; margin-top:2px;">${origenBadgeHTML}</div>
                     </td>
                     <td><span class="badge bg-light text-dark font-monospace border px-2 py-1">${p.fecha} (${p.hora || '-'})</span></td>
                     <td><span class="fw-bold text-success">S/ ${p.monto.toFixed(2)}</span></td>
                     <td>${metodoHTML}</td>
                     <td class="text-center">
-                        <div class="action-buttons-wrapper justify-content-center">
+                        <div class="action-buttons-wrapper justify-content-center d-flex gap-1">
                             <button type="button" class="action-jama-btn btn-action-edit" data-id="${p.id}" onclick="verDetallesComandaAuditoria(this)">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12s3-7 10-7 9 7 9 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                             </button>
-                            <a href="/admin/caja/ticket-venta/${p.id}" target="_blank" class="action-jama-btn btn-action-edit bg-light-jama">
+                            <button type="button" class="action-jama-btn btn-action-print bg-light-jama" onclick="window.open('/admin/caja/ticket-venta/${p.id}', '_blank')">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                            </a>
+                            </button>
                         </div>
                     </td>
                     <td class="text-end">${badgeEstado}</td>`;

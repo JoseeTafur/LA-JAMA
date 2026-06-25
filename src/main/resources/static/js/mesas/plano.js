@@ -2,6 +2,13 @@
 // MOTOR EN VIVO: REACTIVIDAD DEL PLANO DE MESAS
 // =======================================================
 function actualizarEstadoMesaEnPlano(numeroMesa, nuevoEstado, nuevoPedidoId, pedidoEstado) {
+
+    const tarjetaDOM = document.querySelector(`.mesa-box[data-numero="${numeroMesa}"]`);
+        if (tarjetaDOM && tarjetaDOM.getAttribute('data-bloqueo-reserva-live') === 'true') {
+            console.log(`🛡️ [La Jama Shield] WebSocket bloqueado de forma segura para impedir vaciado de Mesa N° #${numeroMesa}`);
+            return;
+        }
+
     const tarjeta = document.querySelector(`[data-numero="${numeroMesa}"]`);
     if (!tarjeta) return;
 
