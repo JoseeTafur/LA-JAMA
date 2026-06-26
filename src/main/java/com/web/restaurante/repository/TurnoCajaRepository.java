@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,11 +20,11 @@ public interface TurnoCajaRepository extends JpaRepository<TurnoCaja, Long> {
     @Query("SELECT t FROM TurnoCaja t WHERE t.activo = false ORDER BY t.fechaCierre DESC")
     List<TurnoCaja> findTurnosCerradosOrdenados();
 
-    // =========================================================================
-    // ⚙️ REPARADO: Consulta atómica nativa para purgar el asiento contable del Libro Diario
-    // =========================================================================
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM movimiento_caja WHERE id = :movimientoId", nativeQuery = true)
     void deleteMovimientoById(@Param("movimientoId") Long movimientoId);
+
+    @Query("SELECT t FROM TurnoCaja t WHERE t.fechaApertura BETWEEN :inicio AND :fin AND t.activo = false ORDER BY t.fechaApertura DESC")
+    List<TurnoCaja> findTurnosCerradosEnRangoHorario(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
 }

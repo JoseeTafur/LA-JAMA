@@ -100,6 +100,11 @@ public class PedidoService {
             }
         }
 
+        // 🚀 CANDADO ADICIONAL: Si el pedido no viene con turno (como los de salón nuevos), le asignamos el activo
+        if (pedido.getTurnoCaja() == null) {
+            turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
+        }
+
         if (pedido.getListaDetalles() != null) {
             for (DetallePedido detalle : pedido.getListaDetalles()) {
                 detalle.setPedido(pedido);
@@ -107,7 +112,6 @@ public class PedidoService {
                 detalle.setEntregado(detalle.isEntregado());
                 detalle.setCanceladoPorCliente(detalle.isCanceladoPorCliente());
 
-                // 🚀 EL ESCUDO DEL MOZO: Si es una fila nueva (sin ID aún persistido), comprometemos stock inmediatamente
                 if (detalle.getId() == null && !detalle.isCanceladoPorCliente()) {
                     comprometerStockPorReceta(detalle);
                 }
@@ -123,6 +127,11 @@ public class PedidoService {
             pedido.setFechaCreacion(LocalDateTime.now());
         }
 
+        // 🚀 CANDADO ADICIONAL: Aseguramos el turno de caja de entrada para el flujo QR
+        if (pedido.getTurnoCaja() == null) {
+            turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
+        }
+
         if (pedido.getListaDetalles() != null) {
             for (DetallePedido detalle : pedido.getListaDetalles()) {
                 detalle.setPedido(pedido);
@@ -130,7 +139,6 @@ public class PedidoService {
                 detalle.setEntregado(false);
                 detalle.setCanceladoPorCliente(false);
 
-                // 🚀 EL ESCUDO DE LA CARTA QR: Comprometemos stock antes de que el cajero apruebe
                 if (detalle.getId() == null) {
                     comprometerStockPorReceta(detalle);
                 }
@@ -330,7 +338,25 @@ public class PedidoService {
 
     @Transactional
     public void cobrarPedido(Long id) {
-        pedidoRepository.actualizarEstadoJPQL(id, EstadoPedido.PAGADO);
+        // 1. Buscamos el pedido completo en la base de datos
+        Pedido pedido = pedidoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("No se encontró el pedido con ID: " + id));
+
+        // 2. Le inyectamos el estado cobrado
+        pedido.setEstado(EstadoPedido.PAGADO);
+
+        // 3. 🛡️ CANDADO CONTABLE: Amarramos el pedido al turno de caja activo en este microsegundo
+        try {
+            turnoCajaService.obtenerTurnoActivo().ifPresent(turnoActivo -> {
+                pedido.setTurnoCaja(turnoActivo);
+            });
+        } catch (Exception e) {
+            System.out.println("⚠️ [ERROR CONTABLE] No se pudo amarrar el turno de caja al cobrar la mesa: " + e.getMessage());
+        }
+
+        // 4. Guardamos el pedido actualizado de forma íntegra
+        pedidoRepository.save(pedido);
+        System.out.println("✅ [CAJA] Pedido #" + id + " cobrado con éxito y asociado al turno correspondiente.");
     }
 
     @Transactional

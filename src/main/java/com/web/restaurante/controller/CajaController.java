@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,6 +32,7 @@ public class CajaController {
     private final TurnoCajaRepository turnoCajaRepository;
     private final PedidoRepository pedidoRepository;
     private final ProductoRepository productoRepository;
+    private final MesaRepository mesaRepository;
 
     @GetMapping
     public String verCaja(Model model) {
@@ -176,7 +178,32 @@ public class CajaController {
                     matrizTickets, new com.fasterxml.jackson.core.type.TypeReference<>() {}
             );
 
+            // 1. Ejecutamos la liquidación nativa (Genera el pedido histórico y las notas de venta clonadas)
             mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, idsDetalles);
+
+            // 2. 🛡️ REPARACIÓN POST-LIQUIDACIÓN ANTI-NULL:
+            // Buscamos si en este microsegundo se crearon Notas de Venta huérfanas en la mesa y les inyectamos el turno 7
+            try {
+                turnoCajaService.obtenerTurnoActivo().ifPresent(turnoActivo -> {
+                    // Buscamos el número de mesa afectado
+                    mesaRepository.findById(mesaId).ifPresent(mesa -> {
+                        // Buscamos los pedidos recién creados como PAGADO para esa mesa que no tengan turno asignado
+                        List<Pedido> notasVentaHuerfanas = pedidoRepository.findByNumeroMesaAndEstado(mesa.getNumero(), com.web.restaurante.model.enums.EstadoPedido.PAGADO)
+                                .stream()
+                                .filter(p -> p.getTurnoCaja() == null)
+                                .collect(Collectors.toList());
+
+                        for (Pedido nv : notasVentaHuerfanas) {
+                            nv.setTurnoCaja(turnoActivo);
+                            pedidoRepository.save(nv); // Forzamos el guardado definitivo con el turno correcto
+                            System.out.println("🚀 [ESCUDO CONTABLE] Nota de Venta #" + nv.getId() + " interceptada y asociada con éxito al turno: " + turnoActivo.getId());
+                        }
+                    });
+                });
+            } catch (Exception ex) {
+                System.out.println("⚠️ [ALERTA] No se pudo realizar el barrido anti-null en las notas de venta clonadas: " + ex.getMessage());
+            }
+
             return ResponseEntity.ok(Map.of("success", true, "message", "Mesa liquidada"));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Error liquidación: " + e.getMessage());
@@ -273,10 +300,31 @@ public class CajaController {
     @ResponseBody
     public ResponseEntity<?> obtenerHistorialCajas(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
+            @RequestParam(defaultValue = "TODOS") String turno) {
         try {
-            List<Map<String, Object>> mapeoHistorial = turnoCajaRepository.findTurnosCerradosOrdenados().stream()
-                    .filter(t -> t.getFechaApertura() != null && !t.getFechaApertura().toLocalDate().isBefore(fechaInicio) && !t.getFechaApertura().toLocalDate().isAfter(fechaFin))
+            // 1. Inicializamos las fronteras del tiempo operativo
+            LocalDateTime horaInicioCalculada = fechaInicio.atTime(8, 0); // Por defecto inicia a las 08:00 AM
+            LocalDateTime horaFinCalculada = fechaFin.atTime(23, 59, 59);
+
+            // 2. Ajustamos la aduana de tiempo según el turno seleccionado
+            if ("DIA".equalsIgnoreCase(turno)) {
+                horaInicioCalculada = fechaInicio.atTime(8, 0);       // 08:00 AM
+                horaFinCalculada = fechaFin.atTime(18, 0);           // 06:00 PM
+            } else if ("NOCHE".equalsIgnoreCase(turno)) {
+                horaInicioCalculada = fechaInicio.atTime(19, 0);      // 07:00 PM
+                // El turno noche muere a las 07:00 AM del DÍA SIGUIENTE
+                horaFinCalculada = fechaFin.plusDays(1).atTime(7, 0);
+            } else if ("TODOS".equalsIgnoreCase(turno)) {
+                // Si son todos, cubrimos desde la apertura del primer día hasta el cierre de la última noche
+                horaInicioCalculada = fechaInicio.atTime(8, 0);
+                horaFinCalculada = fechaFin.plusDays(1).atTime(7, 0);
+            }
+
+            // 3. Ejecutamos la consulta contable en la base de datos
+            List<TurnoCaja> turnosFiltrados = turnoCajaRepository.findTurnosCerradosEnRangoHorario(horaInicioCalculada, horaFinCalculada);
+
+            List<Map<String, Object>> mapeoHistorial = turnosFiltrados.stream()
                     .map(t -> {
                         Map<String, Object> dto = new HashMap<>();
                         dto.put("id", t.getId());
@@ -287,11 +335,17 @@ public class CajaController {
                         dto.put("totalVendido", t.getTotalVendido() != null ? t.getTotalVendido() : 0.0);
                         dto.put("diferencia", t.getDiferencia() != null ? t.getDiferencia() : 0.0);
                         dto.put("observaciones", t.getObservaciones() != null ? t.getObservaciones() : "");
+
+                        // Inyectamos un flag indicando al frontend matemáticamente a qué turno perteneció
+                        int horaApertura = t.getFechaApertura().getHour();
+                        dto.put("turnoCalculado", (horaApertura >= 8 && horaApertura < 18) ? "DÍA" : "NOCHE");
+
                         return dto;
                     }).collect(Collectors.toList());
+
             return ResponseEntity.ok(mapeoHistorial);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+            return ResponseEntity.internalServerError().body("Error en matriz de filtros: " + e.getMessage());
         }
     }
 
@@ -322,12 +376,44 @@ public class CajaController {
     public ResponseEntity<?> obtenerHistorialComprobantes(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
-            @RequestParam(defaultValue = "0") int pagina) {
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(required = false) String metodoPago,
+            @RequestParam(required = false) String tipoServicio,
+            @RequestParam(required = false) String turno) {
         try {
             Pageable pageable = PageRequest.of(pagina, 20);
-            return ResponseEntity.ok(cajaService.obtenerHistorialComprobantesPaginado(inicio, fin, pageable));
+
+            // 1. Inicializamos los límites cronológicos del query operativo (LocalDateTime)
+            LocalDateTime horaInicioCalculada = inicio.atTime(8, 0); // Apertura habitual 08:00 AM
+            LocalDateTime horaFinCalculada = fin.atTime(23, 59, 59); // Fin del día por defecto
+
+            // 2. Aplicamos el escudo de transnoción de La Jama según el Turno comercial
+            if ("DIA".equalsIgnoreCase(turno)) {
+                horaInicioCalculada = inicio.atTime(8, 0);       // 08:00 AM
+                horaFinCalculada = fin.atTime(18, 0);           // 06:00 PM
+            } else if ("NOCHE".equalsIgnoreCase(turno)) {
+                horaInicioCalculada = inicio.atTime(19, 0);      // 07:00 PM
+                horaFinCalculada = fin.plusDays(1).atTime(7, 0); // 07:00 AM del día siguiente
+            } else if ("TODOS".equalsIgnoreCase(turno) || turno == null || turno.trim().isEmpty()) {
+                horaInicioCalculada = inicio.atTime(8, 0);
+                horaFinCalculada = fin.plusDays(1).atTime(7, 0);
+            }
+
+            String metodoFinal = (metodoPago != null && !metodoPago.trim().isEmpty()) ? metodoPago.trim().toUpperCase() : null;
+            String servicioFinal = (tipoServicio != null && !tipoServicio.trim().isEmpty()) ? tipoServicio.trim().toUpperCase() : null;
+
+            Map<String, Object> respuestaMapeada = cajaService.obtenerHistorialComprobantesFiltrosAvanzados(
+                    horaInicioCalculada,
+                    horaFinCalculada,
+                    metodoFinal,
+                    servicioFinal,
+                    turno,
+                    pageable
+            );
+
+            return ResponseEntity.ok(respuestaMapeada);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+            return ResponseEntity.internalServerError().body("Error en filtrado master de comprobantes: " + e.getMessage());
         }
     }
 }

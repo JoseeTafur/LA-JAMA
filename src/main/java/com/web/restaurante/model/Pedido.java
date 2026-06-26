@@ -38,6 +38,11 @@ public class Pedido {
     @Column(name = "direccion_entrega", nullable = false)
     private String direccion;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_turno_caja")
+    @JsonIgnoreProperties({"movimientos", "pedidos"})
+    private TurnoCaja turnoCaja;
+
     @PrePersist
     protected void onCreate() {
         this.fechaCreacion = LocalDateTime.now();

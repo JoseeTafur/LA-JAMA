@@ -141,15 +141,32 @@ public class CajaService {
 
     @Transactional
     public Pedido guardarVentaDirectaPOS(Pedido pedido) {
-        LocalDateTime ahora = LocalDateTime.now();
-        pedido.setFechaCreacion(ahora);
-        pedido.setFechaEntrega(ahora); // Seteado para que el HTML registre la hora de la transacción
 
-        // 🍳 CLAVE LOGÍSTICA: Entra en EN_COCINA para que las pantallas de barra/cocina lo procesen
+        LocalDate hoy = LocalDate.now();
+
+        // Mantenemos tu hora falsa de prueba para el turno noche (9:30 PM)
+        LocalTime horaFalsaNoche = LocalTime.of(21, 30);
+        LocalDateTime ahora = LocalDateTime.of(hoy, horaFalsaNoche);
+
+        pedido.setFechaCreacion(ahora);
+        pedido.setFechaEntrega(ahora);
+
         pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
         pedido.setTicketImpresoCocina(false);
 
-        // 🚀 CONEXIÓN DE LA NOTA DE VENTA SECUENCIAL DE MARIADB
+        // 🛡️ BUSCAMOS EL TURNO ACTIVO USANDO EL CAMPO 'isActivo()' REAL
+        try {
+            TurnoCaja turnoActivo = turnoCajaRepository.findAll().stream()
+                    .filter(TurnoCaja::isActivo) // Busca el que tenga activo = true
+                    .findFirst()
+                    .orElse(null);
+            if (turnoActivo != null) {
+                pedido.setTurnoCaja(turnoActivo);
+            }
+        } catch (Exception e) {
+            System.out.println("⚠️ No se pudo asignar el turno de caja: " + e.getMessage());
+        }
+
         String siguienteNota = notaVentaSequenceService.generarSiguienteNota();
         pedido.setComprobanteNotaNumero(siguienteNota);
 
@@ -160,11 +177,11 @@ public class CajaService {
 
                 detalle.setProducto(productoReal);
                 detalle.setPedido(pedido);
-                detalle.setPagado(true); // El dinero ya se recibió en caja
-                detalle.setEntregado(false); // Falso, porque recién se va a cocinar
-                detalle.setCocinado(false);  // Falso, va a la línea de fuego
+                detalle.setPagado(true);
+                detalle.setEntregado(false);
+                detalle.setCocinado(false);
 
-                // Escudo de inventario original
+                // Escudo de inventario original intacto
                 insumoProductoRepository.findByProductoId(productoReal.getId()).forEach(ip -> {
                     if (ip.getInsumo() != null) {
                         Insumo insumo = ip.getInsumo();
@@ -179,7 +196,6 @@ public class CajaService {
 
         Pedido pedidoGuardado = pedidoRepository.save(pedido);
 
-        // 💵 Registro inmediato en la gaveta de dinero activa
         if (pedidoGuardado.getMontoTotal() != null && pedidoGuardado.getMontoTotal() > 0) {
             String conceptoCpe = "Venta POS Directo (" + pedidoGuardado.getMetodoPago() + ") - " + pedidoGuardado.getComprobanteNotaNumero();
             turnoCajaService.registrarVenta(conceptoCpe, pedidoGuardado.getMontoTotal());
@@ -188,49 +204,139 @@ public class CajaService {
         return pedidoGuardado;
     }
 
-    public Map<String, Object> obtenerHistorialComprobantesPaginado(LocalDate inicio, LocalDate fin, Pageable pageable) {
-        Page<Pedido> pageResult = pedidoRepository.findHistorialNotasVenta(inicio, fin, pageable);
+    public Map<String, Object> obtenerHistorialComprobantesFiltrosAvanzados(
+            LocalDateTime inicio,
+            LocalDateTime fin,
+            String metodoPago,
+            String tipoServicio,
+            String turnoFiltro, // Recibe "DIA", "NOCHE" o "TODOS"
+            Pageable pageable) {
 
-        List<Map<String, Object>> listaDTO = pageResult.getContent().stream().map(p -> {
+        // 1. Extraemos los pedidos aplicando las REGLAS SEMÁNTICAS REALES
+        List<Pedido> todosLosPedidos = pedidoRepository.findAll().stream()
+                .filter(p -> p.getFechaCreacion() != null
+                        && !p.getFechaCreacion().isBefore(inicio)
+                        && !p.getFechaCreacion().isAfter(fin))
+                .filter(p -> {
+                    if (p.getMetodoPago() == null) {
+                        return false;
+                    }
+
+                    // 🛡️ ADUANA DEL TURNO CON NUESTRA NUEVA COLUMNA BLINDADA
+                    if (turnoFiltro != null && !turnoFiltro.trim().isEmpty() && !"TODOS".equalsIgnoreCase(turnoFiltro)) {
+                        if (p.getTurnoCaja() != null) {
+                            String tipoTurnoPedido = p.getTurnoCaja().getTipoTurno();
+
+                            // Si el turno de caja no tiene asignado texto aún, calculamos por su hora de apertura (retrocompatibilidad)
+                            if (tipoTurnoPedido == null && p.getTurnoCaja().getFechaApertura() != null) {
+                                int hora = p.getTurnoCaja().getFechaApertura().getHour();
+                                tipoTurnoPedido = (hora >= 8 && hora < 18) ? "DIA" : "NOCHE";
+                            }
+
+                            if (tipoTurnoPedido == null || !tipoTurnoPedido.equalsIgnoreCase(turnoFiltro.trim())) {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }
+
+                    return p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PAGADO
+                            || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.CANCELADO
+                            || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.ANULADO
+                            || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.EN_COCINA
+                            || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PREPARADO;
+                })
+                .collect(Collectors.toList());
+
+        // 2. APLICACIÓN DE FILTROS DINÁMICOS EN STREAM (Método y Origen)
+        List<Pedido> pedidosFiltrados = todosLosPedidos.stream()
+                .filter(p -> {
+                    if (metodoPago != null) {
+                        String mpEnum = p.getMetodoPago().name().toUpperCase();
+                        if (metodoPago.contains("YAPE") || metodoPago.contains("DIGITAL")) {
+                            if (!mpEnum.equals("YAPE") && !mpEnum.equals("PLIN") && !mpEnum.equals("YAPE_PLIN")) {
+                                return false;
+                            }
+                        } else if (!mpEnum.equals(metodoPago)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                })
+                .filter(p -> {
+                    if (tipoServicio != null) {
+                        boolean tieneMesa = p.getNumeroMesa() != null;
+                        String tipoEnumStr = p.getTipoPedido() != null ? p.getTipoPedido().name().toUpperCase() : "LLEVAR";
+
+                        if ("LOCAL".equalsIgnoreCase(tipoServicio) || "SALON".equalsIgnoreCase(tipoServicio)) {
+                            return tieneMesa;
+                        } else if ("DELIVERY".equalsIgnoreCase(tipoServicio)) {
+                            return !tieneMesa && "DELIVERY".equals(tipoEnumStr);
+                        } else if ("LLEVAR".equalsIgnoreCase(tipoServicio)) {
+                            return !tieneMesa && ("LLEVAR".equals(tipoEnumStr) || "LOCAL".equals(tipoEnumStr));
+                        }
+                    }
+                    return true;
+                })
+                .sorted(Comparator.comparing(Pedido::getId).reversed())
+                .collect(Collectors.toList());
+
+        // 3. PAGINACIÓN MANUAL
+        int totalElementos = pedidosFiltrados.size();
+        int desde = (int) pageable.getOffset();
+        int hasta = Math.min(desde + pageable.getPageSize(), totalElementos);
+
+        List<Pedido> subListaPaginada = new ArrayList<>();
+        if (desde < totalElementos) {
+            subListaPaginada = pedidosFiltrados.subList(desde, hasta);
+        }
+
+        int totalPaginas = (int) Math.ceil((double) totalElementos / pageable.getPageSize());
+
+        // 4. MAPEO AL DTO
+        List<Map<String, Object>> listaDTO = subListaPaginada.stream().map(p -> {
             Map<String, Object> dto = new HashMap<>();
 
-            dto.put("comprobante", p.getComprobanteNotaNumero() != null ? p.getComprobanteNotaNumero() : "NV-" + p.getId());
+            dto.put("comprobante", p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().isEmpty()
+                    ? p.getComprobanteNotaNumero() : "NV-" + p.getId());
             dto.put("id", p.getId());
             dto.put("cliente", p.getCliente() != null ? p.getCliente() : "Cliente General");
-            dto.put("metodoPago", p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO");
-            dto.put("fecha", p.getFechaCreacion() != null ? p.getFechaCreacion().toLocalDate().toString() : "N/A");
-            dto.put("hora", p.getFechaCreacion() != null ? p.getFechaCreacion().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) : "N/A");
+            dto.put("metodoPago", p.getMetodoPago().name());
+            dto.put("fecha", p.getFechaCreacion().toLocalDate().toString());
+            dto.put("hora", p.getFechaCreacion().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
             dto.put("monto", p.getMontoTotal() != null ? p.getMontoTotal() : 0.0);
 
-            if (p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.EN_COCINA
-                    || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PREPARADO
-                    || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PAGADO) {
+            if (p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PAGADO
+                    || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.CANCELADO
+                    || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.EN_COCINA
+                    || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PREPARADO) {
                 dto.put("estado", "PAGADO");
             } else {
-                dto.put("estado", p.getEstado().name());
+                dto.put("estado", "ANULADO");
             }
 
             if (p.getNumeroMesa() != null) {
                 dto.put("tipoServicio", "SALON");
                 dto.put("mesa", "Mesa " + p.getNumeroMesa());
             } else {
-                String tipoEnum = p.getTipoPedido() != null ? p.getTipoPedido().name().toUpperCase() : "LLEVAR";
-
-                if ("LOCAL".equals(tipoEnum) || "LLEVAR".equals(tipoEnum)) {
-                    dto.put("tipoServicio", "LLEVAR");
-                } else {
+                String tipoEnumStr = p.getTipoPedido() != null ? p.getTipoPedido().name().toUpperCase() : "LLEVAR";
+                if ("DELIVERY".equals(tipoEnumStr)) {
                     dto.put("tipoServicio", "DELIVERY");
+                    dto.put("mesa", "Carta Web");
+                } else {
+                    dto.put("tipoServicio", "LLEVAR");
+                    dto.put("mesa", "Para Llevar");
                 }
-                dto.put("mesa", "Carta Web");
             }
             return dto;
         }).collect(Collectors.toList());
 
         return Map.of(
                 "comprobantes", listaDTO,
-                "paginaActual", pageResult.getNumber(),
-                "totalPaginas", pageResult.getTotalPages(),
-                "totalElementos", pageResult.getTotalElements()
+                "paginaActual", pageable.getPageNumber(),
+                "totalPaginas", totalPaginas == 0 ? 1 : totalPaginas,
+                "totalElementos", totalElementos
         );
     }
 

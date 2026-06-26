@@ -38,4 +38,7 @@ public class TurnoCaja {
 
     @Column(name = "activo", nullable = false)
     private boolean activo = true;
+
+    @Column(name = "tipo_turno", length = 20)
+    private String tipoTurno; //"DIA" o "NOCHE"
 }

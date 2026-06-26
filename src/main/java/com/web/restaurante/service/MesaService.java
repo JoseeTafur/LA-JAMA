@@ -616,6 +616,10 @@ public class MesaService {
                 }
             }
 
+            // 🚀 EL CANDADO CONTABLE EXACTO:
+            // Buscamos el turno abierto en este instante (ej: Turno 7) y se lo inyectamos al comprobante definitivo antes de persistirlo
+            turnoCajaService.obtenerTurnoActivo().ifPresent(pedidoComprobante::setTurnoCaja);
+
             pedidoRepository.save(pedidoComprobante);
 
             String conceptoCaja = "Liquidación Ticket " + (i + 1) + " (Mesa " + mesaPrincipal.getNumero() + ") - Comanda #" + pedidoPadre.getId();

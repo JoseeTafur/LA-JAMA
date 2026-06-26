@@ -42,10 +42,22 @@ public class TurnoCajaService {
         if (turnoCajaRepository.findByActivoTrue().isPresent()) {
             throw new IllegalStateException("Ya hay un turno de caja abierto. Debes cerrarlo primero.");
         }
+
         TurnoCaja turno = new TurnoCaja();
         turno.setMontoApertura(montoApertura);
-        turno.setFechaApertura(LocalDateTime.now());
+
+        LocalDateTime ahora = LocalDateTime.now();
+        turno.setFechaApertura(ahora);
         turno.setActivo(true);
+
+        // 🚀 DETALLE OPERATIVO: Clasificación exacta del tipo de turno al nacer
+        int horaApertura = ahora.getHour();
+        if (horaApertura >= 8 && horaApertura < 18) {
+            turno.setTipoTurno("DIA");
+        } else {
+            turno.setTipoTurno("NOCHE");
+        }
+
         turnoCajaRepository.save(turno);
 
         registrarMovimiento(turno, "APERTURA", "Fondo inicial", montoApertura, null);

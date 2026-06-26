@@ -64,6 +64,10 @@ function consultarHistorialAsincrono() {
     const fechaFin     = document.getElementById('historialFechaFin').value;
     const cuerpoTabla  = document.getElementById('cuerpoHistorialCajas');
 
+    // 🟩 ADUANA DE SELECCIÓN: Capturamos el selector de turnos (DIA, NOCHE o TODOS)
+    const selectTurno  = document.getElementById('historialFiltroTurno');
+    const turnoValor   = selectTurno ? selectTurno.value : 'TODOS';
+
     if (!fechaInicio || !fechaFin) {
         AppUtils.showNotification("Por favor, selecciona un plazo de días válido.", "error");
         return;
@@ -71,14 +75,24 @@ function consultarHistorialAsincrono() {
 
     AppUtils.showLoading(true);
 
-    fetch(`/admin/caja/historial-datos?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`)
+    // 🚀 ENVÍO CON FILTRO HÍBRIDO HORARIO
+    fetch(`/admin/caja/historial-datos?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}&turno=${turnoValor}`)
         .then(res => { if (!res.ok) throw new Error(); return res.json(); })
         .then(data => {
             AppUtils.showLoading(false);
             cuerpoTabla.innerHTML = '';
 
             if (data.length === 0) {
-                cuerpoTabla.innerHTML = `<tr><td colspan="8" class="text-center py-3 text-muted italic">No se registraron cierres de caja en el rango seleccionado.</td></tr>`;
+                cuerpoTabla.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <div class="d-flex flex-column align-items-center gap-1">
+                                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 text-muted opacity-50"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                                <span class="fw-semibold" style="font-size: 0.95rem;">No se encontraron resultados</span>
+                                <span class="small opacity-75">Prueba ajustando el rango de fechas o el turno seleccionado.</span>
+                            </div>
+                        </td>
+                    </tr>`;
                 return;
             }
 
@@ -90,16 +104,22 @@ function consultarHistorialAsincrono() {
                 if (t.diferencia > 0.05)  badgeDiferencia = `<span class="badge bg-success px-2 py-1 text-white fw-bold">+ S/. ${t.diferencia.toFixed(2)}</span>`;
                 else if (t.diferencia < -0.05) badgeDiferencia = `<span class="badge bg-danger px-2 py-1 text-white fw-bold">S/. ${t.diferencia.toFixed(2)}</span>`;
 
+                // 🟩 INDICADOR ESTÉTICO: Mostramos el turno real calculado por la hora de apertura
+                const badgeTurnoHTML = t.turnoCalculated === "DÍA" || t.turnoCalculado === "DÍA"
+                    ? `<span class="badge bg-warning text-dark fw-bold"><i class="bi bi-sun-fill"></i> DÍA</span>`
+                    : `<span class="badge bg-indigo text-white fw-bold" style="background-color: #4b39b3;"><i class="bi bi-moon-stars-fill"></i> NOCHE</span>`;
+
                 cuerpoTabla.innerHTML += `
                     <tr class="align-middle">
                         <td><span class="badge bg-dark font-monospace">#${t.id}</span></td>
+                        <td>${badgeTurnoHTML}</td>
                         <td class="text-muted small">${fApertura}</td>
                         <td class="text-muted small">${fCierre}</td>
                         <td class="fw-bold">S/. ${t.montoApertura.toFixed(2)}</td>
                         <td class="fw-bold text-success">S/. ${t.totalVendido.toFixed(2)}</td>
                         <td class="fw-bold text-secondary">S/. ${t.montoCierre.toFixed(2)}</td>
                         <td>${badgeDiferencia}</td>
-                        <td class="text-muted small text-truncate" style="max-width:200px;" title="${t.observaciones || ''}">
+                        <td class="text-muted small text-truncate" style="max-width:180px;" title="${t.observaciones || ''}">
                             ${t.observaciones || "<i>Sin apuntes</i>"}
                         </td>
                     </tr>`;
@@ -121,6 +141,10 @@ function cargarComprobantesHistoricos() {
     const fechaFin     = document.getElementById("ticketFechaFin").value;
     const metodoPago   = document.getElementById("ticketFiltroMetodo").value;
     const tipoServicio = document.getElementById("ticketFiltroOrigen").value;
+
+    // 🟩 NUEVA CAPTURA: Filtro de turno operativo para el buscador global
+    const turno        = document.getElementById("ticketFiltroTurno")?.value || "";
+
     const tbody        = document.getElementById("cuerpoHistorialComprobantesAsincrono");
 
     if (!fechaInicio || !fechaFin) {
@@ -130,9 +154,11 @@ function cargarComprobantesHistoricos() {
 
     tbody.innerHTML = `<tr><td colspan="9" class="text-center py-3 text-muted">Extrayendo comprobantes...</td></tr>`;
 
+    // 🚀 URL INYECTADA CON MATRIZ HORARIA HÍBRIDA
     let url = `/admin/caja/historial-comprobantes?inicio=${fechaInicio}&fin=${fechaFin}&pagina=${paginaActualComprobantes}`;
     if (metodoPago)   url += `&metodoPago=${metodoPago}`;
     if (tipoServicio) url += `&tipoServicio=${tipoServicio}`;
+    if (turno)        url += `&turno=${turno}`;
 
     fetch(url)
         .then(response => { if (!response.ok) throw new Error(); return response.json(); })
@@ -141,7 +167,16 @@ function cargarComprobantesHistoricos() {
             const lista = data.comprobantes;
 
             if (!lista || lista.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted small">No se encontraron comprobantes liquidados ni anulados.</td></tr>`;
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <div class="d-flex flex-column align-items-center gap-1">
+                                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 text-muted opacity-50"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                                <span class="fw-semibold" style="font-size: 0.95rem;">No se encontraron resultados</span>
+                                <span class="small opacity-75">Prueba ajustando los filtros de búsqueda.</span>
+                            </div>
+                        </td>
+                    </tr>`;
                 document.getElementById("infoPaginacionComprobantes").innerText = "Mostrando 0 de 0 comprobantes";
                 document.getElementById("btnPrevPagina").disabled = true;
                 document.getElementById("btnNextPagina").disabled = true;
@@ -183,7 +218,6 @@ function cargarComprobantesHistoricos() {
                     }
                 }
 
-                // 🟩 MODIFICACIÓN: Definición contable visual basada en el estado del registro histórico
                 const esAnulado = (p.estado !== 'PAGADO' && p.estado !== 'LIQUIDADO');
                 const badgeTipoOperacion = esAnulado
                     ? '<span class="badge bg-danger text-white fw-bold px-2 py-1" style="font-size:0.7rem;">EGRESO</span>'

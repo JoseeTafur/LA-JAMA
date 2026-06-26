@@ -11,6 +11,7 @@ import com.web.restaurante.repository.PedidoRepository;
 import com.web.restaurante.repository.ProductoRepository;
 import com.web.restaurante.repository.InsumoProductoRepository;
 import com.web.restaurante.service.PedidoService;
+import com.web.restaurante.service.TurnoCajaService; // 🚀 INYECTADO
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,7 @@ public class MeseroController {
     private final MesaRepository mesaRepository;
     private final PedidoRepository pedidoRepository;
     private final InsumoProductoRepository insumoProductoRepository;
+    private final TurnoCajaService turnoCajaService; // 🚀 Guardian Contable inyectado
 
     // =========================================================================
     // 🛡️ NÚCLEO OPERATIVO: CONTROL DE ENTRADA CON TRADUCTOR DE ENTORNO ANTI-NULL
@@ -40,11 +42,10 @@ public class MeseroController {
     @GetMapping("/nuevo")
     public String nuevoPedido(Model model, HttpSession session,
                               @RequestParam(required = false) Long mesaId,
-                              @RequestParam(required = false) String pedidoId) { // 🚀 Cambiado a String para capturar el texto "null"
+                              @RequestParam(required = false) String pedidoId) {
 
         if (session.getAttribute("usuarioLogueado") == null) return "redirect:/login";
 
-        // 🚀 ADUANA LOGÍSTICA: Traduce la cadena de texto "null" del primer intento a un tipo numérico seguro
         Long pedidoIdCorrecto = null;
         if (pedidoId != null && !pedidoId.trim().isEmpty() && !"null".equalsIgnoreCase(pedidoId.trim())) {
             try {
@@ -54,9 +55,6 @@ public class MeseroController {
             }
         }
 
-        // ========================================================
-        // 🔒 PERSISTENCIA EN SALA: Forzamos a que el sidebar crea que seguimos en Mesas
-        // ========================================================
         model.addAttribute("activeUri", "/admin/mesas");
         model.addAttribute("titleHeader", "Comandera / Mesa N° " + (mesaId != null ? mesaId : ""));
 
@@ -65,8 +63,6 @@ public class MeseroController {
         }
 
         List<Producto> listaProductos = productoRepository.findAll();
-
-        // 🔥 MAPA DE STOCK: Almacenará qué productos están agotados
         Map<Long, Boolean> productosAgotados = new HashMap<>();
 
         for (Producto p : listaProductos) {
@@ -74,12 +70,10 @@ public class MeseroController {
             List<InsumoProducto> receta = insumoProductoRepository.findByProductoId(p.getId());
 
             for (InsumoProducto ip : receta) {
-                // Solo nos importa bloquear si la PROTEÍNA se acabó
                 if (ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria())) {
                     double stockActual = ip.getInsumo().getStockActual() != null ? ip.getInsumo().getStockActual() : 0.0;
                     double cantidadRequerida = ip.getCantidadUsada() != null ? ip.getCantidadUsada() : 0.0;
 
-                    // Si el stock actual no alcanza ni para 1 porción, marcamos el plato como agotado
                     if (stockActual < cantidadRequerida) {
                         agotado = true;
                         break;
@@ -93,7 +87,6 @@ public class MeseroController {
         model.addAttribute("productosAgotados", productosAgotados);
         model.addAttribute("mesaId", mesaId);
 
-        // Pasamos el ID numérico verificado y limpio a la vista de Thymeleaf
         if (pedidoIdCorrecto != null) {
             model.addAttribute("pedidoId", pedidoIdCorrecto);
         }
@@ -108,19 +101,11 @@ public class MeseroController {
                                 HttpSession session) {
         try {
             System.out.println("\n===== [DEBUG RESTAURANTE: INICIO GUARDAR COMANDA] =====");
-            System.out.println("DEBUG FRONTEND -> ID Recibido en JSON: " + pedidoDeFrontend.getId());
-            System.out.println("DEBUG FRONTEND -> Cantidad de detalles en JSON: " +
-                    (pedidoDeFrontend.getListaDetalles() != null ? pedidoDeFrontend.getListaDetalles().size() : 0));
-
             Pedido pedidoFinal;
 
             if (pedidoDeFrontend.getId() != null) {
-                System.out.println("DEBUG BACKEND -> Es una ADICIÓN. Buscando ID original en BD: " + pedidoDeFrontend.getId());
-
                 pedidoFinal = pedidoRepository.findById(pedidoDeFrontend.getId())
                         .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-
-                System.out.println("DEBUG BD -> Historial recuperado. Ítems guardados antes de fusionar: " + pedidoFinal.getListaDetalles().size());
 
                 pedidoFinal.setEstado(EstadoPedido.EN_COCINA);
                 pedidoFinal.setCliente(pedidoDeFrontend.getCliente());
@@ -136,17 +121,13 @@ public class MeseroController {
                         nuevoDetalle.setCocinado(false);
 
                         pedidoFinal.getListaDetalles().add(nuevoDetalle);
-                        System.out.println("DEBUG ADICIÓN -> Fila insertada con producto hydratado: " +
-                                productoCompleto.getNombre() + " | Categoría: " + productoCompleto.getCategoria().getNombre());
                     }
                 }
 
             } else {
-                System.out.println("DEBUG BACKEND -> ID es NULL. Creando un pedido completamente NUEVO desde cero.");
                 pedidoFinal = pedidoDeFrontend;
                 pedidoFinal.setEstado(EstadoPedido.EN_COCINA);
                 pedidoFinal.setFechaCreacion(LocalDateTime.now());
-
                 pedidoFinal.setFechaSalida(null);
                 pedidoFinal.setFechaEntrega(null);
 
@@ -160,16 +141,16 @@ public class MeseroController {
                 }
             }
 
+            // 🛡️ CANDADO A: Asegurar turno de caja en la creación de comandas de salón
+            if (pedidoFinal.getTurnoCaja() == null) {
+                turnoCajaService.obtenerTurnoActivo().ifPresent(pedidoFinal::setTurnoCaja);
+            }
+
             if (mesaId != null) {
                 Mesa mesa = mesaRepository.findById(mesaId).orElseThrow();
                 pedidoFinal.setNumeroMesa(mesa.getNumero());
                 mesa.setEstado("OCUPADA");
                 mesaRepository.save(mesa);
-                System.out.println("DEBUG MESA -> Asignada explícitamente: Mesa N° " + mesa.getNumero());
-            } else if (pedidoDeFrontend.getId() != null) {
-                System.out.println("DEBUG MESA -> Manteniendo Mesa N° " + pedidoFinal.getNumeroMesa() + " heredada de la BD.");
-            } else {
-                System.out.println("DEBUG MESA -> ALERTA: No se recibió mesaId ni ID de comanda existente.");
             }
 
             boolean hayFrioPendiente = false;
@@ -179,7 +160,6 @@ public class MeseroController {
                 for (DetallePedido d : pedidoFinal.getListaDetalles()) {
                     if (d.getProducto() != null && d.getProducto().getCategoria() != null) {
                         String cat = d.getProducto().getCategoria().getNombre().toUpperCase();
-
                         if ((cat.contains("FRI") || cat.contains("FRÍ")) && !d.isCocinado()) {
                             hayFrioPendiente = true;
                         }
@@ -196,7 +176,6 @@ public class MeseroController {
             if (!hayFrioPendiente && !hayCalientePendiente) {
                 if (pedidoFinal.getFechaSalida() == null) {
                     pedidoFinal.setFechaSalida(LocalDateTime.now());
-                    System.out.println("DEBUG LOGÍSTICA -> Cocina completada. Registrando fechaSalida automáticamente.");
                 }
             } else {
                 pedidoFinal.setFechaSalida(null);
@@ -206,26 +185,23 @@ public class MeseroController {
             if (pedidoFinal.getListaDetalles() != null) {
                 for (DetallePedido detalle : pedidoFinal.getListaDetalles()) {
                     detalle.setPedido(pedidoFinal);
-
                     if (detalle.getPrecioUnitario() == null && detalle.getProducto() != null) {
                         detalle.setPrecioUnitario(detalle.getProducto().getPrecio());
                     }
-
-                    detalle.setSubtotal(detalle.getSubtotal());
                     totalAcumulado += detalle.getSubtotal();
                 }
             }
             pedidoFinal.setMontoTotal(totalAcumulado);
 
+            // Guardamos a través del service de forma completa
             pedidoService.guardarPedido(pedidoFinal);
 
+            // 🛡️ CANDADO B: Si es adición, volvemos a asegurar que no se limpie el turno en cascada
             if (pedidoFinal.getId() != null) {
-                pedidoRepository.actualizarEstadoJPQL(pedidoFinal.getId(),
-                        com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
+                Pedido pedidoSeguro = pedidoRepository.findById(pedidoFinal.getId()).orElse(pedidoFinal);
+                turnoCajaService.obtenerTurnoActivo().ifPresent(pedidoSeguro::setTurnoCaja);
+                pedidoRepository.save(pedidoSeguro);
             }
-
-            System.out.println("DEBUG COMPLETO -> Pedido guardado con KPI actualizado. Total final en BD: S/. " + totalAcumulado + " | Ítems totales: " + pedidoFinal.getListaDetalles().size());
-            System.out.println("===== [DEBUG RESTAURANTE: FIN GUARDAR COMANDA] =====\n");
 
             return "OK";
         } catch (Exception e) {
@@ -255,6 +231,11 @@ public class MeseroController {
             pedido.setFechaSalida(LocalDateTime.now());
             pedido.setEstado(EstadoPedido.ASIGNADO);
 
+            // 🛡️ CANDADO CONTABLE MANTENIDO
+            if (pedido.getTurnoCaja() == null) {
+                turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
+            }
+
             pedidoRepository.save(pedido);
             return ResponseEntity.ok("OK");
         } catch (Exception e) {
@@ -271,6 +252,9 @@ public class MeseroController {
 
             pedido.setFechaEntrega(LocalDateTime.now());
             pedido.setEstado(EstadoPedido.PAGADO);
+
+            // 🛡️ CANDADO C: Asegurar turno de caja al finalizar atención desde comandera
+            turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
 
             pedidoRepository.save(pedido);
 
@@ -293,6 +277,11 @@ public class MeseroController {
             Pedido pedido = pedidoRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
             pedido.setEstado(EstadoPedido.PREPARADO);
+
+            // 🛡️ CANDADO D: Asegurar turno de caja al cambiar estado a preparado
+            if (pedido.getTurnoCaja() == null) {
+                turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
+            }
 
             pedidoRepository.save(pedido);
             return ResponseEntity.ok("OK");

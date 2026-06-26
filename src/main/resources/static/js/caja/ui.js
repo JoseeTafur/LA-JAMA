@@ -40,6 +40,7 @@ function cerrarModalLocal(id) {
 }
 
 function abrirModal(id) { abrirModalLocal(id); }
+
 function cerrarModal(id) { cerrarModalLocal(id); }
 
 function ejecutarPaginacionUnificadaCaja(panelKey) {
@@ -172,6 +173,31 @@ document.addEventListener('DOMContentLoaded', function () {
         selectOrigen.addEventListener('change', ejecutarFiltradoHistorialEnCaliente);
     }
 
+    // 🟢 ESCUCHA AUTOMÁTICA - PANEL HISTORIAL DE CIERRES
+    const selectTurnoHistorial = document.getElementById('historialFiltroTurno');
+    if (selectTurnoHistorial) {
+        selectTurnoHistorial.addEventListener('change', function() {
+            const fechaInicio = document.getElementById('historialFechaInicio')?.value;
+            const fechaFin    = document.getElementById('historialFechaFin')?.value;
+            if (fechaInicio && fechaFin && typeof consultarHistorialAsincrono === 'function') {
+                consultarHistorialAsincrono();
+            }
+        });
+    }
+
+    // 🟩 ESCUCHA AUTOMÁTICA - PANEL BÚSQUEDA GLOBAL DE COMPROBANTES
+    const selectTurnoTickets = document.getElementById('ticketFiltroTurno');
+    if (selectTurnoTickets) {
+        selectTurnoTickets.addEventListener('change', function() {
+            const fechaInicio = document.getElementById('ticketFechaInicio')?.value;
+            const fechaFin    = document.getElementById('ticketFechaFin')?.value;
+            if (fechaInicio && fechaFin && typeof cargarComprobantesHistoricos === 'function') {
+                paginaActualComprobantes = 0; // Reset a primera página en cambios de criterio
+                cargarComprobantesHistoricos();
+            }
+        });
+    }
+
     ejecutarPaginacionUnificadaCaja('panel-por-cobrar');
     ejecutarPaginacionUnificadaCaja('panel-liquidados');
     ejecutarPaginacionUnificadaCaja('panel-movimientos-turno');
@@ -222,9 +248,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
-// ============================================================================
-// 🛡️ ADUANA TÁCTICA DE NAVEGADOR: BLOQUEO DE CIERRE DE CAJA ANTICIPADO
-// ============================================================================
 document.addEventListener("DOMContentLoaded", function () {
     const formularioCierre = document.querySelector("form[action='/admin/caja/cerrar']");
 

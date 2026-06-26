@@ -214,6 +214,15 @@
                             </td>
                             <td class="text-end"><span class="badge bg-warning text-dark fw-bold px-3 py-2 rounded-pill" style="font-size:0.72rem; letter-spacing:0.02em;">POR COBRAR</span></td>
                         </tr>
+                        <tr th:if="${#lists.isEmpty(pedidosPorCobrar)}">
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <div class="d-flex flex-column align-items-center gap-1">
+                                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 text-muted opacity-50"><path d="M3 7h18M3 12h18M3 17h18"/><circle cx="12" cy="12" r="10" stroke-dasharray="4 2"/></svg>
+                                    <span class="fw-semibold" style="font-size: 0.95rem;">Nada por aquí</span>
+                                    <span class="small opacity-75">No hay órdenes pendientes de cobro en este turno.</span>
+                                </div>
+                            </td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
@@ -314,6 +323,17 @@
                             <td colspan="9" class="text-center py-4 text-muted italic">No hay registros liquidados en este turno.</td>
                         </tr>
                         </tbody>
+
+                        <tbody th:if="${pedidosLiquidados == null or #lists.isEmpty(pedidosLiquidados)}">
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted">
+                                <div class="d-flex flex-column align-items-center gap-1">
+                                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 text-muted opacity-50"><path d="M3 7h18M3 12h18M3 17h18"/><circle cx="12" cy="12" r="10" stroke-dasharray="4 2"/></svg>
+                                    <span class="fw-semibold" style="font-size: 0.95rem;">Nada por aquí</span>
+                                    <span class="small opacity-75">Aún no hay pedidos liquidados en este turno.</span>
+                                </div>
+                            </td>
+                        </tr>
                     </table>
                 </div>
             </div>
@@ -360,7 +380,13 @@
                             <td class="text-end text-muted small fw-bold">👤 CAJERO</td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(todosLosMovimientosCaja)}">
-                            <td colspan="7" class="text-center py-4 text-muted small italic">No hay ingresos de sencillo ni gastos de proveedores registrados manualmente.</td>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <div class="d-flex flex-column align-items-center gap-1">
+                                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 text-muted opacity-50"><path d="M3 7h18M3 12h18M3 17h18"/><circle cx="12" cy="12" r="10" stroke-dasharray="4 2"/></svg>
+                                    <span class="fw-semibold" style="font-size: 0.95rem;">Nada por aquí</span>
+                                    <span class="small opacity-75">No hay movimientos manuales registrados en este turno.</span>
+                                </div>
+                            </td>
                         </tr>
                         </tbody>
                     </table>
@@ -371,20 +397,40 @@
                 </div>
             </div>
 
+            <!-- 1. PANEL DE HISTORIAL DE CAJAS CERRADAS -->
             <div class="jama-tab-panel" id="panel-historial">
                 <div class="d-flex flex-wrap gap-2 align-items-center mb-3 p-3 bg-light rounded-3 border" style="border-color: rgba(27,58,44,0.06) !important;">
-                    <div class="d-flex align-items-center gap-2"><label class="m-0 small fw-bold text-secondary">Desde:</label><input type="date" id="historialFechaInicio" class="form-control form-control-sm" style="width:auto; height:34px;"></div>
-                    <div class="d-flex align-items-center gap-2"><label class="m-0 small fw-bold text-secondary">Hasta:</label><input type="date" id="historialFechaFin" class="form-control form-control-sm" style="width:auto; height:34px;"></div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="m-0 small fw-bold text-secondary">Desde:</label>
+                        <input type="date" id="historialFechaInicio" class="form-control form-control-sm" style="width:auto; height:34px;">
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="m-0 small fw-bold text-secondary">Hasta:</label>
+                        <input type="date" id="historialFechaFin" class="form-control form-control-sm" style="width:auto; height:34px;">
+                    </div>
+
+                    <!-- Selector en Cajas Cerradas -->
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="m-0 small fw-bold text-secondary">Turno:</label>
+                        <select id="historialFiltroTurno" class="form-select form-select-sm" style="width:auto; max-width:140px; height:34px; border-radius:6px; cursor:pointer;">
+                            <option value="TODOS" selected>☀️🌙 Todos</option>
+                            <option value="DIA">☀️ Día</option>
+                            <option value="NOCHE">🌙 Noche</option>
+                        </select>
+                    </div>
+
                     <button type="button" class="btn btn-sm text-white px-3 d-flex align-items-center gap-1" style="background:var(--lajama-green); border-radius:8px; height:34px;" onclick="consultarHistorialAsincrono()">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         Consultar
                     </button>
                 </div>
+
                 <div class="table-responsive-jama">
                     <table class="table table-jama" id="tablaHistorialCajas">
                         <thead>
                         <tr>
                             <th class="col-id">Turno ID</th>
+                            <th>Turno</th>
                             <th>Apertura</th>
                             <th>Cierre</th>
                             <th>Fondo Inicial</th>
@@ -395,16 +441,27 @@
                         </tr>
                         </thead>
                         <tbody id="cuerpoHistorialCajas">
-                        <tr><td colspan="8" class="text-center py-4 text-muted small italic">Haz clic en consultar para traer la bitácora histórica de cierres de La Jama.</td></tr>
+                        <tr><td colspan="9" class="text-center py-4 text-muted small italic">Haz clic en consultar para traer la bitácora histórica de cierres de La Jama.</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
+            <!-- 2. PANEL DE BÚSQUEDA GLOBAL / COMPROBANTES HISTÓRICOS -->
             <div class="jama-tab-panel" id="panel-historial-completo">
                 <div class="d-flex flex-wrap gap-2 align-items-center mb-3 p-3 bg-light rounded-3 border" style="border-color: rgba(27,58,44,0.06) !important;">
                     <div class="d-flex align-items-center gap-1"><label class="m-0 small fw-bold text-secondary">Desde:</label><input type="date" id="ticketFechaInicio" class="form-control form-control-sm" style="width:auto; height:31px;"></div>
                     <div class="d-flex align-items-center gap-1"><label class="m-0 small fw-bold text-secondary">Hasta:</label><input type="date" id="ticketFechaFin" class="form-control form-control-sm" style="width:auto; height:31px;"></div>
+
+                    <!-- 🟩 NUEVO FILTRO: Selector de Turno para la búsqueda global de Comprobantes -->
+                    <div class="d-flex align-items-center gap-1">
+                        <select id="ticketFiltroTurno" class="form-select form-select-sm" style="width:auto; height:31px; padding:0 1.8rem 0 0.5rem !important;">
+                            <option value="">-- Turno --</option>
+                            <option value="DIA">☀️ Día</option>
+                            <option value="NOCHE">🌙 Noche</option>
+                        </select>
+                    </div>
+
                     <div class="d-flex align-items-center gap-1">
                         <select id="ticketFiltroMetodo" class="form-select form-select-sm" style="width:auto; height:31px; padding:0 1.8rem 0 0.5rem !important;">
                             <option value="">-- Método --</option>
@@ -416,7 +473,8 @@
                     <div class="d-flex align-items-center gap-1">
                         <select id="ticketFiltroOrigen" class="form-select form-select-sm" style="width:auto; height:31px; padding:0 1.8rem 0 0.5rem !important;">
                             <option value="">-- Origen --</option>
-                            <option value="LOCAL">Salón (Mesa)</option>
+                            <option value="SALON">Salón</option>
+                            <option valiue="LLEVAR">Por recoger</option>
                             <option value="DELIVERY">Delivery</option>
                         </select>
                     </div>
@@ -441,7 +499,15 @@
                         </tr>
                         </thead>
                         <tbody id="cuerpoHistorialComprobantesAsincrono">
-                        <tr><td colspan="9" class="text-center py-4 text-muted small italic">🔒 Parámetro seguro: Selecciona los rangos de fechas para extraer los comprobantes históricos.</td></tr>
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted">
+                                <div class="d-flex flex-column align-items-center gap-1">
+                                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 text-muted opacity-50"><path d="M3 7h18M3 12h18M3 17h18"/><circle cx="12" cy="12" r="10" stroke-dasharray="4 2"/></svg>
+                                    <span class="fw-semibold" style="font-size: 0.95rem;">Nada por aquí</span>
+                                    <span class="small opacity-75">Selecciona un rango de fechas para extraer los comprobantes.</span>
+                                </div>
+                            </td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
