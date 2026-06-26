@@ -221,3 +221,69 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 });
+
+// ============================================================================
+// 🛡️ ADUANA TÁCTICA DE NAVEGADOR: BLOQUEO DE CIERRE DE CAJA ANTICIPADO
+// ============================================================================
+document.addEventListener("DOMContentLoaded", function () {
+    const formularioCierre = document.querySelector("form[action='/admin/caja/cerrar']");
+
+    if (formularioCierre) {
+        formularioCierre.addEventListener("submit", function (event) {
+            // 1. Leemos el rol y turno inyectados globalmente por el layout maestro
+            const turnoUsuario = window.turnoUsuarioLogueado || 'DIA';
+
+            // Suponiendo que inyectas el rol en window.rolUsuarioLogueado, o si no existe,
+            // el backend responderá mediante el redireccionamiento del controlador.
+            const rolUsuario = window.rolUsuarioLogueado || 'CAJERO';
+
+            // 2. Si tiene privilegios administrativos, cancelamos el bloqueo de interfaz
+            if (rolUsuario === 'ADMIN' || rolUsuario === 'SUPER_ADMIN') {
+                return true;
+            }
+
+            // 3. Evaluación del reloj del terminal del cliente
+            const horaActual = new Date().getHours();
+            let esInvalido = false;
+            let alertaMensaje = "";
+
+            if (turnoUsuario.toUpperCase() === 'DIA') {
+                // Bloquea si intenta cerrar antes de las 6:00 PM (18:00)
+                if (horaActual < 18) {
+                    esInvalido = true;
+                    alertaMensaje = "Operación Denegada: Tu turno finaliza a las 06:00 PM. Solo un Administrador puede forzar este arqueo.";
+                }
+            } else if (turnoUsuario.toUpperCase() === 'NOCHE') {
+                // Bloquea si está entre las 7:00 PM (19:00) y las 6:59 AM del día siguiente
+                if (horaActual >= 19 || horaActual < 7) {
+                    esInvalido = true;
+                    alertaMensaje = "Operación Denegada: Tu turno finaliza a las 07:00 AM. Solo un Administrador puede forzar este arqueo.";
+                }
+            }
+
+            // 4. Activación de escudo
+            if (esInvalido) {
+                event.preventDefault(); // 🛑 Detiene el POST de forma fulminante
+                event.stopPropagation();
+
+                if (typeof AppUtils !== "undefined" && typeof AppUtils.showNotification === "function") {
+                    AppUtils.showNotification(alertaMensaje, "error");
+                } else {
+                    alert(alertaMensaje);
+                }
+                return false;
+            }
+        });
+    }
+
+    // Listener auxiliar para procesar los mensajes de error devueltos desde el controlador de Spring
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('errorCierreTurno')) {
+        const mensajeServidor = urlParams.get('msg') || "Error al procesar el cierre de caja.";
+        if (typeof AppUtils !== "undefined" && typeof AppUtils.showNotification === "function") {
+            AppUtils.showNotification(mensajeServidor, "error");
+        } else {
+            alert(mensajeServidor);
+        }
+    }
+});

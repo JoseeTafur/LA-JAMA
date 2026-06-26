@@ -97,7 +97,53 @@ public class CajaController {
     }
 
     @PostMapping("/cerrar")
-    public String cerrarCaja(@RequestParam Double montoCierre, @RequestParam(required = false) String observaciones) {
+    public String cerrarCaja(@RequestParam Double montoCierre,
+                             @RequestParam(required = false) String observaciones,
+                             jakarta.servlet.http.HttpSession session,
+                             Model model) {
+
+        // 1. Recuperamos las credenciales directamente de la aduana de sesión
+        Usuario usuarioLogueado = (Usuario) session.getAttribute("usuarioLogueado");
+        String rol = (String) session.getAttribute("rol");
+        String turno = (String) session.getAttribute("empleadoTurno"); // Inyectado dinámicamente
+
+        // Failsafe preventivo: si por alguna razón la sesión expiró
+        if (usuarioLogueado == null || rol == null) {
+            return "redirect:/login?error=sesion_expirada";
+        }
+
+        // 2. 🛡️ EXCEPCIÓN DE RANGO: Si es ADMIN o SUPER_ADMIN, se salta cualquier bloqueo de hora
+        if ("ADMIN".equals(rol) || "SUPER_ADMIN".equals(rol)) {
+            turnoCajaService.cerrarTurno(montoCierre, observaciones);
+            return "redirect:/admin/caja?cierreOk";
+        }
+
+        // 3. VALIDACIÓN HORARIA ESTRICTA PARA PERSONAL DE CAJA
+        LocalTime horaActual = LocalTime.now();
+        boolean fueraDeHorario = false;
+        String mensajeError = "";
+
+        if ("DIA".equalsIgnoreCase(turno)) {
+            // El Turno Día solo puede cerrar a partir de las 06:00 PM (18:00)
+            if (horaActual.isBefore(LocalTime.of(18, 0))) {
+                fueraDeHorario = true;
+                mensajeError = "No puedes cerrar la caja antes de finalizar tu turno (Hora permitida: desde las 06:00 PM).";
+            }
+        } else if ("NOCHE".equalsIgnoreCase(turno)) {
+            // El Turno Noche solo puede cerrar a partir de las 07:00 AM (07:00) hasta la tarde
+            // Validamos que no intente cerrar a mitad de la madrugada (ej: entre las 7pm y las 6:59am)
+            if (horaActual.isAfter(LocalTime.of(19, 0)) || horaActual.isBefore(LocalTime.of(7, 0))) {
+                fueraDeHorario = true;
+                mensajeError = "No puedes cerrar la caja antes de finalizar tu turno (Hora permitida: desde las 07:00 AM del día siguiente).";
+            }
+        }
+
+        if (fueraDeHorario) {
+            // Rebotamos el flujo al panel de caja con un flag de error controlado
+            return "redirect:/admin/caja?errorCierreTurno&msg=" + java.net.URLEncoder.encode(mensajeError, java.nio.charset.StandardCharsets.UTF_8);
+        }
+
+        // Si pasó todas las aduanas contables, se procede a la clausura del turno
         turnoCajaService.cerrarTurno(montoCierre, observaciones);
         return "redirect:/admin/caja?cierreOk";
     }
