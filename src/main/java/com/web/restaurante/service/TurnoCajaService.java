@@ -69,6 +69,14 @@ public class TurnoCajaService {
     }
 
     @Transactional
+    public void registrarIngresoManual(String concepto, Double monto) {
+        TurnoCaja turno = turnoCajaRepository.findByActivoTrue()
+                .orElseThrow(() -> new IllegalStateException("No hay turno activo."));
+        // 💡 Fijamos el tipo como "INGRESO" nativo e indestructible
+        registrarMovimiento(turno, "INGRESO", concepto, Math.abs(monto), null);
+    }
+
+    @Transactional
     public TurnoCaja cerrarTurno(Double montoCierre, String observaciones) {
         TurnoCaja turno = turnoCajaRepository.findByActivoTrue()
                 .orElseThrow(() -> new IllegalStateException("No hay ningún turno de caja abierto."));

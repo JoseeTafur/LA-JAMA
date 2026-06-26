@@ -76,6 +76,9 @@
 <script th:src="@{/js/sidebar.js}"></script>
 <script th:src="@{/js/main.js}"></script>
 <script th:src="@{/js/validation.js}"></script>
+<script th:inline="javascript">
+    window.turnoUsuarioLogueado = /*[[${session.empleadoTurno}]]*/ 'DIA';
+</script>
 <script th:src="@{{path}(path=${js})}"></script>
 </body>
 </html>

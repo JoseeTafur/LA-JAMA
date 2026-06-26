@@ -128,7 +128,7 @@ function cargarComprobantesHistoricos() {
         return;
     }
 
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-3 text-muted">Extrayendo comprobantes...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-3 text-muted">Extrayendo comprobantes...</td></tr>`;
 
     let url = `/admin/caja/historial-comprobantes?inicio=${fechaInicio}&fin=${fechaFin}&pagina=${paginaActualComprobantes}`;
     if (metodoPago)   url += `&metodoPago=${metodoPago}`;
@@ -141,7 +141,7 @@ function cargarComprobantesHistoricos() {
             const lista = data.comprobantes;
 
             if (!lista || lista.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted small">No se encontraron comprobantes liquidados ni anulados.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted small">No se encontraron comprobantes liquidados ni anulados.</td></tr>`;
                 document.getElementById("infoPaginacionComprobantes").innerText = "Mostrando 0 de 0 comprobantes";
                 document.getElementById("btnPrevPagina").disabled = true;
                 document.getElementById("btnNextPagina").disabled = true;
@@ -183,21 +183,31 @@ function cargarComprobantesHistoricos() {
                     }
                 }
 
-                const badgeEstado = (p.estado === 'PAGADO' || p.estado === 'LIQUIDADO')
+                // 🟩 MODIFICACIÓN: Definición contable visual basada en el estado del registro histórico
+                const esAnulado = (p.estado !== 'PAGADO' && p.estado !== 'LIQUIDADO');
+                const badgeTipoOperacion = esAnulado
+                    ? '<span class="badge bg-danger text-white fw-bold px-2 py-1" style="font-size:0.7rem;">EGRESO</span>'
+                    : '<span class="badge bg-success text-white fw-bold px-2 py-1" style="font-size:0.7rem;">INGRESO</span>';
+
+                const badgeEstado = !esAnulado
                     ? '<span class="badge bg-success text-white fw-bold px-3 py-2 rounded-pill" style="font-size:0.72rem;">LIQUIDADO</span>'
                     : '<span class="badge bg-danger text-white fw-bold px-3 py-2 rounded-pill" style="font-size:0.72rem;">ANULADO</span>';
 
                 const fila = document.createElement("tr");
                 fila.className = "fila-pedido-caja";
+                if (esAnulado) {
+                    fila.style = "background-color: #fff5f5 !important; opacity: 0.75;";
+                }
+
                 fila.innerHTML = `
                     <td><span class="texto-negrita">#${p.comprobante || ('NV-' + p.id)}</span></td>
-                    <td><span class="texto-servicio">${textoServicioFinal}</span></td>
+                    <td>${badgeTipoOperacion}</td> <td><span class="texto-servicio">${textoServicioFinal}</span></td>
                     <td>
-                        <div class="cliente-nombre fw-bold text-dark">${nombreIdentificador}</div>
+                        <div class="cliente-nombre fw-bold text-dark" style="${esAnulado ? 'text-decoration: line-through; color: #999;' : ''}">${nombreIdentificador}</div>
                         <div class="text-muted small fw-semibold" style="font-size:0.78rem; margin-top:2px;">${origenBadgeHTML}</div>
                     </td>
                     <td><span class="badge bg-light text-dark font-monospace border px-2 py-1">${p.fecha} (${p.hora || '-'})</span></td>
-                    <td><span class="fw-bold text-success">S/ ${p.monto.toFixed(2)}</span></td>
+                    <td><span class="${esAnulado ? 'text-danger fw-bold' : 'fw-bold text-success'}" style="${esAnulado ? 'text-decoration: line-through;' : ''}">S/ ${p.monto.toFixed(2)}</span></td>
                     <td>${metodoHTML}</td>
                     <td class="text-center">
                         <div class="action-buttons-wrapper justify-content-center d-flex gap-1">
@@ -220,7 +230,7 @@ function cargarComprobantesHistoricos() {
             document.getElementById("btnNextPagina").disabled = (pagina >= data.totalPaginas - 1);
         })
         .catch(err => {
-            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-3">💥 Error al consultar la bitácora: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-3">💥 Error al consultar la bitácora: ${err.message}</td></tr>`;
         });
 }
 

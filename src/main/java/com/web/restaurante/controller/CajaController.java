@@ -75,11 +75,24 @@ public class CajaController {
 
     @PostMapping("/movimiento")
     public String registrarMovimientoManual(@RequestParam String tipo, @RequestParam String concepto, @RequestParam Double monto) {
-        if ("INGRESO".equalsIgnoreCase(tipo)) {
-            turnoCajaService.registrarVenta("Manual: " + concepto, Math.abs(monto));
-        } else {
+        // 🚨 CANDADO CONTABLE INTERNO: Validar que los egresos no dejen la caja en negativo
+        if ("EGRESO".equalsIgnoreCase(tipo)) {
+            Optional<TurnoCaja> turnoOpt = turnoCajaService.obtenerTurnoActivo();
+            if (turnoOpt.isPresent()) {
+                List<MovimientoCaja> movimientos = turnoCajaService.obtenerMovimientosDelTurnoActivo();
+                Map<String, Object> metricas = cajaService.calcularMetricasDashboard(turnoOpt.get(), movimientos);
+                Double efectivoEsperado = (Double) metricas.get("efectivoEsperado");
+
+                if (monto > efectivoEsperado) {
+                    return "redirect:/admin/caja?errorEgresoInvalido&disponible=" + String.format("%.2f", efectivoEsperado);
+                }
+            }
             turnoCajaService.registrarEgreso(concepto, monto);
+        } else if ("INGRESO".equalsIgnoreCase(tipo)) {
+            // 🔥 CORRECCIÓN: Usamos el nuevo método nativo de ingresos
+            turnoCajaService.registrarIngresoManual("Manual: " + concepto, Math.abs(monto));
         }
+
         return "redirect:/admin/caja?movimientoOk";
     }
 

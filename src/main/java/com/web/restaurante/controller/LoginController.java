@@ -91,7 +91,11 @@ public class LoginController {
             }
 
             session.setAttribute("rol", rolParaSesion);
-            empOpt.ifPresent(empleado -> session.setAttribute("empleadoLogueado", empleado));
+            empOpt.ifPresent(empleado -> {
+                session.setAttribute("empleadoLogueado", empleado);
+                // Inyectamos el turno real ("DIA" o "NOCHE") al buzón de sesión para habilitar el candado del layout
+                session.setAttribute("empleadoTurno", empleado.getTurno() != null ? empleado.getTurno().toUpperCase().trim() : "DIA");
+            });
 
 // Carga inicial completa de opciones mapeadas en la BD
             List<Opcion> opcionesMenu = usuarioEncontrado.getPerfil().getOpciones().stream()

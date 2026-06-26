@@ -176,3 +176,48 @@ document.addEventListener('DOMContentLoaded', function () {
     ejecutarPaginacionUnificadaCaja('panel-liquidados');
     ejecutarPaginacionUnificadaCaja('panel-movimientos-turno');
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+    const formularioMovimiento = document.querySelector("form[action='/admin/caja/movimiento']");
+
+    if (formularioMovimiento) {
+        formularioMovimiento.addEventListener("submit", function (event) {
+            // 1. Capturamos los valores del formulario actual
+            const selectorTipo = formularioMovimiento.querySelector("[name='tipo']");
+            const inputMonto   = formularioMovimiento.querySelector("[name='monto']");
+
+            if (!selectorTipo || !inputMonto) return;
+
+            const tipoSelected = selectorTipo.value.toUpperCase();
+            const montoEgreso  = parseFloat(inputMonto.value) || 0;
+
+            // 2. Si es un egreso, validamos contra el efectivo disponible en tiempo real
+            if (tipoSelected === "EGRESO") {
+                // 💡 Tu plantilla thymeleaf renderiza el input oculto id="saldoTeoricoOculto"
+                // o podemos obtener el texto del contenedor de la gaveta (efectivoEsperado)
+                const inputSaldoOculto = document.getElementById("saldoTeoricoOculto");
+                let efectivoDisponible = 0;
+
+                if (inputSaldoOculto) {
+                    efectivoDisponible = parseFloat(inputSaldoOculto.value) || 0;
+                }
+
+                // 3. CANDADO: Si el egreso supera el dinero real físico en gaveta
+                if (montoEgreso > efectivoDisponible) {
+                    event.preventDefault(); // 🛑 Detiene el envío del formulario al servidor
+
+                    // Inyección de tu notificación nativa del sistema
+                    if (typeof AppUtils !== "undefined" && typeof AppUtils.showNotification === "function") {
+                        AppUtils.showNotification(
+                            `Error: No cuentas con efectivo suficiente. Disponible en gaveta: S/. ${efectivoDisponible.toFixed(2)}`,
+                            "error"
+                        );
+                    } else {
+                        // Respaldo por si AppUtils no se ha cargado en esa sección
+                        alert(`No hay suficiente efectivo en gaveta (Disponible: S/. ${efectivoDisponible.toFixed(2)})`);
+                    }
+                }
+            }
+        });
+    }
+});

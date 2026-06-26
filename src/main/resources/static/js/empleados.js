@@ -141,72 +141,88 @@ $(document).ready(function () {
     }
 
     function setupEventListeners() {
-        $('#btnNuevoRegistro').on('click', function () {
-            isEditing = false;
-            $('#modalTitle').text('Agregar Empleado');
-            AppUtils.clearForm(formId);
-            modal.show();
-        });
+            // 🔒 ADUANA DE CAMPAÑA GENERAL: Interceptar cualquier acción si está fuera de turno
+            $('#btnNuevoRegistro, #tabla').on('click', '#btnNuevoRegistro, .action-edit, .action-status, .action-delete', function (e) {
+                // 💡 Reemplaza 'DIA' o 'NOCHE' con la variable real de la sesión del empleado logueado
+                const turnoActualSesion = window.turnoUsuarioLogueado || 'DIA';
 
-        $('#filtroTurno').on('change', function () {
-            const turno = $(this).val();
-            const url = turno ? `${ENDPOINTS.buscar}?turno=${turno}` : ENDPOINTS.list;
-            dataTable.ajax.url(url).load();
-        });
+                if (!verificarTurnoOperativo(turnoActualSesion)) {
+                    e.preventDefault();
+                    e.stopPropagation(); // Detiene por completo la propagación del click e impide animaciones
 
-        $('#form').on('submit', function (e) { e.preventDefault(); guardarEmpleado(); });
-
-        // Delegación de eventos jQuery limpia para filas mutables
-        $('#tabla').on('click', '.action-edit', function () { editarEmpleado($(this).data('id')); });
-
-        $('#tabla').on('click', '.action-status', function () {
-            const id = $(this).data('id');
-            AppUtils.showConfirmationDialog(
-                { title: '¿Cambiar estado laboral?', text: 'Se alternará la disponibilidad del empleado en el sistema.', icon: 'question', confirmButtonColor: '#f59e0b' },
-                () => cambiarEstado(id)
-            );
-        });
-
-        $('#tabla').on('click', '.action-delete', function () {
-            const id = $(this).data('id');
-            eliminarEmpleado(id);
-        });
-
-        // =========================================================================
-        // 🛡️ ADUANA INTERACTIVA EN TIEMPO REAL (MUDADA TOTALMENTE DESDE EL HTML)
-        // =========================================================================
-
-        // 1. Nombre y Apellido: Bloquear números, símbolos y emojis en caliente mientras digitan
-        $('#nombre, #apellido').on('input', function() {
-            this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]/g, '');
-        });
-
-        // 2. DNI y Teléfono: Bloquear letras en caliente y forzar puros enteros peruanos
-        $('#dni, #telefono').on('input', function() {
-            this.value = this.value.replace(/[^0-9]/g, '');
-        });
-
-        // 3. Calendario Defensivo: Bloquear fechas futuras e irracionales anteriores a 1950
-        const inputFecha = document.getElementById('fechaIngreso');
-        if (inputFecha) {
-            const hoyIso = new Date().toISOString().split('T')[0];
-            inputFecha.setAttribute('max', hoyIso);
-            inputFecha.setAttribute('min', '2026-01-01');
-
-            inputFecha.addEventListener('change', function() {
-                const fechaSeleccionada = new Date(this.value);
-                const limiteHoy = new Date();
-                const limiteMinimo = new Date('1950-01-01');
-
-                if (fechaSeleccionada > limiteHoy || fechaSeleccionada < limiteMinimo) {
-                    $('#fechaIngreso-error').text('La fecha de ingreso no es válida. No puede ser futura ni anterior a 1950.');
-                    this.value = '';
-                } else {
-                    $('#fechaIngreso-error').text('');
+                    if (typeof AppUtils !== 'undefined' && typeof AppUtils.showNotification === 'function') {
+                        AppUtils.showNotification("Operación denegada: No es tu turno de trabajo asignado.", "error");
+                    } else {
+                        alert("Operación denegada: No es tu turno de trabajo asignado.");
+                    }
+                    return false;
                 }
             });
+
+            // =========================================================================
+            // Los escuchadores originales se ejecutan solo si pasan la aduana superior:
+            // =========================================================================
+            $('#btnNuevoRegistro').on('click', function () {
+                isEditing = false;
+                $('#modalTitle').text('Agregar Empleado');
+                AppUtils.clearForm(formId);
+                modal.show();
+            });
+
+            $('#filtroTurno').on('change', function () {
+                const turno = $(this).val();
+                const url = turno ? `${ENDPOINTS.buscar}?turno=${turno}` : ENDPOINTS.list;
+                dataTable.ajax.url(url).load();
+            });
+
+            $('#form').on('submit', function (e) { e.preventDefault(); guardarEmpleado(); });
+
+            $('#tabla').on('click', '.action-edit', function () { editarEmpleado($(this).data('id')); });
+
+            $('#tabla').on('click', '.action-status', function () {
+                const id = $(this).data('id');
+                AppUtils.showConfirmationDialog(
+                    { title: '¿Cambiar estado laboral?', text: 'Se alternará la disponibilidad del empleado en el sistema.', icon: 'question', confirmButtonColor: '#f59e0b' },
+                    () => cambiarEstado(id)
+                );
+            });
+
+            $('#tabla').on('click', '.action-delete', function () {
+                const id = $(this).data('id');
+                eliminarEmpleado(id);
+            });
+
+            // 1. Nombre y Apellido: Bloquear números, símbolos y emojis en caliente mientras digitan
+            $('#nombre, #apellido').on('input', function() {
+                this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]/g, '');
+            });
+
+            // 2. DNI y Teléfono: Bloquear letras en caliente y forzar puros enteros peruanos
+            $('#dni, #telefono').on('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+
+            // 3. Calendario Defensivo: Bloquear fechas futuras e irracionales anteriores a 1950
+            const inputFecha = document.getElementById('fechaIngreso');
+            if (inputFecha) {
+                const hoyIso = new Date().toISOString().split('T')[0];
+                inputFecha.setAttribute('max', hoyIso);
+                inputFecha.setAttribute('min', '2026-01-01');
+
+                inputFecha.addEventListener('change', function() {
+                    const fechaSeleccionada = new Date(this.value);
+                    const limiteHoy = new Date();
+                    const limiteMinimo = new Date('1950-01-01');
+
+                    if (fechaSeleccionada > limiteHoy || fechaSeleccionada < limiteMinimo) {
+                        $('#fechaIngreso-error').text('La fecha de ingreso no es válida. No puede ser futura ni anterior a 1950.');
+                        this.value = '';
+                    } else {
+                        $('#fechaIngreso-error').text('');
+                    }
+                });
+            }
         }
-    }
 
     function guardarEmpleado() {
         limpiarErrores();
@@ -334,3 +350,32 @@ $(document).ready(function () {
     function mostrarError(elementId, mensaje) { $(`#${elementId}`).text(mensaje); }
     function limpiarErrores() { $('.invalid-feedback').text(''); }
 });
+
+/**
+ * 🛡️ GUARDIA DE SEGURIDAD OPERATIVA: Verifica si la hora actual
+ * se encuentra dentro de las ventanas permitidas del turno asignado.
+ */
+function verificarTurnoOperativo(turnoUsuario) {
+    if (!turnoUsuario) return true; // Si no hay turno asignado (ej: Admin global), permite el paso
+
+    const horaActual = new Date().getHours();
+    const minutosActuales = new Date().getMinutes();
+    const tiempoEnMinutos = (horaActual * 60) + minutosActuales;
+
+    // Convertimos los rangos operativos a minutos absolutos
+    const inicioDia = 8 * 60;   // 08:00 AM
+    const finDia    = 18 * 60;  // 06:00 PM
+    const inicioNoche = 19 * 60; // 07:00 PM
+    const finNoche    = 7 * 60;  // 07:00 AM (Día siguiente)
+
+    if (turnoUsuario.toUpperCase() === 'DIA') {
+        return (tiempoEnMinutos >= inicioDia && tiempoEnMinutos <= finDia);
+    }
+
+    if (turnoUsuario.toUpperCase() === 'NOCHE') {
+        // Al cruzar la medianoche, el rango es válido de 19:00 a 23:59 ó de 00:00 a 07:00
+        return (tiempoEnMinutos >= inicioNoche || tiempoEnMinutos <= finNoche);
+    }
+
+    return true;
+}

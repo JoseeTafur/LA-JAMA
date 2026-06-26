@@ -19,7 +19,6 @@
     <input type="hidden" id="saldoTeoricoOculto" th:value="${saldoTeorico}">
 
     <div class="row g-4 mb-4">
-        <!-- Tarjeta 1: Fondo de Apertura (Estilo Esmeralda Aurora) -->
         <div class="col-md-4">
             <div class="card card-resumen-jama cr-apertura position-relative overflow-hidden p-4">
                 <div class="esfera-diseno e-1"></div>
@@ -31,7 +30,6 @@
             </div>
         </div>
 
-        <!-- Tarjeta 2: Ventas del Turno (Estilo Zafiro Eléctrico) -->
         <div class="col-md-4">
             <div class="card card-resumen-jama cr-ventas position-relative overflow-hidden p-4">
                 <div class="esfera-diseno e-1"></div>
@@ -43,7 +41,6 @@
             </div>
         </div>
 
-        <!-- Tarjeta 3: Saldo Esperado en Caja (Estilo Oro Líquido / Premium Jama) -->
         <div class="col-md-4">
             <div class="card card-resumen-jama cr-saldo position-relative overflow-hidden p-4">
                 <div class="esfera-diseno e-1"></div>
@@ -110,6 +107,15 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             Cerrar Caja Operativa
         </button>
+
+        <div class="d-flex gap-2 mb-3 justify-content-end">
+            <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="exportarReporteCaja('PDF')">
+                <i class="bi bi-file-earmark-pdf-fill"></i> PDF
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="exportarReporteCaja('EXCEL')">
+                <i class="bi bi-file-earmark-excel-fill"></i> Excel
+            </button>
+        </div>
     </div>
 
     <div class="card card-color1 p-4">
@@ -223,7 +229,7 @@
                         <thead>
                         <tr>
                             <th class="col-id">ID Comprobante</th>
-                            <th>Tipo Servicio</th>
+                            <th>Tipo Operación</th> <th>Tipo Servicio</th>
                             <th>Cliente / Origen</th>
                             <th>Fecha Emisión</th>
                             <th>Monto Cobrado</th>
@@ -238,6 +244,11 @@
                             th:styleappend="${comp.estado.name() == 'ANULADO' ? 'background-color: #fff5f5 !important; opacity: 0.75;' : ''}">
 
                             <td class="fw-bold" th:text="${comp.comprobanteNotaNumero != null ? comp.comprobanteNotaNumero : 'NV-' + comp.id}">NV-01</td>
+
+                            <td>
+                                <span th:class="${comp.estado.name() == 'ANULADO' ? 'badge bg-danger text-white fw-bold px-2 py-1' : 'badge bg-success text-white fw-bold px-2 py-1'}"
+                                      th:text="${comp.estado.name() == 'ANULADO' ? 'EGRESO' : 'INGRESO'}" style="font-size:0.7rem;">INGRESO</span>
+                            </td>
 
                             <td>
                                 <div class="d-flex align-items-center gap-2">
@@ -300,7 +311,7 @@
 
                         <tbody th:if="${pedidosLiquidados == null or #lists.isEmpty(pedidosLiquidados)}">
                         <tr>
-                            <td colspan="8" class="text-center py-4 text-muted italic">No hay registros liquidados en este turno.</td>
+                            <td colspan="9" class="text-center py-4 text-muted italic">No hay registros liquidados en este turno.</td>
                         </tr>
                         </tbody>
                     </table>
@@ -419,9 +430,8 @@
                     <table class="table table-jama" id="tablaHistorialComprobantesAsincronoMaster">
                         <thead>
                         <tr>
-                            <!-- 🛠️ CORRECCIÓN DE ALCANCE: ID Ticket pasa a ser ID Comprobante -->
                             <th class="col-id">ID Comprobante</th>
-                            <th>Tipo Servicio</th>
+                            <th>Tipo Operación</th> <th>Tipo Servicio</th>
                             <th>Cliente / Origen</th>
                             <th>Fecha Emisión</th>
                             <th>Monto Cobrado</th>
@@ -431,7 +441,7 @@
                         </tr>
                         </thead>
                         <tbody id="cuerpoHistorialComprobantesAsincrono">
-                        <tr><td colspan="8" class="text-center py-4 text-muted small italic">🔒 Parámetro seguro: Selecciona los rangos de fechas para extraer los comprobantes históricos.</td></tr>
+                        <tr><td colspan="9" class="text-center py-4 text-muted small italic">🔒 Parámetro seguro: Selecciona los rangos de fechas para extraer los comprobantes históricos.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -450,7 +460,6 @@
 </div>
 
 <div id="modales-caja">
-    <!-- El resto de modales y scripts originales se conservan intactos -->
     <div class="modal fade" id="modalMovimiento" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
@@ -463,8 +472,8 @@
                         <div class="mb-3">
                             <label class="form-label">Tipo de Operación *</label>
                             <select name="tipo" class="form-select" required>
-                                <option value="INGRESO">Inyección de sencillo / vuelto</option>
-                                <option value="EGRESO">Gasto de pánico / Proveedor</option>
+                                <option value="INGRESO">INSERTAR INGRESO</option>
+                                <option value="EGRESO">INSERTAR EGRESO</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -595,6 +604,7 @@
     <script th:src="@{/js/caja-movil/render.js}"></script>
     <script th:src="@{/js/caja-movil/liquidacion.js}"></script>
     <script th:src="@{/js/caja/historial.js}"></script>
+    <script th:src="@{/js/caja/caja-reportes.js}"></script>
 </div>
 
 </body>

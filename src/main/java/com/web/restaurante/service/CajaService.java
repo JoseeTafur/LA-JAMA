@@ -73,15 +73,22 @@ public class CajaService {
                 .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.EFECTIVO)
                 .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0).sum();
 
+        // Suma todos los ingresos manuales de la bitácora (limpios con tipo "INGRESO")
         double totalIngresosManuales = movimientos.stream()
-                .filter(m -> "INGRESO".equals(m.getTipo()) || ("VENTA".equals(m.getTipo()) && m.getConcepto() != null && m.getConcepto().toUpperCase().contains("VUELTO")))
+                .filter(m -> m.getTipo() != null && "INGRESO".equals(m.getTipo().toUpperCase().trim()))
                 .mapToDouble(MovimientoCaja::getMonto).sum();
 
+        // Recupera los egresos (vienen con signo negativo desde TurnoCajaService, ej: -30.0)
         double totalEgresos = movimientos.stream()
-                .filter(m -> "EGRESO".equals(m.getTipo()))
+                .filter(m -> m.getTipo() != null && "EGRESO".equals(m.getTipo().toUpperCase().trim()))
                 .mapToDouble(MovimientoCaja::getMonto).sum();
 
+        // 🔥 CORRECCIÓN CLAVE: Se usa "+" porque el número ya es negativo. Ejemplo: 200 + 10 + (-20) = 190.
         double efectivoEsperadoTotal = turnoActivo.getMontoApertura() + ventasEfectivo + totalIngresosManuales + totalEgresos;
+
+        if (efectivoEsperadoTotal < 0) {
+            efectivoEsperadoTotal = 0.0;
+        }
 
         double yapePlinEsperado = liquidados.stream()
                 .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.YAPE || p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.PLIN)
@@ -94,6 +101,7 @@ public class CajaService {
         double totalVentasPedidos = liquidados.stream()
                 .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0).sum();
 
+        // 💡 El saldo teórico global sigue la misma lógica (+) por el signo negativo nativo del egreso
         double saldoTeoricoGlobal = turnoActivo.getMontoApertura() + totalVentasPedidos + totalIngresosManuales + totalEgresos;
 
         // 4. MOVIMIENTOS EXCLUSIVOS CAJERO

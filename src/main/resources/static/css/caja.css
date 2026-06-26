@@ -630,3 +630,68 @@
     color: #94a3b8;
     cursor: not-allowed;
 }
+
+/* ============================================================================
+   OPTIMIZACIÓN DE TABLA COMPLETA PARA PANTALLAS GRANDES (ESCRITORIO)
+   ============================================================================ */
+
+/* 1. Obligar al contenedor a no desbordar y usar el 100% real de la pantalla */
+.table-responsive-jama {
+    width: 100% !important;
+    overflow-x: auto; /* Muestra scrollbar solo si es estrictamente necesario */
+    background: #ffffff;
+    border-radius: 12px;
+}
+
+/* 2. Forzar a la tabla a ocupar el ancho exacto disponible y ajustar la letra */
+table.table-jama {
+    width: 100% !important;
+    table-layout: fixed; /* 💡 Hace que el navegador respete el ancho de pantalla y no se estire de más */
+    font-size: 0.85rem !important; /* Reducción sutil general para que quepa todo el texto */
+    margin-bottom: 0 !important;
+}
+
+/* 3. Controlar los espacios internos (paddings) para ganar espacio horizontal */
+table.table-jama th,
+table.table-jama td {
+    padding: 10px 8px !important; /* Celdas más compactas */
+    vertical-align: middle !important;
+    white-space: nowrap; /* Evita que los badges o botones se rompan en dos líneas */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Si el texto es ridículamente largo, añade "..." en vez de deformar la tabla */
+}
+
+/* 4. Distribución proporcional de las columnas para que no peleen por espacio */
+table.table-jama th:nth-child(1),
+table.table-jama td:nth-child(1) { width: 12%; } /* ID Comprobante */
+
+table.table-jama th:nth-child(2),
+table.table-jama td:nth-child(2) { width: 11%; } /* Tipo Operación */
+
+table.table-jama th:nth-child(3),
+table.table-jama td:nth-child(3) { width: 12%; } /* Tipo Servicio */
+
+table.table-jama th:nth-child(4),
+table.table-jama td:nth-child(4) { width: 22%; } /* Cliente / Origen (Más espacio por los nombres largos) */
+
+table.table-jama th:nth-child(5),
+table.table-jama td:nth-child(5) { width: 13%; } /* Fecha Emisión */
+
+table.table-jama th:nth-child(6),
+table.table-jama td:nth-child(6) { width: 11%; } /* Monto Cobrado */
+
+table.table-jama th:nth-child(7),
+table.table-jama td:nth-child(7) { width: 11%; } /* Método Pago */
+
+table.table-jama th:nth-child(8),
+table.table-jama td:nth-child(8) { width: 8%; }  /* Acciones (Botones juntos) */
+
+table.table-jama th:nth-child(9),
+table.table-jama td:nth-child(9) { width: 11%; } /* Estado */
+
+/* 5. Asegurar que los botones de acción se mantengan pequeños y juntos */
+.action-buttons-wrapper {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+}
