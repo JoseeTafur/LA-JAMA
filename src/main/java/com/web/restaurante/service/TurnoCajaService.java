@@ -26,9 +26,10 @@ public class TurnoCajaService {
 
     public Double obtenerMontoAperturaSugerido() {
         List<TurnoCaja> cerrados = turnoCajaRepository.findTurnosCerradosOrdenados();
-        if (cerrados.isEmpty()) return 0.0;
+        if (cerrados.isEmpty()) return 200.0;
+
         Double montoCierre = cerrados.get(0).getMontoCierre();
-        return montoCierre != null ? montoCierre : 0.0;
+        return montoCierre != null ? montoCierre : 200.0;
     }
 
     public List<MovimientoCaja> obtenerMovimientosDelTurnoActivo() {

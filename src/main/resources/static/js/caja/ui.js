@@ -22,6 +22,7 @@ function cambiarPestañaCaja(idPanel, boton) {
     const panel = document.getElementById(idPanel);
     if (panel) panel.classList.add('activo');
     if (boton && boton.classList.contains('jama-tab-link')) boton.classList.add('activo');
+    setTimeout(actualizarBotonesReporte, 60);
 }
 
 function abrirModalLocal(id) {
@@ -130,6 +131,11 @@ function ejecutarFiltradoHistorialEnCaliente() {
 
     estadoPaginacionCaja['panel-liquidados'].pagina = 1;
     ejecutarPaginacionUnificadaCaja('panel-liquidados');
+
+    // 🚀 AÑADIR ESTO: Reevalúa los botones si el usuario ocultó todo con su búsqueda
+    if (typeof actualizarBotonesReporte === 'function') {
+        actualizarBotonesReporte();
+    }
 }
 
 function limpiarFiltrosHistorialAsincrono() {

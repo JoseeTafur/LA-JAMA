@@ -5,6 +5,7 @@ import com.web.restaurante.model.Mesa;
 import com.web.restaurante.model.Pedido;
 import com.web.restaurante.model.Producto;
 import com.web.restaurante.model.InsumoProducto;
+import com.web.restaurante.model.enums.EstadoPago;
 import com.web.restaurante.model.enums.EstadoPedido;
 import com.web.restaurante.repository.MesaRepository;
 import com.web.restaurante.repository.PedidoRepository;
@@ -108,6 +109,7 @@ public class MeseroController {
                         .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
                 pedidoFinal.setEstado(EstadoPedido.EN_COCINA);
+                pedidoFinal.setEstadoPago(EstadoPago.PENDIENTE);
                 pedidoFinal.setCliente(pedidoDeFrontend.getCliente());
                 pedidoFinal.setDireccion(pedidoDeFrontend.getDireccion());
 
@@ -127,6 +129,7 @@ public class MeseroController {
             } else {
                 pedidoFinal = pedidoDeFrontend;
                 pedidoFinal.setEstado(EstadoPedido.EN_COCINA);
+                pedidoFinal.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PENDIENTE);
                 pedidoFinal.setFechaCreacion(LocalDateTime.now());
                 pedidoFinal.setFechaSalida(null);
                 pedidoFinal.setFechaEntrega(null);
@@ -245,25 +248,31 @@ public class MeseroController {
 
     @PostMapping("/finalizar-atencion/{id}")
     @ResponseBody
-    public ResponseEntity<String> finalizarPedidoLocal(@PathVariable Long id, @RequestParam(required = false) Long mesaId) {
+    public ResponseEntity<String> finalizarPedidoLocal(@PathVariable Long id,
+                                                       @RequestParam(required = false) Long mesaId) {
         try {
             Pedido pedido = pedidoRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
+            pedido.setEstado(EstadoPedido.ENTREGADO);
             pedido.setFechaEntrega(LocalDateTime.now());
-            pedido.setEstado(EstadoPedido.PAGADO);
 
-            // 🛡️ CANDADO C: Asegurar turno de caja al finalizar atención desde comandera
-            turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
-
-            pedidoRepository.save(pedido);
-
-            if (mesaId != null) {
-                Mesa mesa = mesaRepository.findById(mesaId).orElseThrow();
-                mesa.setEstado("LIBRE");
-                mesaRepository.save(mesa);
+            if (pedido.getTurnoCaja() == null) {
+                turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
             }
 
+            // Solo libera si ya está pagado
+            if (EstadoPago.PAGADO.equals(pedido.getEstadoPago())) {
+                pedido.setNumeroMesa(null);
+                if (mesaId != null) {
+                    Mesa mesa = mesaRepository.findById(mesaId).orElseThrow();
+                    mesa.setEstado("DISPONIBLE");
+                    mesaRepository.save(mesa);
+                }
+            }
+            // Si NO está pagado, sigue en el plano con estado ENTREGADO esperando cobro
+
+            pedidoRepository.save(pedido);
             return ResponseEntity.ok("OK");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
@@ -276,9 +285,9 @@ public class MeseroController {
         try {
             Pedido pedido = pedidoRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
             pedido.setEstado(EstadoPedido.PREPARADO);
 
-            // 🛡️ CANDADO D: Asegurar turno de caja al cambiar estado a preparado
             if (pedido.getTurnoCaja() == null) {
                 turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
             }

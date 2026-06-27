@@ -1,6 +1,7 @@
 package com.web.restaurante.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.web.restaurante.model.enums.EstadoPago;
 import com.web.restaurante.model.enums.EstadoPedido;
 import com.web.restaurante.model.enums.MetodoPago;
 import com.web.restaurante.model.enums.TipoPedido;
@@ -48,6 +49,9 @@ public class Pedido {
         this.fechaCreacion = LocalDateTime.now();
         if (this.estado == null) {
             this.estado = EstadoPedido.PENDIENTE;
+        }
+        if (this.estadoPago == null) {
+            this.estadoPago = EstadoPago.PENDIENTE;
         }
     }
 
@@ -120,6 +124,10 @@ public class Pedido {
     @Enumerated(EnumType.STRING)
     @Column(name = "metodo_pago")
     private MetodoPago metodoPago;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_pago", length = 20)
+    private EstadoPago estadoPago;
 
     public boolean isListoParaServir() {
         if (this.estado == EstadoPedido.PREPARADO || this.estado == EstadoPedido.ASIGNADO) {

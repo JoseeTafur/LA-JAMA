@@ -62,7 +62,8 @@ public class ComprobanteAdminController {
                 .collect(Collectors.toList());
 
         double totalFacturadoTurno = emitidos.stream()
-                .filter(p -> p.getEstado() != EstadoPedido.CANCELADO)
+                .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO
+                        && p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.EXTORNADO) // 🚀 Filtro de escudo financiero
                 .mapToDouble(Pedido::getMontoTotal)
                 .sum();
 
@@ -104,7 +105,7 @@ public class ComprobanteAdminController {
                 pedido.setComprobanteA4Url(respuestaSunat.getPdfA4());
                 pedido.setComprobanteXmlContenido(respuestaSunat.getXmlFirmado());
 
-                pedido.setEstado(EstadoPedido.PAGADO);
+                pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
                 pedidoService.guardar(pedido);
 
                 // 📧 DISPARO ASÍNCRONO DE CORREO ELECTRONICO AL CLIENTE ORIGINAL
@@ -200,7 +201,7 @@ public class ComprobanteAdminController {
                 pedidoOriginal.setNotaA4Url(respuesta.getPdfA4());
                 pedidoOriginal.setNotaXmlContenido(respuesta.getXmlFirmado());
 
-                pedidoOriginal.setEstado(EstadoPedido.ANULADO);
+                pedidoOriginal.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.EXTORNADO);
                 pedidoService.guardar(pedidoOriginal);
 
                 emailService.enviarComprobante(pedidoOriginal.getClienteCorreo(), pedidoOriginal);
@@ -279,7 +280,7 @@ public class ComprobanteAdminController {
     public String renderizarTicketNotaLocal(@PathVariable("id") Long id, Model model) {
         Pedido pedido = pedidoService.obtenerPorId(id);
 
-        if (pedido == null || !"ANULADO".equals(pedido.getEstado().name())) {
+        if (pedido == null || pedido.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.EXTORNADO) {
             return "redirect:/admin/comprobantes?errorContable=El+pedido+no+esta+anulado";
         }
 
@@ -413,16 +414,18 @@ public class ComprobanteAdminController {
             NotaCreditoResponse respuesta = facturacionService.emitirNotaCreditoSunat(request);
 
             if (respuesta != null && respuesta.isOkey()) {
-                String numeroNotaFinal = (respuesta.getNumeroNota() != null && !respuesta.getNumeroNota().isEmpty())
+                // 🚀 SOLUCIÓN AL ALCANCE: Forzamos la asignación inmediata al objeto persistido
+                String nroNota = (respuesta.getNumeroNota() != null && !respuesta.getNumeroNota().isEmpty())
                         ? respuesta.getNumeroNota()
                         : numeroNotaCompleto;
 
-                pedidoOriginal.setComprobanteNotaNumero(numeroNotaFinal);
+                pedidoOriginal.setComprobanteNotaNumero(nroNota);
                 pedidoOriginal.setNotaPdfUrl(respuesta.getPdfTicket());
                 pedidoOriginal.setNotaA4Url(respuesta.getPdfA4());
                 pedidoOriginal.setNotaXmlContenido(respuesta.getXmlFirmado());
 
-                pedidoOriginal.setEstado(EstadoPedido.ANULADO);
+                // Seteo financiero atómico
+                pedidoOriginal.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.EXTORNADO);
                 pedidoService.guardar(pedidoOriginal);
 
                 AuditoriaAnulacion auditoria = new AuditoriaAnulacion();
@@ -437,7 +440,7 @@ public class ComprobanteAdminController {
 
                 return ResponseEntity.ok(Map.of(
                         "success", true,
-                        "message", "Nota de Crédito " + numeroNotaFinal + " autorizada y homologada por SUNAT."
+                        "message", "Nota de Crédito " + nroNota + " autorizada y homologada por SUNAT."
                 ));
             } else {
                 String errorSunat = (respuesta != null) ? respuesta.getMensaje() : "Sin respuesta de la pasarela de timbrado.";
@@ -534,7 +537,8 @@ public class ComprobanteAdminController {
                 nuevoPedido.setComprobanteA4Url(respuestaSunat.getPdfA4());
                 nuevoPedido.setComprobanteXmlContenido(respuestaSunat.getXmlFirmado());
 
-                nuevoPedido.setEstado(EstadoPedido.PAGADO);
+                nuevoPedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.ENTREGADO);
+                nuevoPedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
                 pedidoService.guardar(nuevoPedido);
 
                 // 📧 DISPARO ASÍNCRONO DE CORREO ELECTRONICO PARA LA ORDEN CLONADA Y CORREGIDA

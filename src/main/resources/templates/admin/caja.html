@@ -250,13 +250,13 @@
 
                         <tbody th:if="${pedidosLiquidados != null and not #lists.isEmpty(pedidosLiquidados)}">
                         <tr th:each="comp : ${pedidosLiquidados}" class="fila-pedido-caja"
-                            th:styleappend="${comp.estado.name() == 'ANULADO' ? 'background-color: #fff5f5 !important; opacity: 0.75;' : ''}">
+                            th:styleappend="${comp.estadoPago.name() == 'EXTORNADO' or comp.estado.name() == 'CANCELADO' ? 'background-color: #fff5f5 !important; opacity: 0.75;' : ''}">
 
                             <td class="fw-bold" th:text="${comp.comprobanteNotaNumero != null ? comp.comprobanteNotaNumero : 'NV-' + comp.id}">NV-01</td>
 
                             <td>
-                                <span th:class="${comp.estado.name() == 'ANULADO' ? 'badge bg-danger text-white fw-bold px-2 py-1' : 'badge bg-success text-white fw-bold px-2 py-1'}"
-                                      th:text="${comp.estado.name() == 'ANULADO' ? 'EGRESO' : 'INGRESO'}" style="font-size:0.7rem;">INGRESO</span>
+                                <span th:class="${comp.estadoPago.name() == 'EXTORNADO' or comp.estado.name() == 'CANCELADO' ? 'badge bg-danger text-white fw-bold px-2 py-1' : 'badge bg-success text-white fw-bold px-2 py-1'}"
+                                      th:text="${comp.estadoPago.name() == 'EXTORNADO' or comp.estado.name() == 'CANCELADO' ? 'EGRESO' : 'INGRESO'}" style="font-size:0.7rem;">INGRESO</span>
                             </td>
 
                             <td>
@@ -269,7 +269,7 @@
                             </td>
 
                             <td>
-                                <div class="fw-bold text-dark" th:styleappend="${comp.estado.name() == 'ANULADO' ? 'text-decoration: line-through; color: #999;' : ''}">
+                                <div class="fw-bold text-dark" th:styleappend="${comp.estadoPago.name() == 'EXTORNADO' or comp.estado.name() == 'CANCELADO' ? 'text-decoration: line-through; color: #999;' : ''}">
                                     <span th:if="${comp.cliente != null and comp.cliente != ''}" th:text="${comp.cliente}">Cliente General</span>
                                     <span th:if="${comp.cliente == null or comp.cliente == ''}" th:text="'Mesa N° ' + ${comp.numeroMesa}">Mesa N° 00</span>
                                 </div>
@@ -281,14 +281,14 @@
                             </td>
 
                             <td>
-                        <span class="badge bg-light text-dark font-monospace border px-2 py-1"
-                              th:text="${comp.fechaEntrega != null ? #temporals.format(comp.fechaEntrega, 'HH:mm') : '-'}">00:00</span>
+                                <span class="badge bg-light text-dark font-monospace border px-2 py-1"
+                                      th:text="${comp.fechaEntrega != null ? #temporals.format(comp.fechaEntrega, 'HH:mm') : '-'}">00:00</span>
                             </td>
 
                             <td>
-                        <span th:class="${comp.estado.name() == 'ANULADO' ? 'text-danger fw-bold' : 'fw-bold text-success'}"
-                              th:styleappend="${comp.estado.name() == 'ANULADO' ? 'text-decoration: line-through;' : ''}"
-                              th:text="|S/ ${#numbers.formatDecimal(comp.montoTotal, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</span>
+                                <span th:class="${comp.estadoPago.name() == 'EXTORNADO' or comp.estado.name() == 'CANCELADO' ? 'text-danger fw-bold' : 'fw-bold text-success'}"
+                                      th:styleappend="${comp.estadoPago.name() == 'EXTORNADO' or comp.estado.name() == 'CANCELADO' ? 'text-decoration: line-through;' : ''}"
+                                      th:text="|S/ ${#numbers.formatDecimal(comp.montoTotal, 1, 'COMMA', 2, 'POINT')}|">S/ 0.00</span>
                             </td>
 
                             <td>
@@ -301,26 +301,63 @@
 
                             <td class="text-center">
                                 <div class="action-buttons-wrapper justify-content-center d-flex gap-1">
-                                    <button type="button" class="action-jama-btn btn-action-edit" th:data-id="${comp.id}" onclick="verDetallesComandaAuditoria(this)">
+                                    <button type="button" class="action-jama-btn btn-action-edit"
+                                            th:data-id="${comp.id}" onclick="verDetallesComandaAuditoria(this)">
                                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12s3-7 10-7 9 7 9 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                                     </button>
-
-                                    <button type="button" class="action-jama-btn btn-action-print bg-light-jama" th:onclick="|window.open('/admin/caja/ticket-venta/' + ${comp.id}, '_blank')|">
+                                    <button type="button" class="action-jama-btn btn-action-print bg-light-jama"
+                                            th:onclick="|window.open('/admin/caja/ticket-venta/' + ${comp.id}, '_blank')|">
                                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                                    </button>
+
+                                    <button type="button"
+                                            class="action-jama-btn"
+                                            th:if="${comp.estadoPago != null and comp.estadoPago.name() == 'PAGADO' and comp.comprobanteNumero == null}"
+                                            th:onclick="|extornarNotaVenta(${comp.id}, ${comp.montoTotal})|"
+                                            title="Extornar Nota de Venta"
+                                            style="background-color:#933D2D;border-color:#7a2e1f;color:#fff;">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                            <line x1="12" y1="9" x2="12" y2="13"/>
+                                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                        </svg>
+                                    </button>
+
+                                    <button type="button"
+                                            class="action-jama-btn"
+                                            th:if="${comp.estadoPago != null and comp.estadoPago.name() == 'EXTORNADO'}"
+                                            disabled
+                                            title="Nota de Venta ya extornada"
+                                            style="background-color:#e5e7eb;border-color:#d1d5db;color:#9ca3af;cursor:not-allowed;opacity:0.5;">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                            <line x1="12" y1="9" x2="12" y2="13"/>
+                                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                        </svg>
+                                    </button>
+
+                                    <button type="button"
+                                            class="action-jama-btn"
+                                            th:if="${comp.comprobanteNumero != null}"
+                                            disabled
+                                            title="CPE timbrado — usa Nota de Crédito en Comprobantes"
+                                            style="background-color:#e5e7eb;border-color:#d1d5db;color:#9ca3af;cursor:not-allowed;opacity:0.5;">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                            <path d="M3 3v5h5"/>
+                                            <line x1="12" y1="9" x2="12" y2="13"/>
+                                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                        </svg>
                                     </button>
                                 </div>
                             </td>
 
                             <td class="text-end">
-                        <span th:class="${comp.estado.name() == 'ANULADO' ? 'badge bg-danger text-white fw-bold px-3 py-2 rounded-pill' : 'badge bg-success text-white fw-bold px-3 py-2 rounded-pill'}"
-                              th:text="${comp.estado.name() == 'ANULADO' ? 'ANULADO' : 'LIQUIDADO'}">LIQUIDADO</span>
+                                <span th:class="${comp.estadoPago.name() == 'EXTORNADO' or comp.estado.name() == 'CANCELADO' ? 'badge bg-danger text-white fw-bold px-3 py-2 rounded-pill' : 'badge bg-success text-white fw-bold px-3 py-2 rounded-pill'}"
+                                      th:text="${comp.estadoPago.name() == 'EXTORNADO' or comp.estado.name() == 'CANCELADO' ? 'ANULADO' : 'LIQUIDADO'}">LIQUIDADO</span>
                             </td>
-                        </tr>
-                        </tbody>
-
-                        <tbody th:if="${pedidosLiquidados == null or #lists.isEmpty(pedidosLiquidados)}">
-                        <tr>
-                            <td colspan="9" class="text-center py-4 text-muted italic">No hay registros liquidados en este turno.</td>
                         </tr>
                         </tbody>
 
@@ -334,6 +371,7 @@
                                 </div>
                             </td>
                         </tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -353,33 +391,36 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="m : ${todosLosMovimientosCaja}" class="fila-pedido-caja">
-                            <td class="text-muted font-monospace">#M-[[${m.id}]]</td>
+                        <tr th:each="mov : ${movimientos}" class="fila-pedido-caja">
+
+                            <td class="text-muted font-monospace" th:text="${mov.tipo == 'APERTURA' ? '#M-2' : '#M-' + mov.id}">#M-2</td>
+
                             <td>
-                                <span th:class="${m.tipo == 'EGRESO' ? 'badge bg-danger text-white fw-bold px-2 py-1' : 'badge bg-success text-white fw-bold px-2 py-1'}"
-                                      th:text="${m.tipo == 'EGRESO' ? 'EGRESO' : 'INGRESO'}" style="font-size:0.7rem;">INGRESO</span>
+                                <span th:if="${mov.tipo == 'EGRESO'}" class="badge bg-danger text-white fw-bold px-2 py-1" style="font-size:0.7rem;">EGRESO</span>
+                                <span th:if="${mov.tipo == 'INGRESO' or mov.tipo == 'APERTURA'}" class="badge bg-success text-white fw-bold px-2 py-1" style="font-size:0.7rem;">INGRESO</span>
                             </td>
-                            <td class="fw-semibold text-dark" th:text="${m.concepto != null and m.concepto.startsWith('Manual: ') ? m.concepto.substring(8) : m.concepto}">Concepto Comercial</td>
-                            <td><span class="badge bg-light text-dark font-monospace border px-2 py-1" th:text="${#temporals.format(m.fecha, 'HH:mm')}">00:00</span></td>
+
+                            <td class="fw-semibold text-dark" th:text="${mov.concepto}">Concepto Comercial</td>
+
                             <td>
-                                <span th:class="${m.tipo == 'EGRESO' ? 'text-danger fw-bold' : 'text-success fw-bold'}" th:text="${'S/ ' + #numbers.formatDecimal(m.monto, 1, 2)}">S/ 0.00</span>
+                                <span class="badge bg-light text-dark font-monospace border px-2 py-1" th:text="${mov.hora}">00:00</span>
                             </td>
+
                             <td>
-                                <div th:with="mpago=${m.metodoPago != null ? m.metodoPago.name() : 'EFECTIVO'}" class="d-inline-block">
-                                    <span th:if="${mpago == 'EFECTIVO'}" class="badge-metodo-jama bm-efectivo">
-                                        <img th:src="@{/img/Efectivo.png}" alt="Efectivo"> Efectivo
-                                    </span>
-                                    <span th:if="${mpago == 'YAPE_PLIN' or mpago == 'YAPE' or mpago == 'PLIN'}" class="badge-metodo-jama bm-digital">
-                                        <img th:src="@{/img/YapePlin.png}" alt="Yape Plin"> Yape/Plin
-                                    </span>
-                                    <span th:if="${mpago == 'TARJETA'}" class="badge-metodo-jama bm-tarjeta">
-                                        <img th:src="@{/img/Tarjeta.png}" alt="Tarjeta"> Tarjeta
-                                    </span>
-                                </div>
+                                <span th:class="${mov.tipo == 'EGRESO' ? 'text-danger fw-bold' : 'text-success fw-bold'}"
+                                      th:text="${'S/ ' + #numbers.formatDecimal(mov.monto, 1, 'COMMA', 2, 'POINT')}">S/ 0.00</span>
                             </td>
-                            <td class="text-end text-muted small fw-bold">👤 CAJERO</td>
+
+                            <td>
+                                <span class="badge-metodo-jama bm-efectivo">
+                                    <img th:src="@{/img/Efectivo.png}" alt="Efectivo"> Efectivo
+                                </span>
+                            </td>
+
+                            <td class="text-end text-muted small fw-bold" th:text="${mov.origen}">👤 HISTÓRICO</td>
                         </tr>
-                        <tr th:if="${#lists.isEmpty(todosLosMovimientosCaja)}">
+
+                        <tr th:if="${movimientos == null or #lists.isEmpty(movimientos)}">
                             <td colspan="7" class="text-center py-5 text-muted">
                                 <div class="d-flex flex-column align-items-center gap-1">
                                     <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 text-muted opacity-50"><path d="M3 7h18M3 12h18M3 17h18"/><circle cx="12" cy="12" r="10" stroke-dasharray="4 2"/></svg>
@@ -397,7 +438,6 @@
                 </div>
             </div>
 
-            <!-- 1. PANEL DE HISTORIAL DE CAJAS CERRADAS -->
             <div class="jama-tab-panel" id="panel-historial">
                 <div class="d-flex flex-wrap gap-2 align-items-center mb-3 p-3 bg-light rounded-3 border" style="border-color: rgba(27,58,44,0.06) !important;">
                     <div class="d-flex align-items-center gap-2">
@@ -447,7 +487,6 @@
                 </div>
             </div>
 
-            <!-- 2. PANEL DE BÚSQUEDA GLOBAL / COMPROBANTES HISTÓRICOS -->
             <div class="jama-tab-panel" id="panel-historial-completo">
                 <div class="d-flex flex-wrap gap-2 align-items-center mb-3 p-3 bg-light rounded-3 border" style="border-color: rgba(27,58,44,0.06) !important;">
                     <div class="d-flex align-items-center gap-1"><label class="m-0 small fw-bold text-secondary">Desde:</label><input type="date" id="ticketFechaInicio" class="form-control form-control-sm" style="width:auto; height:31px;"></div>

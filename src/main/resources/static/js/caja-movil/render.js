@@ -31,16 +31,18 @@ function renderizarPlatos() {
         let checkboxHTML = '';
         let estiloFila = '';
 
-        if (p.permitidoCobrar) {
+        if (p.permitidoCobrar || !p.entregado) {
             const checkedAttr = platosSeleccionadosParaCobro.includes(p.id) ? 'checked' : '';
             checkboxHTML = `
                 <input type="checkbox" class="form-check-input chk-cobro-parcial"
                        style="width: 18px; height: 18px; cursor: pointer; border: 2px solid #1B3A2C; margin-right: 8px;"
                        value="${p.id}" ${checkedAttr}
                        onclick="alternarSeleccionPlatoCobro(event, ${p.id})">`;
+            estiloFila = ''; // Se mantiene 100% visible y nítido para que el mesero lo controle
         } else {
-            checkboxHTML = `<input type="checkbox" class="form-check-input text-muted opacity-50" style="margin-right: 8px;" disabled title="Aún en cocina">`;
-            estiloFila = 'opacity: 0.5; background-color: #f3f4f6; cursor: not-allowed;';
+            // Solo se opaca y bloquea si el plato ya fue entregado y servido al comensal
+            checkboxHTML = `<input type="checkbox" class="form-check-input text-muted opacity-50" style="margin-right: 8px;" disabled title="Entregado">`;
+            estiloFila = 'opacity: 0.3; background-color: #e5e7eb; cursor: not-allowed; pointer-events: none;';
         }
 
         contenedor.innerHTML += `

@@ -90,16 +90,19 @@ function actualizarEstadoMesaEnPlano(numeroMesa, nuevoEstado, nuevoPedidoId, ped
 
     // Sincronización del modal si está abierto sobre esta mesa
     if (currentMesaNumero == numeroMesa && mesaModal
-        && document.getElementById('modalMesa').classList.contains('show')) {
+            && document.getElementById('modalMesa').classList.contains('show')) {
 
-        const pedidoEstadoActual  = tarjeta.getAttribute('data-pedido-estado');
-        const esPadreActual       = tarjeta.getAttribute('data-es-padre') === 'SI'
-                                 || tarjeta.classList.contains('tarjeta-unificada');
-        const esUnificadaActual   = tarjeta.classList.contains('unificada');
+            // Actualizamos las variables globales en caliente basándonos en lo que dictó el WebSocket
+            if (nuevoPedidoId) currentPedidoId = nuevoPedidoId;
 
-        if (nuevoPedidoId) currentPedidoId = nuevoPedidoId;
+            const estadoLogisticoActual = pedidoEstado || tarjeta.getAttribute('data-pedido-estado') || 'NINGUNO';
+            const esPadreActual       = tarjeta.getAttribute('data-es-padre') === 'SI' || tarjeta.classList.contains('tarjeta-unificada');
+            const esUnificadaActual   = tarjeta.classList.contains('unificada');
 
-        renderizarControlesModal(esPadreActual, esUnificadaActual, pedidoEstadoActual, tarjeta);
-        cargarDetalleComandaAsincrono(pedidoEstadoActual);
-    }
+            // Renderizamos los botones de control (como "Entregar") según la nueva realidad de la mesa
+            renderizarControlesModal(esPadreActual, esUnificadaActual, estadoLogisticoActual, tarjeta);
+
+            // Ejecutamos la llamada asíncrona para pintar los platos en gris (pagados) o actualizar sus badges a "Listo"
+            cargarDetalleComandaAsincrono(estadoLogisticoActual);
+        }
 }

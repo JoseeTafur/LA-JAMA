@@ -118,6 +118,8 @@ function procesarLiquidacion() {
 }
 
 async function ejecutarEnvioBackend(payloadTickets) {
+    console.log("📡 [BUG-HUNT-JS] >>> INICIANDO petición de liquidación al servidor <<<");
+
     const btnCierreGlobal = document.getElementById('btnLiquidarMesaGlobal');
     if (btnCierreGlobal) {
         btnCierreGlobal.disabled = true;
@@ -134,6 +136,9 @@ async function ejecutarEnvioBackend(payloadTickets) {
     const idsPagados = Array.from(document.querySelectorAll('.chk-mesa-confirmar:checked')).map(cb => cb.value);
     urlParams.append("idsDetallesPagados", idsPagados.join(','));
 
+    console.log(`📡 [BUG-HUNT-JS] Enviando PedidoId Padre: ${currentPedidoId} | MesaId: ${currentMesaId}`);
+    console.log(`📡 [BUG-HUNT-JS] Platos que se están pagando en este instante (IDs):`, idsPagados);
+
     try {
         const res = await fetch(`/admin/mesas/comanda/liquidar-bloque-multiticket/${currentPedidoId}`, {
             method: 'POST',
@@ -141,13 +146,19 @@ async function ejecutarEnvioBackend(payloadTickets) {
             body: urlParams
         });
 
+        console.log(`📡 [BUG-HUNT-JS] Respuesta HTTP del servidor recibida. Status: ${res.status}`);
         AppUtils.showLoading(false);
 
         if (res.ok) {
-            limpiarInstanciaCaja();
+            console.log("🎯 [BUG-HUNT-JS] Servidor procesó el cobro con ÉXITO (res.ok).");
 
+            // Guardamos temporalmente el número de mesa antes de que cualquier otra función lo altere
+            const mesaParaRefrescar = currentMesaNumero;
+            console.log(`🎯 [BUG-HUNT-JS] Guardando número de mesa de respaldo para refrescar: ${mesaParaRefrescar}`);
+
+            // Ejecutamos tu actualización contable del turno si existe
             if (typeof cargarLiquidadosTurnoAsincrono === 'function') {
-                            cargarLiquidadosTurnoAsincrono();
+                cargarLiquidadosTurnoAsincrono();
             }
 
             Swal.fire({
@@ -156,10 +167,29 @@ async function ejecutarEnvioBackend(payloadTickets) {
                 text: 'Los comprobantes fiscales han sido enviados a cola de timbrado de forma segura.',
                 confirmButtonColor: '#1B3A2C'
             }).then(() => {
-                console.log("✔ Transmisión asíncrona completada. Mesa liberada por evento reactivo.");
+                console.log("🔮 [BUG-HUNT-JS] Alerta de éxito cerrada por el usuario. Evaluando estado de la comanda...");
+
+                // 🍔 REPARACIÓN DEL FRONTEND ANTI-BLANQUEO:
+                // En vez de reventar la pantalla borrando todo, llamamos a la función nativa
+                // de 'modal-mesa.js' para que vuelva a traer la comanda viva desde el controlador.
+                if (typeof cargarDetalleComandaAsincrono === 'function' && mesaParaRefrescar) {
+                    console.log(`🔮 [BUG-HUNT-JS] Forzando recarga asíncrona de platos en pantalla para Mesa N° ${mesaParaRefrescar}`);
+
+                    // Remonitorizamos el modal pasándole un estado activo para que pinte los platos con deuda 0
+                    cargarDetalleComandaAsincrono('ATENDIDO');
+
+                    // Si tienes un modal contenedor de la mesa principal, lo volvemos a mostrar estable
+                    if (typeof mesaModal !== 'undefined' && mesaModal) {
+                        mesaModal.show();
+                    }
+                } else {
+                    console.warn("⚠️ [BUG-HUNT-JS] No se encontró la función cargarDetalleComandaAsincrono, ejecutando limpieza por defecto.");
+                    limpiarInstanciaCaja();
+                }
             });
         } else {
             const txtError = await res.text();
+            console.error("🚨 [BUG-HUNT-JS] El servidor rechazó la operación. Detalle:", txtError);
             AppUtils.showNotification(txtError || "Error en la liquidación", "error");
             if (btnCierreGlobal) {
                 btnCierreGlobal.disabled = false;
@@ -168,12 +198,13 @@ async function ejecutarEnvioBackend(payloadTickets) {
         }
     } catch (error) {
         AppUtils.showLoading(false);
-        console.error("Error en liquidación:", error);
+        console.error("🚨 [BUG-HUNT-JS] FALLO CRÍTICO en la petición Fetch (Catch):", error);
         if (btnCierreGlobal) {
             btnCierreGlobal.disabled = false;
             btnCierreGlobal.innerHTML = `<i class="bi bi-shield-check me-2"></i> Procesar Cierre Masivo`;
         }
     }
+    console.log("📡 [BUG-HUNT-JS] >>> FIN del flujo ejecutarEnvioBackend <<<");
 }
 
 function evaluarBotonConfirmarPago() {
@@ -181,6 +212,8 @@ function evaluarBotonConfirmarPago() {
     if (!btnDesocupar) return;
 
     const checksMarcados = document.querySelectorAll('.chk-mesa-confirmar:checked');
+
+    // Si no hay nada seleccionado, bloqueamos el botón de cobro
     if (checksMarcados.length === 0) {
         btnDesocupar.classList.add('disabled');
         btnDesocupar.disabled = true;
@@ -189,19 +222,10 @@ function evaluarBotonConfirmarPago() {
         return;
     }
 
-    let conteoEntregadosMarcados = 0;
-    let tienePlatosIncompletosMarcados = false;
+    // 🟢 OPTIMIZACIÓN ELÁSTICA: Permitimos cobrar sin importar el estado logístico
+    // Ya no discriminamos si el plato está 'En cocina' o 'Listo' al momento de pagar la cuenta
+    const sePermite = checksMarcados.length > 0;
 
-    checksMarcados.forEach(checkbox => {
-        const estadoLogistico = checkbox.getAttribute('data-estado-plato');
-        if (estadoLogistico === 'Entregado') {
-            conteoEntregadosMarcados++;
-        } else if (estadoLogistico === 'En cocina' || estadoLogistico === 'Listo') {
-            tienePlatosIncompletosMarcados = true;
-        }
-    });
-
-    const sePermite = (conteoEntregadosMarcados > 0 && !tienePlatosIncompletosMarcados);
     btnDesocupar.classList.toggle('disabled', !sePermite);
     btnDesocupar.disabled = !sePermite;
     btnDesocupar.style.opacity = sePermite ? "1" : "0.5";
@@ -215,9 +239,9 @@ function recalcularSubtotalElegido() {
 
     let sumaAcumulada = 0;
     document.querySelectorAll('.chk-mesa-confirmar:checked').forEach(checkbox => {
-        if (checkbox.getAttribute('data-estado-plato') === 'Entregado') {
-            const filaPlato = checkbox.closest('.item-plato-comanda');
-            if (filaPlato) sumaAcumulada += parseFloat(filaPlato.getAttribute('data-precio')) || 0;
+        const filaPlato = checkbox.closest('.item-plato-comanda');
+        if (filaPlato) {
+            sumaAcumulada += parseFloat(filaPlato.getAttribute('data-precio')) || 0;
         }
     });
 

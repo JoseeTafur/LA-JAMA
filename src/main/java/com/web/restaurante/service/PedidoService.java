@@ -1,10 +1,12 @@
 package com.web.restaurante.service;
 
 import com.web.restaurante.model.*;
+import com.web.restaurante.model.enums.EstadoPago;
 import com.web.restaurante.model.enums.EstadoPedido;
 import com.web.restaurante.model.enums.TipoPedido;
 import com.web.restaurante.repository.EmpleadoRepository;
 import com.web.restaurante.repository.InsumoProductoRepository;
+import com.web.restaurante.repository.MesaRepository;
 import com.web.restaurante.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.repository.query.Param;
@@ -30,6 +32,7 @@ public class PedidoService {
     private final InsumoProductoRepository insumoProductoRepository;
     private final TurnoCajaService turnoCajaService;
     private final NotaVentaSequenceService notaVentaSequenceService;
+    private final MesaRepository mesaRepository;
 
     private final double LAT_LOCAL = -6.787382;
     private final double LON_LOCAL = -79.842961;
@@ -98,6 +101,10 @@ public class PedidoService {
                 System.out.println("⚠️ [SERVICE] Pedido detectado sin Tipo. Seteando TipoPedido.LOCAL de forma automática.");
                 pedido.setTipoPedido(TipoPedido.SALON);
             }
+        }
+
+        if (pedido.getEstadoPago() == null) {
+            pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PENDIENTE);
         }
 
         // 🚀 CANDADO ADICIONAL: Si el pedido no viene con turno (como los de salón nuevos), le asignamos el activo
@@ -211,29 +218,34 @@ public class PedidoService {
     // 🔥 CONTROL MICROSCOPIO: ENTREGAR PLATO INDIVIDUAL EN MESA
     // =========================================================================
     @Transactional
-    public void entregarPlatoIndividual(Long pedidoId, Long detalleId) { // 💡 Cambiado de productoId a detalleId
+    public void entregarPlatoIndividual(Long pedidoId, Long detalleId) {
         Pedido p = pedidoRepository.findById(pedidoId)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
         if (p.getListaDetalles() == null) return;
 
-        // 💡 SOLUCIÓN: Buscamos usando d.getId() (ID de la fila 67) igual que en cocina
         DetallePedido detalleTarget = p.getListaDetalles().stream()
                 .filter(d -> d.getId().equals(detalleId))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Plato no mapeado en comanda"));
 
-        // Activamos la bandera de entregado para reflejar el estado en la base de datos
         detalleTarget.setEntregado(true);
 
         System.out.println("DEBUG SALÓN -> Entregado conforme en mesa: " + detalleTarget.getProducto().getNombre());
 
-        // Tu lógica original de semáforo global para el lote mantenida intacta:
-        boolean todosEntregados = p.getListaDetalles().stream().allMatch(DetallePedido::isCocinado);
-        if (todosEntregados) {
-            p.setEstado(EstadoPedido.ASIGNADO);
-        }
+        boolean todosEntregados = p.getListaDetalles().stream()
+                .filter(d -> !d.isCanceladoPorCliente())
+                .allMatch(DetallePedido::isEntregado);
 
+        if (todosEntregados) {
+            p.setEstado(EstadoPedido.ENTREGADO);
+
+            // Solo desvincula si ya está pagado
+            if (EstadoPago.PAGADO.equals(p.getEstadoPago())) {
+                p.setNumeroMesa(null);
+                p.setFechaEntrega(LocalDateTime.now());
+            }
+        }
         pedidoRepository.save(p);
     }
 
@@ -343,7 +355,7 @@ public class PedidoService {
                 .orElseThrow(() -> new RuntimeException("No se encontró el pedido con ID: " + id));
 
         // 2. Le inyectamos el estado cobrado
-        pedido.setEstado(EstadoPedido.PAGADO);
+        pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
 
         // 3. 🛡️ CANDADO CONTABLE: Amarramos el pedido al turno de caja activo en este microsegundo
         try {
@@ -379,6 +391,18 @@ public class PedidoService {
     public void marcarComoEntregado(Long pedidoId) {
         Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow();
         pedido.setEstado(EstadoPedido.ENTREGADO);
+
+        if (com.web.restaurante.model.enums.EstadoPago.PAGADO.equals(pedido.getEstadoPago())) {
+            pedido.setNumeroMesa(null);
+            if (pedido.getNumeroMesa() != null) {
+                Mesa mesa = mesaRepository.findByNumero(pedido.getNumeroMesa()).orElse(null);
+                if (mesa != null) {
+                    mesa.setEstado("DISPONIBLE");
+                    mesaRepository.save(mesa);
+                }
+            }
+        }
+
         pedido.setFechaEntrega(LocalDateTime.now());
         pedidoRepository.save(pedido);
     }
@@ -415,6 +439,7 @@ public class PedidoService {
             System.out.println("💰 [SERVICE] Venta registrada en caja para comprobante: " + pedido.getComprobanteNotaNumero());
         }
 
+        pedido.setEstadoPago(EstadoPago.PAGADO);
         pedidoRepository.save(pedido);
         System.out.println("✅ [SERVICE] Pedido de carta #" + pedidoId + " aprobado con marcas temporales, financieras y secuenciales.");
     }

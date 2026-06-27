@@ -14,9 +14,9 @@ public class RateLimitManager {
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
 
     private Bucket crearBucketUsuario() {
-        Refill recarga = Refill.intervally(30, Duration.ofMinutes(1));
+        Refill recarga = Refill.intervally(50, Duration.ofMinutes(1));
         return Bucket.builder()
-                .addLimit(Bandwidth.classic(30, recarga))
+                .addLimit(Bandwidth.classic(50, recarga))
                 .build();
     }
 

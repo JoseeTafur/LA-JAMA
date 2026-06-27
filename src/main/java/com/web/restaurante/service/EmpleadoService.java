@@ -19,6 +19,7 @@ public class EmpleadoService {
     private final EmpleadoRepository empleadoRepository;
     private final CargoRepository cargoRepository;
     private final PedidoRepository pedidoRepository;
+    private final TurnoCajaService turnoCajaService;
 
     
     @Transactional(readOnly = true)
@@ -34,7 +35,21 @@ public class EmpleadoService {
 
     @Transactional
     public void cobrarPedido(Long id) {
-        pedidoRepository.actualizarEstadoJPQL(id, EstadoPedido.PAGADO);
+        Pedido pedido = pedidoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Pedido no encontrado con ID: " + id));
+
+        // 🚀 SEPARACIÓN DE PODERES: Marcamos el flujo financiero sin tocar el estado de cocina
+        pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
+
+        // 🛡️ Aseguramos que la venta quede amarrada contablemente al turno activo
+        try {
+            turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
+        } catch (Exception e) {
+            System.out.println("⚠️ [EMPLEADO SERVICE] No se pudo asignar el turno de caja: " + e.getMessage());
+        }
+
+        pedidoRepository.save(pedido);
+        System.out.println("✅ [EMPLEADO SERVICE] Pedido #" + id + " cobrado con éxito (Estado de cocina respetado).");
     }
 
     

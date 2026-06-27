@@ -4,17 +4,15 @@ import lombok.Getter;
 
 @Getter
 public enum EstadoPedido {
+    PENDIENTE("Pendiente"),
+    EN_COCINA("En Cocina"),
     PREPARADO("Preparado"),
     ASIGNADO("Asignado"),
     EN_CAMINO("En Camino"),
     ENVIADO("Enviado"),
     ENTREGADO("Entregado"),
-    PENDIENTE("Pendiente"),
-    EN_COCINA("En Cocina"),
     CANCELADO("Cancelado"),
-    EN_REVISION("En revisión"),
-    PAGADO("Pagado"),
-    ANULADO("Anulado");
+    EN_REVISION("En revisión");
 
     private final String descripcion;
 

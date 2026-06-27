@@ -1,5 +1,8 @@
 package com.web.restaurante.controller;
 
+import com.web.restaurante.model.TurnoCaja;
+import com.web.restaurante.repository.MovimientoCajaRepository;
+import com.web.restaurante.repository.TurnoCajaRepository;
 import com.web.restaurante.service.ReporteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -15,6 +18,7 @@ public class ReporteController {
 
     @Autowired
     private ReporteService reporteService;
+
 
     @GetMapping("/caja/liquidados/{formato}")
     public ResponseEntity<byte[]> liquidados(

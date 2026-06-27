@@ -19,14 +19,15 @@ public class EmailService {
     @Value("${app.base-url}")
     private String appBaseUrl;
 
-    @Async // 🚀 Ejecución en hilo paralelo (No bloquea la caja)
+    @Async
     public void enviarComprobante(String destinatario, Pedido pedido) {
         if (destinatario == null || destinatario.trim().isEmpty()) {
             System.out.println("⚠️ [EMAIL OMITIDO] El pedido #" + pedido.getId() + " no cuenta con una dirección de correo válida.");
             return;
         }
 
-        boolean esAnulacion = com.web.restaurante.model.enums.EstadoPedido.ANULADO.equals(pedido.getEstado());
+        boolean esAnulacion = com.web.restaurante.model.enums.EstadoPago.EXTORNADO.equals(pedido.getEstadoPago())
+                || com.web.restaurante.model.enums.EstadoPedido.CANCELADO.equals(pedido.getEstado());
 
         if (!esAnulacion && (pedido.getComprobantePdfUrl() == null || pedido.getComprobantePdfUrl().trim().isEmpty())) {
             System.out.println("⚠️ [EMAIL OMITIDO] El pedido VIVO #" + pedido.getId() + " no tiene URLs de CPE generadas.");

@@ -100,7 +100,7 @@ public class MesaController {
                         .orElse(null);
 
                 if (mesaAsociada != null) {
-                    mesaAsociada.setEstado("LIBRE");
+                    mesaAsociada.setEstado("DISPONIBLE");
                     mesaRepository.save(mesaAsociada);
                 }
 
