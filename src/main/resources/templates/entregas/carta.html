@@ -253,7 +253,7 @@
                 <h6 class="step-section-title"><i class="bi bi-shield-lock-fill me-2"></i>Liquidación Contable</h6>
 
                 <div class="form-group-premium">
-                    <label><i class="bi bi-phone-vibrate-fill me-1"></i> Seleccione Billetera Digital *</label>
+                    <label><i class="bi bi-phone-vibrate-fill me-1"></i> Seleccione Billetera o Método de Pago *</label>
 
                     <div class="selection-grid pago-grid-tres">
                         <div class="btn-pago-cliente-card active" id="btnYape" role="button" onclick="seleccionarPago('YAPE')">
@@ -278,18 +278,18 @@
                             </div>
                         </div>
 
-                        <div class="btn-pago-cliente-card btn-pago-disabled" id="btnTransferencia" role="button">
+                        <div class="btn-pago-cliente-card" id="btnTransferencia" role="button" onclick="seleccionarPago('TRANSFERENCIA')">
+                            <div class="esfera-bancaria e-b-1"></div>
+                            <div class="esfera-bancaria e-b-2"></div>
                             <div class="pago-cliente-content">
                                 <div class="pago-cliente-logo-box">
-                                    <i class="bi bi-bank text-white opacity-75 fs-3"></i>
+                                    <i class="bi bi-bank text-white fs-3"></i>
                                 </div>
                                 <span class="pago-cliente-title">Transferencia</span>
-                                <span class="badge-disabled-txt">Próximamente</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Panel Yape QR -->
                     <div id="seccionYape" style="display:none;" class="payment-instruction-box animate__animated animate__fadeIn">
                         <div class="payment-header yape-text">
                             <img src="https://res.cloudinary.com/dyjnbddit/image/upload/v1781449212/QR_vezbxv.png" alt="QR Yape" class="qr-thumbnail-premium">
@@ -298,22 +298,22 @@
                                 <strong class="fs-5 text-dark">971 566 216</strong>
                             </div>
                         </div>
-
                         <div class="uiverse-wrapper-panel max-width-voucher-panel">
                             <div class="folder">
-                                <div class="front-side">
-                                    <div class="tip"></div>
-                                    <div class="cover"></div>
-                                </div>
+                                <div class="front-side"><div class="tip"></div><div class="cover"></div></div>
                                 <div class="custom-paper-inside">
                                     <img id="imgPreviaYape" src="" class="folder-preview-img" alt="Vista Previa" style="display:none;">
                                 </div>
                                 <div class="back-side cover"></div>
                             </div>
                             <label class="custom-file-upload">
-                                <input type="file" id="yapeImgInput" accept="image/jpeg, image/png, image/webp" onchange="previewImageYape(event)" />
-                                <i class="bi bi-cloud-arrow-up-fill me-1"></i> Seleccionar Imagen
+                                <input type="file" id="yapeImgInput" accept="image/jpeg, image/png, image/webp"/>
+                                <i class="bi bi-cloud-arrow-up-fill me-1"></i> Seleccionar Voucher Yape
                             </label>
+                            <div id="loaderYape" class="loader-escaneo-jama">
+                                <div class="text-estado"><i class="bi bi-eye-fill"></i> Analizando legitimidad del voucher...</div>
+                                <div class="loading"></div>
+                            </div>
                         </div>
                     </div>
 
@@ -325,25 +325,54 @@
                                 <strong class="fs-5 text-dark">999 888 777</strong>
                             </div>
                         </div>
-
                         <div class="uiverse-wrapper-panel max-width-voucher-panel">
                             <div class="folder">
-                                <div class="front-side">
-                                    <div class="tip"></div>
-                                    <div class="cover"></div>
-                                </div>
+                                <div class="front-side"><div class="tip"></div><div class="cover"></div></div>
                                 <div class="custom-paper-inside">
                                     <img id="imgPreviaPlin" src="" class="folder-preview-img" alt="Vista Previa" style="display:none;">
                                 </div>
                                 <div class="back-side cover"></div>
                             </div>
                             <label class="custom-file-upload">
-                                <input type="file" id="plinImgInput" accept="image/jpeg, image/png, image/webp" onchange="previewImagePlin(event)" />
-                                <i class="bi bi-cloud-arrow-up-fill me-1"></i> Seleccionar Imagen
+                                <input type="file" id="plinImgInput" accept="image/jpeg, image/png, image/webp"/>
+                                <i class="bi bi-cloud-arrow-up-fill me-1"></i> Seleccionar Voucher Plin
                             </label>
+                            <div id="loaderPlin" class="loader-escaneo-jama">
+                                <div class="text-estado"><i class="bi bi-eye-fill"></i> Analizando legitimidad del voucher...</div>
+                                <div class="loading"></div>
+                            </div>
                         </div>
                     </div>
 
+                    <div id="seccionTransferencia" style="display:none;" class="payment-instruction-box animate__animated animate__fadeIn">
+                        <div class="payment-header bcp-text">
+                            <div class="qr-thumbnail-premium bg-dark text-white d-flex align-items-center justify-content-center" style="width:60px; height:60px; border-radius:12px;">
+                                <i class="bi bi-bank fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="d-block small text-muted">Cuenta Corriente BCP — La Jama S.A.C.</span>
+                                <strong class="fs-6 text-dark d-block">CCI: 002-1911987654321098-54</strong>
+                                <strong class="small text-muted">Cuenta Fija: 191-98765432-1-09</strong>
+                            </div>
+                        </div>
+                        <div class="uiverse-wrapper-panel max-width-voucher-panel">
+                            <div class="folder">
+                                <div class="front-side"><div class="tip"></div><div class="cover"></div></div>
+                                <div class="custom-paper-inside">
+                                    <img id="imgPreviaTransferencia" src="" class="folder-preview-img" alt="Vista Previa" style="display:none;">
+                                </div>
+                                <div class="back-side cover"></div>
+                            </div>
+                            <label class="custom-file-upload">
+                                <input type="file" id="transferenciaImgInput" accept="image/jpeg, image/png, image/webp"/>
+                                <i class="bi bi-cloud-arrow-up-fill me-1"></i> Seleccionar Constancia BCP
+                            </label>
+                            <div id="loaderTransferencia" class="loader-escaneo-jama">
+                                <div class="text-estado"><i class="bi bi-eye-fill"></i> Analizando transferencia bancaria...</div>
+                                <div class="loading"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -376,17 +405,37 @@
     <div class="f-dato"><i class="bi bi-geo-alt-fill me-1"></i>Calle Amarantos 091, Santa Victoria</div>
     <div class="f-dato"><i class="bi bi-whatsapp me-1"></i>+51 955 563 199</div>
 </div>
+<script th:src="@{/js/validation.js}"></script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<script th:src="@{/js/utils/utiles-comunes.js}"></script>
 
 <script type="module">
     import { agregarDesdeCard, removerItem, renderCarrito, actualizarUI } from '/js/carta/core-cart.js';
     import { estadoCheckout, navegarEtapa } from '/js/carta/checkout-wizard.js';
     import { iniciarMapa, enviarPedidoFinal } from '/js/carta/api-client.js';
     import { inicializarAutocompletadoDocumentos } from '/js/carta/document-listener.js';
+    import { procesarYVerificarVoucher } from '/js/carta/voucher-validator.js';
 
+    // ── 📱 ADAPTADORES DINÁMICOS PARA ENTORNO MODULAR (ANTI-ASÍNCRONO) ──
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById('yapeImgInput')?.addEventListener('change', (e) => {
+            procesarYVerificarVoucher(e, 'YAPE');
+        });
+
+        document.getElementById('plinImgInput')?.addEventListener('change', (e) => {
+            procesarYVerificarVoucher(e, 'PLIN');
+        });
+
+        document.getElementById('transferenciaImgInput')?.addEventListener('change', (e) => {
+            procesarYVerificarVoucher(e, 'TRANSFERENCIA');
+        });
+    });
+
+    // Mapeo global de seguridad
+    window.procesarYVerificarVoucher = procesarYVerificarVoucher;
     window.agregarDesdeCard = agregarDesdeCard;
     window.removerItemCarta = removerItem;
 
@@ -408,12 +457,23 @@
 
     window.seleccionarPago = (metodo) => {
         estadoCheckout.metodoPago = metodo;
-        document.getElementById('btnYape').className = 'btn-pago-cliente-card' + (metodo === 'YAPE' ? ' activo' : '');
-        document.getElementById('btnPlin').className = 'btn-pago-cliente-card' + (metodo === 'PLIN' ? ' activo' : '');
+        document.getElementById('btnYape').classList.toggle('activo', metodo === 'YAPE');
+        document.getElementById('btnPlin').classList.toggle('activo', metodo === 'PLIN');
+        document.getElementById('btnTransferencia').classList.toggle('activo', metodo === 'TRANSFERENCIA');
+
         document.getElementById('seccionYape').style.display = metodo === 'YAPE' ? 'block' : 'none';
         document.getElementById('seccionPlin').style.display = metodo === 'PLIN' ? 'block' : 'none';
+        document.getElementById('seccionTransferencia').style.display = metodo === 'TRANSFERENCIA' ? 'block' : 'none';
+
+        const btnFinalizar = document.getElementById('btnFinalizarPedido');
+        if (btnFinalizar) {
+            btnFinalizar.disabled = true;
+            btnFinalizar.style.opacity = "0.4";
+            btnFinalizar.style.pointerEvents = "none";
+        }
     };
 
+    // 🎯 SINOPSIS DE FIRMA CORREGIDA: Sincroniza con onclick="enviarPedido()" de tu modal-footer
     window.enviarPedido = enviarPedidoFinal;
 
     window.conmutarTipoDocumento = () => {
@@ -437,31 +497,6 @@
         }
     };
 
-    window.previewImageYape = (event) => {
-    const reader = new FileReader();
-    const preview = document.getElementById('imgPreviaYape');
-    reader.onload = () => {
-        if (preview) {
-            preview.src = reader.result;
-            preview.style.display = 'block';
-        }
-    };
-    if (event.target.files[0]) reader.readAsDataURL(event.target.files[0]);
-};
-
-window.previewImagePlin = (event) => {
-    const reader = new FileReader();
-    const preview = document.getElementById('imgPreviaPlin');
-    reader.onload = () => {
-        if (preview) {
-            preview.src = reader.result;
-            preview.style.display = 'block';
-        }
-    };
-    if (event.target.files[0]) reader.readAsDataURL(event.target.files[0]);
-};
-
-    // 🔥 Disparar los listeners modulares de forma segura y aislada
     inicializarAutocompletadoDocumentos();
     actualizarUI();
 </script>

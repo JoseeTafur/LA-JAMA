@@ -16,7 +16,8 @@ const Validation = {
         TELEFONO_EXACTO: 9,
         DNI_EXACTO: 8,
         PRECIO_MIN: 10,
-        PRECIO_MAX: 70
+        PRECIO_MAX: 70,
+        ARCHIVO_MAX_BYTES: 5 * 1024 * 1024
     },
 
     soloLetras(texto) {
@@ -72,17 +73,55 @@ const Validation = {
         return this.fechaDentroDeRango(fechaStr);
     },
 
+    validarImagenVoucher(inputElement) {
+            if (!inputElement || !inputElement.files || inputElement.files.length === 0) return false;
+
+            const archivo = inputElement.files[0];
+            const formatosPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+
+            // 1. Validar Tipo de Formato (MIME Type)
+            if (!formatosPermitidos.includes(archivo.type)) {
+                this.mostrarError("Formato no soportado. Suba solo JPG, PNG o WEBP.");
+                inputElement.value = ''; // Limpia el input para obligar a subir uno válido
+                return false;
+            }
+
+            // 2. Validar Peso Máximo
+            if (archivo.size > this.LIMITES.ARCHIVO_MAX_BYTES) {
+                this.mostrarError("El archivo excede los 5MB permitidos.");
+                inputElement.value = ''; // Limpia el input
+                return false;
+            }
+
+            return true; // Pasa la aduana con éxito
+        },
+
     quitarEmojis(texto) {
         return texto.replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27FF}]|[\u{FE00}-\u{FEFF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA9F}]|[\u{2300}-\u{23FF}]|[\u{2B00}-\u{2BFF}]|[\u{1F300}-\u{1F5FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1F77F}]/gu, '');
     },
 
     mostrarError(mensaje) {
-        if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
-            AppUtils.showNotification(mensaje, 'error');
-        } else {
-            alert(mensaje);
-        }
-    },
+            // Buscamos AppUtils tanto en el entorno local como en el objeto window global
+            const utils = (typeof AppUtils !== 'undefined') ? AppUtils : window.AppUtils;
+
+            if (utils && typeof utils.showNotification === 'function') {
+                utils.showNotification(mensaje, 'error');
+            } else if (typeof Swal !== 'undefined') {
+                // 💡 Respaldo secundario elegante: si no encuentra AppUtils pero sí tienes SweetAlert cargado
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'error',
+                    title: mensaje,
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            } else {
+                // Última opción si todo lo demás falla
+                alert(mensaje);
+            }
+        },
 
     bindNombreInput(selectorInput) {
         const el = document.querySelector(selectorInput);

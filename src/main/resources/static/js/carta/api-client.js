@@ -1,8 +1,6 @@
 // api-client.js
-import { aplicarFiltroBinarizado } from './image-processor.js';
-import { inicializarScannerTesseract } from './ocr-config.js';
-import { carrito, actualizarUI, renderCarrito } from './core-cart.js';
-import { estadoCheckout, navegarEtapa } from './checkout-wizard.js';
+import { carrito, actualizarUI } from './core-cart.js';
+import { estadoCheckout } from './checkout-wizard.js';
 
 let mapa = null; let marcador = null;
 
@@ -57,53 +55,37 @@ window.seleccionarSugerencia = (lat, lng, nombre) => {
 };
 
 export async function enviarPedidoFinal() {
-    let file = estadoCheckout.metodoPago === 'YAPE' ? document.getElementById('yapeImgInput').files[0] : document.getElementById('plinImgInput').files[0];
-    if ((estadoCheckout.metodoPago === 'YAPE' || estadoCheckout.metodoPago === 'PLIN') && !file) {
-        Swal.fire({ icon: 'error', title: 'Falta Voucher', text: 'Suba la captura del pago.' });
-        return;
-    }
-
-    Swal.fire({ title: 'Analizando Voucher...', text: 'Ejecutando OCR...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-    let textoOcr = "";
-    if (file) {
-        try {
-            const blobProcesado = await aplicarFiltroBinarizado(file);
-            const scanner = await inicializarScannerTesseract();
-            const result = await scanner.recognize(blobProcesado);
-            textoOcr = result.data.text ? result.data.text : "";
-            await scanner.terminate();
-        } catch (err) {
-            console.error("OCR Error, pasando a failsafe", err);
-        }
-    }
+    Swal.fire({ title: 'Registrando pedido...', text: 'Enviando a cocina...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     const total = carrito.reduce((s, i) => s + i.precio, 0);
 
-        const pedidoPayload = {
+    // Jalamos los datos que la IA inyectó en caliente en el paso anterior
+    const codigoPago = window.estadoCheckout.codigoOperacion || "PENDIENTE";
+    // Pasamos la url de la imagen que ya vive en Cloudinary
+    const urlVoucherYaSubido = window.estadoCheckout.imgUrlVoucher || "sin_imagen.jpg";
+
+    const pedidoPayload = {
         cliente: document.getElementById('nombreCliente').value.trim(),
         direccion: estadoCheckout.tipoEntrega === 'LLEVAR' ? 'Recojo local - Mostrador' : document.getElementById('direccionCliente').value.trim(),
         latitud: parseFloat(document.getElementById('latCliente').value) || null,
         longitud: parseFloat(document.getElementById('lngCliente').value) || null,
         montoTotal: total,
         metodoPago: estadoCheckout.metodoPago,
-        textoVoucherCrudo: textoOcr,
+        codigoPagoOperacion: codigoPago,
         tipoPedido: estadoCheckout.tipoEntrega,
         clienteCorreo: document.getElementById('clienteCorreo') ? document.getElementById('clienteCorreo').value.trim() : null,
         preferenciaComprobante: document.getElementById('preferenciaComprobante') ? document.getElementById('preferenciaComprobante').value : 'BOLETA',
         documentoCliente: document.getElementById('numeroDocumento') ? document.getElementById('numeroDocumento').value.trim() : null,
-
+        textoVoucherCrudo: urlVoucherYaSubido,
         listaDetalles: carrito.map(i => ({ producto: { id: parseInt(i.id) }, cantidad: 1, precioUnitario: i.precio, subtotal: i.precio }))
     };
 
     const formData = new FormData();
     formData.append("pedido", new Blob([JSON.stringify(pedidoPayload)], { type: "application/json" }));
-    if (file) formData.append("voucher", file);
 
     try {
         const res = await fetch('/carta/pedido', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Error en validación.");
+        if (!res.ok) throw new Error("Error al asentar el pedido.");
 
         localStorage.removeItem("carrito");
         carrito.length = 0;
