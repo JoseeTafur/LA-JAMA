@@ -106,10 +106,18 @@ public class ComprobanteAdminController {
                 pedido.setComprobanteXmlContenido(respuestaSunat.getXmlFirmado());
 
                 pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
+                pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.ENTREGADO);
                 pedidoService.guardar(pedido);
 
-                // 📧 DISPARO ASÍNCRONO DE CORREO ELECTRONICO AL CLIENTE ORIGINAL
-                emailService.enviarComprobante(pedido.getClienteCorreo(), pedido);
+                final Pedido pedidoParaEmail = pedido;
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
+                        emailService.enviarComprobante(pedidoParaEmail.getClienteCorreo(), pedidoParaEmail);
+                        System.out.println("📧 [Background Thread] Correo enviado en segundo plano con éxito para NV: " + pedidoParaEmail.getId());
+                    } catch (Exception ex) {
+                        System.err.println("⚠️ [Background Thread Error] Falló el envío diferido de correo: " + ex.getMessage());
+                    }
+                });
 
                 return ResponseEntity.ok(Map.of(
                         "success", true,
@@ -436,7 +444,16 @@ public class ComprobanteAdminController {
                 auditoria.setGenerarNuevoComprobante(false);
                 auditoriaRepository.save(auditoria);
 
-                emailService.enviarComprobante(pedidoOriginal.getClienteCorreo(), pedidoOriginal);
+                // 🚀 SOLUCIÓN SUPREMA ASÍNCRONA: Desvío del comprobante de Nota de Crédito a segundo plano
+                final Pedido pedidoAnuladoParaEmail = pedidoOriginal;
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
+                        emailService.enviarComprobante(pedidoAnuladoParaEmail.getClienteCorreo(), pedidoAnuladoParaEmail);
+                        System.out.println("📧 [Background Thread] Correo de Nota de Crédito enviado en segundo plano para NV: " + pedidoAnuladoParaEmail.getId());
+                    } catch (Exception ex) {
+                        System.err.println("⚠️ [Background Thread Error] Falló el envío diferido de Nota de Crédito: " + ex.getMessage());
+                    }
+                });
 
                 return ResponseEntity.ok(Map.of(
                         "success", true,
@@ -541,8 +558,15 @@ public class ComprobanteAdminController {
                 nuevoPedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
                 pedidoService.guardar(nuevoPedido);
 
-                // 📧 DISPARO ASÍNCRONO DE CORREO ELECTRONICO PARA LA ORDEN CLONADA Y CORREGIDA
-                emailService.enviarComprobante(nuevoPedido.getClienteCorreo(), nuevoPedido);
+                final Pedido nuevoPedidoParaEmail = nuevoPedido;
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
+                        emailService.enviarComprobante(nuevoPedidoParaEmail.getClienteCorreo(), nuevoPedidoParaEmail);
+                        System.out.println("📧 [Background Thread] Correo de re-emisión enviado en segundo plano para NV: " + nuevoPedidoParaEmail.getId());
+                    } catch (Exception ex) {
+                        System.err.println("⚠️ [Background Thread Error] Falló el envío diferido de re-emisión: " + ex.getMessage());
+                    }
+                });
 
                 return ResponseEntity.ok(Map.of(
                         "success", true,
@@ -599,6 +623,10 @@ public class ComprobanteAdminController {
             m.put("documentoCliente",     p.getDocumentoCliente());
             m.put("comprobanteA4Url",     p.getComprobanteA4Url());
             m.put("comprobantePdfUrl",    p.getComprobantePdfUrl());
+
+            // 🚀 ESCUDO ARQUITECTÓNICO: Enviamos el valor formal del enum de servicio de La Jama
+            m.put("tipoServicio",         p.getTipoPedido() != null ? p.getTipoPedido().name() : "SALON");
+
             return m;
         }).collect(Collectors.toList());
 

@@ -1,0 +1,107 @@
+/* =========================================================================
+   🟩 ESTRUCTURA BASE: BOTONES DE EXPORTACIÓN (Estilo Premium Uiverse)
+   ========================================================================= */
+.btn-export-jama {
+  display: inline-flex; /* Cambiado a inline-flex para que puedas ponerlos uno al lado del otro */
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  padding: 10px 20px; /* Ajustado para que queden mejor como botones de reportes */
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 250ms ease-in-out;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* Espaciado del SVG */
+.btn-export-jama svg {
+  margin-right: 10px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+/* Animación del SVG al pasar el mouse */
+.btn-export-jama:hover svg {
+  transform: scale(1.1);
+}
+
+/* Efecto de hundimiento al hacer click */
+.btn-export-jama:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Capa base para el efecto de barrido brillante de fondo */
+.btn-export-jama::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0;
+  border-radius: 8px;
+  z-index: -1;
+  transition: all 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-export-jama:hover::before {
+  width: 100%;
+}
+
+
+/* =========================================================================
+   📊 MODIFICADOR 1: EXCEL (Tonos Verdes Corporativos)
+   ========================================================================= */
+.btn-excel {
+  background-color: #1D6F42; /* Verde Excel oficial */
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Color del barrido al pasar el mouse */
+.btn-excel::before {
+  background-color: #268c55;
+}
+
+/* Sombra de enfoque verde */
+.btn-excel:hover {
+  box-shadow: 0 6px 16px rgba(29, 111, 66, 0.35);
+}
+
+
+/* =========================================================================
+   📕 MODIFICADOR 2: PDF (Tonos Rojos Corporativos)
+   ========================================================================= */
+.btn-pdf {
+  background-color: #C32B24; /* Rojo PDF Acrobat oficial */
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Color del barrido al pasar el mouse */
+.btn-pdf::before {
+  background-color: #e53935;
+}
+
+/* Sombra de enfoque roja */
+.btn-pdf:hover {
+  box-shadow: 0 6px 16px rgba(195, 43, 36, 0.35);
+}
+
+/* Soporte específico para que tus Bootstrap Icons también tengan animación premium */
+.btn-export-jama i {
+  margin-right: 8px;
+  font-size: 16px; /* Tamaño ideal para el texto de tus reportes */
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+/* Efecto de escala al hacer hover */
+.btn-export-jama:hover i {
+  transform: scale(1.15);
+}

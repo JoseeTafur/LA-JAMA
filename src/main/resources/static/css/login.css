@@ -588,3 +588,141 @@ body {
       background-position: 0% 0%, 50% 0%, 100% 0%
     }
   }
+
+  /* ------ Contenedor Ajustado para La Jama ------ */
+  .input-relative {
+      position: relative;
+      width: 100%;
+      display: flex;
+      align-items: center;
+  }
+
+.password-toggle-container {
+  --color: #a5a5b0;
+  --size: 20px; /* Reducido ligeramente de 22px a 20px para que encaje mejor en el input */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  right: 18px; /* 🟢 Aumentado de 14px a 18px para separarlo del borde derecho */
+  top: 50%;
+  transform: translateY(-50%); /* 🟢 Centrado vertical exacto matemático */
+  cursor: pointer;
+  font-size: var(--size);
+  user-select: none;
+  fill: var(--color);
+  z-index: 5;
+  height: var(--size); /* 🟢 Forzamos caja cuadrada para evitar desfases de altura */
+  width: var(--size);
+}
+
+  .password-toggle-container .eye {
+    position: absolute;
+    animation: keyframes-fill .5s;
+    display: block; /* Por defecto se muestra el ojo abierto */
+  }
+
+  .password-toggle-container .eye-slash {
+    position: absolute;
+    animation: keyframes-fill .5s;
+    display: none; /* Por defecto se oculta el ojo tachado */
+  }
+
+  /* ------ Acción del Checkbox: Al marcar, alternamos íconos ------ */
+  .password-toggle-container input:checked ~ .eye {
+    display: none;
+  }
+
+  .password-toggle-container input:checked ~ .eye-slash {
+    display: block;
+  }
+
+  /* ------ Ocultar el Checkbox nativo por debajo ------ */
+  .password-toggle-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+
+  /* ------ Animación de escala premium ------ */
+  @keyframes keyframes-fill {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* ─── BOTÓN PRINCIPAL "LA JAMA" ─── */
+  .btn-jama-submit {
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #1B3A2C 0%, #0F231A 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(27, 58, 44, 0.25),
+                inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Efecto Hover (Pasar el mouse) */
+  .btn-jama-submit:hover:not(:disabled) {
+    background: linear-gradient(135deg, #244d3a 0%, #132d21 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(27, 58, 44, 0.4),
+                inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  }
+
+  /* Efecto Active (Hacer clic) */
+  .btn-jama-submit:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 2px 8px rgba(27, 58, 44, 0.2);
+  }
+
+  /* ─── ESTADO BLOQUEADO (ANTI-SPAM) ─── */
+  .btn-jama-submit:disabled,
+  .btn-jama-submit.btn-loading {
+    background: #15251e !important;
+    color: #8fa097 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: rgba(255, 255, 255, 0.03);
+    opacity: 0.8;
+  }
+
+  /* 🌀 Spinner de carga minimalista en CSS puro */
+  .spinner-jama {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    display: inline-block;
+    animation: spinJama 0.8s linear infinite;
+  }
+
+  @keyframes spinJama {
+    to {
+      transform: rotate(360deg);
+    }
+  }

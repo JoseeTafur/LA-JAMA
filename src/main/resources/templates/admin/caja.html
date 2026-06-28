@@ -15,6 +15,7 @@
 <div id="contenido-caja" class="container-fluid p-0">
     <link rel="stylesheet" th:href="@{/css/caja.css}">
     <link rel="stylesheet" th:href="@{/css/caja-movil.css}">
+    <link rel="stylesheet" th:href="@{/css/botones-reportes.css}">
 
     <input type="hidden" id="saldoTeoricoOculto" th:value="${saldoTeorico}">
 
@@ -109,10 +110,11 @@
         </button>
 
         <div class="d-flex gap-2 mb-3 justify-content-end">
-            <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="exportarReporteCaja('PDF')">
+            <button type="button" class="btn-export-jama btn-pdf" onclick="exportarReporteCaja('PDF')">
                 <i class="bi bi-file-earmark-pdf-fill"></i> PDF
             </button>
-            <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="exportarReporteCaja('EXCEL')">
+
+            <button type="button" class="btn-export-jama btn-excel" onclick="exportarReporteCaja('EXCEL')">
                 <i class="bi bi-file-earmark-excel-fill"></i> Excel
             </button>
         </div>

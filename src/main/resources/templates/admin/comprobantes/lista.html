@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout-gestion :: layout(title='Auditoría Contable y Comprobantes', content=~{::#contenido}, modals=~{::#modales}, js='/js/comprobantes/comprobantes-tablas.js')}">
+      th:replace="~{layout-gestion :: layout(title='Auditoría Contable y Comprobantes', content=~{::#contenido}, modals=~{::#modales}, js='/js/comprobantes/comprobantes-shared.js')}">
 <head>
 </head>
 <body>
@@ -78,7 +78,9 @@
                         </select>
                     </div>
                     <div class="col-md-1 d-flex align-items-end">
-                        <button type="button" class="btn btn-sm w-100 btn-limpiar-contable fw-bold" style="background-color: #6b7280; color: #fff; height: 31px; font-size: 0.75rem;" onclick="limpiarFiltrosComprobantesAsincronos()">
+                        <button type="button" class="btn btn-sm w-100 btn-limpiar-contable fw-bold"
+                                style="background-color: #6b7280; color: #fff; height: 31px; font-size: 0.75rem;"
+                                onclick="window.limpiarFiltrosComprobantesAsincronos ? window.limpiarFiltrosComprobantesAsincronos() : limpiarFiltrosComprobantesAsincronos()">
                             Reset
                         </button>
                     </div>
@@ -141,50 +143,72 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <tr th:each="comp : ${listaComprobantes}" th:if="${comp.comprobanteNumero == null}">
-                                <td class="fw-bold text-dark font-monospace"
-                                    th:text="${comp.comprobanteNotaNumero != null ? comp.comprobanteNotaNumero : 'NV01-' + #numbers.formatInteger(comp.id, 8)}">
+                            <tr th:each="comp : ${listaComprobantes}"
+                                th:if="${comp.comprobanteNumero == null
+                                         and comp.comprobanteNotaNumero != null
+                                         and comp.comprobanteNotaNumero != ''
+                                         and comp.estado != null
+                                         and comp.estado.name() != 'CANCELADO'
+                                         and comp.estadoPago != null
+                                         and comp.estadoPago.name() != 'EXTORNADO'}"
+                                th:data-metodo="${comp.metodoPago != null ? comp.metodoPago.name() : 'EFECTIVO'}"
+                                th:data-origen="${comp.tipoPedido != null ? comp.tipoPedido.name() : 'SALON'}"
+                                class="align-middle fila-pedido-caja">
+
+                                <td class="fw-bold text-dark font-monospace" th:text="${comp.comprobanteNotaNumero}">
                                     NV01-00000001
                                 </td>
                                 <td th:text="${#temporals.format(comp.fechaCreacion, 'dd/MM/yyyy HH:mm')}">20/06/2026 14:32</td>
+
                                 <td>
-                                    <span class="badge-origen" th:text="${comp.numeroMesa != null} ? 'Mesa #' + ${comp.numeroMesa} : 'Carta Web'">Mesa #4</span>
+                                    <span class="badge-origen">
+                                        <th:block th:if="${comp.tipoPedido != null and comp.tipoPedido.name() == 'SALON'}">
+                                            <span th:text="${comp.numeroMesa != null ? 'Mesa #' + comp.numeroMesa : 'Salón'}">Salón</span>
+                                        </th:block>
+                                        <th:block th:if="${comp.tipoPedido != null and comp.tipoPedido.name() == 'DELIVERY'}">
+                                            <span>Delivery</span>
+                                        </th:block>
+                                        <th:block th:if="${comp.tipoPedido != null and comp.tipoPedido.name() == 'LLEVAR'}">
+                                            <span>Para Llevar</span>
+                                        </th:block>
+                                    </span>
                                 </td>
+
                                 <td class="fw-bold text-dark text-start" th:text="${comp.cliente}">José Mario Tafur</td>
                                 <td class="fw-bold text-jama-gold" th:text="'S/. ' + ${#numbers.formatDecimal(comp.montoTotal, 1, 2)}">S/. 45.50</td>
                                 <td>
-                    <span th:with="mp=${comp.metodoPago != null ? comp.metodoPago.name() : 'EFECTIVO'}">
-                        <span th:if="${mp == 'EFECTIVO'}" class="badge-metodo-jama bm-efectivo">
-                            <img th:src="@{/img/Efectivo.png}" style="width:13px;height:13px;object-fit:contain;"> Efectivo
-                        </span>
-                        <span th:if="${mp == 'YAPE'}" class="badge-metodo-jama bm-digital">
-                            <img th:src="@{/img/Yape.png}" style="width:13px;height:13px;object-fit:contain;"> Yape
-                        </span>
-                        <span th:if="${mp == 'PLIN'}" class="badge-metodo-jama bm-plin">
-                            <img th:src="@{/img/Plin.png}" style="width:13px;height:13px;object-fit:contain;"> Plin
-                        </span>
-                        <span th:if="${mp == 'YAPE_PLIN'}" class="badge-metodo-jama bm-digital">
-                            <img th:src="@{/img/YapePlin.png}" style="width:13px;height:13px;object-fit:contain;"> Yape/Plin
-                        </span>
-                        <span th:if="${mp == 'TARJETA'}" class="badge-metodo-jama bm-tarjeta">
-                            <img th:src="@{/img/Tarjeta.png}" style="width:13px;height:13px;object-fit:contain;"> Tarjeta
-                        </span>
-                    </span>
+                                    <span th:with="mp=${comp.metodoPago != null ? comp.metodoPago.name() : 'EFECTIVO'}">
+                                        <span th:if="${mp == 'EFECTIVO'}" class="badge-metodo-jama bm-efectivo">
+                                            <img th:src="@{/img/Efectivo.png}" style="width:13px;height:13px;object-fit:contain;"> Efectivo
+                                        </span>
+                                        <span th:if="${mp == 'YAPE'}" class="badge-metodo-jama bm-digital">
+                                            <img th:src="@{/img/Yape.png}" style="width:13px;height:13px;object-fit:contain;"> Yape
+                                        </span>
+                                        <span th:if="${mp == 'PLIN'}" class="badge-metodo-jama bm-plin">
+                                            <img th:src="@{/img/Plin.png}" style="width:13px;height:13px;object-fit:contain;"> Plin
+                                        </span>
+                                        <span th:if="${mp == 'YAPE_PLIN'}" class="badge-metodo-jama bm-digital">
+                                            <img th:src="@{/img/YapePlin.png}" style="width:13px;height:13px;object-fit:contain;"> Yape/Plin
+                                        </span>
+                                        <span th:if="${mp == 'TARJETA'}" class="badge-metodo-jama bm-tarjeta">
+                                            <img th:src="@{/img/Tarjeta.png}" style="width:13px;height:13px;object-fit:contain;"> Tarjeta
+                                        </span>
+                                    </span>
                                 </td>
                                 <td>
                                     <span class="badge-preferencia" th:text="${comp.preferenciaComprobante != null ? comp.preferenciaComprobante.toUpperCase() : 'BOLETA'}">BOLETA</span>
                                 </td>
                                 <td class="text-center">
                                     <div class="action-buttons-wrapper justify-content-center">
-                                        <button type="button" class="action-jama-btn btn-imprimir" th:onclick="|verTicketTermico(${comp.id})|" title="Imprimir Ticket Previo">
-                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                        <button type="button" class="btn-jama-kinetic px-2 py-1 small btn-imprimir" th:onclick="|verTicketTermico(${comp.id})|" title="Imprimir Ticket Previo" style="background:#4b5563 !important;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                                         </button>
-                                        <button type="button" class="action-jama-btn btn-timbrar btn-timbrar-trigger"
+                                        <button type="button" class="btn-jama-kinetic px-2 py-1 small btn-timbrar btn-timbrar-trigger"
                                                 th:data-id="${comp.id}"
                                                 th:data-preferencia="${comp.preferenciaComprobante}"
                                                 th:data-documento="${comp.documentoCliente}"
                                                 onclick="capturarYTimbrar(this)" title="Emitir CPE Oficial">
-                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 15c.1-.7.3-1.4.3-2.2a8 8 0 0 0-16 0c0 .8.1 1.5.3 2.2"></path><path d="M12 11v9"></path><polyline points="8 16 12 20 16 16"></polyline></svg>
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.2 15c.1-.7.3-1.4.3-2.2a8 8 0 0 0-16 0c0 .8.1 1.5.3 2.2"></path><path d="M12 11v9"></path><polyline points="8 16 12 20 16 16"></polyline></svg>
                                         </button>
                                     </div>
                                 </td>
@@ -232,7 +256,17 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="badge-origen" th:text="${comp.numeroMesa != null} ? 'Mesa #' + ${comp.numeroMesa} : 'Carta Web'">Mesa #13</span>
+    <span class="badge-origen">
+        <th:block th:if="${comp.tipoPedido != null and comp.tipoPedido.name() == 'SALON'}">
+            <span th:text="${comp.numeroMesa != null ? 'Mesa #' + comp.numeroMesa : 'Salón'}">Salón</span>
+        </th:block>
+        <th:block th:if="${comp.tipoPedido != null and comp.tipoPedido.name() == 'DELIVERY'}">
+            <span>Delivery</span>
+        </th:block>
+        <th:block th:if="${comp.tipoPedido != null and comp.tipoPedido.name() == 'LLEVAR'}">
+            <span>Para Llevar</span>
+        </th:block>
+    </span>
                                 </td>
                                 <td class="text-start">
                                     <span class="fw-semibold text-dark d-block text-truncate" style="max-width: 220px;" th:text="${comp.cliente}">José Mario Tafur</span>
@@ -401,8 +435,9 @@
 
         </div>
     </div>
+    <script th:src="@{/js/comprobantes/comprobantes-tablas.js}"></script>
+    <script th:src="@{/js/comprobantes/comprobantes-core.js}"></script>
 </div>
-
 <div id="modales">
     <div th:fragment="modalReemision" class="modal fade" id="modalEdicionReemision" tabindex="-1" aria-labelledby="modalReemisionLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-xl">
@@ -514,7 +549,5 @@
         </div>
     </div>
 </div>
-
-<script th:src="/js/comprobantes/comprobantes-core.js"></script>
 </body>
 </html>
