@@ -159,6 +159,15 @@ function renderizarTickets() {
                            maxlength="11">
                     ${requiereDNI ? `<small class="text-danger fw-bold mt-1 d-block text-center" style="font-size:0.7rem; color: #dc3545 !important;">⚠️ DNI Obligatorio >= S/. 700.00</small>` : ''}
                 </div>
+
+                <div class="mb-3">
+                    <input type="email" id="correo_ticket_${t.id}"
+                           class="jama-input-text text-center form-control-sm"
+                           placeholder="📧 Correo Comprobante (Opcional)"
+                           value="${t.clienteCorreo || ''}"
+                           oninput="actualizarDatoTicket(${t.id}, 'clienteCorreo', this.value)">
+                </div>
+
                 <select class="jama-select mb-3" onchange="actualizarDatoTicket(${t.id}, 'metodoPago', this.value)">
                     <option value="EFECTIVO" ${t.metodoPago === 'EFECTIVO' ? 'selected' : ''}>💵 Efectivo</option>
                     <option value="POS_TARJETA" ${t.metodoPago === 'POS_TARJETA' ? 'selected' : ''}>💳 POS Tarjeta</option>

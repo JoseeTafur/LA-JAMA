@@ -5,10 +5,7 @@ import com.web.restaurante.model.AuditoriaAnulacion;
 import com.web.restaurante.model.DetallePedido;
 import com.web.restaurante.model.Pedido;
 import com.web.restaurante.model.enums.EstadoPedido;
-import com.web.restaurante.service.ComprobanteSequenceService;
-import com.web.restaurante.service.FacturacionService;
-import com.web.restaurante.service.PedidoService;
-import com.web.restaurante.service.EmailService; // 🚀 IMPORTACIÓN DEL SERVICIO DE CORREO
+import com.web.restaurante.service.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -35,7 +32,8 @@ public class ComprobanteAdminController {
     private final ComprobanteSequenceService comprobanteSequenceService;
     private final FacturacionService facturacionService;
     private final AuditoriaAnulacionRepository auditoriaRepository;
-    private final EmailService emailService; // 🚀 INYECCIÓN AUTOMÁTICA POR LOMBOK
+    private final EmailService emailService;
+    private final NotaVentaSequenceService notaVentaSequenceService;
 
     @GetMapping("/comprobantes")
     public String listarComprobantesCaja(
@@ -101,6 +99,7 @@ public class ComprobanteAdminController {
 
             if (respuestaSunat != null) {
                 pedido.setComprobanteNumero(comprobanteOficial);
+                pedido.setComprobanteENumero(comprobanteOficial);
                 pedido.setComprobantePdfUrl(respuestaSunat.getPdfTicket());
                 pedido.setComprobanteA4Url(respuestaSunat.getPdfA4());
                 pedido.setComprobanteXmlContenido(respuestaSunat.getXmlFirmado());
@@ -307,8 +306,12 @@ public class ComprobanteAdminController {
     public String renderizarNotaA4Local(@PathVariable("id") Long id, Model model) {
         Pedido pedido = pedidoService.obtenerPorId(id);
 
-        if (pedido == null || !"ANULADO".equals(pedido.getEstado().name())) {
-            return "redirect:/admin/comprobantes?errorContable=El+pedido+no+esta+anulado";
+        // 🚀 ADUANA FLEXIBLE DEFENSIVA: Verifica cualquiera de los dos Enums de muerte comercial de la orden
+        if (pedido == null ||
+                (!"ANULADO".equals(pedido.getEstado().name())
+                        && !"CANCELADO".equals(pedido.getEstado().name())
+                        && !com.web.restaurante.model.enums.EstadoPago.EXTORNADO.equals(pedido.getEstadoPago()))) {
+            return "redirect:/admin/comprobantes?errorContable=El+pedido+no+esta+anulado+en+el+sistema";
         }
 
         double total = pedido.getMontoTotal();
@@ -422,18 +425,17 @@ public class ComprobanteAdminController {
             NotaCreditoResponse respuesta = facturacionService.emitirNotaCreditoSunat(request);
 
             if (respuesta != null && respuesta.isOkey()) {
-                // 🚀 SOLUCIÓN AL ALCANCE: Forzamos la asignación inmediata al objeto persistido
                 String nroNota = (respuesta.getNumeroNota() != null && !respuesta.getNumeroNota().isEmpty())
                         ? respuesta.getNumeroNota()
                         : numeroNotaCompleto;
 
-                pedidoOriginal.setComprobanteNotaNumero(nroNota);
+                pedidoOriginal.setCreditoNotaNumero(nroNota);
                 pedidoOriginal.setNotaPdfUrl(respuesta.getPdfTicket());
                 pedidoOriginal.setNotaA4Url(respuesta.getPdfA4());
                 pedidoOriginal.setNotaXmlContenido(respuesta.getXmlFirmado());
 
-                // Seteo financiero atómico
                 pedidoOriginal.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.EXTORNADO);
+                pedidoOriginal.setEstado(com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
                 pedidoService.guardar(pedidoOriginal);
 
                 AuditoriaAnulacion auditoria = new AuditoriaAnulacion();
@@ -444,14 +446,13 @@ public class ComprobanteAdminController {
                 auditoria.setGenerarNuevoComprobante(false);
                 auditoriaRepository.save(auditoria);
 
-                // 🚀 SOLUCIÓN SUPREMA ASÍNCRONA: Desvío del comprobante de Nota de Crédito a segundo plano
                 final Pedido pedidoAnuladoParaEmail = pedidoOriginal;
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
                     try {
                         emailService.enviarComprobante(pedidoAnuladoParaEmail.getClienteCorreo(), pedidoAnuladoParaEmail);
-                        System.out.println("📧 [Background Thread] Correo de Nota de Crédito enviado en segundo plano para NV: " + pedidoAnuladoParaEmail.getId());
+                        System.out.println("📧 [Background Thread] Correo de Nota de Crédito enviado con éxito.");
                     } catch (Exception ex) {
-                        System.err.println("⚠️ [Background Thread Error] Falló el envío diferido de Nota de Crédito: " + ex.getMessage());
+                        System.err.println("⚠️ [Background Thread Error] Falló el envío: " + ex.getMessage());
                     }
                 });
 
@@ -492,14 +493,20 @@ public class ComprobanteAdminController {
                 nuevoCorreo = pedidoOriginal.getClienteCorreo(); // Respaldo contable
             }
 
+
             Pedido nuevoPedido = new Pedido();
             nuevoPedido.setCliente(nuevoCliente);
             nuevoPedido.setDocumentoCliente(nuevoDoc.isEmpty() ? null : nuevoDoc);
-            nuevoPedido.setClienteCorreo(nuevoCorreo); // 🚀 SETEADO EN EL NUEVO CLONfresh
+            nuevoPedido.setClienteCorreo(nuevoCorreo);
             nuevoPedido.setPreferenciaComprobante(nuevoTipoCpe);
             nuevoPedido.setDireccion(pedidoOriginal.getDireccion() != null ? pedidoOriginal.getDireccion() : "Chiclayo, Lambayeque");
             nuevoPedido.setNumeroMesa(pedidoOriginal.getNumeroMesa());
             nuevoPedido.setTipoPedido(pedidoOriginal.getTipoPedido());
+
+            String nuevaNotaVentaSeq = notaVentaSequenceService.generarSiguienteNota();
+            nuevoPedido.setComprobanteNotaNumero(nuevaNotaVentaSeq);
+
+            nuevoPedido.setTurnoCaja(pedidoOriginal.getTurnoCaja());
 
             nuevoPedido.setFechaCreacion(java.time.LocalDateTime.now());
             nuevoPedido.setFechaEntrega(java.time.LocalDateTime.now());
@@ -603,28 +610,30 @@ public class ComprobanteAdminController {
             lista = pedidoService.obtenerPedidosParaCajaHoy();
         }
 
-        // Mapeamos solo lo que el frontend necesita pintar
         List<Map<String, Object>> dto = lista.stream().map(p -> {
             Map<String, Object> m = new java.util.LinkedHashMap<>();
             m.put("id",                   p.getId());
-            m.put("numeroNotaVenta",      "NV01-" + String.format("%08d", p.getId()));
-            m.put("fechaCreacion",        p.getFechaCreacion() != null
-                    ? p.getFechaCreacion().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                    : "");
-            m.put("numeroMesa",           p.getNumeroMesa());
+
+            // Si la NV se perdió en registros antiguos, usamos el ID, sino enviamos su columna intacta
+            String nvLimpia = (p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
+                    ? p.getComprobanteNotaNumero()
+                    : "NV01-" + String.format("%08d", p.getId());
+
+            m.put("numeroNotaVenta",      nvLimpia);
+            m.put("fechaCreacion",        p.getFechaCreacion() != null ? p.getFechaCreacion().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "");
             m.put("cliente",              p.getCliente());
             m.put("montoTotal",           p.getMontoTotal());
             m.put("metodoPago",           p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO");
-            m.put("preferenciaComprobante", p.getPreferenciaComprobante() != null
-                    ? p.getPreferenciaComprobante().toUpperCase() : "BOLETA");
-            m.put("comprobanteNumero",    p.getComprobanteNumero());
-            m.put("comprobanteNotaNumero", p.getComprobanteNotaNumero());
+            m.put("comprobanteNumero",    p.getComprobanteENumero() != null ? p.getComprobanteENumero() : p.getComprobanteNumero());
+
+            // Envíos mapeados quirúrgicamente para las tablas
+            m.put("comprobanteENumero",   p.getComprobanteENumero());
+            m.put("creditoNotaNumero",    p.getCreditoNotaNumero());
+
             m.put("estado",               p.getEstado() != null ? p.getEstado().name() : "");
-            m.put("documentoCliente",     p.getDocumentoCliente());
+            m.put("estadoPago",           p.getEstadoPago() != null ? p.getEstadoPago().name() : "");
             m.put("comprobanteA4Url",     p.getComprobanteA4Url());
             m.put("comprobantePdfUrl",    p.getComprobantePdfUrl());
-
-            // 🚀 ESCUDO ARQUITECTÓNICO: Enviamos el valor formal del enum de servicio de La Jama
             m.put("tipoServicio",         p.getTipoPedido() != null ? p.getTipoPedido().name() : "SALON");
 
             return m;

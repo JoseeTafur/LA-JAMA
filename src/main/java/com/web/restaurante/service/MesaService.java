@@ -180,9 +180,7 @@ public class MesaService {
         // 🍔 ADUANA OPERATIVA: Enviamos absolutamente TODOS los platos activos a la vista.
         // El JavaScript de tu modal-mesa.js ya está programado para discriminar y pintar en gris
         // los que ya tienen d.isPagado() == true. ¡No debemos escondérselos!
-        List<DetallePedido> detallesPrecuenta = pedidoActivo.getListaDetalles().stream()
-                .filter(d -> !d.isCanceladoPorCliente())
-                .toList();
+        List<DetallePedido> detallesPrecuenta = pedidoActivo.getListaDetalles();
 
         // Calculamos el saldo real que todavía se debe (Traditional Flow)
         double totalDeudaRestante = pedidoActivo.getListaDetalles().stream()
@@ -592,7 +590,7 @@ public class MesaService {
         for (int i = 0; i < tickets.size(); i++) {
             TicketDTO t = tickets.get(i);
             if (t.getConsumoFinal() <= 0) {
-                System.out.println("⚠️ [BUG-HUNT] Ticket " + (i + 1) + " ignorado por consumo <= 0 (" + t.getConsumoFinal() + ")");
+                System.out.println("⚠️ [BUG-HUNT] Ticket " + (i + 1) + " ignorado por consumo <= 0");
                 continue;
             }
 
@@ -604,10 +602,13 @@ public class MesaService {
             pedidoComprobante.setDireccion("Salón");
             pedidoComprobante.setTipoPedido(pedidoPadre.getTipoPedido());
 
-            // 🚨 SOLUCIÓN: El clon contable NO debe vincularse al plano físico de la mesa
-            // para no romper las búsquedas de cocina y salón del pedido padre en producción.
-            pedidoComprobante.setNumeroMesa(null);
+            if (t.getClienteCorreo() != null && !t.getClienteCorreo().trim().isEmpty()) {
+                pedidoComprobante.setClienteCorreo(t.getClienteCorreo().trim());
+            } else {
+                pedidoComprobante.setClienteCorreo(pedidoPadre.getClienteCorreo());
+            }
 
+            pedidoComprobante.setNumeroMesa(null);
             pedidoComprobante.setFechaCreacion(LocalDateTime.now());
             pedidoComprobante.setFechaEntrega(LocalDateTime.now());
 
@@ -642,8 +643,14 @@ public class MesaService {
 
                     String nombreBuscado = detalleDTO.getNombre() != null ? detalleDTO.getNombre().trim() : "";
 
+                    // Limpieza del tag (MERMA) si es que el JS lo envió concatenado
+                    if (nombreBuscado.contains("(MERMA)")) {
+                        nombreBuscado = nombreBuscado.replace("(MERMA)", "").trim();
+                    }
+
+                    String finalNombreBuscado = nombreBuscado;
                     com.web.restaurante.model.Producto productoMatch = detallesOriginalesGuardados.stream()
-                            .filter(d -> d.getProducto() != null && d.getProducto().getNombre().equalsIgnoreCase(nombreBuscado))
+                            .filter(d -> d.getProducto() != null && d.getProducto().getNombre().equalsIgnoreCase(finalNombreBuscado))
                             .map(DetallePedido::getProducto)
                             .findFirst()
                             .orElse(null);
@@ -667,17 +674,22 @@ public class MesaService {
             turnoCajaService.registrarVenta(conceptoCaja, t.getConsumoFinal());
         }
 
+        // 🚀 MARCA DE ASENTAMIENTO ATÓMICO: Seteamos pagado y entregado a cada ID enviado por el lote del Front
         if (idsDetallesPagados != null && !idsDetallesPagados.isEmpty()) {
             pedidoPadre.getListaDetalles().stream()
                     .filter(d -> idsDetallesPagados.contains(d.getId()))
                     .forEach(d -> {
                         d.setPagado(true);
+                        if (d.isCanceladoPorCliente()) {
+                            d.setEntregado(true); // Evita que la merma se quede colgada de forma asíncrona
+                        }
                         System.out.println("✅ [BUG-HUNT] Plato ID " + d.getId() + " (" + d.getProducto().getNombre() + ") marcado internamente como PAGADO en el Padre.");
                     });
         }
 
+        // 🚀 REPARACIÓN MASTER: Evaluamos si queda CUALQUIER plato físico deudor sin pagar (sea normal o merma)
         boolean quedanPlatosPorPagar = pedidoPadre.getListaDetalles().stream()
-                .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isPagado());
+                .anyMatch(d -> !d.isPagado());
 
         System.out.println("🚀🔍 [BUG-HUNT] ¿Quedan platos físicos sin pagar en la comanda Padre?: " + quedanPlatosPorPagar);
 
@@ -720,17 +732,18 @@ public class MesaService {
             } else {
                 System.out.println("🍔 [BUG-HUNT] FLUJO B (PREPAGO DETECTADO): Dinero cubierto pero la comida SIGUE EN PRODUCCIÓN.");
 
-                pedidoPadre.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PENDIENTE);
+                pedidoPadre.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
                 pedidoPadre.setMontoTotal(0.0);
                 pedidoRepository.save(pedidoPadre);
 
-                // 🔥 RESTAURACIÓN ASÍNCRONA backend: Forzamos el recálculo y envío inmediato de la ráfaga WebSocket
                 recalcularYNotificarEstadoCocinaMesa(mesaPrincipal);
             }
         } else {
             System.out.println("📊 [BUG-HUNT] >>> ENTRANDO AL BLOQUE: PAGO PARCIAL (Aún quedan saldos deudores) <<<");
+
+            // El nuevo saldo restante solo cuenta los que quedan sin pagar
             double nuevoSaldoRestante = pedidoPadre.getListaDetalles().stream()
-                    .filter(d -> !d.isCanceladoPorCliente() && !d.isPagado())
+                    .filter(d -> !d.isPagado())
                     .mapToDouble(d -> d.getSubtotal() != null ? d.getSubtotal() : 0.0)
                     .sum();
 
@@ -752,32 +765,29 @@ public class MesaService {
     }
 
     public void recalcularYNotificarEstadoCocinaMesa(Mesa mesa) {
-        // Traemos los pedidos vinculados que no estén cancelados
         List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesa(mesa.getNumero()).stream()
                 .filter(p -> p.getNumeroMesa() != null
                         && p.getCliente() != null && !p.getCliente().contains("(Ticket")
                         && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
                 .toList();
 
-        // 🛡️ REGLA SUPREMA DE AUTO-LIMPIEZA ASÍNCRONA:
-        // Si la lista está vacía, O si todos los pedidos vinculados ya están PAGADOS y ENTREGADOS
+        // 🛡️ REGLA SUPREMA DE AUTO-LIMPIEZA ASÍNCRONA PERMANENTE EN BD:
         boolean todoServidoYPagado = pedidosActivos.stream().allMatch(p ->
                 com.web.restaurante.model.enums.EstadoPago.PAGADO.equals(p.getEstadoPago())
                         && com.web.restaurante.model.enums.EstadoPedido.ENTREGADO.equals(p.getEstado()));
 
         if (pedidosActivos.isEmpty() || todoServidoYPagado) {
-            System.out.println("🧹 [La Jama Shield] Detectado estado neutro. Forzando liberación de Mesa N° " + mesa.getNumero());
+            System.out.println("🧹 [La Jama Shield] Persistiendo liberación en BD para Mesa N° " + mesa.getNumero());
 
-            mesa.setEstado("DISPONIBLE");
+            mesa.setEstado("DISPONIBLE"); // Se graba estable en verde en MySQL
             mesaRepository.save(mesa);
 
-            // Archivamos limpiamente los pedidos quitándoles el número de mesa física
+            // Removemos la vinculación física en la BD para que el F5 no la reviva
             for (Pedido p : pedidosActivos) {
                 p.setNumeroMesa(null);
                 pedidoRepository.save(p);
             }
 
-            // Emitimos la señal limpia para limpiar el plano web sin F5
             emitirCambioEstadoReactivo(mesa.getNumero(), "disponible", null, "NINGUNO");
             return;
         }

@@ -39,6 +39,25 @@ public class EmailService {
             return;
         }
 
+        // ── 🛡️ INICIO DE MONITOR CRONOMETRADO ASÍNCRONO ──
+        System.out.println("=========================================================");
+        System.out.println("📧 [La Jama Email] >>> INICIANDO PROCESO DE ENVÍO <<<");
+        System.out.println("📬 Destinatario: " + destinatario + " | NV #" + pedido.getId());
+        System.out.println("=========================================================");
+
+        // Bandera atómica para detener el contador cuando termine el envío
+        java.util.concurrent.atomic.AtomicBoolean envioTerminado = new java.util.concurrent.atomic.AtomicBoolean(false);
+        long tiempoInicio = System.currentTimeMillis();
+
+        // Creamos un hilo de asistencia temporal exclusivo para el conteo de segundos
+        java.util.concurrent.ScheduledExecutorService cronometro = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+        cronometro.scheduleAtFixedRate(() -> {
+            if (!envioTerminado.get()) {
+                long transcurrido = (System.currentTimeMillis() - tiempoInicio) / 1000;
+                System.out.println("⏳ [La Jama Crono] El correo de la NV #" + pedido.getId() + " sigue en tránsito... Tiempo transcurrido: " + transcurrido + " segundos.");
+            }
+        }, 5, 5, java.util.concurrent.TimeUnit.SECONDS); // Ejecuta cada 5 segundos
+
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -48,11 +67,9 @@ public class EmailService {
             String htmlContent;
 
             if (esAnulacion) {
-                // 🔴 FLUJO LOCAL MAPPED: USANDO TUS VISTAS NATIVAS DE LA JAMA DE THYMELEAF
                 String numeroNota = pedido.getComprobanteNotaNumero();
                 asunto = "🧾 Nota de Crédito Electrónica - " + numeroNota + " | La Jama";
 
-                // 🚀 SOLUCIÓN: Concatenamos el dominio base absoluto de forma limpia
                 String urlTicketAbsoluta = appBaseUrl + "/admin/comprobantes/imprimir-nota/" + pedido.getId();
                 String urlA4Absoluta = appBaseUrl + "/admin/comprobantes/imprimir-nota-a4/" + pedido.getId();
 
@@ -73,7 +90,6 @@ public class EmailService {
                         + "<p style='margin-top: 25px; font-size: 0.85rem; color: #666;'>Atentamente,<br><b>Área de Auditoría Contable - La Jama</b></p>"
                         + "</div>";
             } else {
-                // 🟢 FLUJO EXTERNAL MAPPED: COMPROBANTES VIVOS (API SUNAT)
                 String numeroDocumento = pedido.getComprobanteNumero();
                 asunto = "🧾 Comprobante de Pago - Pedido #" + pedido.getId() + " | La Jama";
 
@@ -92,14 +108,22 @@ public class EmailService {
             helper.setSubject(asunto);
             helper.setText(htmlContent, true);
 
+            // 📦 GATILLO SMTP DE GMAIL (Bloquea el hilo secundario asíncrono hasta completar la subida)
             mailSender.send(message);
 
+            // 🏁 FINALIZACIÓN EXITOSA: Detenemos el cronómetro de inmediato
+            envioTerminado.set(true);
+            cronometro.shutdown();
+            long tiempoTotal = (System.currentTimeMillis() - tiempoInicio) / 1000;
+
             System.out.println("=========================================================");
-            System.out.println("✅ [EMAIL ENVIADO] Despachado correctamente a: " + destinatario);
-            System.out.println("🔗 URL Base acoplada con éxito: " + appBaseUrl);
+            System.out.println("✅ [EMAIL ENTREGADO] Correo entregado correctamente a: " + destinatario);
+            System.out.println("⏱️ Tiempo Total de Respuesta SMTP: " + tiempoTotal + " segundos.");
             System.out.println("=========================================================");
 
         } catch (Exception e) {
+            envioTerminado.set(true);
+            cronometro.shutdown();
             System.out.println("=========================================================");
             System.out.println("💥 [EMAIL ERROR] Error en la entrega hacia: " + destinatario);
             System.out.println("📝 Detalle Técnico: " + e.getMessage());

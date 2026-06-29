@@ -52,7 +52,7 @@ function extraerPlatosDelModal() {
 
             const chkCajero = document.querySelector(`.chk-plato-caja-seleccion[value="${d.id}"]`);
             const quiereCobrar = chkCajero ? chkCajero.checked : true;
-            if (!quiereCobrar) return;
+            if (!quereCobrar) return;
 
             let nombrePlato = "Producto";
             if (d.producto && d.producto.nombre) {
@@ -78,7 +78,10 @@ function extraerPlatosDelModal() {
     } else {
         console.log("🍽️ [La Jama Salón] Ejecutando escaneo físico del DOM de mesas...");
         document.querySelectorAll('#lista-platos-previsualizar > div').forEach((row) => {
-            if (row.style.backgroundColor.includes('rgb(255, 229, 229)')) return;
+
+            // 🚀 REPARACIÓN MASTER ANTI-BLANQUEO:
+            // Eliminamos la línea restrictiva de row.style.backgroundColor que descartaba las mermas.
+            // Ahora, las mermas de color rojo pasaran libremente por la aduana fiscal de la caja.
 
             const estadoPlato = row.getAttribute('data-estado');
             if (estadoPlato === 'Enviado') return;
@@ -86,34 +89,38 @@ function extraerPlatosDelModal() {
             const checkbox = row.querySelector('.chk-mesa-confirmar');
             if (!checkbox || !checkbox.checked) return;
 
-            const badgeCantidad = row.querySelector('.badge.bg-dark');
+            const badgeCantidad = row.querySelector('.badge.bg-dark') || row.querySelector('.badge');
             let cantidad = 1;
             if (badgeCantidad) {
                 cantidad = parseInt(badgeCantidad.innerText.replace('x', '')) || 1;
             }
 
-            const elementoNombre = row.querySelector('.fw-semibold');
+            const elementoNombre = row.querySelector('.fw-semibold') || row.querySelector('span');
             let nombrePlato = elementoNombre ? elementoNombre.innerText : 'Producto';
             nombrePlato = nombrePlato.replace(/^\d+x\s*/, '');
 
-            const elementoPrecio = row.querySelector('.text-muted.small.fw-bold') || row.querySelector('span.small.fw-bold');
+            const elementoPrecio = row.querySelector('.text-muted.small.fw-bold') || row.querySelector('span.small.fw-bold') || row.querySelector('.font-monospace');
             let subtotalPlato = 0;
             if (elementoPrecio) {
-                subtotalPlato = parseFloat(elementoPrecio.innerText.replace('S/. ', '')) || 0;
+                subtotalPlato = parseFloat(elementoPrecio.innerText.replace('S/. ', '').replace('S/.', '')) || 0;
             } else {
                 const todosLosSpans = row.querySelectorAll('.d-flex.align-items-center.gap-2 span');
                 for (let span of todosLosSpans) {
                     if (span.innerText.includes('S/.')) {
-                        subtotalPlato = parseFloat(span.innerText.replace('S/. ', '')) || 0;
+                        subtotalPlato = parseFloat(span.innerText.replace('S/. ', '').replace('S/.', '')) || 0;
                         break;
                     }
                 }
             }
 
+            // 🍳 Si el plato es una merma, le concatenamos la etiqueta al nombre para que el cajero sepa qué está cobrando
+            const esUnaMermaReal = estadoPlato === 'MERMA' || row.style.backgroundColor.includes('rgb(255, 229, 229)');
+            let nombreFinalCaja = esUnaMermaReal ? `${nombrePlato.trim()} (MERMA)` : nombrePlato.trim();
+
             platosDisponibles.push({
                 id: indexCobro,
                 productoId: row.getAttribute('data-producto-id') || indexCobro,
-                nombre: nombrePlato,
+                nombre: nombreFinalCaja,
                 cantidad: cantidad,
                 subtotal: subtotalPlato,
                 idTicketAsignado: -1,

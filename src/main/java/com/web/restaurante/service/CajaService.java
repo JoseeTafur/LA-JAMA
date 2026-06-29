@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,6 +29,8 @@ public class CajaService {
     private final PedidoService pedidoService;
     private final ProductoRepository productoRepository;
     private final MovimientoCajaRepository movimientoCajaRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+
 
     public boolean esHorarioPermitido(LocalTime horaActual) {
         return (horaActual.isAfter(LocalTime.of(8, 0)) && horaActual.isBefore(LocalTime.of(18, 0))) ||
@@ -339,13 +342,22 @@ public class CajaService {
     @Transactional
     public void aprobarYAsignarNotaVentaWeb(Long pedidoId) {
         Pedido pedido = pedidoRepository.findById(pedidoId).orElse(null);
-        if (pedido != null && (pedido.getComprobanteNotaNumero() == null || pedido.getComprobanteNotaNumero().isEmpty())) {
-            String siguienteNota = notaVentaSequenceService.generarSiguienteNota();
-            pedido.setComprobanteNotaNumero(siguienteNota);
-            pedido.setEstadoPago(EstadoPago.PAGADO);
+        if (pedido != null) {
+            // Asignamos la Nota de Venta de la secuencia nativa
+            if (pedido.getComprobanteNotaNumero() == null || pedido.getComprobanteNotaNumero().isEmpty()) {
+                String siguienteNota = notaVentaSequenceService.generarSiguienteNota();
+                pedido.setComprobanteNotaNumero(siguienteNota);
+            }
+
+            pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
+
+            // 🚀 PASO SUPREMO: El pedido despierta y se va de forma legítima a producción
+            pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.PENDIENTE);
             pedidoRepository.saveAndFlush(pedido);
+
+            // Disparamos la ráfaga al monitor de la cocina para que el plato se dibuje sin dar F5
+            messagingTemplate.convertAndSend("/topic/cocina", "{\"pedidoId\":" + pedidoId + ", \"status\":\"NUEVO\"}");
         }
-        pedidoService.aprobarPedidoACocina(pedidoId);
     }
 
     public List<Map<String, Object>> consolidarDataParaReporte(LocalDateTime inicio, LocalDateTime fin, String turnoFiltro) {

@@ -83,19 +83,31 @@ public class MesaController {
     @ResponseBody
     public ResponseEntity<String> eliminarItemComanda(@RequestParam Long pedidoId, @RequestParam Long detalleId) {
         try {
+            // 1. Ejecutamos la mutación en el servicio (Marca canceladoPorCliente = true si ya se imprimió ticket)
             mesaService.eliminarDetallePedido(pedidoId, detalleId);
 
             Pedido pedidoActualizado = pedidoRepository.findById(pedidoId)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
             long platosActivos = 0;
+            long mermasPorPagar = 0;
+
             if (pedidoActualizado.getListaDetalles() != null) {
+                // Contamos los platos normales que siguen activos en preparación/entrega
                 platosActivos = pedidoActualizado.getListaDetalles().stream()
                         .filter(d -> !d.isCanceladoPorCliente())
                         .count();
+
+                // Contamos las mermas impresas que OBLIGATORIAMENTE el cliente debe pagar en caja
+                mermasPorPagar = pedidoActualizado.getListaDetalles().stream()
+                        .filter(d -> d.isCanceladoPorCliente() && !d.isPagado())
+                        .count();
             }
 
-            if (platosActivos == 0) {
+            // 🚀 EL ESCUDO DE CONTROL DE LA JAMA:
+            // Solo procederemos a CANCELAR la orden entera si no quedan platos normales activos
+            // Y TAMPOCO quedan mermas pendientes de facturación comercial en caja.
+            if (platosActivos == 0 && mermasPorPagar == 0) {
                 Mesa mesaAsociada = mesaRepository.findByNumero(pedidoActualizado.getNumeroMesa())
                         .orElse(null);
 
@@ -110,7 +122,10 @@ public class MesaController {
                 return ResponseEntity.ok("Mesa liberada automáticamente por comanda vacía");
             }
 
-            return ResponseEntity.ok("Producto removido correctamente");
+            // Si platosActivos es 0 pero mermasPorPagar es mayor a 0, la cabecera del Pedido se mantiene viva
+            // de forma intencional para obligar a que pase por el módulo de caja.
+            return ResponseEntity.ok("Producto removido correctamente y transformado en merma cobrable");
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());

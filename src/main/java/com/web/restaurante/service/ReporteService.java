@@ -328,9 +328,10 @@ public class ReporteService {
                 org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowIndex);
                 row.setHeightInPoints(18);
 
+                // Mantenemos la Nota de Venta como identificador primario para la caja
                 String nroDoc = p.getComprobanteNotaNumero() != null ? p.getComprobanteNotaNumero() : "NV-" + p.getId();
 
-                // 🛡️ REGLA ESTRICTA DE ANULACIÓN: Mapeamos con exactitud los enums de La Jama
+                // 🚀 BLINDAJE ENUM: Detectamos la anulación en base a tus nuevos casilleros desacoplados
                 boolean esAnulado = (p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.EXTORNADO
                         || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
 
@@ -340,15 +341,14 @@ public class ReporteService {
 
                 double monto = p.getMontoTotal() != null ? p.getMontoTotal() : 0.0;
 
-                // Identificación exacta de la operación
                 String tipoOperacion = "INGRESO";
                 if (p.getClienteCorreo() != null && p.getClienteCorreo().contains("MANUAL_EGRESO")) {
                     tipoOperacion = "EGRESO";
                 } else if (esAnulado) {
-                    tipoOperacion = "EGRESO"; // En la UI los anulados se pintan como EGRESO
+                    tipoOperacion = "EGRESO"; // Se resta del arqueo de la gaveta física
                 }
 
-                // 📐 CÁLCULO MATEMÁTICO REAL: Sincronizado al centavo con la UI de la web
+                // 📐 FLUJO NETO REAL: Las Notas de Venta extornadas aportan 0, los egresos manuales restan
                 if (nroDoc.startsWith("M-")) {
                     if ("EGRESO".equals(tipoOperacion)) {
                         totalNetoFlujoExcel -= monto;
@@ -356,7 +356,6 @@ public class ReporteService {
                         totalNetoFlujoExcel += monto;
                     }
                 } else {
-                    // Si es una nota de venta, si está ANULADA aporta 0 al flujo neto real (los ingresos ya se anularon contablemente)
                     if (!esAnulado) {
                         totalNetoFlujoExcel += monto;
                     }
@@ -457,6 +456,7 @@ public class ReporteService {
             for (Pedido p : pedidos) {
                 String nroDoc = p.getComprobanteNotaNumero() != null ? p.getComprobanteNotaNumero() : "NV-" + p.getId();
 
+                // 🚀 BLINDAJE ENUM SINCRO
                 boolean esAnulado = (p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.EXTORNADO
                         || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
 

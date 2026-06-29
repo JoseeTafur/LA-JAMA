@@ -77,6 +77,7 @@ function procesarLiquidacion() {
             propina: t.propina,
             tipoDoc: t.tipoDoc,
             numDoc: t.numDoc || "SIN DOCUMENTO",
+            clienteCorreo: t.clienteCorreo || "",
             metodoPago: t.metodoPago,
             listaDetalles: listaPlatosModificados
         };

@@ -30,63 +30,54 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                 const ticketImpreso = data.ticketImpresoCocina === true || data.ticketImpreso === true;
                 if (badgeTicket) badgeTicket.classList.toggle('d-none', !ticketImpreso);
 
-                // 🎯 CORRECCIÓN ADUANA: Mapeamos dinámicamente tanto 'listaDetalles' como 'detalles' por seguridad
                 const platosArray = data.listaDetalles || data.detalles || [];
 
-                // Evaluamos si el pedido todavía tiene platos pendientes de producción o de ser servidos en mesa
+                const tieneSaldosPorPagar = platosArray.some(d => !d.pagado);
                 const tienePlatosPendientesDeEntrega = platosArray.some(d => !d.canceladoPorCliente && !d.entregado);
 
-                // 🎯 CONDICIÓN SUPREMA DE DESAPARICIÓN:
-                // Si el arreglo viene vacío, O si ya NO quedan platos físicos por entregar y el saldo de la deuda es 0.00
-                if (platosArray.length === 0 || (!tienePlatosPendientesDeEntrega && data.montoTotal === 0)) {
-                    console.log("🎯 [La Jama] ¡Ciclo Completado de Raíz! Todo pagado y todo entregado. Limpiando comanda activa...");
+                if (platosArray.length === 0 || (!tieneSaldosPorPagar && !tienePlatosEnCocina)) {
+                    console.log("🎯 [La Jama] ¡Ciclo Completado de Raíz! Cero deudas y cero entregas pendientes.");
 
                     if (avisoVacio)        avisoVacio.classList.remove('d-none');
                     if (contenedorComanda) contenedorComanda.classList.add('d-none');
                     if (panelSubtotal)     panelSubtotal.classList.add('d-none');
 
-                    // Matamos las referencias globales para liberar el modal
-                    currentPedidoId = "";
+                    if (typeof actualizarEstadoMesaEnPlano === 'function') {
+                        actualizarEstadoMesaEnPlano(currentMesaNumero, 'disponible', '', 'NINGUNO');
+                    }
 
-                    // Renderizamos los controles de la mesa limpia (volverá a habilitar botones de "Agregar Pedido", etc.)
+                    currentPedidoId = "";
                     renderizarControlesModal(esPadreGrupo, esUnificada, 'NINGUNO', tarjetaMesaDOM);
 
-                    // Opcional: Si quieres que el modal se cierre solo al terminar la última entrega, descomenta la línea de abajo:
-                    // if (typeof mesaModal !== 'undefined' && mesaModal) mesaModal.hide();
-
+                    if (typeof mesaModal !== 'undefined' && mesaModal) {
+                        mesaModal.hide();
+                    }
                     return;
                 }
 
-                // 📦 CONTENEDORES COMPARTIMENTADOS PARA SEGREGACIÓN CONTABLE VISUAL
                 let htmlPlatosActivos = "";
-                let htmlPlatosPagados = "";
 
                 platosArray.forEach(d => {
                     const nombreProducto = d.producto && d.producto.nombre ? d.producto.nombre : (d.nombre || "Producto");
 
-                    if (d.canceladoPorCliente) {
-                        // (Se mantiene tu bloque de MERMA intacto)
-                        htmlPlatosActivos += `
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded border mb-2" style="background-color:#ffe5e5; border-left:4px solid #dc3545 !important; opacity:0.8;">
-                                <div class="d-flex align-items-center gap-2" style="max-width:50%;">
-                                    <span class="badge bg-danger text-white rounded-pill fw-bold">${d.cantidad}</span>
-                                    <span class="text-danger fw-bold text-decoration-line-through text-truncate" style="max-width:140px;">${nombreProducto}</span>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="text-danger small fw-bold">S/. ${(d.subtotal || 0).toFixed(2)}</span>
-                                    <span class="badge bg-danger rounded-pill px-2 py-1" style="font-size:0.7rem;">MERMA</span>
-                                </div>
-                            </div>`;
-                        return;
-                    }
-
-                    // ─── 🚀 CONFIGURACIÓN DE JERARQUÍA DE ESTADOS LOGÍSTICOS ───
+                    // ─── 🚀 CONFIGURACIÓN DE JERARQUÍA DE ESTADOS LOGÍSTICOS Y COLORES ───
                     let badgeColor = 'bg-primary text-white';
                     let badgeTexto = 'Enviado';
+                    let estiloFila = 'background-color: #ffffff;';
+                    let bordeFila = 'border-left:4px solid var(--lajama-green) !important;';
+                    let nombreClaseTexto = 'text-dark';
 
-                    if (d.cocinado && d.entregado) {
+                    if (d.canceladoPorCliente) {
+                        badgeColor = 'bg-danger text-white';
+                        badgeTexto = 'MERMA';
+                        estiloFila = 'background-color: #ffe5e5; opacity: 0.85;';
+                        bordeFila = 'border-left:4px solid #dc2626 !important;';
+                        nombreClaseTexto = 'text-danger fw-bold text-decoration-line-through';
+                    } else if (d.cocinado && d.entregado) {
                         badgeColor = 'bg-secondary text-white';
                         badgeTexto = 'Entregado';
+                        estiloFila = 'opacity: 0.65; background-color: #f3f4f6;';
+                        bordeFila = 'border-left:4px solid #6b7280 !important;';
                     } else if (d.cocinado) {
                         badgeColor = 'bg-success text-white';
                         badgeTexto = 'Listo';
@@ -95,9 +86,9 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                         badgeTexto = 'En cocina';
                     }
 
-                    // Botón de entregar unitario: Aparece siempre que esté LISTO (cocinado) pero NO ENTREGADO, sin importar si ya se pagó
+                    // Botón de entregar unitario: Solo si está LISTO pero NO ENTREGADO y NO es merma
                     let btnCheckUnitarioHTML = '';
-                    if (d.cocinado && !d.entregado) {
+                    if (d.cocinado && !d.entregado && !d.canceladoPorCliente) {
                         btnCheckUnitarioHTML = `
                             <button class="btn btn-sm btn-warning text-dark px-2 py-1 rounded-pill ms-1"
                                     onclick="entregarPlatoUnitario(${currentPedidoId}, ${d.id}, '${nombreProducto}')"
@@ -108,7 +99,7 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
 
                     // Botón de eliminar/merma
                     let btnEliminarHTML = '';
-                    if (!d.cocinado && !d.pagado) {
+                    if (!d.cocinado && !d.pagado && !d.canceladoPorCliente) {
                         const esMerma = (ticketImpreso === true || d.impresoEnCocina === true) ? 'true' : 'false';
                         const icono = (ticketImpreso === true || d.impresoEnCocina === true) ? 'bi-exclamation-triangle-fill text-warning' : 'bi-trash3-fill text-danger';
                         btnEliminarHTML = `
@@ -117,47 +108,45 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                             </button>`;
                     }
 
-                    // Checkbox de facturación
-                    const precioSeguro = d.subtotal ? d.subtotal : (d.precioUnitario ? d.precioUnitario : 0);
-                    const idCheckModalMesa = `cbx_mesa_modal_${d.id}`;
-                    let checkboxHTML = '';
-
-                    if (d.pagado) {
-                        // Si ya se pagó, sale el check bloqueado de "Ya pagado"
-                        checkboxHTML = `
-                            <div class="cntr" style="margin-left: 10px;">
-                                <input type="checkbox" class="hidden-xs-up chk-mesa-confirmar" disabled checked value="${d.id}" data-precio="${precioSeguro}">
-                                <label class="cbx" style="cursor: not-allowed; opacity: 0.7; background: #6b7280; border-color: #6b7280;"></label>
-                            </div>`;
-                    } else if (badgeTexto !== 'Enviado') {
-                        checkboxHTML = `
-                            <div class="cntr" style="margin-left: 10px;">
-                                <input type="checkbox" id="${idCheckModalMesa}" class="hidden-xs-up chk-mesa-confirmar" value="${d.id}" data-precio="${precioSeguro}" data-estado-plato="${badgeTexto}" onchange="evaluarBotonConfirmarPago()">
-                                <label for="${idCheckModalMesa}" class="cbx"></label>
-                            </div>`;
-                    } else {
-                        checkboxHTML = `<div style="width:27px; margin-left:10px;"></div>`;
-                    }
-
                     // Badge de estado financiero complementario
                     let badgeFinancieroHTML = '';
                     if (d.pagado) {
                         badgeFinancieroHTML = `<span class="badge bg-light text-success border border-success rounded-pill px-2 py-1" style="font-size:0.7rem;"><i class="bi bi-cash-coin me-1"></i>Pagado</span>`;
                     }
 
-                    // Inyectamos la fila armada de forma unificada
-                    let estiloFila = d.pagado && d.entregado ? 'opacity: 0.65; background-color: #f3f4f6;' : 'background-color: #ffffff;';
-                    let bordeFila = d.pagado ? 'border-left:4px solid #6b7280 !important;' : 'border-left:4px solid var(--lajama-green) !important;';
+                    // ─── 🛡️ ARQUITECTURA DE CHECKBOX CON CONTROL DE ADUANA MUTABLE ───
+                    const precioSeguro = d.subtotal ? d.subtotal : (d.precioUnitario ? d.precioUnitario : 0);
+                    const idCheckModalMesa = `cbx_mesa_modal_${d.id}`;
+                    let checkboxHTML = '';
+
+                    if (d.pagado) {
+                        // 🚀 Si ya se pagó, NO se inyecta input. Evita recargos y selecciones parciales fantasmas.
+                        checkboxHTML = `<div style="width: 27px; margin-left: 10px;"></div>`;
+                    } else if (badgeTexto !== 'Enviado' || d.canceladoPorCliente) {
+                        // Las mermas vivas por pagar o platos en cocina/listos llevan su check legítimo
+                        checkboxHTML = `
+                            <div class="cntr" style="margin-left: 10px;">
+                                <input type="checkbox" id="${idCheckModalMesa}" class="hidden-xs-up chk-mesa-confirmar" value="${d.id}" data-precio="${precioSeguro}" data-estado-plato="${badgeTexto}" onchange="evaluarBotonConfirmarPago()">
+                                <label for="${idCheckModalMesa}" class="cbx"></label>
+                            </div>`;
+                    } else {
+                        checkboxHTML = `<div style="width: 27px; margin-left: 10px;"></div>`;
+                    }
+
+                    // Forzamos el renderizado del borde gris si ya está pagado independientemente de la logística
+                    if (d.pagado && !d.canceladoPorCliente) {
+                        bordeFila = 'border-left:4px solid #16a34a !important;';
+                    }
 
                     htmlPlatosActivos += `
-                        <div class="d-flex justify-content-between align-items-center p-2 rounded border item-plato-comanda mb-2"
+                        <div class="d-flex justify-content-between align-items-center p-2 rounded border item-plato-comanda mb-2 shadow-sm"
                              data-estado="${badgeTexto}" data-precio="${d.subtotal || 0}" style="font-size:0.9rem; ${estiloFila} ${bordeFila}">
                             <div class="d-flex align-items-center gap-2" style="max-width:50%;">
                                 <span class="badge bg-dark text-white rounded-pill fw-bold">${d.cantidad}x</span>
-                                <span class="${d.pagado && d.entregado ? 'text-decoration-line-through text-muted' : 'text-dark'} fw-semibold text-truncate" style="max-width:140px;">${nombreProducto}</span>
+                                <span class="${nombreClaseTexto} fw-semibold text-truncate" style="max-width:140px;">${nombreProducto}</span>
                             </div>
                             <div class="d-flex align-items-center gap-2">
-                                <span class="text-muted small fw-bold">S/. ${(d.subtotal || 0).toFixed(2)}</span>
+                                <span class="text-muted small fw-bold">S/. ${precioSeguro.toFixed(2)}</span>
                                 ${badgeFinancieroHTML}
                                 <span class="badge ${badgeColor} rounded-pill px-2 py-1" style="font-size:0.7rem;">${badgeTexto}</span>
                                 ${btnCheckUnitarioHTML}
@@ -480,7 +469,6 @@ function evaluarBotonConfirmarPago() {
 }
 
 function toggleSeleccionarTodosLosPlatos() {
-    // 🌟 REGLA RECTIFICADA EN SELECCIONADOR: Captura solo checkboxes que verdaderamente existan y estén activos en el DOM (excluyendo vacíos por Enviado)
     const checkboxesActivos = Array.from(document.querySelectorAll('.chk-mesa-confirmar'));
     const btn = document.getElementById('btnSeleccionarTodo');
 

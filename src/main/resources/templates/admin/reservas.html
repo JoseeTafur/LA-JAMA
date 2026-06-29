@@ -4,179 +4,159 @@
 <body>
 
 <div id="contenido">
-    <!-- Enlace al archivo de diseño optimizado -->
     <link rel="stylesheet" th:href="@{/css/reservas.css}">
 
-    <!-- Tarjeta Maestra Autoajustable -->
-    <div class="card card-jama-main card-color1">
-        <div class="card-body p-4 d-flex flex-column h-100">
+    <div class="card-jama-main">
+        <div class="tablero-header">
+            <h1 class="tablero-title">
+                <i class="bi bi-calendar3 icon-accent"></i> Libro de Reservas
+            </h1>
+            <button type="button" id="btnNuevoRegistro" class="btn-jama-kinetic">
+                <i class="bi bi-calendar-plus"></i>
+                <span>Nuevo Registro</span>
+            </button>
+        </div>
 
-            <!-- Encabezado del Tablero -->
-            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-                <h1 class="card-title h5 fw-bold m-0 d-flex align-items-center">
-                    <i class="bi bi-calendar3 me-2 text-warning"></i> Libro de Reservas
-                </h1>
-                <button type="button" id="btnNuevoRegistro" class="btn-jama-kinetic">
-                    <i class="bi bi-calendar-plus"></i>
-                    <span>Nuevo Registro</span>
-                </button>
-            </div>
-
-            <!-- Contenedor Elástico de la Tabla -->
-            <div class="table-container-fluid">
-                <table id="tablaReservas" class="table table-jama align-middle" style="width: 100%">
-                    <thead>
-                    <tr>
-                        <th style="width: 5%;">ID</th>
-                        <th style="width: 20%;">Cliente</th>
-                        <th style="width: 10%;">Teléfono</th>
-                        <th style="width: 8%;">Personas</th>
-                        <th style="width: 15%;">Mesas Estimadas</th>
-                        <th style="width: 15%;">Fecha y Hora</th>
-                        <th style="width: 10%;">Estado</th>
-                        <th style="width: 12%;">Observación</th>
-                        <th class="text-center" style="width: 15%;">Acciones</th>
-                    </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
+        <div class="table-container-fluid">
+            <table id="tablaReservas" class="table-jama">
+                <thead>
+                <tr>
+                    <th style="width: 5%;">ID</th>
+                    <th style="width: 20%;">Cliente</th>
+                    <th style="width: 10%;">Teléfono</th>
+                    <th style="width: 8%;">Personas</th>
+                    <th style="width: 15%;">Mesas Estimadas</th>
+                    <th style="width: 15%;">Fecha y Hora</th>
+                    <th style="width: 10%;">Estado</th>
+                    <th style="width: 12%;">Observación</th>
+                    <th class="text-center" style="width: 15%;">Acciones</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <div id="modales">
 
-    <!-- 🟩 MODAL AUTOAJUSTABLE: AGREGAR RESERVA -->
     <div class="jama-modal-overlay" id="modalReserva" hidden>
-        <div class="card rounded-lg card-color1 jama-modal-content animate__animated animate__fadeInUp">
-            <div class="card-body p-4">
-
-                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
-                    <h5 class="fw-bold text-dark m-0">
-                        <i class="bi bi-calendar-check-fill me-2 text-warning"></i> Agregar Reserva
-                    </h5>
-                    <button type="button" class="jama-close-btn" onclick="window.cerrarCapaModal('modalReserva')">&times;</button>
-                </div>
-
-                <form id="form" name="formReserva" novalidate>
-                    <div class="jama-grid-layout">
-                        <div class="jama-form-group span-6">
-                            <label for="rNombre" class="form-label fw-semibold small">Nombre del Cliente</label>
-                            <input type="text" id="rNombre" name="nombreCliente" class="form-control" placeholder="Solo letras" maxlength="30" required />
-                            <div id="rNombre-error" class="invalid-feedback d-block fw-semibold"></div>
-                        </div>
-
-                        <div class="jama-form-group span-6">
-                            <label for="rTelefono" class="form-label fw-semibold small">Teléfono de Contacto</label>
-                            <input type="text" id="rTelefono" name="telefono" class="form-control" placeholder="9 dígitos" maxlength="9" required />
-                            <div id="rTelefono-error" class="invalid-feedback d-block fw-semibold"></div>
-                        </div>
-
-                        <div class="jama-form-group span-4">
-                            <label for="rPersonas" class="form-label fw-semibold small">N° de Personas</label>
-                            <input type="number" id="rPersonas" name="numeroPersonas" class="form-control" min="1" max="50" placeholder="Ej: 6" required />
-                            <div id="rPersonas-error" class="invalid-feedback d-block fw-semibold"></div>
-                        </div>
-
-                        <div class="jama-form-group span-4">
-                            <label for="rFecha" class="form-label fw-semibold small">Fecha del Evento</label>
-                            <input type="date" id="rFecha" name="fecha" class="form-control" required />
-                            <div id="rFecha-error" class="invalid-feedback d-block fw-semibold"></div>
-                        </div>
-
-                        <div class="jama-form-group span-4">
-                            <label for="rHora" class="form-label fw-semibold small">Hora Pactada</label>
-                            <input type="time" id="rHora" name="hora" class="form-control" required />
-                            <div id="rHora-error" class="invalid-feedback d-block fw-semibold"></div>
-                        </div>
-
-                        <div class="jama-form-group span-12">
-                            <label for="rObservacion" class="form-label fw-semibold small">Observación de Servicio (Opcional)</label>
-                            <textarea id="rObservacion" name="observacion" class="form-control" rows="2" maxlength="150" placeholder="Alergias, preferencias, ocasión especial..."></textarea>
-                        </div>
-                    </div>
-
-                    <div class="row mt-3" id="mesasInfo" style="display: none;">
-                        <div class="col-12">
-                            <small id="mesasInfoTexto" class="d-block bg-light p-2 rounded fw-semibold"
-                                   style="font-size: 0.75rem; border-left: 3px solid var(--lajama-green); color: var(--lajama-green);">
-                            </small>
-                        </div>
-                    </div>
-
-                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-                        <button type="button" class="btn btn-secondary px-4 rounded-pill" onclick="window.cerrarCapaModal('modalReserva')">Cancelar</button>
-                        <button type="submit" class="btn btn-primary px-4 rounded-pill" id="btnGuardarReserva">Guardar Cambios</button>
-                    </div>
-                </form>
+        <div class="jama-modal-content animate__animated animate__fadeInUp">
+            <div class="jama-modal-header">
+                <h5 class="jama-modal-title">
+                    <i class="bi bi-calendar-check-fill icon-accent"></i> Agregar Reserva
+                </h5>
+                <button type="button" class="jama-close-btn" onclick="window.cerrarCapaModal('modalReserva')">&times;</button>
             </div>
-        </div>
-    </div>
 
-    <!-- 🟩 MODAL AUTOAJUSTABLE: EDITAR RESERVA -->
-    <div class="jama-modal-overlay" id="modalEditarReserva" hidden>
-        <div class="card rounded-lg card-color1 jama-modal-content animate__animated animate__fadeInUp">
-            <div class="card-body p-4">
-
-                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
-                    <h5 class="fw-bold text-dark m-0">
-                        <i class="bi bi-pencil-square me-2 text-warning"></i> Modificar Datos de Reserva
-                    </h5>
-                    <button type="button" class="jama-close-btn" onclick="window.cerrarCapaModal('modalEditarReserva')">&times;</button>
-                </div>
-
+            <form id="form" name="formReserva" novalidate>
                 <div class="jama-grid-layout">
-                    <input type="hidden" id="eReservaId" />
-
                     <div class="jama-form-group span-6">
-                        <label for="eNombre" class="form-label fw-semibold small">Nombre del Cliente</label>
-                        <input type="text" id="eNombre" class="form-control" maxlength="30" data-no-validation />
-                        <div id="eNombre-error" class="invalid-feedback d-block fw-semibold"></div>
+                        <label for="rNombre" class="jama-label">Nombre del Cliente</label>
+                        <input type="text" id="rNombre" name="nombreCliente" class="jama-input" placeholder="Solo letras" maxlength="30" required />
+                        <div id="rNombre-error" class="invalid-feedback"></div>
                     </div>
 
                     <div class="jama-form-group span-6">
-                        <label for="eTelefono" class="form-label fw-semibold small">Teléfono</label>
-                        <input type="text" id="eTelefono" class="form-control" maxlength="9" data-no-validation />
-                        <div id="eTelefono-error" class="invalid-feedback d-block fw-semibold"></div>
+                        <label for="rTelefono" class="jama-label">Teléfono de Contacto</label>
+                        <input type="text" id="rTelefono" name="telefono" class="jama-input" placeholder="9 dígitos" maxlength="9" required />
+                        <div id="rTelefono-error" class="invalid-feedback"></div>
                     </div>
 
                     <div class="jama-form-group span-4">
-                        <label for="ePersonas" class="form-label fw-semibold small">N° de Personas</label>
-                        <input type="number" id="ePersonas" class="form-control" min="1" max="50" data-no-validation />
-                        <div id="ePersonas-error" class="invalid-feedback d-block fw-semibold"></div>
+                        <label for="rPersonas" class="jama-label">N° de Personas</label>
+                        <input type="number" id="rPersonas" name="numeroPersonas" class="jama-input" min="1" max="50" placeholder="Ej: 6" required />
+                        <div id="rPersonas-error" class="invalid-feedback"></div>
                     </div>
 
                     <div class="jama-form-group span-4">
-                        <label for="eFecha" class="form-label fw-semibold small">Fecha</label>
-                        <input type="date" id="eFecha" class="form-control" data-no-validation />
-                        <div id="eFecha-error" class="invalid-feedback d-block fw-semibold"></div>
+                        <label for="rFecha" class="jama-label">Fecha del Evento</label>
+                        <input type="date" id="rFecha" name="fecha" class="jama-input input-fecha-reserva" required />
+                        <div id="rFecha-error" class="invalid-feedback"></div>
                     </div>
 
                     <div class="jama-form-group span-4">
-                        <label for="eHora" class="form-label fw-semibold small">Hora</label>
-                        <input type="time" id="eHora" class="form-control" data-no-validation />
-                        <div id="eHora-error" class="invalid-feedback d-block fw-semibold"></div>
+                        <label for="rHora" class="jama-label">Hora Pactada</label>
+                        <input type="time" id="rHora" name="hora" class="jama-input" required />
+                        <div id="rHora-error" class="invalid-feedback"></div>
                     </div>
 
                     <div class="jama-form-group span-12">
-                        <label for="eObservacion" class="form-label fw-semibold small">Observación</label>
-                        <textarea id="eObservacion" class="form-control" rows="2" maxlength="150"></textarea>
+                        <label for="rObservacion" class="jama-label">Observación de Servicio (Opcional)</label>
+                        <textarea id="rObservacion" name="observacion" class="jama-textarea" rows="2" maxlength="150" placeholder="Alergias, preferencias, ocasión especial..."></textarea>
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-                    <button type="button" class="btn btn-secondary px-4 rounded-pill" onclick="window.cerrarCapaModal('modalEditarReserva')">Cancelar</button>
-                    <button type="button" class="btn btn-primary px-4 rounded-pill" id="btnGuardarEdicion">Guardar Cambios</button>
+                <div id="mesasInfo" class="jama-info-box" style="display: none;">
+                    <small id="mesasInfoTexto"></small>
                 </div>
+
+                <div class="jama-modal-actions">
+                    <button type="button" class="btn-jama-secondary" onclick="window.cerrarCapaModal('modalReserva')">Cancelar</button>
+                    <button type="submit" class="btn-jama-primary" id="btnGuardarReserva">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="jama-modal-overlay" id="modalEditarReserva" hidden>
+        <div class="jama-modal-content animate__animated animate__fadeInUp">
+            <div class="jama-modal-header">
+                <h5 class="jama-modal-title">
+                    <i class="bi bi-pencil-square icon-accent"></i> Modificar Datos de Reserva
+                </h5>
+                <button type="button" class="jama-close-btn" onclick="window.cerrarCapaModal('modalEditarReserva')">&times;</button>
+            </div>
+
+            <div class="jama-grid-layout">
+                <input type="hidden" id="eReservaId" />
+
+                <div class="jama-form-group span-6">
+                    <label for="eNombre" class="jama-label">Nombre del Cliente</label>
+                    <input type="text" id="eNombre" class="jama-input" maxlength="30" data-no-validation />
+                    <div id="eNombre-error" class="invalid-feedback"></div>
+                </div>
+
+                <div class="jama-form-group span-6">
+                    <label for="eTelefono" class="jama-label">Teléfono</label>
+                    <input type="text" id="eTelefono" class="jama-input" maxlength="9" data-no-validation />
+                    <div id="eTelefono-error" class="invalid-feedback"></div>
+                </div>
+
+                <div class="jama-form-group span-4">
+                    <label for="ePersonas" class="jama-label">N° de Personas</label>
+                    <input type="number" id="ePersonas" class="jama-input" min="1" max="50" data-no-validation />
+                    <div id="ePersonas-error" class="invalid-feedback"></div>
+                </div>
+
+                <div class="jama-form-group span-4">
+                    <label for="eFecha" class="jama-label">Fecha</label>
+                    <input type="date" id="eFecha" class="jama-input input-fecha-reserva" />
+                    <div id="eFecha-error" class="invalid-feedback"></div>
+                </div>
+
+                <div class="jama-form-group span-4">
+                    <label for="eHora" class="jama-label">Hora</label>
+                    <input type="time" id="eHora" class="jama-input" data-no-validation />
+                    <div id="eHora-error" class="invalid-feedback"></div>
+                </div>
+
+                <div class="jama-form-group span-12">
+                    <label for="eObservacion" class="jama-label">Observación</label>
+                    <textarea id="eObservacion" class="jama-textarea" rows="2" maxlength="150"></textarea>
+                </div>
+            </div>
+
+            <div class="jama-modal-actions">
+                <button type="button" class="btn-jama-secondary" onclick="window.cerrarCapaModal('modalEditarReserva')">Cancelar</button>
+                <button type="button" class="btn-jama-primary" id="btnGuardarEdicion">Guardar Cambios</button>
             </div>
         </div>
     </div>
 
 </div>
 
-    <script th:src="@{/js/reservas/tabla.js}"></script>
-    <script th:src="@{/js/reservas/acciones.js}"></script>
+<script th:src="@{/js/reservas/tabla.js}"></script>
+<script th:src="@{/js/reservas/acciones.js}"></script>
 </body>
 </html>

@@ -7,6 +7,7 @@
 
 <div id="contenido">
     <link th:href="@{/css/admin_comprobantes.css}" rel="stylesheet" />
+    <link th:href="@{/css/botones-reportes.css}" rel="stylesheet" />
 
     <div th:if="${errorContable != null}" class="alert alert-danger-jama alert-dismissible fade show border-0 mb-4" role="alert">
         <div class="d-flex align-items-center">
@@ -103,6 +104,15 @@
                         <img th:src="@{/img/Tarjeta.png}" alt="Tarjeta" style="width:14px;height:14px;object-fit:contain;">
                         Tarjeta
                     </span>
+                </div>
+                <div class="d-flex gap-2 mb-3 justify-content-end">
+                    <button type="button" class="btn-export-jama btn-pdf" onclick="exportarReporteComprobantesOficial('PDF')">
+                        <i class="bi bi-file-earmark-pdf-fill"></i> Exportar PDF
+                    </button>
+
+                    <button type="button" class="btn-export-jama btn-excel" onclick="exportarReporteComprobantesOficial('EXCEL')">
+                        <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
+                    </button>
                 </div>
             </div>
 
@@ -321,9 +331,9 @@
                         <table class="table table-jama responsive" id="tablaAnulados" style="width: 100%">
                             <thead>
                             <tr>
-                                <th>Nro Nota / CPE Original</th>
-                                <th>Nota de Crédito SUNAT</th>
-                                <th>Fecha / Hora</th>
+                                <th>Comprobante Afectado (SUNAT)</th>
+                                <th>Nota de Crédito Liquidadora</th>
+                                <th>Fecha / Hora Anulación</th>
                                 <th>Cliente</th>
                                 <th class="text-end">Monto Revertido</th>
                                 <th>Estado SUNAT</th>
@@ -331,49 +341,37 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <th:block th:each="comp : ${listaComprobantes}" th:if="${comp.comprobanteNumero != null && comp.estado.name() == 'ANULADO'}">
+                            <th:block th:each="comp : ${listaComprobantes}"
+                                      th:if="${comp.comprobanteNumero != null and (comp.estado.name() == 'CANCELADO' or comp.estadoPago.name() == 'EXTORNADO')}">
 
                                 <tr class="align-middle text-muted" style="cursor: pointer; background-color: #fdf2f2;"
                                     th:data-bs-toggle="collapse" th:data-bs-target="'#desglose-anulado-' + ${comp.id}">
                                     <td>
-                                        <div class="fw-bold">
-                                            <span th:text="'NV-' + ${comp.id}">NV-1045</span>
-                                            <span class="badge bg-secondary ms-1 font-monospace" style="text-decoration: line-through;" th:text="${comp.comprobanteNumero}">B001-00000012</span>
+                                        <div class="d-flex flex-column gap-1">
+                                            <span class="fw-bold text-dark" th:text="${comp.comprobanteNotaNumero}">NV01-00000006</span>
+                                            <span class="badge bg-secondary font-monospace fw-bold small"
+                                                  style="text-decoration: line-through; width: fit-content;"
+                                                  th:text="${comp.comprobanteNumero}">B001-00000004</span>
                                         </div>
                                     </td>
-                                    <td class="fw-bold text-danger font-monospace" th:text="${comp.comprobanteNotaNumero != null ? comp.comprobanteNotaNumero : 'Generando...'}">FC01-00000001</td>
+                                    <td>
+                                        <span class="fw-bold text-danger font-monospace" th:text="${comp.creditoNotaNumero != null ? comp.creditoNotaNumero : 'Generando...'}">BC01-00000004</span>
+                                    </td>
                                     <td th:text="${#temporals.format(comp.fechaCreacion, 'dd/MM/yyyy HH:mm')}">20/06/2026 14:32</td>
                                     <td class="fw-semibold text-start text-dark" th:text="${comp.cliente}">José Mario Tafur</td>
                                     <td class="fw-bold text-danger text-end" th:text="'S/. ' + ${#numbers.formatDecimal(comp.montoTotal, 1, 2)}">S/. 45.50</td>
                                     <td>
-                                        <span class="badge bg-danger text-light fw-bold px-2 py-1 rounded-pill small" style="font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;">
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-                                            ANULADO (CPE)
-                                        </span>
+            <span class="badge bg-danger text-light fw-bold px-2 py-1 rounded-pill small" style="font-size: 0.72rem; display: inline-flex; align-items: center; gap: 4px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                ANULADO (CPE)
+            </span>
                                     </td>
                                     <td class="text-center" onclick="event.stopPropagation();">
                                         <div class="action-buttons-wrapper justify-content-center" style="display: flex; gap: 6px; align-items: center;">
-                                            <a th:href="@{/admin/comprobantes/imprimir-nota-a4/{id}(id=${comp.id})}" target="_blank"
-                                               class="action-jama-btn bg-primary border-primary text-light" title="Ver Nota de Crédito Oficial (A4)">
-                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                                            </a>
-                                            <a th:href="@{/admin/comprobantes/imprimir-nota/{id}(id=${comp.id})}" target="_blank"
-                                               class="action-jama-btn bg-success border-success text-light" title="Imprimir Ticket Nota de Crédito (80mm)">
-                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                                            </a>
-                                            <a th:href="@{/admin/comprobantes/xml-nota/{id}(id=${comp.id})}" target="_blank"
-                                               class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado de la Nota de Crédito">
-                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                                            </a>
-                                            <button type="button" class="action-jama-btn text-light shadow-sm"
-                                                    th:onclick="|abrirEditorReemision(${comp.id})|"
-                                                    title="Editar y Emitir Nuevo Comprobante Corregido"
-                                                    style="background-color: #d97706; border-color: #b45309;">
-                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                                </svg>
-                                            </button>
+                                            <a th:href="@{/admin/comprobantes/imprimir-nota-a4/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-primary border-primary text-light" title="Ver Nota de Crédito Oficial (A4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg></a>
+                                            <a th:href="@{/admin/comprobantes/imprimir-nota/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-success border-success text-light" title="Imprimir Ticket Nota de Crédito (80mm)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline></svg></a>
+                                            <a th:href="@{/admin/comprobantes/xml-nota/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado de la Nota de Crédito"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline></svg></a>
+                                            <button type="button" class="action-jama-btn text-light shadow-sm" th:onclick="|abrirEditorReemision(${comp.id})|" title="Editar y Emitir Nuevo Comprobante Corregido" style="background-color: #d97706; border-color: #b45309;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path></svg></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -385,42 +383,21 @@
                                                 <span class="fw-bold small text-muted text-uppercase d-block mb-2">Historial de Auditoría Interna:</span>
                                                 <div class="p-2 border rounded-3 bg-white font-monospace text-secondary" style="font-size: 0.82rem;">
                                                     • CPE Referencia: <span th:text="${comp.comprobanteNumero}">B001-00000012</span><br>
-                                                    • NC Liquidadora: <span class="fw-bold text-danger" th:text="${comp.comprobanteNotaNumero}">FC01-00000001</span><br>
+                                                    • NC Liquidadora: <span class="fw-bold text-danger" th:text="${comp.creditoNotaNumero}">BC01-00000004</span><br>
                                                     • Total Devuelto: S/. <span th:text="${#numbers.formatDecimal(comp.montoTotal, 1, 2)}">45.50</span>
                                                 </div>
                                             </div>
                                             <div class="text-end" onclick="event.stopPropagation();">
                                                 <span class="fw-bold small text-muted text-uppercase d-block mb-2 text-md-end">Documentos del CPE Original Afectado:</span>
                                                 <div class="action-buttons-wrapper justify-content-md-end" style="display: flex; gap: 6px; align-items: center;">
-                                                    <a th:href="${comp.comprobanteA4Url != null ? comp.comprobanteA4Url : '#'}"
-                                                       th:target="${comp.comprobanteA4Url != null ? '_blank' : '_self'}"
-                                                       class="action-jama-btn bg-primary border-primary text-light"
-                                                       th:styleappend="${comp.comprobanteA4Url == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}"
-                                                       title="Ver CPE Original (A4)">
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                                                        <span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver PDF A4</span>
-                                                    </a>
-                                                    <a th:href="${comp.comprobantePdfUrl != null ? comp.comprobantePdfUrl : '#'}"
-                                                       th:target="${comp.comprobantePdfUrl != null ? '_blank' : '_self'}"
-                                                       class="action-jama-btn bg-success border-success text-light"
-                                                       th:styleappend="${comp.comprobantePdfUrl == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}"
-                                                       title="Imprimir Ticket Original (80mm)">
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                                                        <span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver Ticket</span>
-                                                    </a>
-                                                    <a th:href="@{/admin/comprobantes/xml/{id}(id=${comp.id})}"
-                                                       target="_blank"
-                                                       class="action-jama-btn bg-dark border-dark text-light"
-                                                       title="Ver XML Firmado CPE Original">
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                                                        <span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver XML</span>
-                                                    </a>
+                                                    <a th:href="${comp.comprobanteA4Url != null ? comp.comprobanteA4Url : '#'}" th:target="${comp.comprobanteA4Url != null ? '_blank' : '_self'}" class="action-jama-btn bg-primary border-primary text-light" th:styleappend="${comp.comprobanteA4Url == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}" title="Ver CPE Original (A4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg><span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver PDF A4</span></a>
+                                                    <a th:href="${comp.comprobantePdfUrl != null ? comp.comprobantePdfUrl : '#'}" th:target="${comp.comprobantePdfUrl != null ? '_blank' : '_self'}" class="action-jama-btn bg-success border-success text-light" th:styleappend="${comp.comprobantePdfUrl == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}" title="Imprimir Ticket Original (80mm)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline></svg><span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver Ticket</span></a>
+                                                    <a th:href="@{/admin/comprobantes/xml/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado CPE Original"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline></svg><span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver XML</span></a>
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
                                 </tr>
-
                             </th:block>
                             </tbody>
                         </table>
@@ -465,22 +442,26 @@
 
                                 <div class="mb-2">
                                     <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">CLIENTE / RAZÓN SOCIAL:</label>
-                                    <input type="text" id="reemision-cliente-nombre" class="form-control form-control-sm" placeholder="Mesa # o Nombre del Cliente..." />
+                                    <div class="position-relative">
+                                        <input type="text" id="reemision-cliente-nombre" class="form-control form-control-sm spec-input-jama" placeholder="Buscando en padrón oficial..." />
+                                        <span id="spinner-busqueda-oficial" class="spinner-border spinner-border-sm position-absolute text-success" style="right: 10px; top: 9px; display: none;"></span>
+                                    </div>
                                 </div>
 
                                 <div class="mb-2">
                                     <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">CORREO ELECTRÓNICO (ENVÍO CPE):</label>
-                                    <input type="email" id="reemision-cliente-correo" class="form-control form-control-sm" placeholder="ejemplo@correo.com (Opcional)..." />
+                                    <input type="email" id="reemision-cliente-correo" class="form-control form-control-sm spec-input-jama" placeholder="ejemplo@correo.com (Opcional)..." />
                                 </div>
 
                                 <div class="row g-2 mb-2">
-                                    <div class="col-6">
+                                    <div class="col-12">
                                         <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">DOCUMENTO (DNI/RUC):</label>
-                                        <input type="text" id="reemision-cliente-doc" class="form-control form-control-sm font-monospace" placeholder="Vacío si no tiene..." />
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">DIRECCIÓN:</label>
-                                        <input type="text" id="reemision-cliente-dir" class="form-control form-control-sm" value="Chiclayo, Lambayeque" />
+                                        <div class="input-group input-group-sm shadow-sm" style="border-radius: 6px; overflow: hidden;">
+                                            <input type="text" id="reemision-cliente-doc" class="form-control font-monospace border-end-0 fw-bold text-dark" placeholder="Escribe para consultar..." style="letter-spacing: 0.5px;">
+                                            <button class="btn btn-success fw-bold px-3" type="button" id="btn-consultar-padron" onclick="consultarPadronOficialLaJama()" style="background-color: #1B3A2C; border-color: #1B3A2C;">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 

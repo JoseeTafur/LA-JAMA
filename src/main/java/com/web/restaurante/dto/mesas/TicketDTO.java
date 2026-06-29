@@ -14,6 +14,7 @@ public class TicketDTO {
     private String tipoDoc;
     private String numDoc;
     private String metodoPago;
+    private String clienteCorreo;
 
     private List<DetalleTicketDTO> listaDetalles;
 }

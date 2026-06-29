@@ -141,15 +141,93 @@ async function abrirEditorReemision(pedidoId) {
         const data = await response.json();
         document.getElementById('reemision-pedido-id').value = data.id;
         document.getElementById('reemision-nv-origen').innerText = `NV-${data.id}`;
-        document.getElementById('reemision-cliente-nombre').value = data.cliente || `Mesa #${data.numeroMesa || ''}`;
+
+        // 🔥 VALIDACIÓN DE NOMBRE SOLICITADA: Si no hay cliente o es un string automático de mesa, forzamos "Cliente General"
+        const nombreOriginal = data.cliente || '';
+        if (!nombreOriginal || nombreOriginal.trim() === '' || nombreOriginal.toUpperCase().includes("MESA")) {
+            document.getElementById('reemision-cliente-nombre').value = "Cliente General";
+        } else {
+            document.getElementById('reemision-cliente-nombre').value = nombreOriginal;
+        }
+
         const doc = data.documentoCliente;
         document.getElementById('reemision-cliente-doc').value = (doc && doc !== 'null' && doc !== 'SIN DOCUMENTO') ? doc : '';
         document.getElementById('reemision-cpe-tipo').value = data.comprobanteTipo || 'BOLETA';
         document.getElementById('reemision-cpe-medio').value = data.metodoPago || 'EFECTIVO';
-        if (document.getElementById('reemision-contenedor-platos')) rebuildListaPlatosReemision();
+
         detallesPedidoEdicionBuffer = data.detalles;
         rebuildListaPlatosReemision();
-    } catch (error) { contenedor.innerHTML = `<p class="text-danger small text-center py-3">⚠️ Error al leer la orden.</p>`; }
+    } catch (error) {
+        contenedor.innerHTML = `<p class="text-danger small text-center py-3">⚠️ Error al leer la orden.</p>`;
+    }
+}
+
+async function procesarTimbradoCorregido() {
+    const pedidoId = document.getElementById('reemision-pedido-id').value;
+    const nuevoCliente = document.getElementById('reemision-cliente-nombre').value.trim();
+    const nuevoDoc = document.getElementById('reemision-cliente-doc').value.trim();
+    const nuevoTipoCpe = document.getElementById('reemision-cpe-tipo').value;
+    const nuevoMetodo = document.getElementById('reemision-cpe-medio').value;
+    const nuevoCorreo = document.getElementById('reemision-cliente-correo')?.value.trim() || '';
+
+    if (!nuevoCliente) {
+        Swal.fire({ icon: 'warning', title: 'Campo Requerido', text: 'Por favor, asigne un nombre de Cliente.', confirmButtonColor: '#d97706' });
+        return;
+    }
+
+    if (nuevoTipoCpe === 'FACTURA' && nuevoDoc.length !== 11) {
+        Swal.fire({ icon: 'warning', title: 'Validación Fiscal', text: 'Las facturas exigen un RUC válido de 11 dígitos.', confirmButtonColor: '#d97706' });
+        return;
+    }
+
+    // Mapeamos los ítems modificados del buffer para el payload
+    const detallesModificados = detallesPedidoEdicionBuffer.map(item => ({
+        id: item.id,
+        cantidad: item.cantidad
+    }));
+
+    const payload = {
+        pedidoId: pedidoId,
+        clienteNombre: nuevoCliente,
+        documento: nuevoDoc,
+        comprobanteTipo: nuevoTipoCpe,
+        metodoPago: nuevoMetodo,
+        clienteCorreo: nuevoCorreo,
+        detallesModificados: detallesModificados
+    };
+
+    Swal.fire({
+        title: 'Emitiendo Comprobante Corregido...',
+        text: 'Comunicando la re-emisión a los servidores de SUNAT.',
+        background: '#FFF7ED',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    try {
+        const response = await fetch('/admin/comprobantes/api/pedido/reemitir-corregido', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            let modalElement = document.getElementById('modalEdicionReemision');
+            if (modalElement) {
+                let modalBootstrap = bootstrap.Modal.getInstance(modalElement);
+                if (modalBootstrap) modalBootstrap.hide();
+            }
+
+            await Swal.fire({ icon: 'success', title: '¡Re-emisión Exitosa!', text: data.message, confirmButtonColor: '#1B3A2C' });
+            window.location.reload();
+        } else {
+            Swal.fire({ icon: 'error', title: 'Rechazo de SUNAT', text: data.message, confirmButtonColor: '#933D2D' });
+        }
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Error Crítico', text: 'No se pudo conectar con el microservicio de refacturación.', confirmButtonColor: '#933D2D' });
+    }
 }
 
 function rebuildListaPlatosReemision() {
@@ -200,10 +278,167 @@ function numeroALetras(numero) {
     return `${deman.toString().toUpperCase()} CON ${centavos.toString().padStart(2, '0')}/100`;
 }
 
-// 🟩 ANCLAJE MÁSTER AL ALCANCE DE WINDOW
+function exportarReporteComprobantesOficial(formato) {
+    const tabActivo = document.querySelector('#comprobantesTabs .nav-link.active').id;
+    let pestañaParam = 'PENDIENTES';
+
+    if (tabActivo === 'emitidos-tab') pestañaParam = 'EMITIDOS';
+    else if (tabActivo === 'anulados-tab') pestañaParam = 'ANULADOS';
+
+    // Capturamos los mismos filtros que el usuario aplicó en la grilla visual
+    const texto = document.getElementById('filtroCpeTexto').value.trim();
+    const metodo = document.getElementById('filtroCpeMetodo').value;
+    const origen = document.getElementById('filtroCpeOrigen').value;
+    const inicio = document.getElementById('filtroCpeFechaInicio').value;
+    const fin = document.getElementById('filtroCpeFechaFin').value;
+
+    // Estructuramos la URL final inyectándole la matriz exacta de filtrado cruzado
+    let urlDestino = `/admin/reportes/comprobantes/${pestañaParam}/${formato.toLowerCase()}`;
+    urlDestino += `?inicio=${inicio}&fin=${fin}&texto=${encodeURIComponent(texto)}&metodo=${metodo}&origen=${origen}`;
+
+    // Despachamos la descarga binaria segura
+    window.location.href = urlDestino;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const contenedorTabs = document.getElementById('comprobantesTabs');
+    if (contenedorTabs) {
+        contenedorTabs.addEventListener('shown.bs.tab', function () {
+            console.log("🔄 [La Jama Control] Pestaña cambiada. Reevaluando aduana de exportación...");
+            if (typeof actualizarMensajesVacios === 'function') {
+                actualizarMensajesVacios();
+            }
+        });
+    }
+    // Forzamos un disparo inicial al cargar la interfaz para congelar los botones de arranque
+    setTimeout(actualizarMensajesVacios, 150);
+});
+
+// ── CARDADO DE COMPORTAMIENTO Y VALIDACIONES DINÁMICAS ──
+document.addEventListener('DOMContentLoaded', function () {
+    const selectorTipoCpe = document.getElementById('reemision-cpe-tipo');
+    const inputDoc = document.getElementById('reemision-cliente-doc');
+
+    if (selectorTipoCpe && inputDoc) {
+        // Evento que vigila el cambio de tipo de documento
+        selectorTipoCpe.addEventListener('change', function () {
+            inputDoc.value = '';
+            document.getElementById('reemision-cliente-nombre').value = 'Cliente General';
+            configurarMascaraDocumento();
+        });
+
+        // Evento que restringe caracteres no numéricos y limita longitud en tiempo real
+        inputDoc.addEventListener('input', function () {
+            this.value = this.value.replace(/[^0-9]/g, ''); // Solo números enteros
+
+            const maxDigitos = selectorTipoCpe.value === 'FACTURA' ? 11 : 8;
+            if (this.value.length > maxDigitos) {
+                this.value = this.value.slice(0, maxDigitos);
+            }
+
+            // 🚀 AUTO-DISPARO AUTOMÁTICO: Si llega a la cantidad exacta de dígitos, consulta sola
+            if (this.value.length === maxDigitos) {
+                consultarPadronOficialLaJama();
+            }
+        });
+    }
+});
+
+function configurarMascaraDocumento() {
+    const selectorTipoCpe = document.getElementById('reemision-cpe-tipo').value;
+    const inputDoc = document.getElementById('reemision-cliente-doc');
+    if (!inputDoc) return;
+
+    if (selectorTipoCpe === 'FACTURA') {
+        inputDoc.placeholder = "RUC Requerido (11 dígitos)";
+        inputDoc.setAttribute('maxlength', '11');
+    } else {
+        inputDoc.placeholder = "DNI Opcional (8 dígitos)";
+        inputDoc.setAttribute('maxlength', '8');
+    }
+}
+
+// ── CONSULTA EN TIEMPO REAL A TU REPO DE SPRING BOOT ──
+async function consultarPadronOficialLaJama() {
+    const tipoCpe = document.getElementById('reemision-cpe-tipo').value;
+    const numDoc = document.getElementById('reemision-cliente-doc').value.trim();
+    const txtNombre = document.getElementById('reemision-cliente-nombre');
+    const spinner = document.getElementById('spinner-busqueda-oficial');
+    const btnBuscar = document.getElementById('btn-consultar-padron');
+
+    const longEsperada = tipoCpe === 'FACTURA' ? 11 : 8;
+
+    if (numDoc.length !== longEsperada) {
+        return; // Detiene el flujo si faltan dígitos
+    }
+
+    // Activamos estados de carga en la UI de La Jama
+    if (spinner) spinner.style.display = 'inline-block';
+    if (btnBuscar) btnBuscar.disabled = true;
+    txtNombre.value = "Consultando padrón oficial...";
+
+    const endpoint = tipoCpe === 'FACTURA' ? `/api/documentos/ruc/${numDoc}` : `/api/documentos/dni/${numDoc}`;
+
+    try {
+        const response = await fetch(endpoint);
+        const rawData = await response.json();
+
+        // 🛡️ ESCUDO DE DESERIALIZACIÓN: miapi.cloud a veces envía los campos limpios o dentro de un nodo "respuesta"
+        const data = rawData.respuesta ? rawData.respuesta : rawData;
+
+        if (response.ok && !data.error) {
+            if (tipoCpe === 'FACTURA') {
+                // Mapeo exhaustivo multi-propiedad para RUC (captura cualquier variante del JSON externo)
+                const razonSocialDetectada = data.razonSocial || data.razon_social || data.nombre || data.nombre_comercial || "";
+
+                if (razonSocialDetectada && razonSocialDetectada.trim() !== "") {
+                    txtNombre.value = razonSocialDetectada.toUpperCase().trim();
+                } else {
+                    txtNombre.value = "Cliente General";
+                }
+
+                // Auto-relleno dinámico de la dirección fiscal si viene en la metadata
+                const direccionDetectada = data.direccion || data.direccion_fiscal || data.direccionFiscal || "";
+                if (direccionDetectada) {
+                    const inputDir = document.getElementById('reemision-cliente-dir');
+                    if (inputDir) inputDir.value = direccionDetectada.toUpperCase().trim();
+                }
+            } else {
+                // Mapeo exhaustivo multi-propiedad para DNI (Nombres + Apellidos separados o combinados)
+                let nombreCompleto = "";
+
+                if (data.nombres || data.apellidoPaterno || data.apellidoMaterno) {
+                    nombreCompleto = `${data.nombres || ''} ${data.apellidoPaterno || ''} ${data.apellidoMaterno || ''}`;
+                } else {
+                    nombreCompleto = data.nombre || data.nombreCompleto || data.nombre_completo || "";
+                }
+
+                if (nombreCompleto && nombreCompleto.trim() !== "") {
+                    txtNombre.value = nombreCompleto.replace(/\s+/g, ' ').toUpperCase().trim();
+                } else {
+                    txtNombre.value = "Cliente General";
+                }
+            }
+        } else {
+            txtNombre.value = "Cliente General";
+        }
+    } catch (err) {
+        console.error("🚨 Falla crítica de comunicación en pasarela de documentos:", err);
+        txtNombre.value = "Cliente General";
+    } finally {
+        // Restauramos los controles de la interfaz
+        if (spinner) spinner.style.display = 'none';
+        if (btnBuscar) btnBuscar.disabled = false;
+    }
+}
+
+window.consultarPadronOficialLaJama = consultarPadronOficialLaJama;
+window.configurarMascaraDocumento = configurarMascaraDocumento;
 window.capturarYTimbrar = capturarYTimbrar;
 window.verTicketTermico = verTicketTermico;
 window.capturarYAnular = capturarYAnular;
 window.abrirEditorReemision = abrirEditorReemision;
 window.alterarCantidadReemision = alterarCantidadReemision;
 window.alternarEliminacionItem = alternarEliminacionItem;
+window.exportarReporteComprobantesOficial = exportarReporteComprobantesOficial;
+window.procesarTimbradoCorregido = procesarTimbradoCorregido;

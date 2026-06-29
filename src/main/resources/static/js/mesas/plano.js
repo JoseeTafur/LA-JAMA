@@ -43,9 +43,17 @@ function actualizarEstadoMesaEnPlano(numeroMesa, nuevoEstado, nuevoPedidoId, ped
 
     // Reparación de atributos jerárquicos
     if (['disponible', 'ocupada', 'lista-para-recoger', 'lista-para-pagar'].includes(nuevoEstado)) {
-        tarjeta.setAttribute('data-es-padre', 'NO');
+
+        const esPadreAntes = tarjeta.getAttribute('data-es-padre') === 'SI';
+        if (!esPadreAntes) {
+            tarjeta.setAttribute('data-es-padre', 'NO');
+        }
+
         if (nuevoEstado === 'disponible') {
-            tarjeta.removeAttribute('data-id-mesa-padre');
+            // Si es Padre, NO le removemos sus atributos de control grupal, solo limpiamos la comanda
+            if (!esPadreAntes) {
+                tarjeta.removeAttribute('data-id-mesa-padre');
+            }
             tarjeta.setAttribute('data-pedido-id', '');
             tarjeta.setAttribute('data-pedido-estado', 'NINGUNO');
         }

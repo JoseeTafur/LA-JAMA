@@ -29,6 +29,7 @@ function reconstruirCanastas(preferenciaComprobante = 'BOLETA', documentoCliente
             propina: 0,
             tipoDoc: previo ? previo.tipoDoc : (i === 0 ? preferenciaComprobante : 'BOLETA'),
             numDoc: previo ? previo.numDoc : (i === 0 ? documentoCliente : ''),
+            clienteCorreo: previo ? previo.clienteCorreo : '',
             metodoPago: previo ? previo.metodoPago : 'EFECTIVO'
         });
     }

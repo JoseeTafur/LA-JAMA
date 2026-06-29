@@ -31,7 +31,18 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                     if (avisoVacio)        avisoVacio.classList.remove('d-none');
                     if (contenedorComanda) contenedorComanda.classList.add('d-none');
                     if (panelSubtotal)     panelSubtotal.classList.add('d-none');
+
+                    // 🚀 EL VEHÍCULO DE LIBERACIÓN REACTIVA EN TIEMPO REAL:
+                    // Forzamos al plano a enterarse de que el pedido murió (Evita comandas fantasmas en cocina)
+                    if (typeof actualizarEstadoMesaEnPlano === 'function') {
+                        console.log("🧹 [La Jama Shield] Limpieza contable por comanda vacía en Mesa N° " + currentMesaNumero);
+                        actualizarEstadoMesaEnPlano(currentMesaNumero, 'disponible', '', 'NINGUNO');
+                    }
+
+                    // Reseteamos los punteros de control del Front
                     currentPedidoId = "";
+
+                    // Re-renderiza el modal limpio permitiendo abrir nuevas comandas de cero
                     renderizarControlesModal(esPadreGrupo, esUnificada, 'NINGUNO', tarjetaMesaDOM);
                     return;
                 }

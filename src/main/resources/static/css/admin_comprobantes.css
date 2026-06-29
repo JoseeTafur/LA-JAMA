@@ -319,3 +319,23 @@
     background: linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%);
     border-color: rgba(125, 211, 252, 0.3);
 }
+
+.spec-input-jama {
+    border-radius: 6px !important;
+    border: 1px solid rgba(27, 58, 44, 0.15) !important;
+    padding: 6px 10px !important;
+    transition: all 0.2s ease-in-out;
+}
+.spec-input-jama:focus {
+    border-color: #1B3A2C !important;
+    box-shadow: 0 0 0 0.2rem rgba(27, 58, 44, 0.1) !important;
+}
+.input-group-sm > .form-control {
+    border-top-left-radius: 6px !important;
+    border-bottom-left-radius: 6px !important;
+    border: 1px solid rgba(27, 58, 44, 0.15) !important;
+}
+.input-group-sm > .btn {
+    border-top-right-radius: 6px !important;
+    border-bottom-right-radius: 6px !important;
+}

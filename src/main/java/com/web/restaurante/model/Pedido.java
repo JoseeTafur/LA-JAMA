@@ -109,6 +109,12 @@ public class Pedido {
     @Column(name = "comprobante_nota_numero")
     private String comprobanteNotaNumero;
 
+    @Column(name = "comprobante_e_numero", length = 30)
+    private String comprobanteENumero;
+
+    @Column(name = "credito_nota_numero", length = 30)
+    private String creditoNotaNumero;
+
     @Column(name = "nota_pdf_url")
     private String notaPdfUrl;
 

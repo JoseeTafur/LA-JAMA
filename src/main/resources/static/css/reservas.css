@@ -1,106 +1,200 @@
-/* ========================================================
-   🌿 LA JAMA UI - RESPONSIVIDAD MAESTRA (SIN SCROLL HORIZONTAL)
-   ======================================================== */
+/* ==========================================================================
+   💎 INTERFAZ DE GESTIÓN PREMIUM — ESTILO SHADCN / LA JAMA (RESERVAS MASTER)
+   ========================================================================== */
 
 :root {
-    --lajama-green-bg: #1e3a2b;     /* Verde Bosque de la Barra Lateral */
-    --lajama-green-free: #00b159;   /* Verde Vibrante Estado "Libre" */
-    --lajama-cream-soft: #faf6ee;   /* Crema de Fondo del Tablero */
-    --lajama-orange-alert: #ff8a00; /* Naranja de Alerta / Reservas */
-    --lajama-purple: #7011e4;       /* Púrpura Unificada */
-    --lajama-dark-text: #17251d;    /* Texto oscuro verdoso para legibilidad */
+    --lajama-green: #1B3A2C;         /* Verde Principal Oscuro */
+    --lajama-green-light: #26503d;   /* Verde Intermedio Gradiante */
+    --lajama-accent: #ffc663;        /* Amarillo/Crema Oro */
     --lajama-white: #ffffff;
+    --lajama-border: rgba(0, 0, 0, 0.06);
+    --lajama-muted: #94a3b8;
+    --lajama-text-dark: #17251d;
+    --lajama-bg-soft: #faf6ee;
 }
 
-/* 🏢 CONTENEDOR ADAPTATIVO PRINCIPAL */
-.card.card-jama-main {
-    border: 1px solid rgba(30, 58, 43, 0.06) !important;
+/* 🏢 CONTENEDOR MAESTRO DEL TABLERO */
+.card-jama-main {
+    background-color: var(--lajama-white);
+    border: 1px solid var(--lajama-border);
+    border-radius: 16px;
     width: 100%;
-    height: calc(100vh - 140px) !important; /* 📐 Ajusta la tarjeta al alto neto de la pantalla */
-    margin: 0 auto;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.01) !important;
+    height: calc(100vh - 140px);
+    padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.01);
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Evita que la tarjeta desborde el layout maestro */
-}
-
-.card.card-jama-main .card-body {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
     overflow: hidden;
-    padding: 1.5rem !important;
+    box-sizing: border-box;
 }
 
-/* 📥 ENVOLTURA FLUIDA INTELIGENTE (PREVIENE SCROLL GENERAL) */
+/* HEADER DEL TABLERO */
+.tablero-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.tablero-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--lajama-text-dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.icon-accent {
+    color: #ff9a56 !important;
+    margin-right: 0.5rem;
+}
+
+/* 📥 ENVOLTURA FLUIDA (PREVIENE SCROLL GENERAL DEL NAVEGADOR) */
 .table-container-fluid {
     width: 100%;
     flex-grow: 1;
-    overflow-y: auto !important;   /* Solo permite scroll vertical interno si se llena la agenda */
-    overflow-x: hidden !important;  /* 🚫 Purgado absoluto de cualquier residuo horizontal */
-    padding-right: 4px;            /* Espacio preventivo para el scrollbar vertical */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
 }
 
-/* 📊 DISTRIBUCIÓN DE LA TABLA EN ANCHOS DE PANTALLA */
-#tablaReservas {
+/* 📊 TABLA SEMÁNTICA LA JAMA */
+.table-jama {
     border-collapse: separate !important;
     border-spacing: 0 6px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    table-layout: fixed !important; /* 📐 Distribución matemática de celdas según porcentajes JS */
-    margin: 0 !important;
+    width: 100%;
+    table-layout: fixed;
 }
 
-#tablaReservas tbody tr {
-    background-color: var(--lajama-white, #ffffff) !important;
-    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
+.table-jama th {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--lajama-muted);
+    padding: 12px 8px;
+    text-align: left;
+    border-bottom: 2px solid var(--lajama-border);
 }
 
-#tablaReservas tbody tr:hover {
-    background-color: var(--lajama-cream, #fffbeb) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(27, 58, 44, 0.05) !important;
-}
-
-/* Forzar que las columnas respeten el espacio y truncar texto si es muy largo */
-#tablaReservas th, #tablaReservas td {
+.table-jama td {
+    font-size: 0.9rem;
+    color: var(--lajama-text-dark);
+    padding: 12px 8px;
+    background-color: var(--lajama-white);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    padding: 10px 8px !important; /* 🎯 Celdas compactas para optimizar resolución */
+    border-top: 1px solid var(--lajama-border);
+    border-bottom: 1px solid var(--lajama-border);
 }
 
-/* 🟩 DISEÑO GRID AUTOMÁTICO DE LOS MODALES (SHADCN SYSTEM) */
+.table-jama td:first-child {
+    border-left: 1px solid var(--lajama-border);
+    border-radius: 8px 0 0 8px;
+}
+
+.table-jama td:last-child {
+    border-right: 1px solid var(--lajama-border);
+    border-radius: 0 8px 8px 0;
+}
+
+.table-jama tbody tr {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.table-jama tbody tr:hover td {
+    background-color: var(--lajama-bg-soft);
+}
+
+.table-jama tbody tr:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(27, 58, 44, 0.04);
+}
+
+/* 🟩 MODALES AUTOMÁTICOS SHADCN SYSTEM CONFIG */
 .jama-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(15, 23, 42, 0.35);
-    backdrop-filter: blur(6px);
+    background-color: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2100;
     padding: 1.5rem;
+    box-sizing: border-box;
 }
 
 .jama-modal-content {
     width: 100%;
-    max-width: 680px;
-    background-color: var(--lajama-white, #ffffff) !important;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.12) !important;
-    border: 1px solid rgba(30, 58, 43, 0.06) !important;
+    max-width: 650px;
+    background-color: #ffffff;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.18) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
     border-radius: 16px !important;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+    box-sizing: border-box;
 }
 
-/* Grilla interna nativa para inputs */
+/* ── CABECERA DEL MODAL CON GRADIENTE LA JAMA ── */
+.jama-modal-header {
+    background: radial-gradient(circle at top center, #26503d 0%, var(--lajama-green, #1B3A2C) 100%);
+    padding: 1.25rem 1.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.jama-modal-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #ffffff !important;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.jama-modal-header .icon-accent {
+    color: var(--lajama-accent, #ffc663) !important;
+    margin-right: 0.6rem;
+}
+
+.jama-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.jama-close-btn:hover {
+    color: #ffffff;
+    transform: scale(1.08);
+}
+
+/* ── CUERPO DEL FORMULARIO E INPUTS ── */
+form, .jama-grid-layout {
+    padding: 1.75rem;
+}
+
 .jama-grid-layout {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    gap: 1rem;
+    gap: 1.25rem;
     width: 100%;
+    box-sizing: border-box;
 }
 
 .jama-form-group {
@@ -108,34 +202,122 @@
     flex-direction: column;
 }
 
-/* Divisiones de columnas proporcionales */
 .span-4 { grid-column: span 4; }
 .span-6 { grid-column: span 6; }
 .span-12 { grid-column: span 12; }
 
-/* Mensajes de error pequeños y firmes */
+.jama-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--lajama-text-dark);
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.jama-input, .jama-textarea {
+    width: 100%;
+    padding: 11px 14px;
+    font-size: 0.9rem;
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    border-radius: 8px;
+    outline: none;
+    color: var(--lajama-text-dark);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.jama-input:focus, .jama-textarea:focus {
+    border-color: var(--lajama-green);
+    box-shadow: 0 0 0 3px rgba(27, 58, 44, 0.08);
+}
+
 .invalid-feedback {
-    font-size: 0.72rem !important;
+    font-size: 0.72rem;
     font-weight: 700;
-    margin-top: 0.25rem;
+    color: #ef4444;
+    margin-top: 0.35rem;
+    min-height: 15px;
 }
 
-/* Botonera de Cierre */
-.jama-close-btn {
-    background: none;
+/* CAJA DE ALERTA INFORMATIVA INTERNA */
+.jama-info-box {
+    margin: 0 1.75rem 1rem 1.75rem;
+    background-color: var(--lajama-bg-soft);
+    padding: 11px 14px;
+    border-left: 3px solid var(--lajama-green);
+    border-radius: 4px;
+    color: var(--lajama-green);
+    font-weight: 600;
+    font-size: 0.78rem;
+    box-sizing: border-box;
+}
+
+/* ── PANEL DE ACCIONES INFERIOR ── */
+.jama-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1.25rem 1.75rem;
+    background-color: #f8fafc;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* BOTONERAS KINETIC Y ACCIONES */
+.btn-jama-kinetic {
+    background: linear-gradient(135deg, var(--lajama-green-light), var(--lajama-green));
+    color: var(--lajama-white);
     border: none;
-    font-size: 1.6rem;
-    color: #94a3b8;
+    padding: 10px 18px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    border-radius: 8px;
     cursor: pointer;
-    line-height: 1;
-    transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: opacity 0.2s;
 }
 
-.jama-close-btn:hover {
-    color: var(--lajama-green-bg);
+.btn-jama-kinetic:hover {
+    opacity: 0.9;
 }
 
-/* ⏳ CUSTOM SCROLLBAR INTERNO (ESTILO PREMEDITADO CREMA) */
+.btn-jama-primary {
+    background-color: var(--lajama-green);
+    color: #ffffff;
+    border: none;
+    padding: 11px 24px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn-jama-primary:hover {
+    opacity: 0.92;
+}
+
+.btn-jama-secondary {
+    background-color: #ffffff;
+    color: var(--lajama-muted);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 11px 24px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-jama-secondary:hover {
+    background-color: var(--lajama-bg-soft);
+    color: var(--lajama-green);
+}
+
+/* ⏳ CUSTOM SCROLLBAR INTERNO */
 .table-container-fluid::-webkit-scrollbar {
     width: 5px;
 }
@@ -147,18 +329,18 @@
     background: transparent;
 }
 
-/* 📱 ADAPTABILIDAD PARA PANTALLAS DE LAPTOPS PEQUEÑAS O TABLETS */
+/* 📱 ADAPTABILIDAD RESPONSIVA */
 @media (max-width: 768px) {
     .span-4, .span-6 {
         grid-column: span 12;
     }
-    #tablaReservas {
-        table-layout: auto !important;
-    }
     .table-container-fluid {
-        overflow-x: auto !important; /* Habilitar scroll horizontal únicamente en móviles si se desborda */
+        overflow-x: auto;
     }
-    .card.card-jama-main {
-        height: auto !important; /* Permite flujo natural en dispositivos portátiles pequeños */
+    .table-jama {
+        table-layout: auto;
+    }
+    .card-jama-main {
+        height: auto;
     }
 }

@@ -86,7 +86,6 @@ public class PagoDigitalService {
         // 1. Cambiamos el estado del pedido y lo mandamos directo a producción (Cocina)
         pedidoService.aprobarPedidoACocina(pedido.getId());
 
-        // 🔴 REPARADO EL FLUJO FISCAL Y OPERATIVO DE LA JAMA:
         // Eliminamos el registro automático en el Libro Diario y la inyección a caja desde aquí.
         // Ahora el pedido fluirá de manera normal hacia la bandeja de comandos por cobrar/facturar,
         // donde el cajero ejecutará el timbrado real con SUNAT y el asiento contable de forma manual.

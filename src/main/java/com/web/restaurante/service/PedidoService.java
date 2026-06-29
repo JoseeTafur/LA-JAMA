@@ -40,7 +40,9 @@ public class PedidoService {
     @Transactional(readOnly = true)
     public List<Pedido> listarPedidosFrios() {
         return pedidoRepository.findAll().stream()
-                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA || p.getEstado() == EstadoPedido.PENDIENTE)
+                // 🛡️ ADUANA FISCAL: Si es PENDIENTE, solo pasa a cocina si tiene mesa física (Salón). Si es web, espera a ser EN_COCINA
+                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA || p.getEstado() == EstadoPedido.EN_COCINA ||
+                        (p.getEstado() == EstadoPedido.PENDIENTE && p.getNumeroMesa() != null))
                 .filter(p -> p.getListaDetalles() != null && p.getListaDetalles().stream()
                         .anyMatch(d -> !d.isCocinado() && d.getProducto() != null && d.getProducto().getCategoria() != null
                                 && (d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRI")
@@ -52,7 +54,9 @@ public class PedidoService {
     @Transactional(readOnly = true)
     public List<Pedido> listarPedidosCalientes() {
         return pedidoRepository.findAll().stream()
-                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA || p.getEstado() == EstadoPedido.PENDIENTE)
+                // 🛡️ ADUANA FISCAL: El mismo candado protector para la estación caliente
+                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA || p.getEstado() == EstadoPedido.EN_COCINA ||
+                        (p.getEstado() == EstadoPedido.PENDIENTE && p.getNumeroMesa() != null))
                 .filter(p -> p.getListaDetalles() != null && p.getListaDetalles().stream()
                         .anyMatch(d -> !d.isCocinado() && d.getProducto() != null && d.getProducto().getCategoria() != null
                                 && d.getProducto().getCategoria().getNombre().toUpperCase().contains("CALIENTE")))
@@ -151,8 +155,16 @@ public class PedidoService {
                 }
             }
         }
-        pedidoRepository.save(pedido);
-        return pedido.getId();
+
+        // 🚀 RESTAURACIÓN: Mantenemos el estado PENDIENTE puro para que aparezca en Aprobación de Caja
+        pedido.setEstado(EstadoPedido.PENDIENTE);
+        pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PENDIENTE);
+
+        pedido.setFechaCreacion(java.time.LocalDateTime.now());
+        pedido.setTicketImpresoCocina(false);
+
+        Pedido guardado = pedidoRepository.save(pedido);
+        return guardado.getId();
     }
 
     // =========================================================================
@@ -240,10 +252,27 @@ public class PedidoService {
         if (todosEntregados) {
             p.setEstado(EstadoPedido.ENTREGADO);
 
-            // Solo desvincula si ya está pagado
+            // 🛡️ RESPALDO DE SEGURIDAD CONTABLE:
+            // Si el estado de pago ya es PAGADO (Prepago/Adelantado), procedemos a desvincular
+            // y a liberar la entidad Mesa físicamente en las tablas de MySQL
             if (EstadoPago.PAGADO.equals(p.getEstadoPago())) {
-                p.setNumeroMesa(null);
+                Integer numeroMesaRespaldo = p.getNumeroMesa();
+
+                p.setNumeroMesa(null); // Desvinculamos el pedido de la mesa física
                 p.setFechaEntrega(LocalDateTime.now());
+
+                if (numeroMesaRespaldo != null) {
+                    mesaRepository.findByNumero(numeroMesaRespaldo).ifPresent(mesa -> {
+                        // Si la mesa es parte de una unificación, liberamos la principal
+                        Mesa mesaPrincipal = (mesa.getMesaPadre() != null) ? mesa.getMesaPadre() : mesa;
+
+                        // 🚀 LA INYECCIÓN PERSISTENTE:
+                        // Forzamos el cambio de estado de la entidad física a DISPONIBLE en disco duro
+                        mesaPrincipal.setEstado("DISPONIBLE");
+                        mesaRepository.save(mesaPrincipal);
+                        System.out.println("🧹 [La Jama BD] Mesa N° " + numeroMesaRespaldo + " guardada en BD como DISPONIBLE pos-entrega final.");
+                    });
+                }
             }
         }
         pedidoRepository.save(p);
@@ -503,14 +532,18 @@ public class PedidoService {
     }
 
     private void recalcularTotalesPedido(Pedido pedido) {
-        // Sumamos solo los platos activos (que NO son merma ni cancelación)
+        // 🚀 LA CORRECCIÓN CONTABLE DEFENSIVA:
+        // Sumamos los platos activos normales Y TAMBIÉN las mermas impresas que NO han sido pagadas.
+        // De esta forma, el total del Pedido nunca baja a 0 si hay mermas deudoras,
+        // impidiendo que el frontend o el controller disuelvan la mesa.
         double nuevoTotal = pedido.getListaDetalles().stream()
-                .filter(d -> !d.isCanceladoPorCliente())
+                .filter(d -> !d.isCanceladoPorCliente() || (d.isCanceladoPorCliente() && !d.isPagado()))
                 .mapToDouble(d -> d.getPrecioUnitario() * d.getCantidad())
                 .sum();
 
-        // Seteamos el valor usando tu atributo real mapeado en la entidad
+        // Seteamos el valor de auditoría real mapeado en tu entidad
         pedido.setMontoTotal(nuevoTotal);
+        System.out.println("📊 [La Jama ORM] Recalculando comanda #" + pedido.getId() + " con mermas por cobrar. Nuevo total: S/. " + nuevoTotal);
     }
 
     @Transactional

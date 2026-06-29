@@ -74,54 +74,51 @@ const Validation = {
     },
 
     validarImagenVoucher(inputElement) {
-            if (!inputElement || !inputElement.files || inputElement.files.length === 0) return false;
+        if (!inputElement || !inputElement.files || inputElement.files.length === 0) return false;
 
-            const archivo = inputElement.files[0];
-            const formatosPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+        const archivo = inputElement.files[0];
+        const formatosPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
 
-            // 1. Validar Tipo de Formato (MIME Type)
-            if (!formatosPermitidos.includes(archivo.type)) {
-                this.mostrarError("Formato no soportado. Suba solo JPG, PNG o WEBP.");
-                inputElement.value = ''; // Limpia el input para obligar a subir uno válido
-                return false;
-            }
+        // 1. Validar Tipo de Formato (MIME Type)
+        if (!formatosPermitidos.includes(archivo.type)) {
+            this.mostrarError("Formato no soportado. Suba solo JPG, PNG o WEBP.");
+            inputElement.value = ''; // Limpia el input para obligar a subir uno válido
+            return false;
+        }
 
-            // 2. Validar Peso Máximo
-            if (archivo.size > this.LIMITES.ARCHIVO_MAX_BYTES) {
-                this.mostrarError("El archivo excede los 5MB permitidos.");
-                inputElement.value = ''; // Limpia el input
-                return false;
-            }
+        // 2. Validar Peso Máximo
+        if (archivo.size > this.LIMITES.ARCHIVO_MAX_BYTES) {
+            this.mostrarError("El archivo excede los 5MB permitidos.");
+            inputElement.value = ''; // Limpia el input
+            return false;
+        }
 
-            return true; // Pasa la aduana con éxito
-        },
+        return true; // Pasa la aduana con éxito
+    },
 
     quitarEmojis(texto) {
         return texto.replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27FF}]|[\u{FE00}-\u{FEFF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA9F}]|[\u{2300}-\u{23FF}]|[\u{2B00}-\u{2BFF}]|[\u{1F300}-\u{1F5FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1F77F}]/gu, '');
     },
 
     mostrarError(mensaje) {
-            // Buscamos AppUtils tanto en el entorno local como en el objeto window global
-            const utils = (typeof AppUtils !== 'undefined') ? AppUtils : window.AppUtils;
+        const utils = (typeof AppUtils !== 'undefined') ? AppUtils : window.AppUtils;
 
-            if (utils && typeof utils.showNotification === 'function') {
-                utils.showNotification(mensaje, 'error');
-            } else if (typeof Swal !== 'undefined') {
-                // 💡 Respaldo secundario elegante: si no encuentra AppUtils pero sí tienes SweetAlert cargado
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'error',
-                    title: mensaje,
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true
-                });
-            } else {
-                // Última opción si todo lo demás falla
-                alert(mensaje);
-            }
-        },
+        if (utils && typeof utils.showNotification === 'function') {
+            utils.showNotification(mensaje, 'error');
+        } else if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: mensaje,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        } else {
+            alert(mensaje);
+        }
+    },
 
     bindNombreInput(selectorInput) {
         const el = document.querySelector(selectorInput);
@@ -208,7 +205,6 @@ const Validation = {
 
         // ── Usuario ──────────────────────────────────────────────────────────
         document.querySelectorAll('input[name="usuario"]').forEach(el => {
-            // 🚀 REPARADO: Cambiado de Validation.LIMITES a this.LIMITES para evitar el SyntaxError
             el.setAttribute('maxlength', this.LIMITES.USUARIO_MAX);
             el.addEventListener('input', function () {
                 let limpio = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/g, '');
@@ -230,15 +226,58 @@ const Validation = {
             el.setAttribute('minlength', this.LIMITES.CLAVE_MIN);
         });
 
-        // ── Fechas ───────────────────────────────────────────────────────────
-        const hoy = new Date().toISOString().split('T')[0];
-        document.querySelectorAll('input[type="date"]:not([data-no-validation])').forEach(el => {
-            el.setAttribute('max', hoy);
-            el.setAttribute('min', '1950-01-01');
+        // ─── ADUANA DE FECHAS SEGURA (Solo actúa donde le indiques) ───
+        const hoyObj = new Date();
+        const hoyStr = hoyObj.toISOString().split('T')[0];
+        const minDateStr = '2026-06-01';
+
+        // 1. SELECTOR ESTRICTO: Solo aplicamos la restricción de reservas a inputs con clase .input-fecha-reserva
+        document.querySelectorAll('input[type="date"].input-fecha-reserva').forEach(el => {
+
+            // 🛡️ ADUANA RESERVAS: Mínimo hoy, máximo 11 días adelante
+            const limiteFuturo = new Date();
+            limiteFuturo.setDate(limiteFuturo.getDate() + 11);
+            const maxReservaStr = limiteFuturo.toISOString().split('T')[0];
+
+            el.setAttribute('min', hoyStr);
+            el.setAttribute('max', maxReservaStr);
+
             el.addEventListener('change', function () {
-                if (this.value && !Validation.fechaDentroDeRango(this.value)) {
-                    Validation.mostrarError('La fecha no puede ser futura ni anterior a 1950.');
+                if (!this.value) return;
+
+                const escogida = new Date(this.value + 'T00:00:00');
+                const hoyValidacion = new Date();
+                hoyValidacion.setHours(0, 0, 0, 0);
+
+                const maxValidacion = new Date();
+                maxValidacion.setDate(maxValidacion.getDate() + 11);
+                maxValidacion.setHours(23, 59, 59, 999);
+
+                if (escogida < hoyValidacion || escogida > maxValidacion) {
+                    Validation.mostrarError('🚨 Control de Reservas: La fecha debe estar comprendida entre hoy y máximo 11 días en el futuro.');
                     this.value = '';
+                }
+            });
+        });
+
+        // 2. REGISTRO HISTÓRICO ORDINARIO (Para el resto de inputs de tipo date)
+        // Aplicamos esto a los date que NO sean reservas
+        document.querySelectorAll('input[type="date"]:not(.input-fecha-reserva)').forEach(el => {
+            el.setAttribute('min', minDateStr);
+            el.setAttribute('max', hoyStr);
+
+            el.addEventListener('change', function () {
+                if (!this.value) return;
+
+                // Convertimos a objetos fecha para comparar sin problemas de zona horaria
+                const fechaSeleccionada = new Date(this.value + 'T00:00:00');
+                const minDate = new Date(minDateStr + 'T00:00:00');
+                const hoyValidacion = new Date();
+                hoyValidacion.setHours(0, 0, 0, 0);
+
+                if (fechaSeleccionada < minDate || fechaSeleccionada > hoyValidacion) {
+                    Validation.mostrarError('La fecha debe estar entre el 01/06/2026 y hoy.');
+                    this.value = ''; // Reseteamos si está fuera de rango
                 }
             });
         });

@@ -63,8 +63,9 @@ public class CartaController {
     public ResponseEntity<?> recibirPedidoCarta(@RequestPart("pedido") Pedido pedido) {
         try {
             String metodo = pedido.getMetodoPago() != null ? pedido.getMetodoPago().name() : "EFECTIVO";
+            pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.PENDIENTE); // Aseguramos que inicie en PENDIENTE
+            pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PENDIENTE);
 
-            pedido.setEstado(EstadoPedido.PENDIENTE);
             pedido.setFechaCreacion(java.time.LocalDateTime.now());
             pedido.setTicketImpresoCocina(false);
 
@@ -75,8 +76,12 @@ public class CartaController {
                 PagoDigital pagoDigital = new PagoDigital();
                 pagoDigital.setPedido(pedidoGuardado);
                 pagoDigital.setFechaPago(java.time.LocalDateTime.now());
-                pagoDigital.setSituacion(com.web.restaurante.model.enums.SituacionPagoDigital.APROBADO);
-                pagoDigital.setObservacion("Voucher verificado.");
+
+                // ── 🛡️ CANDADO DE CAJA INTERCEPTADO ──
+                // Cambiado de APROBADO a PENDIENTE para que el panel del cajero lo reconozca
+                pagoDigital.setSituacion(com.web.restaurante.model.enums.SituacionPagoDigital.PENDIENTE);
+
+                pagoDigital.setObservacion("Voucher en espera de confirmación de cajero.");
                 // Rescatamos la url de cloudinary que enviamos en el payload
                 pagoDigital.setImgUrl(pedido.getTextoVoucherCrudo());
 

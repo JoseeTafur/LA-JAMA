@@ -74,4 +74,19 @@ public class ReporteController {
                 .contentType(mediaType)
                 .body(data);
     }
+
+    @Autowired
+    private com.web.restaurante.service.ReporteComprobantesService reporteComprobantesService;
+
+    @GetMapping("/comprobantes/{pestaña}/{formato}")
+    public ResponseEntity<byte[]> reporteComprobantes(
+            @PathVariable String pestaña,
+            @PathVariable String formato) {
+
+        // pestaña recibirá: "PENDIENTES", "EMITIDOS" o "ANULADOS"
+        byte[] data = reporteComprobantesService.generarReporteComprobantes(pestaña, formato);
+
+        String nombreArchivo = "reporte_comprobantes_" + pestaña.toLowerCase();
+        return crearResponseBinario(data, nombreArchivo, formato);
+    }
 }
