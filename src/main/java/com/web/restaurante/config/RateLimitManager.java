@@ -14,16 +14,16 @@ public class RateLimitManager {
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
 
     private Bucket crearBucketUsuario() {
-        Refill recarga = Refill.intervally(50, Duration.ofMinutes(1));
+        Refill recarga = Refill.intervally(100, Duration.ofMinutes(1));
         return Bucket.builder()
-                .addLimit(Bandwidth.classic(50, recarga))
+                .addLimit(Bandwidth.classic(100, recarga))
                 .build();
     }
 
     private Bucket crearBucketIPAnonima() {
-        Refill recarga = Refill.intervally(10, Duration.ofMinutes(1));
+        Refill recarga = Refill.intervally(15, Duration.ofMinutes(1));
         return Bucket.builder()
-                .addLimit(Bandwidth.classic(10, recarga))
+                .addLimit(Bandwidth.classic(15, recarga))
                 .build();
     }
 

@@ -26,6 +26,16 @@ public class EntregasController {
         Usuario usuario = (Usuario) session.getAttribute("usuarioLogueado");
         if (usuario == null) return "redirect:/login";
 
+        String rol = session.getAttribute("rol") != null ? session.getAttribute("rol").toString() : "";
+
+        if ("SUPER_ADMIN".equals(rol) || "ADMIN".equals(rol)) {
+            List<Pedido> todosLosDeliveries = pedidoService.listarPreparados(); // O el método que liste delivery
+            model.addAttribute("pedidos", todosLosDeliveries);
+            model.addAttribute("nombreRepartidor", "Supervisor: " + usuario.getUsuario());
+            return "admin/mis-pedidos";
+        }
+
+        // Flujo normal ordinario para el Distribuidor autenticado en su moto
         Empleado repartidor = empleadoService.obtenerPorUsuario(usuario)
                 .orElseThrow(() -> new RuntimeException("Empleado no vinculado"));
 

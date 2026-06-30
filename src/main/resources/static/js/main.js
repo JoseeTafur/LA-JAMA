@@ -121,10 +121,35 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
-});
+
+    // =========================================================================
+    // 🛰️ DETECTOR AUTOMÁTICO DE RATE LIMIT EN PANTALLA DE LOGIN (F5) - CORREGIDO
+    // =========================================================================
+    // 🟩 Ubicado CORRECTAMENTE dentro de las llaves del DOMContentLoaded original
+    const urlParamsLogin = new URLSearchParams(window.location.search);
+    if (urlParamsLogin.has('error') && urlParamsLogin.get('error') === 'ratelimit') {
+
+        if (typeof Swal !== 'undefined') {
+            // 1. Disparamos la alerta premium corporativa primero de forma síncrona
+            Swal.fire({
+                icon: 'error',
+                title: '¡Despacio, La Jama!',
+                text: 'Has hecho demasiadas solicitudes en un lapso de tiempo corto. Ve despacio.',
+                confirmButtonColor: '#1B3A2C'
+            });
+        }
+
+        // 2. 🚀 RETARDO CRÍTICO COSMÉTICO: Esperamos 150ms para que SweetAlert se consolide
+        setTimeout(() => {
+            const nuevaUrlLogin = window.location.pathname;
+            window.history.replaceState({}, document.title, nuevaUrlLogin);
+        }, 150);
+    }
+
+}); // ◄ CIERRE DEL DOMCONTENTLOADED
 
 // ========================================================
-// 🛡️ REPARACIÓN DEL HISTORIAL
+// 🛡️ REPARACIÓN DEL HISTORIAL (FUERA DEL DOMCONTENTLOADED)
 // ========================================================
 window.addEventListener("pageshow", function (event) {
     if (event.persisted) {

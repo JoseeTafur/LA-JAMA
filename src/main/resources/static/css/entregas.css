@@ -1,28 +1,163 @@
-.card-delivery {
-    background: white;
-    border: none;
-    border-radius: 12px;
-    border-bottom: 5px solid #933D2D; /* El ocre de La Jama */
+/**
+ * LA JAMA — entregas.css
+ * Hoja de estilos premium cinéticos para el monitor de despacho de distribuidores.
+ */
+
+/* =========================================================================
+   1. VARIABLES DE ENTORNO Y PALETA LA JAMA
+   ========================================================================= */
+:root {
+    --lajama-green: #1B3A2C;
+    --lajama-skin: #E6C594;
+    --lajama-skin-light: #F4EAD4;
+    --lajama-bg-crema: #FAF6EE;
+    --lajama-dark-card: #242A22;
+    --lajama-transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =========================================================================
+   2. BANNER DE HOJA DE RUTA ACTIVA
+   ========================================================================= */
+.recaudacion-banner {
+    background: linear-gradient(135deg, var(--lajama-green) 0%, #2A543D 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.recaudacion-banner::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: rgba(230, 197, 148, 0.08);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.card-stat-jama {
+    background-color: var(--lajama-skin) !important;
+    color: var(--lajama-green) !important;
+    border: 1px solid rgba(27, 58, 44, 0.1);
+    transition: var(--lajama-transition);
+}
+
+/* =========================================================================
+   3. ESTRUCTURA DE LAS TARJETAS DE COMANDA (CARDS)
+   ========================================================================= */
+.card-tabla {
+    background-color: #ffffff !important;
+    border: 1px solid rgba(27, 58, 44, 0.06) !important;
+    box-shadow: 0 10px 30px rgba(27, 58, 44, 0.04) !important;
+    transition: var(--lajama-transition) !important;
+    position: relative;
+}
+
+.card-tabla:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px rgba(27, 58, 44, 0.08) !important;
+    border-color: rgba(230, 197, 148, 0.5) !important;
 }
 
 .cliente-nombre {
-    font-family: 'Vollkorn', serif;
-    font-weight: 800;
-    color: #1B3A2C;
+    color: var(--lajama-green);
+    font-size: 1.25rem;
+    letter-spacing: -0.2px;
 }
 
-.text-brown { color: #933D2D; }
-
-.btn-jama-dark {
-    background-color: #1B3A2C;
-    color: #FCE8D5;
-    font-weight: bold;
-    border: none;
-    padding: 10px;
+/* Reflejo del precio estilo LaJama */
+.text-jama-skin {
+    color: #C49A55 !important;
     font-family: 'Vollkorn', serif;
+    letter-spacing: -0.5px;
 }
 
-.btn-jama-dark:hover {
-    background-color: #933D2D;
-    color: white;
+/* =========================================================================
+   4. BOTONERA CINÉTICA PREMIUM (ACCIONES DE RUTA)
+   ========================================================================= */
+.btn-success.rounded-pill {
+    background-color: var(--lajama-green) !important;
+    border-color: var(--lajama-green) !important;
+    color: #ffffff !important;
+    transition: var(--lajama-transition);
+    box-shadow: 0 4px 15px rgba(27, 58, 44, 0.2);
+}
+
+.btn-success.rounded-pill:hover {
+    background-color: #2A543D !important;
+    border-color: #2A543D !important;
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(27, 58, 44, 0.3);
+}
+
+.btn-warning.rounded-pill {
+    background-color: var(--lajama-skin) !important;
+    border-color: var(--lajama-skin) !important;
+    color: var(--lajama-green) !important;
+    transition: var(--lajama-transition);
+    box-shadow: 0 4px 15px rgba(230, 197, 148, 0.2);
+}
+
+.btn-warning.rounded-pill:hover {
+    background-color: #dfb77b !important;
+    border-color: #dfb77b !important;
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(230, 197, 148, 0.3);
+}
+
+/* Enlace GPS */
+.btn-link.text-muted {
+    transition: var(--lajama-transition);
+    border: 1px dashed rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    padding: 6px 0;
+}
+
+.btn-link.text-muted:hover {
+    color: var(--lajama-green) !important;
+    background-color: rgba(27, 58, 44, 0.04);
+    border-color: var(--lajama-skin);
+}
+
+/* =========================================================================
+   5. SOPORTE INTEGRAL PARA EL MODO OSCURO (DARK MODE)
+   ========================================================================= */
+body.dark-mode .card-tabla {
+    background-color: var(--lajama-dark-card) !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-mode .card-tabla:hover {
+    border-color: var(--lajama-skin) !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .cliente-nombre {
+    color: #ffffff !important;
+}
+
+body.dark-mode .text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+body.dark-mode .bg-light.text-dark {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: var(--lajama-skin) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.dark-mode .btn-link text-muted {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .btn-link text-muted:hover {
+    color: var(--lajama-skin) !important;
+    background-color: rgba(230, 197, 148, 0.05);
+}
+
+body.dark-mode h3.text-dark {
+    color: #ffffff !important;
 }

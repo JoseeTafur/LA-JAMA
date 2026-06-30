@@ -429,4 +429,52 @@ public class CajaService {
 
         return listaReporteMaster;
     }
+
+    @Transactional
+    public Pedido guardarDeliveryManualCajero(Pedido pedido) {
+        LocalDateTime ahora = LocalDateTime.now();
+        pedido.setFechaCreacion(ahora);
+
+        // 🚀 CANAL INTERNO DIRECTO: Va a cocina directo sin aduanas de aprobación
+        pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
+        pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO); // Validado por el cajero
+        pedido.setTicketImpresoCocina(false); // Esperando impresión física del chef
+
+        // Asignamos secuencia formal correlativa de Nota de Venta
+        String siguienteNota = notaVentaSequenceService.generarSiguienteNota();
+        pedido.setComprobanteNotaNumero(siguienteNota);
+
+        // Asociamos el turno de caja activo
+        try {
+            turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
+        } catch (Exception e) {
+            System.out.println("⚠️ [La Jama] No se pudo amarrar el turno de caja en el delivery manual: " + e.getMessage());
+        }
+
+        if (pedido.getListaDetalles() != null) {
+            for (DetallePedido detalle : pedido.getListaDetalles()) {
+                Producto productoReal = productoRepository.findById(detalle.getProducto().getId())
+                        .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + detalle.getProducto().getId()));
+
+                detalle.setProducto(productoReal);
+                detalle.setPedido(pedido);
+                detalle.setPagado(true);
+
+                // 🍳 EN COLA DE PRODUCCIÓN: El cocinero se encargará del descuento al despachar
+                detalle.setCocinado(false);
+                detalle.setEntregado(false);
+
+            }
+        }
+
+        Pedido pedidoGuardado = pedidoRepository.save(pedido);
+
+        // Registramos la venta comercial en el balance de la caja
+        if (pedidoGuardado.getMontoTotal() != null && pedidoGuardado.getMontoTotal() > 0) {
+            String conceptoCpe = "Delivery Manual Cajero POS (" + pedidoGuardado.getMetodoPago() + ") - " + pedidoGuardado.getComprobanteNotaNumero();
+            turnoCajaService.registrarVenta(conceptoCpe, pedidoGuardado.getMontoTotal());
+        }
+
+        return pedidoGuardado;
+    }
 }

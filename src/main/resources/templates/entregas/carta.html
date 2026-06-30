@@ -389,7 +389,7 @@
             <button type="button" class="btn-action btn-primary-jama" id="btnSiguienteStep" onclick="navegarEtapa(1)">
                 Siguiente <i class="bi bi-arrow-right"></i>
             </button>
-            <button type="button" class="btn-action btn-whatsapp d-none" id="btnFinalizarPedido" onclick="enviarPedido()">
+            <button type="button" class="btn-action btn-whatsapp d-none" id="btnFinalizarPedido" onclick="enviarPedido()" disabled style="opacity: 0.4; pointer-events: none;">
                 <i class="bi bi-whatsapp"></i> Confirmar Pedido
             </button>
         </div>
@@ -410,7 +410,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script th:src="@{/js/utils/utiles-comunes.js}"></script>
+<script th:src="@{/js/utiles-comunes.js}"></script>
 
 <script type="module">
     import { agregarDesdeCard, removerItem, renderCarrito, actualizarUI } from '/js/carta/core-cart.js';
@@ -467,9 +467,19 @@
 
         const btnFinalizar = document.getElementById('btnFinalizarPedido');
         if (btnFinalizar) {
-            btnFinalizar.disabled = true;
-            btnFinalizar.style.opacity = "0.4";
-            btnFinalizar.style.pointerEvents = "none";
+            const refGlobal = window.estadoCheckout || {};
+
+            // Si el cliente regresa a la pestaña que ya aprobó con éxito, se reactiva el botón
+            if (refGlobal.codigoOperacion && refGlobal.codigoOperacion !== "PENDIENTE" && refGlobal.metodoPago === metodo) {
+                btnFinalizar.disabled = false;
+                btnFinalizar.style.opacity = "1";
+                btnFinalizar.style.pointerEvents = "auto";
+            } else {
+                // De lo contrario se mantiene bloqueado obligando a subir el voucher correspondiente
+                btnFinalizar.disabled = true;
+                btnFinalizar.style.opacity = "0.4";
+                btnFinalizar.style.pointerEvents = "none";
+            }
         }
     };
 

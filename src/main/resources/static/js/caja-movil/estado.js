@@ -52,7 +52,7 @@ function extraerPlatosDelModal() {
 
             const chkCajero = document.querySelector(`.chk-plato-caja-seleccion[value="${d.id}"]`);
             const quiereCobrar = chkCajero ? chkCajero.checked : true;
-            if (!quereCobrar) return;
+            if (!quiereCobrar) return;
 
             let nombrePlato = "Producto";
             if (d.producto && d.producto.nombre) {

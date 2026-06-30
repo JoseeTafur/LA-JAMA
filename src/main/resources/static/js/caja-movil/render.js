@@ -68,6 +68,7 @@ function renderizarTickets() {
     const elementoActivo = document.activeElement;
     let idTicketEnFoco = null;
     let esInputDoc = false;
+    let esInputCorreo = false; // 🚀 NUEVO: Flag para rastrear el foco del correo
     let posicionCursor = 0;
 
     if (elementoActivo && elementoActivo.tagName === 'INPUT') {
@@ -75,6 +76,11 @@ function renderizarTickets() {
         if (elementoActivo.classList.contains('input-documento-fiscal')) {
             idTicketEnFoco = parseInt(elementoActivo.getAttribute('data-ticket-id'));
             esInputDoc = true;
+        }
+        // 🚀 NUEVO: Captura si el cajero está escribiendo en el correo electrónico
+        else if (elementoActivo.classList.contains('input-correo-fiscal')) {
+            idTicketEnFoco = parseInt(elementoActivo.getAttribute('data-ticket-id'));
+            esInputCorreo = true;
         }
     }
 
@@ -162,7 +168,8 @@ function renderizarTickets() {
 
                 <div class="mb-3">
                     <input type="email" id="correo_ticket_${t.id}"
-                           class="jama-input-text text-center form-control-sm"
+                           class="jama-input-text text-center form-control-sm input-correo-fiscal"
+                           data-ticket-id="${t.id}"
                            placeholder="📧 Correo Comprobante (Opcional)"
                            value="${t.clienteCorreo || ''}"
                            oninput="actualizarDatoTicket(${t.id}, 'clienteCorreo', this.value)">
@@ -180,11 +187,20 @@ function renderizarTickets() {
             </div>`;
     });
 
+    // ─── RESTAURACIÓN DEL FOCO ───
     if (esInputDoc && idTicketEnFoco !== null) {
         const inputRestaurado = document.getElementById(`doc_ticket_${idTicketEnFoco}`);
         if (inputRestaurado) {
             inputRestaurado.focus();
             inputRestaurado.setSelectionRange(posicionCursor, posicionCursor);
+        }
+    }
+    // 🚀 NUEVO: Muro de restauración para mantener la escritura fluida del correo
+    else if (esInputCorreo && idTicketEnFoco !== null) {
+        const correoRestaurado = document.getElementById(`correo_ticket_${idTicketEnFoco}`);
+        if (correoRestaurado) {
+            correoRestaurado.focus();
+            correoRestaurado.setSelectionRange(posicionCursor, posicionCursor);
         }
     }
 }

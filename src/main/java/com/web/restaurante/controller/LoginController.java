@@ -191,16 +191,18 @@ public class LoginController {
                     } else if (ruta.contains("/productos") || ruta.contains("/almacen")) {
                         grupo = "Almacén";
                     } else if (ruta.contains("/comprobantes")) {
-                        grupo = "Contabilidad"; // ➔ Forzamos clave exacta para Contabilidad
+                        grupo = "Contabilidad";
                     }
-                    // 💳 FUSIÓN INQUEBRANTABLE: Añadimos "/reservas" para que no caiga en el "else" de admin
+                    // 🚀 LA CARPETA EXCLUSIVA SEMÁNTICA PARA LAS ENTREGAS:
+                    else if (ruta.contains("/entregas") || ruta.contains("/repartidor")) {
+                        grupo = "Distribuidor"; // ➔ Creará la carpeta "Distribuidor" limpia
+                    }
+                    // 💳 FLUJO DE CAJA UNIFICADO
                     else if (ruta.contains("/caja") || ruta.contains("/cajero") ||
                             ruta.contains("/delivery") || ruta.contains("/despacho") ||
                             ruta.contains("/pagos-digitales") || ruta.contains("/reservas")) {
-                        grupo = "Cajero"; // ➔ Todo el flujo operativo del Cajero unificado aquí
+                        grupo = "Cajero";
                     } else {
-                        // Failsafe: Si alguna ruta extraña usa /admin/algo, evitamos crear la carpeta "Admin"
-                        // y la mandamos a un grupo genérico o a su respectivo módulo.
                         if (partesRuta[1].equalsIgnoreCase("admin")) {
                             grupo = partesRuta.length > 3 ? partesRuta[2] : "Gestión";
                         } else {
@@ -208,7 +210,6 @@ public class LoginController {
                         }
                     }
 
-                    // Capitalizar de forma segura
                     String nombreGrupo = grupo.substring(0, 1).toUpperCase() + grupo.substring(1).toLowerCase();
                     menuAgrupado.computeIfAbsent(nombreGrupo, k -> new ArrayList<>()).add(opcion);
                 } else {

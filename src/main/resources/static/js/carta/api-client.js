@@ -55,30 +55,52 @@ window.seleccionarSugerencia = (lat, lng, nombre) => {
 };
 
 export async function enviarPedidoFinal() {
-    Swal.fire({ title: 'Registrando pedido...', text: 'Enviando a cocina...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    Swal.fire({
+        title: 'Registrando pedido...',
+        text: 'Enviando a cocina...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
 
     const total = carrito.reduce((s, i) => s + i.precio, 0);
 
-    // Jalamos los datos que la IA inyectó en caliente en el paso anterior
-    const codigoPago = window.estadoCheckout.codigoOperacion || "PENDIENTE";
-    // Pasamos la url de la imagen que ya vive en Cloudinary
-    const urlVoucherYaSubido = window.estadoCheckout.imgUrlVoucher || "sin_imagen.jpg";
+    // ── 🎯 UNIFICACIÓN DE ESTADO GLOBAL DE AUDITORÍA ──
+    // Priorizamos window.estadoCheckout que es donde escribe el validador de vouchers.
+    const wizardRef = window.estadoCheckout || estadoCheckout || {};
 
-    const pedidoPayload = {
-        cliente: document.getElementById('nombreCliente').value.trim(),
-        direccion: estadoCheckout.tipoEntrega === 'LLEVAR' ? 'Recojo local - Mostrador' : document.getElementById('direccionCliente').value.trim(),
-        latitud: parseFloat(document.getElementById('latCliente').value) || null,
-        longitud: parseFloat(document.getElementById('lngCliente').value) || null,
-        montoTotal: total,
-        metodoPago: estadoCheckout.metodoPago,
-        codigoPagoOperacion: codigoPago,
-        tipoPedido: estadoCheckout.tipoEntrega,
-        clienteCorreo: document.getElementById('clienteCorreo') ? document.getElementById('clienteCorreo').value.trim() : null,
-        preferenciaComprobante: document.getElementById('preferenciaComprobante') ? document.getElementById('preferenciaComprobante').value : 'BOLETA',
-        documentoCliente: document.getElementById('numeroDocumento') ? document.getElementById('numeroDocumento').value.trim() : null,
-        textoVoucherCrudo: urlVoucherYaSubido,
-        listaDetalles: carrito.map(i => ({ producto: { id: parseInt(i.id) }, cantidad: 1, precioUnitario: i.precio, subtotal: i.precio }))
-    };
+    // Sincronización exacta de las variables
+    const codigoPago = wizardRef.codigoOperacion || wizardRef.codigoPagoOperacion || "PENDIENTE";
+        const urlVoucherYaSubido = wizardRef.imgUrlVoucher || "";
+
+        // ── 🎯 CONTROL DE SINOPSIS CRUCIAL: Si hay URL de voucher, el método JAMÁS puede ser EFECTIVO ──
+        let metodoPagoFinal = wizardRef.metodoPago || 'EFECTIVO';
+        if (urlVoucherYaSubido !== "" && metodoPagoFinal === 'EFECTIVO') {
+            // Fallback de seguridad: si escaneó voucher, recuperamos la billetera usada o forzamos YAPE por defecto
+            metodoPagoFinal = wizardRef.metodoPagoScan || 'YAPE';
+        }
+
+        const pedidoPayload = {
+            cliente: document.getElementById('nombreCliente').value.trim(),
+            direccion: (wizardRef.tipoEntrega === 'LLEVAR' || wizardRef.tipoPedido === 'LLEVAR') ? 'Recojo local - Mostrador' : document.getElementById('direccionCliente').value.trim(),
+            latitud: parseFloat(document.getElementById('latCliente').value) || null,
+            longitud: parseFloat(document.getElementById('lngCliente').value) || null,
+            montoTotal: total,
+            metodoPago: metodoPagoFinal, // 🚀 AHORA SÍ VIAJARÁ COMO YAPE/PLIN Y SPRING BOOT CREARÁ EL PAGO DIGITAL
+            codigoPagoOperacion: codigoPago,
+            tipoPedido: wizardRef.tipoEntrega || wizardRef.tipoPedido || 'DELIVERY',
+            clienteCorreo: document.getElementById('clienteCorreo') ? document.getElementById('clienteCorreo').value.trim() : null,
+            preferenciaComprobante: document.getElementById('preferenciaComprobante') ? document.getElementById('preferenciaComprobante').value : 'BOLETA',
+            documentoCliente: document.getElementById('numeroDocumento') ? document.getElementById('numeroDocumento').value.trim() : null,
+            textoVoucherCrudo: urlVoucherYaSubido,
+            listaDetalles: carrito.map(i => ({
+                producto: { id: parseInt(i.id) },
+                cantidad: 1,
+                precioUnitario: i.precio,
+                subtotal: i.precio
+            }))
+        };
+
+    console.log("📦 PAYLOAD DE CARTA PÚBLICA BLINDADO ENVIADO A SPRING BOOT:", pedidoPayload);
 
     const formData = new FormData();
     formData.append("pedido", new Blob([JSON.stringify(pedidoPayload)], { type: "application/json" }));
@@ -89,9 +111,15 @@ export async function enviarPedidoFinal() {
 
         localStorage.removeItem("carrito");
         carrito.length = 0;
-        actualizarUI();
-        document.getElementById('modalCarrito').classList.remove('show');
-        Swal.fire({ icon: 'success', title: '¡Enviado!', text: 'Pedido recibido en cocina.' });
+        if (typeof actualizarUI === 'function') actualizarUI();
+
+        const modalCarrito = document.getElementById('modalCarrito');
+        if (modalCarrito) modalCarrito.classList.remove('show');
+
+        // Limpiar el estado global al finalizar con éxito el pedido
+        window.estadoCheckout = null;
+
+        Swal.fire({ icon: 'success', title: '¡Enviado!', text: 'Pedido recibido en cocina exitosamente.' });
     } catch (err) {
         Swal.fire({ icon: 'error', title: 'Rechazado', text: err.message });
     }

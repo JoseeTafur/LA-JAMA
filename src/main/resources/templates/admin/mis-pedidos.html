@@ -1,33 +1,26 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout-gestion :: layout(title='Mis Entregas | La Jama', content=~{::#contenido}, modals=~{::#modales}, js='/js/entregas.js')}">
 <head>
-    <meta charset="UTF-8">
-    <title>Mis Entregas | La Jama</title>
-    <th:block th:replace="~{links :: headLinks}"></th:block>
+</head>
+<body>
+
+<div id="contenido">
     <link rel="stylesheet" th:href="@{/css/cocina-core.css}">
     <link rel="stylesheet" th:href="@{/css/entregas.css}">
-</head>
-<body class="cocina-body">
 
-<div class="wrapper">
-    <div th:replace="~{sidebar :: sidebar(activeUri='/admin/entregas/mis-pedidos')}"></div>
+    <div class="container-fluid px-4 mt-3">
 
-    <main class="main-content">
-        <!-- Cabecera unificada -->
-        <div th:replace="~{sidebar :: logistica_header('Rutas de Entrega')}"></div>
-
-        <div class="container-fluid px-4 mt-3">
-
-            <div class="recaudacion-banner d-flex justify-content-between align-items-center p-4 mb-4 rounded-4 shadow-sm" style="background-color: var(--lajama-green); color: white;">
-                <div>
-                    <h5 class="mb-0 fw-bold text-white">Hoja de Ruta Activa</h5>
-                    <p class="mb-0 text-white-50 small">Gestión de despachos asignados para despacho externo</p>
-                </div>
-                <div class="card-stat-jama p-3 px-4 rounded-4 shadow-sm" style="background-color: var(--lajama-skin); color: var(--lajama-green); text-align: right; min-width: 180px;">
-                    <small class="d-block fw-bold text-uppercase opacity-75" style="font-size: 0.7rem;">Operador Asignado</small>
-                    <span class="h5 fw-bold mb-0" th:text="${nombreRepartidor}">Repartidor</span>
-                </div>
+        <div class="recaudacion-banner d-flex justify-content-between align-items-center p-4 mb-4 rounded-4 shadow-sm" style="background-color: var(--lajama-green); color: white;">
+            <div>
+                <h5 class="mb-0 fw-bold text-white">Hoja de Ruta Activa</h5>
+                <p class="mb-0 text-white-50 small">Gestión de despachos asignados para despacho externo</p>
             </div>
+            <div class="card-stat-jama p-3 px-4 rounded-4 shadow-sm" style="background-color: var(--lajama-skin); color: var(--lajama-green); text-align: right; min-width: 180px;">
+                <small class="d-block fw-bold text-uppercase opacity-75" style="font-size: 0.7rem;">Distribuidor Asignado</small>
+                <span class="h5 fw-bold mb-0" th:text="${nombreRepartidor}">Distribuidor</span>
+            </div>
+        </div>
 
             <div th:if="${#lists.isEmpty(pedidos)}" class="text-center py-5 mt-4 text-muted animate__animated animate__fadeIn">
                 <i class="bi bi-box2-heart text-jama-skin" style="font-size: 5rem; opacity: 0.8;"></i>
@@ -71,12 +64,9 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </main>
+    </div>
 </div>
+<div id="modales"></div>
 
-<th:block th:replace="~{links :: scriptLinksPlus}"></th:block>
-<script th:src="@{/js/entregas.js}"></script>
-<script th:src="@{/js/utiles-comunes.js}"></script>
 </body>
 </html>

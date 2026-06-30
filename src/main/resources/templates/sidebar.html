@@ -51,11 +51,12 @@
 
                         <i class="bi jama-uiverse-icon"
                            th:classappend="${opcion.nombre == 'Dashboard' ? 'bi-speedometer2' :
-                       opcion.nombre == 'Usuarios' ? 'bi-person-gear' :
-                       opcion.nombre == 'Perfiles' ? 'bi-shield-lock' :
-                       opcion.nombre == 'Empleados' ? 'bi-people-fill' :
-                       opcion.nombre == 'Insumos' ? 'bi-box-seam' :
-                       (opcion.nombre.toLowerCase().contains('perfil') || opcion.ruta.contains('Perfil')) ? 'bi-person-badge-fill' : 'bi-grid-1x2-fill'}"></i>
+opcion.nombre == 'Usuarios' ? 'bi-person-gear' :
+opcion.nombre == 'Perfiles' ? 'bi-shield-lock' :
+opcion.nombre == 'Empleados' ? 'bi-people-fill' :
+opcion.nombre == 'Insumos' ? 'bi-box-seam' :
+(opcion.nombre.toLowerCase().contains('repartidor') || opcion.nombre.toLowerCase().contains('distribuidor') || opcion.ruta.contains('entregas')) ? 'bi-truck' :
+(opcion.nombre.toLowerCase().contains('perfil') || opcion.ruta.contains('Perfil')) ? 'bi-person-badge-fill' : 'bi-grid-1x2-fill'}"></i>
 
                         <span class="jama-uiverse-text" th:text="${opcion.nombre}">Dashboard</span>
                     </label>
@@ -64,14 +65,15 @@
                          th:with="idGrupo=${#strings.replace(grupo.key, ' ', '-')}, folder=${#strings.toLowerCase(grupo.key)}">
 
                         <th:block th:with="isGroupActive=${activeUri != null && (
-        (folder == 'cocina' && activeUri.contains('/cocina')) ||
-        (folder == 'almacén' && (activeUri.contains('/almacen') || activeUri.contains('/productos'))) ||
-        (folder == 'salón' && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
-        (folder == 'cajero' && (activeUri.contains('/caja') || activeUri.contains('/cajero') || activeUri.contains('/delivery') || activeUri.contains('/despacho') || activeUri.contains('/pagos-digitales') || activeUri.contains('/reservas'))) ||
-        (folder == 'seguridad' && (activeUri.contains('/usuarios') || activeUri.contains('/perfiles') || activeUri.contains('/empleados'))) ||
-        (folder == 'logística' && activeUri.contains('/insumos')) ||
-        (folder == 'contabilidad' && activeUri.contains('/comprobantes'))
-    )}">
+    (folder == 'cocina' && activeUri.contains('/cocina')) ||
+    (folder == 'almacén' && (activeUri.contains('/almacen') || activeUri.contains('/productos'))) ||
+    (folder == 'salón' && (activeUri.contains('/mesas') || activeUri.contains('/mesero'))) ||
+    (folder == 'distribuidor' && (activeUri.contains('/entregas') || activeUri.contains('/repartidor'))) ||
+    (folder == 'cajero' && (activeUri.contains('/caja') || activeUri.contains('/cajero') || activeUri.contains('/delivery') || activeUri.contains('/despacho') || activeUri.contains('/pagos-digitales') || activeUri.contains('/reservas'))) ||
+    (folder == 'seguridad' && (activeUri.contains('/usuarios') || activeUri.contains('/perfiles') || activeUri.contains('/empleados'))) ||
+    (folder == 'logística' && activeUri.contains('/insumos')) ||
+    (folder == 'contabilidad' && activeUri.contains('/comprobantes'))
+)}">
 
                             <label th:for="${'radio-' + idGrupo}"
                                    class="jama-uiverse-item text-between btn-toggle-grupo-jama"
@@ -89,12 +91,13 @@
                                 <div class="d-flex align-items-center gap-3">
                                     <i class="bi jama-uiverse-icon"
                                        th:classappend="${folder == 'cocina' ? 'bi-fire' :
-                               folder == 'salón' ? 'bi-shop' :
-                               folder == 'cajero' ? 'bi-cash-coin' :
-                               folder == 'almacén' ? 'bi-archive-fill' :
-                               folder == 'seguridad' ? 'bi-shield-check' :
-                               folder == 'logística' ? 'bi-truck' :
-                               folder == 'contabilidad' ? 'bi-journal-check' : 'bi-folder-fill'}"></i>
+           folder == 'salón' ? 'bi-shop' :
+           folder == 'cajero' ? 'bi-cash-coin' :
+           folder == 'almacén' ? 'bi-archive-fill' :
+           folder == 'seguridad' ? 'bi-shield-check' :
+           folder == 'logística' ? 'bi-box-seam' :
+           folder == 'distribuidor' ? 'bi-truck' :
+           folder == 'contabilidad' ? 'bi-journal-check' : 'bi-folder-fill'}"></i>
                                     <span class="jama-uiverse-text" th:text="${grupo.key}">Grupo</span>
                                 </div>
                                 <i class="bi bi-chevron-down jama-uiverse-arrow"></i>
@@ -107,7 +110,12 @@
                                     <li th:each="opcion : ${grupo.value}">
                                         <a th:href="@{${opcion.ruta}}"
                                            class="submenu-item-uiverse"
-                                           th:classappend="${opcion.ruta == activeUri || (activeUri.contains('/mesas') && opcion.ruta.contains('/mesero')) || (activeUri.contains('/reservas') && opcion.ruta.contains('/reservas'))} ? 'active-submenu' : ''">
+                                           th:with="hasActiveUri=${activeUri != null}, hasOpRuta=${opcion.ruta != null}"
+                                           th:classappend="${
+           (hasOpRuta && opcion.ruta == activeUri) ||
+           (hasActiveUri && hasOpRuta && activeUri.contains('/mesas') && opcion.ruta.contains('/mesero')) ||
+           (hasActiveUri && hasOpRuta && activeUri.contains('/reservas') && opcion.ruta.contains('/reservas'))
+       } ? 'active-submenu' : ''">
                                             <i class="bi bi-circle-fill me-2" style="font-size: 0.4rem;"></i>
                                             <span th:text="${opcion.nombre}">Subopción</span>
                                         </a>

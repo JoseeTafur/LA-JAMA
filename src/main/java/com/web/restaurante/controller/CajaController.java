@@ -13,6 +13,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,6 +36,7 @@ public class CajaController {
     private final ProductoRepository productoRepository;
     private final MesaRepository mesaRepository;
     private final MovimientoCajaRepository movimientoCajaRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping
     public String verCaja(Model model) {
@@ -355,9 +357,25 @@ public class CajaController {
     @ResponseBody
     public ResponseEntity<?> guardarPedidoCajeroDirecto(@RequestBody Pedido pedido) {
         try {
-            Pedido pedidoGuardado = cajaService.guardarVentaDirectaPOS(pedido);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Comprobante emitido.", "id", pedidoGuardado.getId()));
+            // 1. Guardamos la orden con la lógica limpia libre de comprometidos
+            Pedido pedidoGuardado = cajaService.guardarDeliveryManualCajero(pedido);
+
+            // 2. 🛰️ RÁFAGA WEBSOCKET REACTIVA:
+            // Notificamos al monitor de cocina de forma inmediata sin exigir F5 en la pantalla del chef
+            try {
+                messagingTemplate.convertAndSend("/topic/cocina", "{\"pedidoId\":" + pedidoGuardado.getId() + ", \"status\":\"NUEVO\"}");
+                System.out.println("🛰️ [La Jama STOMP] Alerta enviada a cocina para el Delivery Manual #" + pedidoGuardado.getId());
+            } catch (Exception wsEx) {
+                System.err.println("⚠️ Alerta asíncrona de WebSocket demorada temporalmente: " + wsEx.getMessage());
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Delivery enviado directamente a cocina con Nota de Venta " + pedidoGuardado.getComprobanteNotaNumero(),
+                    "id", pedidoGuardado.getId()
+            ));
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
         }
     }
@@ -636,6 +654,5 @@ public class CajaController {
             return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
         }
     }
-
 
 }

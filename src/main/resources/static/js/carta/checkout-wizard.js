@@ -27,6 +27,23 @@ export function navegarEtapa(direccion, iniciarMapaCallback) {
     document.getElementById('btnSiguienteStep').classList.toggle('d-none', estadoCheckout.etapa === 4);
     document.getElementById('btnFinalizarPedido').classList.toggle('d-none', estadoCheckout.etapa !== 4);
 
+    // ── 🔒 CANDADO DE SEGURIDAD PARA EL PASO 4 ──
+    if (estadoCheckout.etapa === 4) {
+        const btnFinalizar = document.getElementById('btnFinalizarPedido');
+        const refGlobal = window.estadoCheckout || estadoCheckout || {};
+
+        // Solo se activa si ya pasó la verificación por Groq y tenemos código de operación legítimo
+        if (refGlobal.codigoOperacion && refGlobal.codigoOperacion !== "PENDIENTE") {
+            btnFinalizar.disabled = false;
+            btnFinalizar.style.opacity = "1";
+            btnFinalizar.style.pointerEvents = "auto";
+        } else {
+            btnFinalizar.disabled = true;
+            btnFinalizar.style.opacity = "0.4";
+            btnFinalizar.style.pointerEvents = "none";
+        }
+    }
+
     if (estadoCheckout.etapa === 2 && estadoCheckout.tipoEntrega === 'DELIVERY') {
         iniciarMapaCallback();
     }

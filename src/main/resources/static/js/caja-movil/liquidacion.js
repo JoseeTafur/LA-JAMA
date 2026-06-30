@@ -153,6 +153,12 @@ async function ejecutarEnvioBackend(payloadTickets) {
         if (res.ok) {
             console.log("🎯 [BUG-HUNT-JS] Servidor procesó el cobro con ÉXITO (res.ok).");
 
+            const elModalCaja = document.getElementById('modalFacturacion');
+                        if (elModalCaja) {
+                            const modalBootstrap = bootstrap.Modal.getInstance(elModalCaja);
+                            if (modalBootstrap) modalBootstrap.hide(); // Oculta el modal de pantalla de golpe
+                        }
+
             // Guardamos temporalmente el número de mesa antes de que cualquier otra función lo altere
             const mesaParaRefrescar = currentMesaNumero;
             console.log(`🎯 [BUG-HUNT-JS] Guardando número de mesa de respaldo para refrescar: ${mesaParaRefrescar}`);

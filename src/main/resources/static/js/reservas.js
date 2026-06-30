@@ -34,10 +34,10 @@ $(document).ready(function () {
         }
     });
 
-    // ⏳ CONFIGURACIÓN DE PASOS DE TIEMPO (Bloques de 15 minutos)
+    // ⏳ CONFIGURACIÓN DE PASOS DE TIEMPO (LIBERADO: Minuto a minuto)
     ['rHora', 'eHora'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.setAttribute('step', '900'); // 900 segundos = 15 minutos exactos
+        if (el) el.setAttribute('step', '60'); // 60 segundos = 1 minuto exacto (Cualquier hora permitida)
     });
 
     // Validaciones de caracteres en tiempo real
@@ -183,11 +183,9 @@ $(document).ready(function () {
         });
     }
 
-    // 🟩 AUDITORÍA INTERNA DE REGLAS DE TIEMPO
+    // 🟩 AUDITORÍA INTERNA DE REGLAS DE TIEMPO (DESACTIVADO: Siempre libre)
     function esIntervaloInvalido(horaStr) {
-        if (!horaStr) return true;
-        const minutos = parseInt(horaStr.split(':')[1]);
-        return (minutos % 15 !== 0); // Failsafe: devuelve true si no es múltiplo de 15
+        return false; // Retorna siempre false para admitir cualquier combinación de minutos
     }
 
     function guardarReserva() {
@@ -226,9 +224,6 @@ $(document).ready(function () {
         if (!hora) {
             document.getElementById('rHora-error').textContent = 'La hora es obligatoria.';
             hayError = true;
-        } else if (esIntervaloInvalido(hora)) {
-            document.getElementById('rHora-error').textContent = 'Intervalos permitidos cada 15 minutos (Ej. 12:00, 12:15, 12:30).';
-            hayError = true;
         }
 
         if (hayError) return;
@@ -263,7 +258,6 @@ $(document).ready(function () {
     }
 
     function guardarEdicion() {
-        // 1. Captura de elementos limpia
         const idReserva = document.getElementById('eReservaId').value;
         const nombre   = document.getElementById('eNombre').value.trim();
         const telefono = document.getElementById('eTelefono').value.trim();
@@ -272,27 +266,23 @@ $(document).ready(function () {
         const hora     = document.getElementById('eHora').value;
         const obs      = document.getElementById('eObservacion').value.trim();
 
-        // Constantes de control (Aseguradas dentro del alcance de la edición)
         const CAPACIDAD_MESA = 4;
         const TOTAL_MESAS_RESTAURANTE = 40;
 
-        // Control dinámico de fechas para evitar bloqueos por cambio de día (Failsafe)
         const hoy = new Date();
         const hoyStr = hoy.toISOString().split('T')[0];
 
         const maxFecha = new Date();
-        maxFecha.setDate(hoy.getDate() + 11); // Semana y media límite
+        maxFecha.setDate(hoy.getDate() + 11);
         const maxFechaStr = maxFecha.toISOString().split('T')[0];
 
         let hayError = false;
 
-        // 🌟 CORRECCIÓN: Cambiado 'id' por 'idInput' para evitar colisiones de variables
         ['eNombre','eTelefono','ePersonas','eFecha','eHora'].forEach(idInput => {
             const errorEl = document.getElementById(idInput + '-error');
             if (errorEl) errorEl.textContent = '';
         });
 
-        // 2. Motor de Validaciones de Negocio
         if (!nombre) { document.getElementById('eNombre-error').textContent = 'Obligatorio.'; hayError = true; }
         if (!telefono || telefono.length !== 9) { document.getElementById('eTelefono-error').textContent = '9 dígitos.'; hayError = true; }
 
@@ -315,21 +305,16 @@ $(document).ready(function () {
         if (!hora) {
             document.getElementById('eHora-error').textContent = 'Obligatorio.';
             hayError = true;
-        } else if (typeof esIntervaloInvalido === 'function' && esIntervaloInvalido(hora)) {
-            document.getElementById('eHora-error').textContent = 'Bloques de 15 min.';
-            hayError = true;
         }
 
         if (hayError) return;
 
-        // 3. Validación de tiempo real
         const fechaHora = fecha + 'T' + hora + ':00';
         if (new Date(fechaHora) <= new Date()) {
             document.getElementById('eFecha-error').textContent = 'No puede ser en el pasado.';
             return;
         }
 
-        // 4. Despacho al Controlador de Spring Boot
         AppUtils.showLoading(true);
         fetch(`/admin/reservas/api/editar/${idReserva}`, {
             method: 'PUT',
@@ -356,7 +341,6 @@ $(document).ready(function () {
         .finally(() => AppUtils.showLoading(false));
     }
 
-    // (Las funciones confirmarLlegada, cancelarReserva y eliminarReserva se mantienen idénticas...)
     function confirmarLlegada(id) {
         Swal.fire({ title: '¿Confirmar llegada?', text: 'Las mesas pasarán a estado OCUPADA.', icon: 'question', showCancelButton: true, confirmButtonColor: '#1B3A2C', cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, confirmar', cancelButtonText: 'Cancelar' }).then(result => { if (result.isConfirmed) { AppUtils.showLoading(true); fetch(`/admin/reservas/api/confirmar-llegada/${id}`, { method: 'POST' }).then(r => r.json()).then(data => { if (data.success) { AppUtils.showNotification(data.message, 'success'); dataTable.ajax.reload(); } else AppUtils.showNotification(data.message, 'error'); }).catch(() => AppUtils.showNotification('Error de conexión', 'error')).finally(() => AppUtils.showLoading(false)); } });
     }
@@ -373,5 +357,4 @@ $(document).ready(function () {
     }
 });
 
-// (Conexión asíncrona stompReservas intacta al final...)
 var socketCocina = new SockJS('/ws-restaurante'); var stompReservas = Stomp.over(socketCocina); stompReservas.debug = null; stompReservas.connect({}, function (frame) { stompReservas.subscribe('/topic/notificaciones', function (payload) { const mensaje = payload.body; if (mensaje.includes("🚨 ATENCIÓN RESERVA")) { var audioAlerta = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); audioAlerta.play().catch(e => console.log("Audio retenido")); Swal.fire({ icon: 'info', title: '¡CLIENTE DE RESERVA EN TIEMPO!', text: mensaje, background: '#f0fdf4', color: '#14532d', confirmButtonColor: '#1B3A2C', confirmButtonText: '<i class="bi bi-calendar-check me-2"></i> Entendido', allowOutsideClick: true }); if (typeof dataTable !== 'undefined') dataTable.ajax.reload(null, false); } else if (mensaje.includes("⚠️ RESERVA EXPIRADA")) { AppUtils.showNotification(mensaje, 'error'); if (typeof dataTable !== 'undefined') dataTable.ajax.reload(null, false); } }); });
