@@ -178,8 +178,6 @@ public class MesaService {
         Pedido pedidoActivo = pedidos.get(pedidos.size() - 1);
 
         // 🍔 ADUANA OPERATIVA: Enviamos absolutamente TODOS los platos activos a la vista.
-        // El JavaScript de tu modal-mesa.js ya está programado para discriminar y pintar en gris
-        // los que ya tienen d.isPagado() == true. ¡No debemos escondérselos!
         List<DetallePedido> detallesPrecuenta = pedidoActivo.getListaDetalles();
 
         // Calculamos el saldo real que todavía se debe (Traditional Flow)
@@ -188,7 +186,80 @@ public class MesaService {
                 .mapToDouble(d -> d.getSubtotal() != null ? d.getSubtotal() : 0.0)
                 .sum();
 
-        // Seteamos el monto total dinámico en caliente para que el modal pinte la deuda correcta
+        // ─── 🛡️ ESCUDO DE AUTO-LIMPIEZA EN EMERGENCIAS CON ADUANA DE PROTEÍNAS ───
+        boolean tienePlatosEnCocina = pedidoActivo.getListaDetalles().stream()
+                .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isCocinado());
+
+        if (totalDeudaRestante == 0 && !tienePlatosEnCocina) {
+            System.out.println("🧹 [La Jama BD] Auto-limpieza activada. Mesa N° " + numeroMesa + " liberada con saldo S/. 0.00");
+
+            // 🥩 ANTES DE BORRAR, VERIFICAMOS SI HAY MERMAS DE PROTEÍNAS SIN DESCONTAR STOCK
+            if (pedidoActivo.getListaDetalles() != null) {
+                for (DetallePedido detalleTarget : pedidoActivo.getListaDetalles()) {
+                    // Si es merma (cancelado) y no llegó a marcarse como cocinado, procesamos el gasto real
+                    if (detalleTarget.isCanceladoPorCliente() && !detalleTarget.isCocinado()) {
+
+                        // Invocamos el repositorio de insumos amarrados a la receta del plato
+                        com.web.restaurante.repository.InsumoProductoRepository insumoProductoRepo =
+                                org.springframework.web.context.support.WebApplicationContextUtils
+                                        .getRequiredWebApplicationContext(org.springframework.web.context.request.RequestContextHolder
+                                                .getRequestAttributes() == null ? null : ((org.springframework.web.context.request.ServletRequestAttributes)
+                                                org.springframework.web.context.request.RequestContextHolder.getRequestAttributes())
+                                                .getRequest().getServletContext()).getBean(com.web.restaurante.repository.InsumoProductoRepository.class);
+
+                        if (insumoProductoRepo != null && detalleTarget.getProducto() != null) {
+                            insumoProductoRepo.findByProductoId(detalleTarget.getProducto().getId()).forEach(ip -> {
+                                if (ip.getInsumo() != null) {
+                                    var insumo = ip.getInsumo();
+
+                                    // Regla de negocio estricta: ÚNICAMENTE PROTEÍNAS
+                                    if (insumo.getCategoria() != null && insumo.getCategoria().toUpperCase().contains("PROTEIN")) {
+                                        double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
+                                        double totalInsumo = cantidadUsada * detalleTarget.getCantidad();
+
+                                        // Descontamos el Stock Comprometido residual
+                                        double comprometidoActual = (insumo.getStockComprometido() != null) ? insumo.getStockComprometido() : 0.0;
+                                        insumo.setStockComprometido(Math.max(0.0, comprometidoActual - totalInsumo));
+
+                                        // Descontamos del Stock Actual físico de la cocina
+                                        double stockActual = (insumo.getStockActual() != null) ? insumo.getStockActual() : 0.0;
+                                        insumo.setStockActual(Math.max(0.0, stockActual - totalInsumo));
+
+                                        // Guardamos en el Kardex oficial de La Jama
+                                        com.web.restaurante.service.ProteinaService protService =
+                                                org.springframework.web.context.support.WebApplicationContextUtils
+                                                        .getRequiredWebApplicationContext(((org.springframework.web.context.request.ServletRequestAttributes)
+                                                                org.springframework.web.context.request.RequestContextHolder.getRequestAttributes())
+                                                                .getRequest().getServletContext()).getBean(com.web.restaurante.service.ProteinaService.class);
+
+                                        if (protService != null) {
+                                            protService.registrarKardexPorVenta(insumo.getId(), detalleTarget.getCantidad(), pedidoActivo.getId());
+                                        }
+
+                                        System.out.println("🥩 [KARDEX ENTRÓ EN ACCIÓN VIA AUTO-LIMPIEZA] Reduciendo stock de proteína por cierre de merma: " + insumo.getNombre());
+                                    }
+                                }
+                            });
+                        }
+                        // Marcamos como cocinado para que no vuelva a procesarse en futuros ciclos
+                        detalleTarget.setCocinado(true);
+                    }
+                }
+            }
+
+            // Buscamos la mesa física y la regresamos a DISPONIBLE
+            mesaRepository.findByNumero(numeroMesa).ifPresent(mesa -> {
+                Mesa mesaPrincipal = (mesa.getMesaPadre() != null) ? mesa.getMesaPadre() : mesa;
+                mesaPrincipal.setEstado("DISPONIBLE");
+                mesaRepository.save(mesaPrincipal);
+            });
+
+            // Desvincular comanda de la mesa física de forma definitiva en la BD
+            pedidoActivo.setNumeroMesa(null);
+            pedidoActivo.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
+        }
+
+        // Seteamos el monto total dinámico en caliente y guardamos
         pedidoActivo.setMontoTotal(totalDeudaRestante);
         pedidoRepository.save(pedidoActivo);
 

@@ -40,11 +40,10 @@ public class PedidoService {
     @Transactional(readOnly = true)
     public List<Pedido> listarPedidosFrios() {
         return pedidoRepository.findAll().stream()
-                // 🛡️ ADUANA FISCAL: Si es PENDIENTE, solo pasa a cocina si tiene mesa física (Salón). Si es web, espera a ser EN_COCINA
-                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA || p.getEstado() == EstadoPedido.EN_COCINA ||
+                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA ||
                         (p.getEstado() == EstadoPedido.PENDIENTE && p.getNumeroMesa() != null))
                 .filter(p -> p.getListaDetalles() != null && p.getListaDetalles().stream()
-                        .anyMatch(d -> !d.isCocinado() && d.getProducto() != null && d.getProducto().getCategoria() != null
+                        .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isCocinado() && d.getProducto() != null && d.getProducto().getCategoria() != null
                                 && (d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRI")
                                 || d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRÍ"))))
                 .sorted(Comparator.comparing(Pedido::getFechaCreacion))
@@ -54,11 +53,10 @@ public class PedidoService {
     @Transactional(readOnly = true)
     public List<Pedido> listarPedidosCalientes() {
         return pedidoRepository.findAll().stream()
-                // 🛡️ ADUANA FISCAL: El mismo candado protector para la estación caliente
-                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA || p.getEstado() == EstadoPedido.EN_COCINA ||
+                .filter(p -> p.getEstado() == EstadoPedido.EN_COCINA ||
                         (p.getEstado() == EstadoPedido.PENDIENTE && p.getNumeroMesa() != null))
                 .filter(p -> p.getListaDetalles() != null && p.getListaDetalles().stream()
-                        .anyMatch(d -> !d.isCocinado() && d.getProducto() != null && d.getProducto().getCategoria() != null
+                        .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isCocinado() && d.getProducto() != null && d.getProducto().getCategoria() != null
                                 && d.getProducto().getCategoria().getNombre().toUpperCase().contains("CALIENTE")))
                 .sorted(Comparator.comparing(Pedido::getFechaCreacion))
                 .toList();
@@ -167,9 +165,6 @@ public class PedidoService {
         return guardado.getId();
     }
 
-    // =========================================================================
-    // 🔥 CONTROL MICROSCOPIO: DESPACHAR PLATO INDIVIDUAL EN COCINA (UNIFICADO)
-    // =========================================================================
     @Transactional
     public void despacharPlatoIndividual(Long pedidoId, Long detalleId) {
         Pedido p = pedidoRepository.findById(pedidoId)
@@ -209,12 +204,13 @@ public class PedidoService {
             });
         }
 
+        // 🛡️ RECUENTOS CORREGIDOS: Se ignora explícitamente a las mermas
         boolean tieneFrioPendiente = p.getListaDetalles().stream()
-                .anyMatch(d -> !d.isCocinado() && (d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRI")
+                .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isCocinado() && (d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRI")
                         || d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRÍ")));
 
         boolean tieneCalientePendiente = p.getListaDetalles().stream()
-                .anyMatch(d -> !d.isCocinado() && d.getProducto().getCategoria().getNombre().toUpperCase().contains("CALIENTE"));
+                .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isCocinado() && d.getProducto().getCategoria().getNombre().toUpperCase().contains("CALIENTE"));
 
         p.setFrioListo(!tieneFrioPendiente);
         p.setCalienteListo(!tieneCalientePendiente);
@@ -226,9 +222,6 @@ public class PedidoService {
         pedidoRepository.save(p);
     }
 
-    // =========================================================================
-    // 🔥 CONTROL MICROSCOPIO: ENTREGAR PLATO INDIVIDUAL EN MESA
-    // =========================================================================
     @Transactional
     public void entregarPlatoIndividual(Long pedidoId, Long detalleId) {
         Pedido p = pedidoRepository.findById(pedidoId)
@@ -278,7 +271,6 @@ public class PedidoService {
         pedidoRepository.save(p);
     }
 
-    // --- FLUJOS DE LOGÍSTICA DE TRASLADO MANTENIDOS INTEGRALMENTE ---
     public List<Pedido> optimizarTrayectoBurbuja(List<Pedido> pedidos) {
         int n = pedidos.size();
         for (int i = 0; i < n - 1; i++) {
@@ -322,9 +314,6 @@ public class PedidoService {
         }
     }
 
-    // =========================================================================
-    // 🔥 CONTROL MACROSCOPIO: COMPLETAR ESTACIÓN ENTERA (UNIFICADO)
-    // =========================================================================
     @Transactional
     public void completarEstacion(Long pedidoId, String tipoEstacion) {
         Pedido p = pedidoRepository.findById(pedidoId)
@@ -485,7 +474,8 @@ public class PedidoService {
     }
 
     @Transactional
-    public void eliminarItemComanda(Long pedidoId, Long detalleId) {
+    public void eliminarItemComanda(Long pedidoId, Long detalleId, boolean forzarMerma) {
+        System.out.println("📡 [RADAR CRÍTICO] ¡Llegó la petición al Service! Pedido: " + pedidoId + " | Detalle: " + detalleId + " | ForzarMerma: " + forzarMerma);
         Pedido pedido = pedidoRepository.findById(pedidoId)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado con ID: " + pedidoId));
 
@@ -497,36 +487,63 @@ public class PedidoService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Línea de comanda no encontrada ID: " + detalleId));
 
-        if (detalleTarget.isImpresoEnCocina()) {
-            // CASO A: El ticket YA se imprimió -> Se vuelve MERMA
-            System.out.println("DEBUG OPERATIVO -> Ítem impreso. Cambiando estado a MERMA.");
+        // 🛡️ ADUANA CORREGIDA: Si el front dice que es merma, o si la BD ya lo tenía impreso, va a producción de Merma
+        boolean esMermaReal = forzarMerma || detalleTarget.isImpresoEnCocina();
+
+        if (esMermaReal) {
+            System.out.println("🔥 [La Jama] Ítem calificado como MERMA. Cambiando estado operativo.");
             detalleTarget.setCanceladoPorCliente(true);
-
+            // Nos aseguramos de sincronizar la bandera por si la cocina no la grabó
+            detalleTarget.setImpresoEnCocina(true);
         } else {
-            // CASO B: El ticket NO se ha impreso -> ELIMINACIÓN LIMPIA (Remoción física)
-            System.out.println("DEBUG OPERATIVO -> Ítem NO impreso. Borrando por completo de la comanda.");
-
-            // Lo quitamos de la lista. Gracias a orphanRemoval=true, JPA ejecutará el DELETE SQL
+            System.out.println("🧹 [La Jama] Ítem NO impreso. Borrando por completo de la comanda de forma limpia.");
             pedido.getListaDetalles().remove(detalleTarget);
             detalleTarget.setPedido(null);
         }
 
+        // CONTROL DE INVENTARIO ABSOLUTO
         if (!detalleTarget.isCocinado()) {
             insumoProductoRepository.findByProductoId(detalleTarget.getProducto().getId()).forEach(ip -> {
                 if (ip.getInsumo() != null) {
                     Insumo insumo = ip.getInsumo();
                     double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
-                    double totalALiberar = cantidadUsada * detalleTarget.getCantidad();
+                    double totalInsumo = cantidadUsada * detalleTarget.getCantidad();
 
-                    // Restamos del comprometido devolviendo el plato a la vida en la carta pública
+                    // 1. Siempre liberamos la porción del stock comprometido
                     double comprometidoActual = (insumo.getStockComprometido() != null) ? insumo.getStockComprometido() : 0.0;
-                    insumo.setStockComprometido(Math.max(0.0, comprometidoActual - totalALiberar));
+                    insumo.setStockComprometido(Math.max(0.0, comprometidoActual - totalInsumo));
+
+                    // 2. 🛡️ FILTRADO DE PROTEÍNAS ATÓMICO USANDO LA ADUANA BLINDADA
+                    if (esMermaReal) {
+                        if (insumo.getCategoria() != null && insumo.getCategoria().toUpperCase().contains("PROTEIN")) {
+
+                            // Descontamos la porción directamente del Stock Actual real de la BD
+                            double stockActual = (insumo.getStockActual() != null) ? insumo.getStockActual() : 0.0;
+                            insumo.setStockActual(Math.max(0.0, stockActual - totalInsumo));
+
+                            // Registramos la pérdida legítima en tu Kardex de porciones
+                            proteinaService.registrarKardexPorVenta(insumo.getId(), detalleTarget.getCantidad(), pedido.getId());
+                            System.out.println("🥩 [KARDEX ENTRÓ EN ACCIÓN] Reduciendo stock actual por merma de proteína: " + insumo.getNombre());
+                        } else {
+                            System.out.println("🥫 [La Jama Insumos] Se ignora descuento de '" + insumo.getNombre() + "' (No es proteína).");
+                        }
+                    }
                 }
             });
         }
 
-        // En ambos casos recalculamos el monto total usando tu método correcto: setMontoTotal
         recalcularTotalesPedido(pedido);
+
+        // Auto-cierre operativo de comandas vacías
+        boolean tienePlatosActivosPendientes = pedido.getListaDetalles().stream()
+                .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isCocinado());
+
+        if (!tienePlatosActivosPendientes) {
+            pedido.setFrioListo(true);
+            pedido.setCalienteListo(true);
+            pedido.setEstado(EstadoPedido.PREPARADO);
+            System.out.println("🧹 Comanda #" + pedidoId + " sin ítems pendientes. Pasando a PREPARADO.");
+        }
 
         pedidoRepository.save(pedido);
     }

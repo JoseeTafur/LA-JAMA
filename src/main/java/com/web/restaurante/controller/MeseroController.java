@@ -215,9 +215,9 @@ public class MeseroController {
 
     @PostMapping("/comanda/eliminar-item")
     @ResponseBody
-    public ResponseEntity<String> eliminarItemDesdeSalon(@RequestParam Long pedidoId, @RequestParam Long detalleId) {
+    public ResponseEntity<String> eliminarItemDesdeSalon(@RequestParam Long pedidoId, @RequestParam Long detalleId, @RequestParam("esMerma") boolean esMerma) {
         try {
-            pedidoService.eliminarItemComanda(pedidoId, detalleId);
+            pedidoService.eliminarItemComanda(pedidoId, detalleId, esMerma);
             return ResponseEntity.ok("OK");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
