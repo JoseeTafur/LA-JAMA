@@ -2,6 +2,7 @@ package com.web.restaurante.controller;
 
 import com.web.restaurante.model.*;
 import com.web.restaurante.model.enums.EstadoPago;
+import com.web.restaurante.model.enums.TipoMovimientoCaja;
 import com.web.restaurante.repository.*;
 import com.web.restaurante.service.*;
 import jakarta.transaction.Transactional;
@@ -69,30 +70,30 @@ public class CajaController {
         // RECORREMOS LA LISTA: No agregamos la apertura a la fuerza, dejamos que pase el filtro si viene en la lista
         for (MovimientoCaja m : movimientosCrudos) {
             if (m == null) continue;
-            String tipoMovCrudo = m.getTipo() != null ? m.getTipo().toUpperCase().trim() : "INGRESO";
+            TipoMovimientoCaja tipoEnum = m.getTipo() != null ? m.getTipo() : TipoMovimientoCaja.INGRESO_MANUAL;
             String conceptoCrudo = m.getConcepto() != null ? m.getConcepto() : "";
             String conceptoUpper = conceptoCrudo.toUpperCase();
 
-            // Filtrar tajantemente solo lo automático, permitiendo APERTURA, INGRESO y EGRESO manual
+            // Filtro de control contable visual usando tipos reales
             if (!(conceptoUpper.contains("LIQUIDACIÓN") ||
                     conceptoUpper.contains("LIQUIDACION") ||
                     conceptoUpper.contains("EXTORNO") ||
-                    tipoMovCrudo.equals("VENTA") ||
-                    tipoMovCrudo.equals("CIERRE"))) {
+                    tipoEnum == TipoMovimientoCaja.INGRESO_VENTA ||
+                    tipoEnum == TipoMovimientoCaja.CIERRE)) {
 
                 Map<String, Object> mMov = new HashMap<>();
                 mMov.put("id", m.getId());
+                mMov.put("comprobante", m.getComprobante() != null ? m.getComprobante() : "M-" + m.getId());
 
-                // Si el concepto contiene "FONDO INICIAL" o el tipo es APERTURA, aseguramos que se marque como tal
-                if (conceptoUpper.contains("FONDO INICIAL") || tipoMovCrudo.equals("APERTURA")) {
+                if (tipoEnum == TipoMovimientoCaja.APERTURA) {
                     mMov.put("tipo", "APERTURA");
                     mMov.put("concepto", "Fondo inicial");
                 } else {
-                    mMov.put("tipo", tipoMovCrudo);
+                    mMov.put("tipo", tipoEnum.getGrupoMacro()); // "INGRESO" o "EGRESO" para compatibilidad CSS
                     mMov.put("concepto", conceptoCrudo.startsWith("Manual: ") ? conceptoCrudo.substring(8) : conceptoCrudo);
                 }
 
-                mMov.put("monto", Math.abs(m.getMonto())); // Absoluto positivo
+                mMov.put("monto", Math.abs(m.getMonto()));
 
                 LocalDateTime fechaMov = m.getFecha() != null ? m.getFecha() : LocalDateTime.now();
                 mMov.put("hora", fechaMov.toLocalTime().toString().substring(0, 5));
@@ -233,28 +234,36 @@ public class CajaController {
             // 1. Ejecutamos la liquidación nativa (Genera el pedido histórico y las notas de venta clonadas)
             mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, idsDetalles);
 
-            // 2. 🛡️ REPARACIÓN POST-LIQUIDACIÓN ANTI-NULL:
+            // 2. 🛡️ REPARACIÓN POST-LIQUIDACIÓN ANTI-NULL TOTAL (Turno + TipoPedido)
             try {
                 turnoCajaService.obtenerTurnoActivo().ifPresent(turnoActivo -> {
                     mesaRepository.findById(mesaId).ifPresent(mesa -> {
                         List<Pedido> notasVentaHuerfanas = pedidoRepository.findAll().stream()
                                 .filter(p -> p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.PAGADO)
-                                .filter(p -> p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.ENTREGADO) // 🟢 ¡AÑADE ESTA LÍNEA!
-                                .filter(p -> p.getTurnoCaja() == null)
+                                .filter(p -> p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.ENTREGADO)
+                                .filter(p -> p.getTurnoCaja() == null || p.getTipoPedido() == null) // 🔥 Detecta si falta el turno o el tipo
                                 .collect(Collectors.toList());
 
                         for (Pedido nv : notasVentaHuerfanas) {
+                            // Seteamos el turno operativo activo
                             nv.setTurnoCaja(turnoActivo);
+
+                            // 🎯 EL CANDADO SUPREMO: Si el tipo llegó como NULL o vacío, le forzamos SALON
+                            if (nv.getTipoPedido() == null) {
+                                nv.setTipoPedido(com.web.restaurante.model.enums.TipoPedido.SALON);
+                                System.out.println("🛡️ [ESCUDO DE ORIGEN] Forzando TipoPedido.SALON a la Nota de Venta #" + nv.getId());
+                            }
+
                             pedidoRepository.save(nv);
-                            System.out.println("🚀 [ESCUDO CONTABLE] Nota de Venta #" + nv.getId() + " asociada al turno: " + turnoActivo.getId());
+                            System.out.println("🚀 [ESCUDO CONTABLE] Nota de Venta #" + nv.getId() + " amarrada correctamente.");
                         }
                     });
                 });
             } catch (Exception ex) {
-                System.out.println("⚠️ No se pudo realizar el barrido anti-null: " + ex.getMessage());
+                System.out.println("⚠️ No se pudo realizar el barrido anti-null de origen: " + ex.getMessage());
             }
 
-            return ResponseEntity.ok(Map.of("success", true, "message", "Mesa liquidada"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Mesa liquidada con metadatos corregidos"));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Error liquidación: " + e.getMessage());
         }
@@ -310,16 +319,31 @@ public class CajaController {
             Map<String, Object> response = new HashMap<>();
             response.put("id", pedido.getId());
 
-            // 🚀 CORRECCIÓN: Si el tipo de pedido existe mandamos su nombre original, sino usamos LLEVAR como precaución de mostrador
-            response.put("tipoPedido", pedido.getTipoPedido() != null ? pedido.getTipoPedido().name() : "LLEVAR");
+            // 🛡️ ADUANA ANTI-NULL Y ANTI-TILDES DE BASE DE DATOS
+            com.web.restaurante.model.enums.TipoPedido tipo = pedido.getTipoPedido();
+            boolean tieneMesaFisica = pedido.getNumeroMesa() != null && pedido.getNumeroMesa() > 0;
 
+            String tipoServicioFinal = "LLEVAR";
+            String canalFinal = "Virtual";
+
+            if (tipo == com.web.restaurante.model.enums.TipoPedido.SALON || tieneMesaFisica) {
+                tipoServicioFinal = "SALON";
+                canalFinal = "Presencial";
+            } else if (tipo == com.web.restaurante.model.enums.TipoPedido.DELIVERY) {
+                tipoServicioFinal = "DELIVERY";
+                canalFinal = "Virtual";
+            }
+
+            // Inyectamos las propiedades limpias que espera leer tu JS y tus Modales
+            response.put("tipoPedido", tipoServicioFinal);
+            response.put("canal", canalFinal);
             response.put("numeroMesa", pedido.getNumeroMesa());
             response.put("montoTotal", pedido.getMontoTotal() != null ? pedido.getMontoTotal() : 0.0);
 
             List<Map<String, Object>> detallesDTO = pedido.getListaDetalles().stream().map(d -> {
                 Map<String, Object> item = new HashMap<>();
                 item.put("id", d.getId());
-                item.put("node_num", d.getCantidad()); // Mantener compatibilidad si usas componentes
+                item.put("node_num", d.getCantidad());
                 item.put("cantidad", d.getCantidad());
                 item.put("canceladoPorCliente", d.isCanceladoPorCliente());
                 item.put("pagado", d.isPagado());
@@ -409,52 +433,72 @@ public class CajaController {
             @RequestParam("fechaFin") String fechaFin,
             @RequestParam(value = "turno", defaultValue = "TODOS") String turno) {
         try {
-            // Parseamos de forma segura las fechas provenientes del frontend
             LocalDate inicio = LocalDate.parse(fechaInicio);
             LocalDate fin = LocalDate.parse(fechaFin);
 
             LocalDateTime inicioDT = inicio.atStartOfDay();
             LocalDateTime finDT = fin.atTime(LocalTime.MAX);
 
-            // Buscamos los turnos cerrados en tu TurnoCajaRepository usando el rango calculado
-            List<TurnoCaja> turnos = turnoCajaRepository.findTurnosCerradosEnRangoHorario(inicioDT, finDT);
+            // 1. Extraemos los turnos en orden cronológico ascendente (el más antiguo primero)
+            List<TurnoCaja> turnos = turnoCajaRepository.findTurnosCerradosEnRangoHorario(inicioDT, finDT).stream()
+                    .sorted(Comparator.comparing(TurnoCaja::getId))
+                    .collect(Collectors.toList());
 
-            List<Map<String, Object>> respuesta = new ArrayList<>();
+            List<Map<String, Object>> respuestaFiltradaPrevia = new ArrayList<>();
+            final String turnoFiltroUpper = (turno != null) ? turno.toUpperCase().trim() : "TODOS";
 
+            // 2. Filtramos primero los turnos que calzan con el criterio de búsqueda
             for (TurnoCaja t : turnos) {
                 if (t == null) continue;
 
-                // Forzamos mayúsculas para evitar fallos de coincidencia ("DIA" vs "DÍA")
                 String turnoCalculado = (t.getTipoTurno() != null) ? t.getTipoTurno().toUpperCase().trim() : "DIA";
                 if ("DIA".equals(turnoCalculado)) {
-                    turnoCalculado = "DÍA"; // Mantener compatibilidad estética con el frontend
+                    turnoCalculado = "DÍA";
                 }
 
-                // Filtro selectivo por tipo de turno
-                if (!"TODOS".equalsIgnoreCase(turno) && !turnoCalculado.equalsIgnoreCase(turno)) {
+                if (!"TODOS".equalsIgnoreCase(turnoFiltroUpper) && !turnoCalculado.equalsIgnoreCase(turnoFiltroUpper)) {
                     continue;
                 }
 
                 Map<String, Object> dto = new HashMap<>();
-                dto.put("id", t.getId());
+                // Guardamos temporalmente los datos
+                dto.put("objetoOriginal", t);
                 dto.put("turnoCalculado", turnoCalculado);
-                dto.put("fechaApertura", t.getFechaApertura() != null ? t.getFechaApertura().toString() : "");
-                dto.put("fechaCierre", t.getFechaCierre() != null ? t.getFechaCierre().toString() : "null");
-
-                dto.put("montoApertura", t.getMontoApertura() != null ? t.getMontoApertura() : 0.0);
-                dto.put("totalVendido", t.getTotalVendido() != null ? t.getTotalVendido() : 0.0);
-                dto.put("montoCierre", t.getMontoCierre() != null ? t.getMontoCierre() : 0.0);
-                dto.put("diferencia", t.getDiferencia() != null ? t.getDiferencia() : 0.0);
-                dto.put("observaciones", t.getObservaciones() != null ? t.getObservaciones() : "");
-
-                respuesta.add(dto);
+                respuestaFiltradaPrevia.add(dto);
             }
 
-            return ResponseEntity.ok(respuesta);
+            // 3. 🎯 ENUMERACIÓN DE SECUENCIA: Asignamos el correlativo incremental (1, 2, 3...)
+            List<Map<String, Object>> respuestaFinalCronologica = new ArrayList<>();
+            int correlativoSecuencia = 1;
+
+            for (Map<String, Object> itemPre : respuestaFiltradaPrevia) {
+                TurnoCaja t = (TurnoCaja) itemPre.get("objetoOriginal");
+
+                Map<String, Object> dtoFinal = new HashMap<>();
+
+                // REGLA DE SECUENCIA: Reemplazamos el ID nativo por el contador ordenado de aperturas
+                dtoFinal.put("id", correlativoSecuencia++);
+
+                dtoFinal.put("turnoCalculado", itemPre.get("turnoCalculado"));
+                dtoFinal.put("fechaApertura", t.getFechaApertura() != null ? t.getFechaApertura().toString() : "");
+                dtoFinal.put("fechaCierre", t.getFechaCierre() != null ? t.getFechaCierre().toString() : "null");
+                dtoFinal.put("montoApertura", t.getMontoApertura() != null ? t.getMontoApertura() : 0.0);
+                dtoFinal.put("totalVendido", t.getTotalVendido() != null ? t.getTotalVendido() : 0.0);
+                dtoFinal.put("montoCierre", t.getMontoCierre() != null ? t.getMontoCierre() : 0.0);
+                dtoFinal.put("diferencia", t.getDiferencia() != null ? t.getDiferencia() : 0.0);
+                dtoFinal.put("observaciones", t.getObservaciones() != null ? t.getObservaciones() : "");
+
+                respuestaFinalCronologica.add(dtoFinal);
+            }
+
+            // 4. Invertimos el orden final para que el arqueo más reciente salga ARRIBA en tu tabla
+            Collections.reverse(respuestaFinalCronologica);
+
+            return ResponseEntity.ok(respuestaFinalCronologica);
 
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
-                    .body("Error al procesar la bitácora de turnos cerrados: " + e.getMessage());
+                    .body("Error al procesar la secuencia de turnos cerrados: " + e.getMessage());
         }
     }
 
@@ -488,7 +532,7 @@ public class CajaController {
             String metodoFinal = (metodoPago != null && !metodoPago.trim().isEmpty()) ? metodoPago.trim().toUpperCase() : null;
             String servicioFinal = (tipoServicio != null && !tipoServicio.trim().isEmpty()) ? tipoServicio.trim().toUpperCase() : null;
 
-            // 2. Extraemos el mapa base original de pedidos que ya calcula el Service
+            // 2. Extraemos el mapa base original de pedidos que ya calcula el Service de forma limpia
             Map<String, Object> respuestaMapeada = cajaService.obtenerHistorialComprobantesFiltrosAvanzados(
                     horaInicioCalculada, horaFinCalculada, metodoFinal, servicioFinal, turno, pageable
             );
@@ -505,7 +549,7 @@ public class CajaController {
                 }
             }
 
-            // 3. 🚀 CORRECCIÓN CLAVE: Buscamos los turnos reales que calzan estrictamente con el rango
+            // 3. Buscamos los turnos reales que calzan estrictamente con el rango
             double sumaFondoApertura = 0.0;
             double sumaVentasRealizadas = 0.0;
             double sumaEfectivoGaveta = 0.0;
@@ -526,10 +570,10 @@ public class CajaController {
             for (TurnoCaja turnoObjetivo : turnosDelRango) {
                 if (turnoObjetivo == null) continue;
 
-                // Verificación estricta del tipo de turno para que el de hoy ("DIA") no entre en la consulta de ayer ("NOCHE")
+                // Verificación estricta del tipo de turno
                 String tipoTurnoReal = turnoObjetivo.getTipoTurno() != null ? turnoObjetivo.getTipoTurno().toUpperCase().trim() : "DIA";
                 if (!"TODOS".equals(turnoFiltroUpper) && !tipoTurnoReal.equals(turnoFiltroUpper)) {
-                    continue; // Descarta de inmediato turnos no correspondientes
+                    continue; // Descarta turnos no correspondientes
                 }
 
                 sumaFondoApertura += turnoObjetivo.getMontoApertura() != null ? turnoObjetivo.getMontoApertura() : 0.0;
@@ -537,18 +581,25 @@ public class CajaController {
 
                 List<MovimientoCaja> movs = movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(turnoObjetivo.getId());
 
-                double ingresosManuales = movs.stream().filter(m -> "INGRESO".equals(m.getTipo().toUpperCase().trim())).mapToDouble(MovimientoCaja::getMonto).sum();
-                double egresosManuales = movs.stream().filter(m -> "EGRESO".equals(m.getTipo().toUpperCase().trim())).mapToDouble(MovimientoCaja::getMonto).sum();
+                double ingresosManuales = movs.stream()
+                        .filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("INGRESO"))
+                        .mapToDouble(MovimientoCaja::getMonto).sum();
+
+                double egresosManuales = movs.stream()
+                        .filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("EGRESO"))
+                        .mapToDouble(MovimientoCaja::getMonto).sum();
 
                 for (MovimientoCaja m : movs) {
                     if (m == null) continue;
-                    String tipoMovCrudo = m.getTipo() != null ? m.getTipo().toUpperCase().trim() : "INGRESO";
+                    String tipoMovCrudo = m.getTipo() != null ? m.getTipo().getGrupoMacro() : "INGRESO";
                     String conceptoCrudo = m.getConcepto() != null ? m.getConcepto() : "";
                     String conceptoUpper = conceptoCrudo.toUpperCase();
 
                     if (!(conceptoUpper.contains("LIQUIDACIÓN") ||
                             conceptoUpper.contains("LIQUIDACION") ||
                             conceptoUpper.contains("EXTORNO") ||
+                            conceptoUpper.contains("DELIVERY MANUAL CAJERO") || // ◄ CANDADO EXCLUSIVO ANTI-DUPLICADOS
+                            conceptoUpper.contains("VENTA POS DIRECTO") ||      // ◄ CANDADO ADICIONAL PREVENTIVO
                             tipoMovCrudo.equals("VENTA") ||
                             tipoMovCrudo.equals("CIERRE"))) {
 
@@ -568,9 +619,10 @@ public class CajaController {
                             if (servicioFinal == null || "LOCAL".equals(servicioFinal) || "SALON".equals(servicioFinal)) {
                                 Map<String, Object> movConvertido = new HashMap<>();
                                 movConvertido.put("id", m.getId());
-                                movConvertido.put("comprobante", "M-" + m.getId());
-                                movConvertido.put("tipoServicio", "-");
-                                movConvertido.put("mesa", "-");
+                                movConvertido.put("comprobante", m.getComprobante() != null ? m.getComprobante() : "M-" + m.getId());
+                                movConvertido.put("tipoServicio", "MANUAL");
+                                movConvertido.put("canal", "Presencial");
+                                movConvertido.put("mesa", "—");
                                 movConvertido.put("cliente", m.getConcepto().startsWith("Manual: ") ? m.getConcepto().substring(8) : m.getConcepto());
                                 movConvertido.put("fecha", fechaMov.toLocalDate().toString());
                                 movConvertido.put("hora", fechaMov.toLocalTime().toString().substring(0, 5));
@@ -590,9 +642,9 @@ public class CajaController {
 
             // 4. Ordenamos la lista combinada del Buscador Global de forma descendente (Más nuevos arriba)
             listaUnificadaMaster.sort((a, b) -> {
-                Long idA = Long.parseLong(a.get("id").toString());
-                Long idB = Long.parseLong(b.get("id").toString());
-                return idB.compareTo(idA);
+                String tiempoA = a.get("fecha").toString() + " " + (a.get("hora") != null ? a.get("hora").toString() : "00:00");
+                String tiempoB = b.get("fecha").toString() + " " + (b.get("hora") != null ? b.get("hora").toString() : "00:00");
+                return tiempoB.compareTo(tiempoA);
             });
 
             // 5. Empaquetamos la respuesta final

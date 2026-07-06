@@ -350,6 +350,8 @@
   color: var(--lajama-white) !important;
   border-bottom: none !important;
   padding: 1.25rem 1.75rem !important;
+  border-top-left-radius: calc(1.25rem - 1px) !important;
+  border-top-right-radius: calc(1.25rem - 1px) !important;
 }
 
 .modal-title {

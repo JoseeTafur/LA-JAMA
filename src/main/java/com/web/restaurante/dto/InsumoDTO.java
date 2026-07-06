@@ -15,6 +15,7 @@ public class InsumoDTO {
     private String unidadMedida;
     private Double stockActual;
     private Double stockMinimo;
+    private Double stockComprometido;
     private Integer estado;
     private Double porcionesPorKg;
 }

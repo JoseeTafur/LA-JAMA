@@ -163,69 +163,9 @@ function cargarComprobantesHistoricos() {
             const lista = data.comprobantes;
 
             // =========================================================================
-            // 🚀 REFRESH EN CALIENTE DEL DASHBOARD HISTÓRICO (TARJETAS SUPERIORES)
+            // 🛡️ CANDADO FINANCIERO: SE ELIMINÓ EL REFRESH EN CALIENTE DE LAS TARJETAS
+            // Los totales de Apertura, Ventas y Gaveta del Turno Actual permanecen fijos.
             // =========================================================================
-            if (data.metaFondoApertura !== undefined) {
-                const txtApertura = document.querySelector('.cr-apertura h3');
-                const txtVentas   = document.querySelector('.cr-ventas h3');
-                const txtGaveta   = document.querySelector('.tf-efectivo .fw-extrabold');
-                const txtTeorico  = document.querySelector('.cr-saldo h3');
-
-                if (txtApertura) txtApertura.innerText = `S/ ${data.metaFondoApertura.toFixed(2)}`;
-                if (txtVentas)   txtVentas.innerText   = `S/ ${data.metaTotalVendido.toFixed(2)}`;
-                if (txtGaveta)   txtGaveta.innerText   = `S/ ${data.metaEfectivoGaveta.toFixed(2)}`;
-                if (txtTeorico)  txtTeorico.innerText  = `S/ ${data.metaEfectivoGaveta.toFixed(2)}`;
-            }
-
-            // =========================================================================
-            // 🚀 RE-RENDERIZADO DE LA TABLA DE BITÁCORA MANUAL (INDEPENDIENTE Y PURA)
-            // =========================================================================
-            const tablaMovimientosTurno = document.querySelector('#panel-movimientos-turno table tbody');
-            if (tablaMovimientosTurno && data.movimientosManuales) {
-                tablaMovimientosTurno.innerHTML = '';
-
-                if (data.movimientosManuales.length === 0) {
-                    tablaMovimientosTurno.innerHTML = `
-                        <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
-                                <div class="d-flex flex-column align-items-center gap-1">
-                                    <span class="fw-semibold">Sin movimientos manuales</span>
-                                    <span class="small opacity-75">No hay ingresos ni egresos en el turno filtrado.</span>
-                                </div>
-                            </td>
-                        </tr>`;
-                } else {
-                    // 🛡️ REGLA DE PRESENTACIÓN: Clonamos e invertimos la lista para que lo más nuevo salga ARRIBA
-                    const movimientosOrdenadosInversos = [...data.movimientosManuales].reverse();
-
-                    movimientosOrdenadosInversos.forEach(m => {
-                        const tipoMovimiento = m.tipo ? m.tipo.toString().toUpperCase().trim() : 'INGRESO';
-                        const montoSeguro = m.monto ? parseFloat(m.monto) : 0.00;
-                        const conceptoSeguro = m.concepto ? m.concepto : 'Movimiento Caja';
-
-                        const badgeTipo = tipoMovimiento === 'EGRESO'
-                            ? '<span class="badge bg-danger text-white fw-bold px-2 py-1" style="font-size:0.7rem;">EGRESO</span>'
-                            : '<span class="badge bg-success text-white fw-bold px-2 py-1" style="font-size:0.7rem;">INGRESO</span>';
-
-                        const colorMonto = tipoMovimiento === 'EGRESO' ? 'text-danger fw-bold' : 'text-success fw-bold';
-
-                        tablaMovimientosTurno.innerHTML += `
-                            <tr class="fila-pedido-caja">
-                                <td class="text-muted font-monospace">#M-${m.id}</td>
-                                <td>${badgeTipo}</td>
-                                <td class="fw-semibold text-dark">${conceptoSeguro}</td>
-                                <td><span class="badge bg-light text-dark font-monospace border px-2 py-1">${m.hora || '--:--'}</span></td>
-                                <td><span class="${colorMonto}">S/ ${montoSeguro.toFixed(2)}</span></td>
-                                <td>
-                                    <span class="badge-metodo-jama bm-efectivo">
-                                        <img src="/img/Efectivo.png" alt="Efectivo" style="width:14px;height:14px;object-fit:contain;margin-right:4px;"> Efectivo
-                                    </span>
-                                </td>
-                                <td class="text-end text-muted small fw-bold">👤 HISTÓRICO</td>
-                            </tr>`;
-                    });
-                }
-            }
 
             if (!lista || lista.length === 0) {
                 tbody.innerHTML = `
@@ -245,14 +185,13 @@ function cargarComprobantesHistoricos() {
             }
 
             // =========================================================================
-            // 🚀 PASO 2: RENDERIZADO HÍBRIDO CRONOLÓGICO (NOTAS DE VENTA + MANUALES)
+            // 🚀 PASO 2: RENDERIZADO HÍBRIDO CRONOLÓGICO EXCLUSIVO PARA EL BUSCADOR GLOBAL
             // =========================================================================
             lista.forEach(p => {
                 const fila = document.createElement("tr");
                 fila.className = "fila-pedido-caja";
 
                 if (p.isMovimientoManual) {
-                    // 🛡️ SUB-FLUJO A: Es un movimiento manual de la bitácora
                     const tipoMovimiento = p.estadoPago ? p.estadoPago.toString().toUpperCase().trim() : 'INGRESO';
                     const badgeTipoOperacion = tipoMovimiento === 'EGRESO'
                         ? '<span class="badge bg-danger text-white fw-bold px-2 py-1" style="font-size:0.7rem;">EGRESO</span>'
@@ -261,11 +200,11 @@ function cargarComprobantesHistoricos() {
                     const badgeEstado = '<span class="badge text-white fw-bold px-3 py-2 rounded-pill" style="font-size:0.72rem; background-color: #6c757d !important;">MOV. MANUAL</span>';
 
                     if (tipoMovimiento === 'EGRESO') {
-                        fila.style = "background-color: #fffdf5 !important; opacity: 0.95;"; // Color arena sutil para egresos manuales
+                        fila.style = "background-color: #fffdf5 !important; opacity: 0.95;";
                     }
 
                     fila.innerHTML = `
-                        <td><span class="badge bg-dark font-monospace" style="font-size:0.82rem; padding: 4px 8px;">#${p.comprobante}</span></td>
+                        <td><span class="badge bg-dark font-monospace" style="font-size:0.82rem; padding: 4px 8px;">${p.comprobante}</span></td>
                         <td>${badgeTipoOperacion}</td>
                         <td><span class="text-muted">—</span></td>
                         <td>
@@ -279,18 +218,22 @@ function cargarComprobantesHistoricos() {
                         <td class="text-end">${badgeEstado}</td>`;
 
                 } else {
-                    // 🍔 SUB-FLUJO B: Es una Nota de Venta estándar
+                    // 🍔 SUB-FLUJO B: Es una Nota de Venta estándar (Mapeo directo y blindado)
                     const servicioCrudo = p.tipoServicio ? p.tipoServicio.toString().toUpperCase().trim() : 'SALON';
+                    const canalPedido   = p.canal ? p.canal : 'Presencial';
+
                     let textoServicioFinal = 'Salón';
-                    let origenBadgeHTML    = `<i class="bi bi-shop me-1"></i> Atendido en Local`;
+                    let iconoIcon = 'bi-shop';
 
                     if (servicioCrudo === 'DELIVERY') {
                         textoServicioFinal = 'Delivery';
-                        origenBadgeHTML    = `<i class="bi bi-truck me-1"></i> Delivery / Reparto`;
+                        iconoIcon = 'bi-truck';
                     } else if (servicioCrudo === 'LLEVAR') {
                         textoServicioFinal = 'Para Llevar';
-                        origenBadgeHTML    = `<i class="bi bi-bag-heart-fill me-1"></i> Recojo en Local`;
+                        iconoIcon = 'bi-bag-heart-fill';
                     }
+
+                    let origenBadgeHTML = `<i class="bi ${iconoIcon} me-1"></i> ${canalPedido}`;
 
                     let nombreIdentificador = "Cliente General";
                     if (p.cliente && p.cliente.trim() !== "" && !p.cliente.includes("Mesa")) {
@@ -327,7 +270,7 @@ function cargarComprobantesHistoricos() {
                     }
 
                     fila.innerHTML = `
-                        <td><span class="texto-negrita">#${p.comprobante || ('NV-' + p.id)}</span></td>
+                        <td><span class="texto-negrita">#${p.comprobante}</span></td>
                         <td>${badgeTipoOperacion}</td> <td><span class="texto-servicio">${textoServicioFinal}</span></td>
                         <td>
                             <div class="cliente-nombre fw-bold text-dark" style="${esAnulado ? 'text-decoration: line-through; color: #999;' : ''}">${nombreIdentificador}</div>
@@ -344,14 +287,6 @@ function cargarComprobantesHistoricos() {
                                 <button type="button" class="action-jama-btn btn-action-print bg-light-jama" onclick="window.open('/admin/caja/ticket-venta/${p.id}', '_blank')">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                                 </button>
-                                ${p.estadoPago === 'PAGADO' && (!p.comprobante || !p.comprobante.startsWith('B0') && !p.comprobante.startsWith('F0'))
-                                    ? `<button type="button" class="action-jama-btn" onclick="extornarNotaVenta(${p.id}, ${p.monto})" style="background-color:#933D2D; border-color:#7a2e1f; color:#fff; display: inline-flex; align-items: center; justify-content: center;">
-                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                       </button>`
-                                    : `<button type="button" class="action-jama-btn" disabled style="background-color:#e5e7eb; border-color:#d1d5db; color:#9ca3af; cursor:not-allowed; opacity:0.5; display: inline-flex; align-items: center; justify-content: center;">
-                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                       </button>`
-                                }
                             </div>
                         </td>
                         <td class="text-end">${badgeEstado}</td>`;
@@ -366,7 +301,6 @@ function cargarComprobantesHistoricos() {
             document.getElementById("btnPrevPagina").disabled = (pagina === 0);
             document.getElementById("btnNextPagina").disabled = (pagina >= data.totalPaginas - 1);
 
-            // 🚀 AÑADIR ESTO: Reevalúa los botones para el Buscador Global
             if (typeof actualizarBotonesReporte === 'function') actualizarBotonesReporte();
         })
         .catch(err => {

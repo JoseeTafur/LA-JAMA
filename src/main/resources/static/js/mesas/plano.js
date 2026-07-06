@@ -2,15 +2,28 @@
 // MOTOR EN VIVO: REACTIVIDAD DEL PLANO DE MESAS
 // =======================================================
 function actualizarEstadoMesaEnPlano(numeroMesa, nuevoEstado, nuevoPedidoId, pedidoEstado) {
-
-    const tarjetaDOM = document.querySelector(`.mesa-box[data-numero="${numeroMesa}"]`);
-        if (tarjetaDOM && tarjetaDOM.getAttribute('data-bloqueo-reserva-live') === 'true') {
-            console.log(`🛡️ [La Jama Shield] WebSocket bloqueado de forma segura para impedir vaciado de Mesa N° #${numeroMesa}`);
-            return;
-        }
-
     const tarjeta = document.querySelector(`[data-numero="${numeroMesa}"]`);
     if (!tarjeta) return;
+
+    // 🛡️ CANDADO DE UNIFICACIÓN INTEGRAL: Si la tarjeta es o era parte de un grupo,
+    // e intentan enviarle un estado ordinario (disponible, ocupada, etc.), ignoramos el cambio de color
+    const esUnificadaActual = tarjeta.classList.contains('unificada') ||
+                             tarjeta.getAttribute('data-es-padre') === 'SI' ||
+                             tarjeta.getAttribute('data-id-mesa-padre') != null;
+
+    if (esUnificadaActual && nuevoEstado !== 'unificada' && nuevoEstado !== 'disponible') {
+        console.log(`🛡️ [La Jama Web Broker] Bloqueando alteración cromática para Mesa Unificada N° #${numeroMesa}`);
+        // Actualizamos los ID relacionales en segundo plano para no perder consistencia
+        if (nuevoPedidoId) tarjeta.setAttribute('data-pedido-id', nuevoPedidoId);
+        if (pedidoEstado)  tarjeta.setAttribute('data-pedido-estado', pedidoEstado);
+        return; // 🛑 Salimos del hilo, protegemos el color morado
+    }
+
+    // [Abajo continúa el resto de tu código original de plano.js intacto...]
+    const tarjetaDOM = document.querySelector(`.mesa-box[data-numero="${numeroMesa}"]`);
+    if (tarjetaDOM && tarjetaDOM.getAttribute('data-bloqueo-reserva-live') === 'true') {
+        return;
+    }
 
     tarjeta.classList.remove('disponible', 'ocupada', 'lista-para-recoger', 'lista-para-pagar', 'unificada', 'reservada');
 

@@ -9,12 +9,13 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TicketDTO {
     private int id;
-    private double consumoFinal;
-    private double propina;
+    private String nombreCliente;
     private String tipoDoc;
     private String numDoc;
     private String metodoPago;
     private String clienteCorreo;
+    private double consumoFinal;
+    private double propina;
 
     private List<DetalleTicketDTO> listaDetalles;
 }

@@ -381,7 +381,7 @@
                         <tbody>
                         <tr th:each="mov : ${movimientos}" class="fila-pedido-caja">
 
-                            <td class="text-muted font-monospace" th:text="${mov.tipo == 'APERTURA' ? '#M-2' : '#M-' + mov.id}">#M-2</td>
+                            <td class="text-muted font-monospace" th:text="${mov.comprobante != null ? mov.comprobante : '#M-' + mov.id}">AC01-00000001</td>
 
                             <td>
                                 <span th:if="${mov.tipo == 'EGRESO'}" class="badge bg-danger text-white fw-bold px-2 py-1" style="font-size:0.7rem;">EGRESO</span>
@@ -395,14 +395,14 @@
                             </td>
 
                             <td>
-                                <span th:class="${mov.tipo == 'EGRESO' ? 'text-danger fw-bold' : 'text-success fw-bold'}"
-                                      th:text="${'S/ ' + #numbers.formatDecimal(mov.monto, 1, 'COMMA', 2, 'POINT')}">S/ 0.00</span>
+        <span th:class="${mov.tipo == 'EGRESO' ? 'text-danger fw-bold' : 'text-success fw-bold'}"
+              th:text="${'S/ ' + #numbers.formatDecimal(mov.monto, 1, 'COMMA', 2, 'POINT')}">S/ 0.00</span>
                             </td>
 
                             <td>
-                                <span class="badge-metodo-jama bm-efectivo">
-                                    <img th:src="@{/img/Efectivo.png}" alt="Efectivo"> Efectivo
-                                </span>
+        <span class="badge-metodo-jama bm-efectivo">
+            <img th:src="@{/img/Efectivo.png}" alt="Efectivo"> Efectivo
+        </span>
                             </td>
 
                             <td class="text-end text-muted small fw-bold" th:text="${mov.origen}">👤 HISTÓRICO</td>

@@ -1,14 +1,102 @@
 // =========================================================================
 // 🟩 OPERACIONES DE CAPAS NATIVAS - INSTANCIACIÓN EN VENTANA GLOBAL (window)
 // =========================================================================
+
+window.CalendarioEstado = {
+    r: { mes: new Date().getMonth(), anio: new Date().getFullYear() },
+    e: { mes: new Date().getMonth(), anio: new Date().getFullYear() }
+};
+
+window.cambiarMesCalendario = function(prefijo, direccion) {
+    let estado = window.CalendarioEstado[prefijo];
+    estado.mes += direccion;
+    if (estado.mes < 0) { estado.mes = 11; estado.anio--; }
+    if (estado.mes > 11) { estado.mes = 0; estado.anio++; }
+    window.renderizarMatrizDiasDinamica(prefijo);
+};
+
+window.renderizarMatrizDiasDinamica = function(prefijo) {
+    const contenedorGrid = document.getElementById(`${prefijo}_calendar__dates`);
+    const tituloHeader = document.getElementById(`${prefijo}_cal_title`);
+    const inputFechaOculto = document.getElementById(`${prefijo}Fecha`);
+
+    if (!contenedorGrid || !tituloHeader) return;
+
+    const { mes, anio } = window.CalendarioEstado[prefijo];
+    const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    tituloHeader.textContent = `${mesesNombres[mes]} ${anio}`;
+
+    contenedorGrid.innerHTML = '';
+
+    const primerDiaMes = new Date(anio, mes, 1);
+    const totalDiasMes = new Date(anio, mes + 1, 0).getDate();
+
+    let diaSemanaInicio = primerDiaMes.getDay() - 1;
+    if (diaSemanaInicio === -1) diaSemanaInicio = 6;
+
+    const diasMesAnterior = new Date(anio, mes, 0).getDate();
+    for (let i = diaSemanaInicio - 1; i >= 0; i--) {
+        const numeroDiaViejo = diasMesAnterior - i;
+        contenedorGrid.innerHTML += `<div class="calendar__date calendar__date--grey"><span>${numeroDiaViejo}</span></div>`;
+    }
+
+    // 🛡️ ADUANA NORMALIZADA A MEDIANOCHE LIMPIA LOCAL
+    const hoyCero = new Date();
+    hoyCero.setHours(0, 0, 0, 0);
+
+    const maxReserva = new Date();
+    maxReserva.setDate(maxReserva.getDate() + 11);
+    maxReserva.setHours(0, 0, 0, 0);
+
+    for (let dia = 1; dia <= totalDiasMes; dia++) {
+        // Creación explícita local sin desfase UTC
+        const fechaCelda = new Date(anio, mes, dia);
+        fechaCelda.setHours(0, 0, 0, 0);
+
+        const esInvalido = (fechaCelda < hoyCero || fechaCelda > maxReserva);
+        const fechaFormateadaStr = `${anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        const esSeleccionado = (inputFechaOculto && inputFechaOculto.value === fechaFormateadaStr);
+
+        let claseCelda = 'calendar__date';
+        if (esInvalido) claseCelda += ' calendar__date--disabled';
+        if (esSeleccionado) claseCelda += ' calendar__date--selected';
+
+        const divDia = document.createElement('div');
+        divDia.className = claseCelda;
+        divDia.innerHTML = `<span>${dia}</span>`;
+
+        if (!esInvalido) {
+            divDia.onclick = function() {
+                contenedorGrid.querySelectorAll('.calendar__date').forEach(el => el.classList.remove('calendar__date--selected'));
+                divDia.classList.add('calendar__date--selected');
+
+                if (inputFechaOculto) {
+                    inputFechaOculto.value = fechaFormateadaStr;
+                    // Gatilla la aduana limpia de validation.js de forma conforme
+                    inputFechaOculto.dispatchEvent(new Event('change'));
+                }
+            };
+        }
+        contenedorGrid.appendChild(divDia);
+    }
+};
+
+
 window.abrirCapaModal = function(idElemento) {
-    const modal = document.getElementById(idElemento);
-    if (modal) modal.removeAttribute('hidden');
+    const modalEl = document.getElementById(idElemento);
+    if (modalEl) {
+        let modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (!modalInstance) modalInstance = new bootstrap.Modal(modalEl);
+        modalInstance.show();
+    }
 };
 
 window.cerrarCapaModal = function(idElemento) {
-    const modal = document.getElementById(idElemento);
-    if (modal) modal.setAttribute('hidden', true);
+    const modalEl = document.getElementById(idElemento);
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+    }
 };
 
 $(document).ready(function () {
@@ -73,9 +161,11 @@ $(document).ready(function () {
     initDataTable();
 
     $('#btnNuevoRegistro').on('click', function () {
-        limpiarModal();
-        window.abrirCapaModal('modalReserva');
-    });
+            limpiarModal();
+            window.abrirCapaModal('modalReserva');
+
+            window.renderizarMatrizDiasDinamica('r');
+        });
 
     $('#form').on('submit', function (e) {
         e.preventDefault();
@@ -92,26 +182,35 @@ $(document).ready(function () {
         cancelarReserva(id);
     });
     $('#tablaReservas tbody').on('click', '.btn-editar', function () {
-        const d = this.dataset;
-        document.getElementById('eReservaId').value   = d.id;
-        document.getElementById('eNombre').value      = d.nombre;
-        document.getElementById('eTelefono').value    = d.telefono;
-        document.getElementById('ePersonas').value    = d.personas;
-        document.getElementById('eObservacion').value = d.observacion || '';
+            const d = this.dataset;
+            document.getElementById('eReservaId').value   = d.id;
+            document.getElementById('eNombre').value      = d.nombre;
+            document.getElementById('eTelefono').value    = d.telefono;
+            document.getElementById('ePersonas').value    = d.personas;
+            document.getElementById('eObservacion').value = d.observacion || '';
 
-        if (d.fecha) {
-            const dt = new Date(d.fecha);
-            document.getElementById('eFecha').value = dt.toISOString().split('T')[0];
-            document.getElementById('eHora').value  = dt.toTimeString().slice(0,5);
-        }
-        ['eNombre','eTelefono','ePersonas','eFecha','eHora'].forEach(id => {
-            document.getElementById(id + '-error').textContent = '';
+            if (d.fecha) {
+                const dt = new Date(d.fecha);
+                const fechaFormateada = dt.toISOString().split('T')[0];
+                document.getElementById('eFecha').value = fechaFormateada;
+                document.getElementById('eHora').value  = dt.toTimeString().slice(0,5);
+
+                // Sincronizar el almacén del calendario de edición con el mes/año de la reserva seleccionada
+                const anioReserva = parseInt(fechaFormateada.split('-')[0]);
+                const mesReserva  = parseInt(fechaFormateada.split('-')[1]) - 1;
+
+                window.CalendarioEstado.e.mes = mesReserva;
+                window.CalendarioEstado.e.anio = anioReserva;
+            }
+            ['eNombre','eTelefono','ePersonas','eFecha','eHora'].forEach(id => {
+                const errEl = document.getElementById(id + '-error');
+                if (errEl) errEl.textContent = '';
+            });
+            window.abrirCapaModal('modalEditarReserva');
+
+            // Dibujamos la cuadrícula de edición posicionada en la fecha correcta
+            window.renderizarMatrizDiasDinamica('e');
         });
-        window.abrirCapaModal('modalEditarReserva');
-    });
-    $('#tablaReservas tbody').on('click', '.btn-eliminar', function () {
-        eliminarReserva(this.dataset.id);
-    });
 
     document.getElementById('btnGuardarEdicion').addEventListener('click', guardarEdicion);
 

@@ -2,6 +2,7 @@ package com.web.restaurante.service;
 
 import com.web.restaurante.model.MovimientoCaja;
 import com.web.restaurante.model.TurnoCaja;
+import com.web.restaurante.model.enums.TipoMovimientoCaja;
 import com.web.restaurante.repository.MovimientoCajaRepository;
 import com.web.restaurante.repository.TurnoCajaRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,8 @@ public class TurnoCajaService {
 
     private final TurnoCajaRepository turnoCajaRepository;
     private final MovimientoCajaRepository movimientoCajaRepository;
+    private final TurnoSequenceService turnoSequenceService;
+    private final MovimientoSequenceService movimientoSequenceService;
 
     public Optional<TurnoCaja> obtenerTurnoActivo() {
         return turnoCajaRepository.findByActivoTrue();
@@ -51,7 +54,6 @@ public class TurnoCajaService {
         turno.setFechaApertura(ahora);
         turno.setActivo(true);
 
-        // 🚀 DETALLE OPERATIVO: Clasificación exacta del tipo de turno al nacer
         int horaApertura = ahora.getHour();
         if (horaApertura >= 8 && horaApertura < 18) {
             turno.setTipoTurno("DIA");
@@ -61,32 +63,35 @@ public class TurnoCajaService {
 
         turnoCajaRepository.save(turno);
 
-        registrarMovimiento(turno, "APERTURA", "Fondo inicial", montoApertura, null);
+        // Generamos la secuencia atómica de apertura
+        String serieApertura = turnoSequenceService.generarSiguienteTurno();
+
+        // 🔥 CORRECCIÓN: Pasamos 'serieApertura' en vez de 'null'
+        registrarMovimiento(turno, TipoMovimientoCaja.APERTURA, "Fondo inicial", montoApertura, serieApertura);
         return turno;
     }
 
-    /** Llamado automáticamente desde PedidoService al cobrar un pedido. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void registrarVenta(String concepto, Double monto) {
         turnoCajaRepository.findByActivoTrue().ifPresent(turno ->
-                registrarMovimiento(turno, "VENTA", concepto, monto, null)
+                registrarMovimiento(turno, TipoMovimientoCaja.INGRESO_VENTA, concepto, monto, null)
         );
     }
 
-    /** Egreso manual: compra de hielo, pago a proveedor, etc. */
     @Transactional
     public void registrarEgreso(String concepto, Double monto) {
         TurnoCaja turno = turnoCajaRepository.findByActivoTrue()
                 .orElseThrow(() -> new IllegalStateException("No hay turno activo."));
-        registrarMovimiento(turno, "EGRESO", concepto, -Math.abs(monto), null);
+        String serieMovimiento = movimientoSequenceService.generarSiguienteMovimiento();
+        registrarMovimiento(turno, TipoMovimientoCaja.EGRESO_MANUAL, concepto, -Math.abs(monto), serieMovimiento);
     }
 
     @Transactional
     public void registrarIngresoManual(String concepto, Double monto) {
         TurnoCaja turno = turnoCajaRepository.findByActivoTrue()
                 .orElseThrow(() -> new IllegalStateException("No hay turno activo."));
-        // 💡 Fijamos el tipo como "INGRESO" nativo e indestructible
-        registrarMovimiento(turno, "INGRESO", concepto, Math.abs(monto), null);
+        String serieMovimiento = movimientoSequenceService.generarSiguienteMovimiento();
+        registrarMovimiento(turno, TipoMovimientoCaja.INGRESO_MANUAL, concepto, Math.abs(monto), serieMovimiento);
     }
 
     @Transactional
@@ -94,48 +99,45 @@ public class TurnoCajaService {
         TurnoCaja turno = turnoCajaRepository.findByActivoTrue()
                 .orElseThrow(() -> new IllegalStateException("No hay ningún turno de caja abierto."));
 
-        // 1. Recuperamos TODOS los movimientos asociados a este turno para no perder un solo sol
         List<MovimientoCaja> movimientos = movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(turno.getId());
 
-        double totalVendido = movimientos.stream().filter(m -> "VENTA".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
-        double totalIngresos = movimientos.stream().filter(m -> "INGRESO".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
-        double totalEgresos = movimientos.stream().filter(m -> "EGRESO".equals(m.getTipo())).mapToDouble(MovimientoCaja::getMonto).sum();
+        // 📊 Comparación limpia y directa contra los objetos Enum correspondientes
+        double totalVendido = movimientos.stream().filter(m -> m.getTipo() == TipoMovimientoCaja.INGRESO_VENTA).mapToDouble(MovimientoCaja::getMonto).sum();
+        double totalIngresos = movimientos.stream().filter(m -> m.getTipo() == TipoMovimientoCaja.INGRESO_MANUAL).mapToDouble(MovimientoCaja::getMonto).sum();
+        double totalEgresos = movimientos.stream().filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("EGRESO")).mapToDouble(MovimientoCaja::getMonto).sum();
 
-        // 2. FÓRMULA DE RECAUDACIÓN EXACTA: Fondo inicial + Ventas + Inyecciones Manuales - Egresos de pánico
-        // (Nota: totalEgresos ya se guarda en negativo en la aduana de persistencia)
         double saldoTeorico = turno.getMontoApertura() + totalVendido + totalIngresos + totalEgresos;
         double diferencia = montoCierre - saldoTeorico;
 
-        // 3. Persistimos los datos del arqueo de auditoría
         turno.setMontoCierre(montoCierre);
         turno.setTotalVendido(totalVendido);
         turno.setDiferencia(diferencia);
         turno.setObservaciones(observaciones);
         turno.setFechaCierre(LocalDateTime.now());
-        turno.setActivo(false); // Clausura del turno en memoria
+        turno.setActivo(false);
 
-        registrarMovimiento(turno, "CIERRE", "Cierre estricto de caja por el operador", montoCierre, null);
+        registrarMovimiento(turno, TipoMovimientoCaja.CIERRE, "Cierre estricto de caja por el operador", montoCierre, null);
 
-        // 🚨 REGISTRO DE ALERTA DE SEGURIDAD EN BITÁCORA
         if (Math.abs(diferencia) > 0.1) {
             System.out.println("⚠️ [ALERTA DE SEGURIDAD CONTABLE - LA JAMA]");
             System.out.println("Se ha detectado un descuadre en el arqueo del turno ID #" + turno.getId());
             System.out.println("Diferencia registrada: S/. " + diferencia);
-            // Aquí puedes inyectar luego el envío de tu notificación o bandera al administrador
         }
 
         return turnoCajaRepository.save(turno);
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
-    private void registrarMovimiento(TurnoCaja turno, String tipo,
+
+    private void registrarMovimiento(TurnoCaja turno, TipoMovimientoCaja tipo,
                                      String concepto, Double monto, String comprobante) {
         MovimientoCaja mov = new MovimientoCaja();
         mov.setTurno(turno);
-        mov.setTipo(tipo);
+        mov.setTipo(tipo); // 🛡️ Recibe el objeto Enum de manera rigurosa y tipada
         mov.setConcepto(concepto);
         mov.setMonto(monto);
         mov.setComprobante(comprobante);
+        mov.setFecha(LocalDateTime.now());
+        mov.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.EFECTIVO);
         movimientoCajaRepository.save(mov);
     }
 }

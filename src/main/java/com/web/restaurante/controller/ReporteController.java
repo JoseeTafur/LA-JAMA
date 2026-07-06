@@ -41,9 +41,11 @@ public class ReporteController {
     public ResponseEntity<byte[]> historial(
             @PathVariable String formato,
             @RequestParam String inicio,
-            @RequestParam String fin) {
+            @RequestParam String fin,
+            @RequestParam(required = false, defaultValue = "TODOS") String turno) {
 
-        byte[] data = reporteService.generarReporteHistorialCompleto(formato, inicio, fin, "", "");
+        // 🚀 CORRECCIÓN CLAVE: Llama al nuevo método estructurado para arqueos puros
+        byte[] data = reporteService.generarReporteHistorialCierres(formato, inicio, fin, turno);
         return crearResponseBinario(data, "reporte_historial_cierres", formato);
     }
 
@@ -53,9 +55,10 @@ public class ReporteController {
             @RequestParam String inicio,
             @RequestParam String fin,
             @RequestParam(required = false, defaultValue = "") String metodo,
-            @RequestParam(required = false, defaultValue = "") String origen) {
+            @RequestParam(required = false, defaultValue = "") String origen,
+            @RequestParam(required = false, defaultValue = "") String turno) {
 
-        byte[] data = reporteService.generarReporteHistorialCompleto(formato, inicio, fin, metodo, origen);
+        byte[] data = reporteService.generarReporteHistorialCompleto(formato, inicio, fin, metodo, origen, turno);
         return crearResponseBinario(data, "reporte_buscador_global", formato);
     }
 

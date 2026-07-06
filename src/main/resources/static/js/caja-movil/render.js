@@ -68,7 +68,8 @@ function renderizarTickets() {
     const elementoActivo = document.activeElement;
     let idTicketEnFoco = null;
     let esInputDoc = false;
-    let esInputCorreo = false; // 🚀 NUEVO: Flag para rastrear el foco del correo
+    let esInputCorreo = false;
+    let esInputNombre = false; // 🚀 NUEVO: Flag para rastrear el foco del nombre
     let posicionCursor = 0;
 
     if (elementoActivo && elementoActivo.tagName === 'INPUT') {
@@ -77,10 +78,14 @@ function renderizarTickets() {
             idTicketEnFoco = parseInt(elementoActivo.getAttribute('data-ticket-id'));
             esInputDoc = true;
         }
-        // 🚀 NUEVO: Captura si el cajero está escribiendo en el correo electrónico
         else if (elementoActivo.classList.contains('input-correo-fiscal')) {
             idTicketEnFoco = parseInt(elementoActivo.getAttribute('data-ticket-id'));
             esInputCorreo = true;
+        }
+        // 🚀 NUEVO: Captura si el cajero está editando manualmente el nombre del cliente
+        else if (elementoActivo.classList.contains('input-nombre-fiscal')) {
+            idTicketEnFoco = parseInt(elementoActivo.getAttribute('data-ticket-id'));
+            esInputNombre = true;
         }
     }
 
@@ -160,10 +165,24 @@ function renderizarTickets() {
                            class="jama-input-text text-center form-control-sm input-documento-fiscal"
                            data-ticket-id="${t.id}"
                            placeholder="${t.tipoDoc === 'FACTURA' ? 'RUC Obligatorio (11 dígitos)' : 'DNI Opcional (8 dígitos)'}"
-                           value="${t.numDoc}"
-                           oninput="actualizarDatoTicket(${t.id}, 'numDoc', this.value)"
+                           value="${t.numDoc || ''}"
+                           oninput="evaluarDisparoConsultaFiscal(${t.id}, this)"
                            maxlength="11">
                     ${requiereDNI ? `<small class="text-danger fw-bold mt-1 d-block text-center" style="font-size:0.7rem; color: #dc3545 !important;">⚠️ DNI Obligatorio >= S/. 700.00</small>` : ''}
+
+                    <div id="status_doc_${t.id}" class="mt-1 text-center fw-bold small" style="font-size: 0.75rem;">
+                        ${t.docStatus === 'OK' ? '<span class="text-success">✅ Documento verificado lícitamente</span>' : ''}
+                        ${t.docStatus === 'ERROR' ? '<span class="text-danger">❌ Documento no válido o inexistente</span>' : ''}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <input type="text" id="nombre_ticket_${t.id}"
+                           class="jama-input-text text-center form-control-sm input-nombre-fiscal"
+                           data-ticket-id="${t.id}"
+                           placeholder="👤 Nombre / Razón Social"
+                           value="${t.nombreCliente || ''}"
+                           oninput="window.guardarNombreManualEnMemoria(${t.id}, this.value)">
                 </div>
 
                 <div class="mb-3">
@@ -187,21 +206,19 @@ function renderizarTickets() {
             </div>`;
     });
 
-    // ─── RESTAURACIÓN DEL FOCO ───
+    // ─── RESTAURACIÓN COHESIVA DEL FOCO ───
     if (esInputDoc && idTicketEnFoco !== null) {
         const inputRestaurado = document.getElementById(`doc_ticket_${idTicketEnFoco}`);
-        if (inputRestaurado) {
-            inputRestaurado.focus();
-            inputRestaurado.setSelectionRange(posicionCursor, posicionCursor);
-        }
+        if (inputRestaurado) { inputRestaurado.focus(); inputRestaurado.setSelectionRange(posicionCursor, posicionCursor); }
     }
-    // 🚀 NUEVO: Muro de restauración para mantener la escritura fluida del correo
     else if (esInputCorreo && idTicketEnFoco !== null) {
         const correoRestaurado = document.getElementById(`correo_ticket_${idTicketEnFoco}`);
-        if (correoRestaurado) {
-            correoRestaurado.focus();
-            correoRestaurado.setSelectionRange(posicionCursor, posicionCursor);
-        }
+        if (correoRestaurado) { correoRestaurado.focus(); correoRestaurado.setSelectionRange(posicionCursor, posicionCursor); }
+    }
+    // 🚀 NUEVO: Mantiene el foco fluido si el cajero decide tipear o corregir un nombre a mano
+    else if (esInputNombre && idTicketEnFoco !== null) {
+        const nombreRestaurado = document.getElementById(`nombre_ticket_${idTicketEnFoco}`);
+        if (nombreRestaurado) { nombreRestaurado.focus(); nombreRestaurado.setSelectionRange(posicionCursor, posicionCursor); }
     }
 }
 
@@ -337,3 +354,114 @@ function generarPrevisualizacionCajero() {
     visor.textContent = `// MATRIZ DE COBRO ENVIADA A LA COLA DE FACTURACIÓN\n\n` +
                         JSON.stringify(payloadDePrueba, null, 2);
 }
+
+
+/**
+ * ⚡ DETECTOR DE COINCIDENCIA NUMÉRICA PARA DOCUMENTOS
+ * Evalúa en tiempo real si se completaron los dígitos reglamentarios para gatillar el fetch.
+ */
+function evaluarDisparoConsultaFiscal(idTicket, inputElement) {
+    // Limpiamos caracteres no numéricos
+    let valor = inputElement.value.replace(/[^0-9]/g, '');
+    inputElement.value = valor;
+
+    // Guardamos el valor en memoria limpia
+    ticketsDeCobro[idTicket].numDoc = valor;
+
+    const tipoDoc = ticketsDeCobro[idTicket].tipoDoc; // 'BOLETA' o 'FACTURA'
+
+    // Reseteamos el estado visual si el usuario borra dígitos
+    if (valor.length === 0) {
+        ticketsDeCobro[idTicket].docStatus = null;
+        ticketsDeCobro[idTicket].nombreCliente = '';
+        const inputNombre = document.getElementById(`nombre_ticket_${idTicket}`);
+        if (inputNombre) inputNombre.value = '';
+        const statusDiv = document.getElementById(`status_doc_${idTicket}`);
+        if (statusDiv) statusDiv.innerHTML = '';
+        return;
+    }
+
+    // 🎯 GATILLO: 8 dígitos para DNI (Boleta) o 11 dígitos para RUC (Factura)
+    if ((tipoDoc === 'BOLETA' && valor.length === 8) || (tipoDoc === 'FACTURA' && valor.length === 11)) {
+        ejecutarConsultaDocumentoOficial(idTicket, tipoDoc === 'FACTURA' ? 'ruc' : 'dni', valor);
+    }
+}
+
+/**
+ * 📡 CONSUMIDOR ASÍNCRONO DE DOCUMENTOCONTROLLER (LA JAMA SHIELD)
+ * Conecta con tu backend para traer los datos oficiales y gestionar las aduanas de error.
+ */
+function ejecutarConsultaDocumentoOficial(idTicket, tipoEndpoint, numeroDocumento) {
+    const statusDiv = document.getElementById(`status_doc_${idTicket}`);
+    const inputNombre = document.getElementById(`nombre_ticket_${idTicket}`);
+
+    if (statusDiv) statusDiv.innerHTML = '<span class="text-muted"><i class="spinner-border spinner-border-sm"></i> Consultando padrón...</span>';
+
+    fetch(`/api/documentos/${tipoEndpoint}/${numeroDocumento}`)
+        .then(res => {
+            if (!res.ok) throw new Error("ERROR_CONEXION");
+            return res.json();
+        })
+        .then(data => {
+            // 📊 RADAR DE CONTROL DE IDENTIDAD EN CALIENTE
+            console.log("🎯 [MIAPI.CLOUD RESPUESTA REAL CRUDA]:", data);
+
+            // 🚀 NUEVA EXTRACCIÓN SOPORTE MIAPI.CLOUD (Estructura con data.datos)
+            let nombreCompleto = null;
+
+            if (data.success && data.datos) {
+                const d = data.datos;
+                const apePaterno = d.ape_paterno || d.apellidoPaterno || '';
+                const apeMaterno = d.ape_materno || d.apellidoMaterno || '';
+                nombreCompleto = `${d.nombres || ''} ${apePaterno} ${apeMaterno}`.trim();
+            } else {
+                // Fallback por si la estructura original de otros endpoints se mantiene
+                nombreCompleto = data.nombre || data.razonSocial || data.nombreCompleto ||
+                                 (data.data && data.data.nombre_completo ? data.data.nombre_completo : null) ||
+                                 data.nombre_completo ||
+                                 (data.nombres ? `${data.nombres} ${data.apellidoPaterno || ''}` : null);
+            }
+
+            // Si después de mapear todo sigue vacío, lanzamos el error de padrón
+            if (!nombreCompleto || data.error) {
+                throw new Error("NOT_FOUND");
+            }
+
+            // 🟢 ESCENARIO A: DOCUMENTO ENCONTRADO Y CORRECTO
+            ticketsDeCobro[idTicket].docStatus = 'OK';
+            ticketsDeCobro[idTicket].nombreCliente = nombreCompleto.toUpperCase();
+
+            // Refrescamos en caliente la UI sin perder el cursor del cajero
+            if (inputNombre) inputNombre.value = ticketsDeCobro[idTicket].nombreCliente;
+            if (statusDiv) statusDiv.innerHTML = '<span class="text-success">✅ Documento verificado lícitamente</span>';
+
+            AppUtils.showNotification("Identidad fiscal cargada con éxito", "success");
+            actualizarVista();
+        })
+        .catch(err => {
+            // 🔴 ESCENARIO B: DOCUMENTO INCORRECTO / INEXISTENTE
+            ticketsDeCobro[idTicket].docStatus = 'ERROR';
+            ticketsDeCobro[idTicket].nombreCliente = ''; // Se limpia el nombre para forzar que sea corregido
+
+            if (inputNombre) {
+                inputNombre.value = '';
+                inputNombre.placeholder = "❌ Ingrese nombre manualmente";
+            }
+
+            if (statusDiv) statusDiv.innerHTML = '<span class="text-danger">❌ Documento no válido o inexistente</span>';
+
+            AppUtils.showNotification(
+                err.message === "NOT_FOUND"
+                    ? "El número ingresado no existe en el padrón nacional."
+                    : "No se pudo conectar con el servidor de identidades.",
+                "error"
+            );
+        });
+}
+
+window.guardarNombreManualEnMemoria = function(ticketId, valorTexto) {
+    if (ticketsDeCobro && ticketsDeCobro[ticketId]) {
+        ticketsDeCobro[ticketId].nombreCliente = valorTexto.toUpperCase();
+    }
+};
+window.evaluarDisparoConsultaFiscal = evaluarDisparoConsultaFiscal;

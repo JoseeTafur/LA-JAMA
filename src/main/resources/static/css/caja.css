@@ -643,22 +643,27 @@
     border-radius: 12px;
 }
 
-/* 2. Forzar a la tabla a ocupar el ancho exacto disponible y ajustar la letra */
 table.table-jama {
     width: 100% !important;
-    table-layout: fixed; /* 💡 Hace que el navegador respete el ancho de pantalla y no se estire de más */
-    font-size: 0.85rem !important; /* Reducción sutil general para que quepa todo el texto */
+    table-layout: fixed;
+    font-size: 0.60rem !important;
     margin-bottom: 0 !important;
 }
 
 /* 3. Controlar los espacios internos (paddings) para ganar espacio horizontal */
 table.table-jama th,
 table.table-jama td {
-    padding: 10px 8px !important; /* Celdas más compactas */
+    padding: 7px 6px !important;
     vertical-align: middle !important;
-    white-space: nowrap; /* Evita que los badges o botones se rompan en dos líneas */
+    white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Si el texto es ridículamente largo, añade "..." en vez de deformar la tabla */
+    text-overflow: ellipsis;
+    font-size: 0.75rem !important;
+}
+
+table.table-jama thead th {
+    font-size: 0.68rem !important;
+    padding: 8px 6px !important;
 }
 
 /* 4. Distribución proporcional de las columnas para que no peleen por espacio */

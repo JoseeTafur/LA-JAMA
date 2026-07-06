@@ -197,6 +197,18 @@
 
         <div id="vista-grupos" class="d-none animate__animated animate__fadeIn">
             <div class="card card-color1 border-0 shadow-sm rounded-4 p-4">
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-diagram-3-fill me-2" style="color: var(--lajama-green);"></i>Grupos de Mesas Unificadas
+                    </h5>
+
+                    <span class="badge rounded-pill px-3 py-2 small fw-bold shadow-sm"
+                          style="background-color: #f5f3ff; color: #4c1d95; border: 1px solid rgba(76, 29, 149, 0.15); font-size: 0.8rem;">
+                <i class="bi bi-layers-half me-1"></i> Comandas Colectivas Activas
+            </span>
+                </div>
+
                 <div id="contenedor-tarjetas-unificadas" class="d-flex flex-column gap-3">
 
                     <div th:if="${#lists.size(mesas.?[numerosMesasHijas != null && !numerosMesasHijas.isEmpty()]) == 0}"
@@ -209,11 +221,11 @@
                     <div th:each="mPadre : ${mesas}"
                          th:if="${mPadre.numerosMesasHijas != null && !mPadre.numerosMesasHijas.isEmpty()}"
                          th:with="pedidosPadre=${pedidos != null ? pedidos.?[numeroMesa == __${mPadre.numero}__ && estado.name() != 'PAGADO' && estado.name() != 'CANCELADO'] : null},
-                                  pedidoPadreActivo=${pedidosPadre != null && !#lists.isEmpty(pedidosPadre) ? pedidosPadre[#lists.size(pedidosPadre) - 1] : null}"
+                          pedidoPadreActivo=${pedidosPadre != null && !#lists.isEmpty(pedidosPadre) ? pedidosPadre[#lists.size(pedidosPadre) - 1] : null}"
                          class="card border-0 shadow-sm rounded-4 tarjeta-unificada"
                          th:classappend="${pedidoPadreActivo == null} ? 'disponible' :
-                                (${pedidoPadreActivo.tienePlatosMicroParaRecoger()} ? 'lista-para-recoger' :
-                                (${pedidoPadreActivo.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar'))"
+                        (${pedidoPadreActivo.tienePlatosMicroParaRecoger()} ? 'lista-para-recoger' :
+                        (${pedidoPadreActivo.tienePlatosMicroEnCocina()} ? 'ocupada' : 'lista-para-pagar'))"
                          th:data-id="${mPadre.id}"
                          th:data-numero="${mPadre.numero}"
                          th:data-pedido-id="${pedidoPadreActivo != null ? pedidoPadreActivo.id : ''}"
@@ -461,60 +473,78 @@
 
     <script>
         function alternarVistaMesas(vistaSeleccionada) {
-            if (typeof cancelarModoUnificacion === 'function') cancelarModoUnificacion();
-            if (typeof cancelarModoReservaMasiva === 'function') cancelarModoReservaMasiva();
+    if (typeof cancelarModoUnificacion === 'function') cancelarModoUnificacion();
+    if (typeof cancelarModoReservaMasiva === 'function') cancelarModoReservaMasiva();
 
-            const vistaSalon    = document.getElementById('vista-salon');
-            const vistaGrupos   = document.getElementById('vista-grupos');
-            const vistaReservas = document.getElementById('vista-reservas');
+    const vistaSalon    = document.getElementById('vista-salon');
+    const vistaGrupos   = document.getElementById('vista-grupos');
+    const vistaReservas = document.getElementById('vista-reservas');
 
-            if (vistaSalon)    vistaSalon.classList.toggle('d-none', vistaSeleccionada !== 'salon');
-            if (vistaGrupos)   vistaGrupos.classList.toggle('d-none', vistaSeleccionada !== 'grupos');
-            if (vistaReservas) vistaReservas.classList.toggle('d-none', vistaSeleccionada !== 'reservas');
+    if (vistaSalon)    vistaSalon.classList.toggle('d-none', vistaSeleccionada !== 'salon');
+    if (vistaGrupos)   vistaGrupos.classList.toggle('d-none', vistaSeleccionada !== 'grupos');
+    if (vistaReservas) vistaReservas.classList.toggle('d-none', vistaSeleccionada !== 'reservas');
 
-            if (vistaSeleccionada === 'reservas' && typeof refrescarPestañaMesasReservadas === 'function') {
-                refrescarPestañaMesasReservadas();
-            }
+    // 🛡️ ADUANA RECTIFICADORA DE PESTAÑA:
+    if (vistaSeleccionada === 'reservas') {
+        if (typeof refrescarPestañaMesasReservadas === 'function') {
+            refrescarPestañaMesasReservadas();
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const urlParams = new URLSearchParams(window.location.search);
+        // 🔥 GATILLO EN CALIENTE: Obligamos a auditar el panel vacío inmediatamente al hacer click
+        if (typeof _auditarPanelReservasVacio === 'function') {
+            _auditarPanelReservasVacio();
+        }
+    }
+}
 
-            if (urlParams.get('embed') === 'true') {
-                const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar');
-                if (sidebar) sidebar.remove();
+document.addEventListener('DOMContentLoaded', function () {
+    const urlParams = new URLSearchParams(window.location.search);
 
-                const header = document.querySelector('.main-content header') || document.querySelector('.header-jama') || document.querySelector('div[th\\:replace*="logistica_header"]');
-                if (header) header.remove();
+    if (urlParams.get('embed') === 'true') {
+        const sidebar = document.querySelector('.sidebar') || document.getElementById('sidebar');
+        if (sidebar) sidebar.remove();
 
-                const wrapper = document.querySelector('.wrapper');
-                if (wrapper) {
-                    wrapper.style.display = "block";
-                    wrapper.style.width   = "100%";
-                }
+        const header = document.querySelector('.main-content header') || document.querySelector('.header-jama') || document.querySelector('div[th\\:replace*="logistica_header"]');
+        if (header) header.remove();
 
-                const mainContent = document.getElementById('main-content') || document.querySelector('.main-content');
-                if (mainContent) {
-                    mainContent.style.marginLeft      = "0px";
-                    mainContent.style.padding         = "0px";
-                    mainContent.style.width           = "100%";
-                    mainContent.style.minHeight       = "auto";
-                    mainContent.style.backgroundColor = "transparent";
-                }
+        const wrapper = document.querySelector('.wrapper');
+        if (wrapper) {
+            wrapper.style.display = "block";
+            wrapper.style.width   = "100%";
+        }
 
-                const container = document.querySelector('.container-fluid');
-                if (container) {
-                    container.style.padding   = "10px";
-                    container.style.maxWidth  = "100%";
-                }
+        const mainContent = document.getElementById('main-content') || document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.style.marginLeft      = "0px";
+            mainContent.style.padding         = "0px";
+            mainContent.style.width           = "100%";
+            mainContent.style.minHeight       = "auto";
+            mainContent.style.backgroundColor = "transparent";
+        }
 
-                const banner = document.querySelector('.recaudacion-banner');
-                if (banner) {
-                    banner.style.padding = "12px";
-                    banner.querySelector('p')?.remove();
-                }
-            }
-        });
+        const container = document.querySelector('.container-fluid');
+        if (container) {
+            container.style.padding   = "10px";
+            container.style.maxWidth  = "100%";
+        }
+
+        const banner = document.querySelector('.recaudacion-banner');
+        if (banner) {
+            banner.style.padding = "12px";
+            banner.querySelector('p')?.remove();
+        }
+    }
+
+    // 🚀 INYECCIÓN MAESTRA DE INICIALIZACIÓN POR DEFECTO:
+    // Agregamos un retraso mínimo seguro de 150ms para garantizar que 'reservas.js'
+    // haya sido parseado por completo por el navegador antes de invocar la auditoría.
+    setTimeout(() => {
+        if (typeof _auditarPanelReservasVacio === 'function') {
+            console.log("📅 [La Jama Boot Hook] Ejecutando auditoría de reservas inicial por defecto.");
+            _auditarPanelReservasVacio();
+        }
+    }, 150);
+});
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>

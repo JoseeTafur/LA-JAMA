@@ -108,12 +108,11 @@ public class ReporteService {
     public byte[] generarReporteBitacoraCaja(String formato) {
         List<Pedido> pedidosSimuladosBitacora = new ArrayList<>();
 
-        // Buscamos el turno en vivo usando el repositorio inyectado
         turnoCajaRepository.findByActivoTrue().ifPresent(turno -> {
             List<MovimientoCaja> movs = movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(turno.getId());
             for (MovimientoCaja m : movs) {
                 if (m == null) continue;
-                String tipo = m.getTipo() != null ? m.getTipo().toUpperCase().trim() : "INGRESO";
+                String tipo = m.getTipo() != null ? m.getTipo().getGrupoMacro() : "INGRESO";
                 String concepto = m.getConcepto() != null ? m.getConcepto() : "";
                 String conceptoUpper = concepto.toUpperCase();
 
@@ -121,10 +120,18 @@ public class ReporteService {
 
                     Pedido pSimulado = new Pedido();
                     pSimulado.setId(m.getId());
-                    pSimulado.setComprobanteNotaNumero("M-" + m.getId());
+
+                    // 🛡️ FORMATEO FORMAL: AC01-00000002
+                    if (m.getTipo() == com.web.restaurante.model.enums.TipoMovimientoCaja.APERTURA || conceptoUpper.contains("FONDO INICIAL")) {
+                        String correlativoFormateado = String.format("%08d", turno.getId());
+                        pSimulado.setComprobanteNotaNumero("AC01-" + correlativoFormateado);
+                    } else {
+                        pSimulado.setComprobanteNotaNumero("M-" + m.getId());
+                    }
+
                     pSimulado.setCliente(concepto.startsWith("Manual: ") ? concepto.substring(8) : concepto);
                     pSimulado.setFechaCreacion(m.getFecha() != null ? m.getFecha() : LocalDateTime.now());
-                    pSimulado.setMontoTotal(Math.abs(m.getMonto())); // Siempre absoluto positivo
+                    pSimulado.setMontoTotal(Math.abs(m.getMonto()));
 
                     if ("EGRESO".equals(tipo)) {
                         pSimulado.setClienteCorreo("MANUAL_EGRESO");
@@ -142,33 +149,117 @@ public class ReporteService {
         return procesarReporteEstructurado(pedidosSimuladosBitacora, formato);
     }
 
-    public byte[] generarReporteHistorialCompleto(String formato, String inicio, String fin, String metodo, String origen) {
+    public byte[] generarReporteHistorialCierres(String formato, String inicio, String fin, String turnoFiltro) {
+        LocalDate fechaInicio = LocalDate.parse(inicio);
+        LocalDate fechaFin = LocalDate.parse(fin);
+
+        LocalDateTime inicioDT = fechaInicio.atStartOfDay();
+        LocalDateTime finDT = fechaFin.atTime(java.time.LocalTime.MAX);
+
+        // Extraemos estrictamente los turnos cerrados en el rango horacio
+        List<TurnoCaja> turnos = turnoCajaRepository.findAll().stream()
+                .filter(t -> t.getFechaApertura() != null
+                        && !t.getFechaApertura().isBefore(inicioDT)
+                        && !t.getFechaApertura().isAfter(finDT))
+                .collect(Collectors.toList());
+
+        List<Pedido> resumenTurnosSimulados = new ArrayList<>();
+        final String turnoUpper = (turnoFiltro != null) ? turnoFiltro.toUpperCase().trim() : "TODOS";
+
+        for (TurnoCaja t : turnos) {
+            String tipoTurnoReal = t.getTipoTurno() != null ? t.getTipoTurno().toUpperCase().trim() : "DIA";
+            if (!"TODOS".equals(turnoUpper)) {
+                String filtroCotejar = "DÍA".equals(turnoUpper) || "DIA".equals(turnoUpper) ? "DIA" : "NOCHE";
+                if (!tipoTurnoReal.equals(filtroCotejar)) continue;
+            }
+
+            // Simulamos un objeto Pedido estructurado para heredar de forma transparente tus estilos Excel/PDF
+            Pedido pSimulado = new Pedido();
+            pSimulado.setId(t.getId());
+            pSimulado.setComprobanteNotaNumero("#" + t.getId()); // Identificador estético del Turno
+
+            String badgeTurnoTxt = tipoTurnoReal.equals("DIA") ? "TURNO: DÍA" : "TURNO: NOCHE";
+            pSimulado.setCliente(badgeTurnoTxt + " | Obs: " + (t.getObservaciones() != null ? t.getObservaciones() : "Sin apuntes"));
+            pSimulado.setFechaCreacion(t.getFechaApertura());
+
+            // Pasamos los montos financieros clave encapsulados en campos seguros
+            pSimulado.setMontoTotal(t.getTotalVendido() != null ? t.getTotalVendido() : 0.0); // Columna Monto Cobrado
+
+            // Guardamos metadatos adicionales en campos string libres para pintarlos de forma descriptiva
+            String fCierreStr = t.getFechaCierre() != null ? t.getFechaCierre().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")) : "Abierto";
+            pSimulado.setDireccion("Apertura: S/ " + String.format("%.2f", t.getMontoApertura()) + " | Cierre: " + fCierreStr);
+
+            double descuadre = t.getDiferencia() != null ? t.getDiferencia() : 0.0;
+            pSimulado.setClienteCorreo(descuadre >= 0 ? "DESCUADRE: +S/ " + String.format("%.2f", descuadre) : "DESCUADRE: S/ " + String.format("%.2f", descuadre));
+
+            // Control de color: si hay un descuadre negativo fuerte, se marcará con el fondo arena/anulado de advertencia
+            pSimulado.setEstadoPago(descuadre < -0.05 ? com.web.restaurante.model.enums.EstadoPago.EXTORNADO : com.web.restaurante.model.enums.EstadoPago.PAGADO);
+            pSimulado.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.EFECTIVO);
+
+            resumenTurnosSimulados.add(pSimulado);
+        }
+
+        // Ordenamos para que los cierres más recientes encabecen la primera línea del reporte
+        resumenTurnosSimulados.sort((a, b) -> b.getId().compareTo(a.getId()));
+        return procesarReporteEstructurado(resumenTurnosSimulados, formato);
+    }
+
+    public byte[] generarReporteHistorialCompleto(String formato, String inicio, String fin, String metodo, String origen, String turnoFiltro) {
         LocalDate fechaInicio = (inicio != null && !inicio.isEmpty()) ? LocalDate.parse(inicio) : LocalDate.now().minusDays(30);
         LocalDate fechaFin = (fin != null && !fin.isEmpty()) ? LocalDate.parse(fin) : LocalDate.now();
 
-        Page<Pedido> pagina = pedidoRepository.findHistorialComprobantes(fechaInicio, fechaFin, PageRequest.of(0, Integer.MAX_VALUE));
-        List<Pedido> lista = pagina.getContent();
+        // 🚀 MEJORADO: Consultamos el espectro completo usando findAll() para no perder Deliverys de Yape/Plin
+        List<Pedido> lista = pedidoRepository.findAll().stream()
+                .filter(p -> p.getFechaCreacion() != null
+                        && !p.getFechaCreacion().toLocalDate().isBefore(fechaInicio)
+                        && !p.getFechaCreacion().toLocalDate().isAfter(fechaFin))
+                .collect(Collectors.toList());
 
-        // 1. 🛡️ RE-ACTIVACIÓN DEL CANDADO CONTABLE: Filtra únicamente las notas formalizadas legítimas
+        final String metodoUpper = (metodo != null && !metodo.trim().isEmpty()) ? metodo.trim().toUpperCase() : "TODOS";
+        final String origenUpper = (origen != null && !origen.trim().isEmpty()) ? origen.trim().toUpperCase() : "TODOS";
+        final String turnoUpper = (turnoFiltro != null && !turnoFiltro.trim().isEmpty()) ? turnoFiltro.trim().toUpperCase() : "TODOS";
+
         List<Pedido> filtrados = lista.stream()
                 .filter(p -> p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
                 .filter(p -> {
-                    boolean cumpleMetodo = true;
-                    if (metodo != null && !metodo.isEmpty() && !metodo.equals("TODOS")) {
-                        String mp = p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO";
-                        cumpleMetodo = mp.equals(metodo);
+                    if (!"TODOS".equals(turnoUpper) && p.getTurnoCaja() != null) {
+                        String tipoTurnoComanda = p.getTurnoCaja().getTipoTurno();
+                        if (tipoTurnoComanda == null && p.getTurnoCaja().getFechaApertura() != null) {
+                            int hora = p.getTurnoCaja().getFechaApertura().getHour();
+                            tipoTurnoComanda = (hora >= 8 && hora < 18) ? "DIA" : "NOCHE";
+                        }
+                        String filtroCotejar = "DÍA".equals(turnoUpper) || "DIA".equals(turnoUpper) ? "DIA" : "NOCHE";
+                        if (tipoTurnoComanda == null || !tipoTurnoComanda.equalsIgnoreCase(filtroCotejar)) {
+                            return false;
+                        }
                     }
-                    boolean cumpleOrigen = true;
-                    if (origen != null && !origen.isEmpty() && !origen.equals("TODOS")) {
-                        if (origen.equals("LOCAL") || origen.equals("SALON")) cumpleOrigen = p.getNumeroMesa() != null;
-                        else if (origen.equals("DELIVERY")) cumpleOrigen = p.getNumeroMesa() == null;
+
+                    if (!"TODOS".equals(metodoUpper)) {
+                        String mp = p.getMetodoPago() != null ? p.getMetodoPago().name().toUpperCase() : "EFECTIVO";
+                        if (metodoUpper.contains("YAPE") || metodoUpper.contains("DIGITAL")) {
+                            if (!mp.equals("YAPE") && !mp.equals("PLIN") && !mp.equals("YAPE_PLIN")) return false;
+                        } else if (!mp.equals(metodoUpper)) {
+                            return false;
+                        }
                     }
-                    return cumpleMetodo && cumpleOrigen;
+
+                    if (!"TODOS".equals(origenUpper)) {
+                        boolean tieneMesa = p.getNumeroMesa() != null;
+                        String tipoEnumStr = p.getTipoPedido() != null ? p.getTipoPedido().name().toUpperCase() : "LLEVAR";
+                        if ("LOCAL".equals(origenUpper) || "SALON".equals(origenUpper)) {
+                            return "SALON".equals(tipoEnumStr) || tieneMesa;
+                        } else if ("DELIVERY".equals(origenUpper)) {
+                            return "DELIVERY".equals(tipoEnumStr);
+                        } else if ("LLEVAR".equals(origenUpper)) {
+                            return "LLEVAR".equals(tipoEnumStr);
+                        }
+                    }
+                    return true;
                 }).collect(Collectors.toList());
 
-        // 2. Acople de los movimientos manuales en la misma lista si los filtros lo permiten
-        if (metodo == null || metodo.isEmpty() || "TODOS".equals(metodo) || "EFECTIVO".equalsIgnoreCase(metodo)) {
-            if (origen == null || origen.isEmpty() || "TODOS".equals(origen) || "SALON".equals(origen) || "LOCAL".equals(origen)) {
+        // 🛡️ ADUANA CRÍTICA EN LOS MOVIMIENTOS MANUALES DEL REPORTE:
+        if ("TODOS".equals(metodoUpper) || "EFECTIVO".equals(metodoUpper)) {
+            if ("TODOS".equals(origenUpper) || "SALON".equals(origenUpper) || "LOCAL".equals(origenUpper)) {
 
                 LocalDateTime ldtInicio = fechaInicio.atTime(8, 0);
                 LocalDateTime ldtFin = fechaFin.plusDays(1).atTime(7, 0);
@@ -178,24 +269,41 @@ public class ReporteService {
                         .collect(Collectors.toList());
 
                 for (TurnoCaja t : turnosRango) {
+                    String tipoTurnoReal = t.getTipoTurno() != null ? t.getTipoTurno().toUpperCase().trim() : "DIA";
+                    if (!"TODOS".equals(turnoUpper)) {
+                        String filtroCotejar = "DÍA".equals(turnoUpper) || "DIA".equals(turnoUpper) ? "DIA" : "NOCHE";
+                        if (!tipoTurnoReal.equals(filtroCotejar)) continue;
+                    }
+
                     List<MovimientoCaja> movs = movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(t.getId());
                     for (MovimientoCaja m : movs) {
                         if (m == null) continue;
-                        String tipo = m.getTipo() != null ? m.getTipo().toUpperCase().trim() : "INGRESO";
+                        String tipo = m.getTipo() != null ? m.getTipo().getGrupoMacro() : "INGRESO";
                         String concepto = m.getConcepto() != null ? m.getConcepto() : "";
                         String conceptoUpper = concepto.toUpperCase();
 
-                        if (!(conceptoUpper.contains("LIQUIDACIÓN") || conceptoUpper.contains("LIQUIDACION") || conceptoUpper.contains("EXTORNO") || tipo.equals("VENTA") || tipo.equals("CIERRE"))) {
+                        // 🚨 FILTRO ATÓMICO: Si el concepto tiene palabras clave de ventas manuales, NO se agrega como "M-"
+                        if (!(conceptoUpper.contains("LIQUIDACIÓN") ||
+                                conceptoUpper.contains("LIQUIDACION") ||
+                                conceptoUpper.contains("EXTORNO") ||
+                                conceptoUpper.contains("DELIVERY MANUAL CAJERO") || // ◄ BLOQUEO DE DUPLICADO EN EL HISTORIAL COMPLETO
+                                conceptoUpper.contains("VENTA POS DIRECTO") ||      // ◄ BLOQUEO DE DUPLICADO EN EL HISTORIAL COMPLETO
+                                tipo.equals("VENTA") ||
+                                tipo.equals("CIERRE"))) {
 
                             Pedido pSimulado = new Pedido();
                             pSimulado.setId(m.getId());
-                            pSimulado.setComprobanteNotaNumero("M-" + m.getId());
-                            pSimulado.setCliente(concepto.startsWith("Manual: ") ? concepto.substring(8) : concepto);
 
-                            // Asignamos la estampa de tiempo real para la ordenación cronológica exacta
+                            if (m.getTipo() == com.web.restaurante.model.enums.TipoMovimientoCaja.APERTURA || conceptoUpper.contains("FONDO INICIAL")) {
+                                String correlativoFormateado = String.format("%08d", t.getId());
+                                pSimulado.setComprobanteNotaNumero("AC01-" + correlativoFormateado);
+                            } else {
+                                pSimulado.setComprobanteNotaNumero("M-" + m.getId());
+                            }
+
+                            pSimulado.setCliente(concepto.startsWith("Manual: ") ? concepto.substring(8) : concepto);
                             pSimulado.setFechaCreacion(m.getFecha() != null ? m.getFecha() : LocalDateTime.now());
                             pSimulado.setMontoTotal(Math.abs(m.getMonto()));
-
                             pSimulado.setClienteCorreo("EGRESO".equals(tipo) ? "MANUAL_EGRESO" : "MANUAL_INGRESO");
                             pSimulado.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
                             filtrados.add(pSimulado);
@@ -205,12 +313,10 @@ public class ReporteService {
             }
         }
 
-        // 🔄 3. ORDENACIÓN CRONOLÓGICA DESCENDENTE FIEL (Por fechaCreacion):
-        // Compara los objetos por su estampa de tiempo de más nuevo a más antiguo, igualando el comportamiento del JS.
         filtrados.sort((a, b) -> {
             LocalDateTime fechaA = a.getFechaCreacion() != null ? a.getFechaCreacion() : LocalDateTime.MIN;
             LocalDateTime fechaB = b.getFechaCreacion() != null ? b.getFechaCreacion() : LocalDateTime.MIN;
-            return fechaB.compareTo(fechaA); // Lo más nuevo siempre primero arriba
+            return fechaB.compareTo(fechaA);
         });
 
         return procesarReporteEstructurado(filtrados, formato);

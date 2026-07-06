@@ -49,7 +49,7 @@ function procesarLiquidacion() {
                 .map(p => {
                     const subtotalProrrateado = Math.round(p.subtotal * ratioRealTicket * 100) / 100;
                     return {
-                        productoId: p.productoId || p.id, // ◄ LLAVE INTEGRAL RECUPERADA (No colapsa el id del loop)
+                        productoId: p.productoId || p.id,
                         nombre: p.nombre.trim(),
                         cantidad: p.cantidad,
                         precioUnitario: Math.round((subtotalProrrateado / p.cantidad) * 100) / 100,
@@ -61,7 +61,7 @@ function procesarLiquidacion() {
             listaPlatosModificados = platosDisponibles
                 .filter(p => p.idTicketAsignado === t.id && platosSeleccionadosParaCobro.includes(p.id))
                 .map(p => ({
-                    productoId: p.productoId || p.id, // ◄ LLAVE INTEGRAL RECUPERADA
+                    productoId: p.productoId || p.id,
                     nombre: p.nombre.trim(),
                     cantidad: p.cantidad,
                     precioUnitario: Math.round((p.subtotal / p.cantidad) * 100) / 100,
@@ -71,12 +71,15 @@ function procesarLiquidacion() {
 
         listaPlatosModificados.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-        return {
+        const nombreFinalComprobante = t.nombreCliente ? t.nombreCliente.trim() : "";
+
+    return {
             ticketId: t.id + 1,
             consumoFinal: consumoFinalTicket,
             propina: t.propina,
             tipoDoc: t.tipoDoc,
             numDoc: t.numDoc || "SIN DOCUMENTO",
+            nombreCliente: nombreFinalComprobante,
             clienteCorreo: t.clienteCorreo || "",
             metodoPago: t.metodoPago,
             listaDetalles: listaPlatosModificados

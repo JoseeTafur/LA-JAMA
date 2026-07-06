@@ -79,13 +79,20 @@ public class MesaController {
         }
     }
 
+    // 🟢 REEMPLAZAR ESTE MÉTODO EN TU MesaController.java
     @PostMapping("/comanda/eliminar-item")
     @ResponseBody
-    public ResponseEntity<String> eliminarItemComanda(@RequestParam Long pedidoId, @RequestParam Long detalleId) {
+    public ResponseEntity<String> eliminarItemComanda(
+            @RequestParam Long pedidoId,
+            @RequestParam Long detalleId,
+            @RequestParam(value = "esMerma", defaultValue = "false") boolean esMerma) { // 🛡️ CAPTURAMOS LA BANDERA DEL JS
         try {
-            // 1. Ejecutamos la mutación en el servicio (Marca canceladoPorCliente = true si ya se imprimió ticket)
-            mesaService.eliminarDetallePedido(pedidoId, detalleId);
+            System.out.println("🛰️ [La Jama - Escudo] Interceptando anulación en Salón. Pedido #" + pedidoId + " | Ítem #" + detalleId + " | ¿Es Merma?: " + esMerma);
 
+            // 🔥 LA INYECCIÓN MAESTRA: Ejecutamos el servicio contable de inventario que reduce el comprometido y actualiza proteínas
+            pedidoService.eliminarItemComanda(pedidoId, detalleId, esMerma);
+
+            // Volvemos a consultar el estado para la auto-liberación visual del salón
             Pedido pedidoActualizado = pedidoRepository.findById(pedidoId)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
@@ -93,37 +100,27 @@ public class MesaController {
             long mermasPorPagar = 0;
 
             if (pedidoActualizado.getListaDetalles() != null) {
-                // Contamos los platos normales que siguen activos en preparación/entrega
                 platosActivos = pedidoActualizado.getListaDetalles().stream()
                         .filter(d -> !d.isCanceladoPorCliente())
                         .count();
 
-                // Contamos las mermas impresas que OBLIGATORIAMENTE el cliente debe pagar en caja
                 mermasPorPagar = pedidoActualizado.getListaDetalles().stream()
                         .filter(d -> d.isCanceladoPorCliente() && !d.isPagado())
                         .count();
             }
 
-            // 🚀 EL ESCUDO DE CONTROL DE LA JAMA:
-            // Solo procederemos a CANCELAR la orden entera si no quedan platos normales activos
-            // Y TAMPOCO quedan mermas pendientes de facturación comercial en caja.
             if (platosActivos == 0 && mermasPorPagar == 0) {
-                Mesa mesaAsociada = mesaRepository.findByNumero(pedidoActualizado.getNumeroMesa())
-                        .orElse(null);
-
+                Mesa mesaAsociada = mesaRepository.findByNumero(pedidoActualizado.getNumeroMesa()).orElse(null);
                 if (mesaAsociada != null) {
                     mesaAsociada.setEstado("DISPONIBLE");
                     mesaRepository.save(mesaAsociada);
                 }
-
                 pedidoActualizado.setEstado(com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
                 pedidoRepository.save(pedidoActualizado);
 
                 return ResponseEntity.ok("Mesa liberada automáticamente por comanda vacía");
             }
 
-            // Si platosActivos es 0 pero mermasPorPagar es mayor a 0, la cabecera del Pedido se mantiene viva
-            // de forma intencional para obligar a que pase por el módulo de caja.
             return ResponseEntity.ok("Producto removido correctamente y transformado en merma cobrable");
 
         } catch (Exception e) {
@@ -136,7 +133,7 @@ public class MesaController {
     @ResponseBody
     public ResponseEntity<String> entregarItemIndividual(@RequestParam Long pedidoId, @RequestParam Long detalleId) {
         try {
-            pedidoService.entregarPlatoIndividual(pedidoId, detalleId);
+            mesaService.entregarPlatoIndividual(pedidoId, detalleId);
             return ResponseEntity.ok("Plato servido en mesa");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al entregar el plato: " + e.getMessage());

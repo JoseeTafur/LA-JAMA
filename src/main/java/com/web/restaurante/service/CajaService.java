@@ -2,6 +2,7 @@ package com.web.restaurante.service;
 
 import com.web.restaurante.model.*;
 import com.web.restaurante.model.enums.EstadoPago;
+import com.web.restaurante.model.enums.TipoMovimientoCaja;
 import com.web.restaurante.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -73,11 +74,16 @@ public class CajaService {
                 .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0).sum();
 
         double totalIngresosManuales = movimientos.stream()
-                .filter(m -> m.getTipo() != null && "INGRESO".equals(m.getTipo().toUpperCase().trim()))
+                .filter(m -> m.getTipo() != null
+                        && m.getTipo().getGrupoMacro().equals("INGRESO")
+                        && m.getTipo() != TipoMovimientoCaja.INGRESO_VENTA
+                        && m.getTipo() != TipoMovimientoCaja.APERTURA)
                 .mapToDouble(MovimientoCaja::getMonto).sum();
 
         double totalEgresos = movimientos.stream()
-                .filter(m -> m.getTipo() != null && "EGRESO".equals(m.getTipo().toUpperCase().trim()))
+                .filter(m -> m.getTipo() != null
+                        && m.getTipo().getGrupoMacro().equals("EGRESO")
+                        && m.getTipo() != TipoMovimientoCaja.CIERRE)
                 .mapToDouble(MovimientoCaja::getMonto).sum();
 
         // El signo negativo ya viene del Service: 200 + 10 + (-20) = 190.
@@ -206,30 +212,23 @@ public class CajaService {
             LocalDateTime fin,
             String metodoPago,
             String tipoServicio,
-            String turnoFiltro, // Recibe "DIA", "NOCHE" o "TODOS"
+            String turnoFiltro,
             Pageable pageable) {
 
-        // 1. Extraemos los pedidos aplicando las REGLAS SEMÁNTICAS REALES
+        // 1. Extraemos los pedidos aplicando las reglas cronológicas estándar
         List<Pedido> todosLosPedidos = pedidoRepository.findAll().stream()
                 .filter(p -> p.getFechaCreacion() != null
                         && !p.getFechaCreacion().isBefore(inicio)
                         && !p.getFechaCreacion().isAfter(fin))
                 .filter(p -> {
-                    if (p.getMetodoPago() == null) {
-                        return false;
-                    }
-
-                    // 🛡️ ADUANA DEL TURNO CON NUESTRA NUEVA COLUMNA BLINDADA
+                    if (p.getMetodoPago() == null) return false;
                     if (turnoFiltro != null && !turnoFiltro.trim().isEmpty() && !"TODOS".equalsIgnoreCase(turnoFiltro)) {
                         if (p.getTurnoCaja() != null) {
                             String tipoTurnoPedido = p.getTurnoCaja().getTipoTurno();
-
-                            // Si el turno de caja no tiene asignado texto aún, calculamos por su hora de apertura (retrocompatibilidad)
                             if (tipoTurnoPedido == null && p.getTurnoCaja().getFechaApertura() != null) {
                                 int hora = p.getTurnoCaja().getFechaApertura().getHour();
                                 tipoTurnoPedido = (hora >= 8 && hora < 18) ? "DIA" : "NOCHE";
                             }
-
                             if (tipoTurnoPedido == null || !tipoTurnoPedido.equalsIgnoreCase(turnoFiltro.trim())) {
                                 return false;
                             }
@@ -237,24 +236,19 @@ public class CajaService {
                             return false;
                         }
                     }
-
                     return p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.PAGADO
                             || p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.EXTORNADO
-                            || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.CANCELADO
-                            || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.EN_COCINA
-                            || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PREPARADO;
+                            || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.CANCELADO;
                 })
                 .collect(Collectors.toList());
 
-        // 2. APLICACIÓN DE FILTROS DINÁMICOS EN STREAM (Método y Origen)
+        // 2. Aplicación de filtros dinámicos (Método y Origen)
         List<Pedido> pedidosFiltrados = todosLosPedidos.stream()
                 .filter(p -> {
                     if (metodoPago != null) {
                         String mpEnum = p.getMetodoPago().name().toUpperCase();
                         if (metodoPago.contains("YAPE") || metodoPago.contains("DIGITAL")) {
-                            if (!mpEnum.equals("YAPE") && !mpEnum.equals("PLIN") && !mpEnum.equals("YAPE_PLIN")) {
-                                return false;
-                            }
+                            if (!mpEnum.equals("YAPE") && !mpEnum.equals("PLIN") && !mpEnum.equals("YAPE_PLIN")) return false;
                         } else if (!mpEnum.equals(metodoPago)) {
                             return false;
                         }
@@ -267,11 +261,11 @@ public class CajaService {
                         String tipoEnumStr = p.getTipoPedido() != null ? p.getTipoPedido().name().toUpperCase() : "LLEVAR";
 
                         if ("LOCAL".equalsIgnoreCase(tipoServicio) || "SALON".equalsIgnoreCase(tipoServicio)) {
-                            return tieneMesa;
+                            return "SALON".equals(tipoEnumStr) || tieneMesa;
                         } else if ("DELIVERY".equalsIgnoreCase(tipoServicio)) {
-                            return !tieneMesa && "DELIVERY".equals(tipoEnumStr);
+                            return "DELIVERY".equals(tipoEnumStr);
                         } else if ("LLEVAR".equalsIgnoreCase(tipoServicio)) {
-                            return !tieneMesa && ("LLEVAR".equals(tipoEnumStr) || "LOCAL".equals(tipoEnumStr));
+                            return "LLEVAR".equals(tipoEnumStr);
                         }
                     }
                     return true;
@@ -279,7 +273,7 @@ public class CajaService {
                 .sorted(Comparator.comparing(Pedido::getId).reversed())
                 .collect(Collectors.toList());
 
-        // 3. PAGINACIÓN MANUAL
+        // 3. Paginación manual
         int totalElementos = pedidosFiltrados.size();
         int desde = (int) pageable.getOffset();
         int hasta = Math.min(desde + pageable.getPageSize(), totalElementos);
@@ -291,7 +285,7 @@ public class CajaService {
 
         int totalPaginas = (int) Math.ceil((double) totalElementos / pageable.getPageSize());
 
-        // 4. MAPEO AL DTO
+        // 4. MAPEO AL DTO BLINDADO (Aquí forzamos Presencial/Virtual por tu Enum Real)
         List<Map<String, Object>> listaDTO = subListaPaginada.stream().map(p -> {
             Map<String, Object> dto = new HashMap<>();
 
@@ -303,29 +297,23 @@ public class CajaService {
             dto.put("fecha", p.getFechaCreacion().toLocalDate().toString());
             dto.put("hora", p.getFechaCreacion().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
             dto.put("monto", p.getMontoTotal() != null ? p.getMontoTotal() : 0.0);
-
-            // 🛡️ REPARACIÓN 1: Enviamos el Estado Logístico real para que el JS no fuerce un ANULADO/EGRESO falso
             dto.put("estado", p.getEstado() != null ? p.getEstado().name() : "ENTREGADO");
             dto.put("estadoPago", p.getEstadoPago() != null ? p.getEstadoPago().name() : "PAGADO");
 
-            // 🛡️ REPARACIÓN 2: Jerarquía estricta basada en el Enum TipoPedido, libre de la aduana de mesa nula
+            // 🛡️ REPARACIÓN DE JERARQUÍA BASADA EN TU ENUM REAL DE BASE DE DATOS
             com.web.restaurante.model.enums.TipoPedido tipo = p.getTipoPedido();
+
             if (tipo == com.web.restaurante.model.enums.TipoPedido.SALON) {
                 dto.put("tipoServicio", "SALON");
-                // Si el clon no tiene número de mesa impreso por el prepago, usamos el cliente o un texto descriptivo
-                if (p.getNumeroMesa() != null) {
-                    dto.put("mesa", "Mesa " + p.getNumeroMesa());
-                } else if (p.getCliente() != null && p.getCliente().contains("Mesa")) {
-                    // Extrae el identificador del nombre clonado (ej: "Mesa 1 (Ticket 1)")
-                    dto.put("mesa", p.getCliente());
-                } else {
-                    dto.put("mesa", "Salón");
-                }
+                dto.put("canal", "Presencial");
+                dto.put("mesa", p.getNumeroMesa() != null ? "Mesa " + p.getNumeroMesa() : "Salón");
             } else if (tipo == com.web.restaurante.model.enums.TipoPedido.DELIVERY) {
                 dto.put("tipoServicio", "DELIVERY");
-                dto.put("mesa", "Carta Web");
+                dto.put("canal", "Virtual");
+                dto.put("mesa", "Reparto Web");
             } else {
                 dto.put("tipoServicio", "LLEVAR");
+                dto.put("canal", "Virtual");
                 dto.put("mesa", "Para Llevar");
             }
             return dto;
@@ -394,10 +382,15 @@ public class CajaService {
                 List<MovimientoCaja> movs = movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(t.getId());
                 for (MovimientoCaja m : movs) {
                     if (m == null) continue;
-                    String tipoMov = m.getTipo() != null ? m.getTipo().toUpperCase().trim() : "INGRESO";
+                    String tipoMov = m.getTipo() != null ? m.getTipo().getGrupoMacro() : "INGRESO";
                     String concepto = m.getConcepto() != null ? m.getConcepto() : "";
 
-                    if (!(concepto.toUpperCase().contains("LIQUIDACIÓN") || concepto.toUpperCase().contains("LIQUIDACION") || tipoMov.equals("VENTA") || tipoMov.equals("CIERRE"))) {
+                    if (!(concepto.toUpperCase().contains("LIQUIDACIÓN") ||
+                            concepto.toUpperCase().contains("LIQUIDACION") ||
+                            concepto.toUpperCase().contains("DELIVERY MANUAL CAJERO") || // ◄ ELIMINA EL "M-" DUPLICADO DEL REPORTE
+                            concepto.toUpperCase().contains("VENTA POS DIRECTO") ||      // ◄ FILTRO COMPLEMENTARIO
+                            tipoMov.equals("VENTA") ||
+                            tipoMov.equals("CIERRE"))) {
                         Map<String, Object> mov = new HashMap<>();
                         mov.put("id", m.getId());
                         mov.put("comprobante", "M-" + m.getId());

@@ -51,7 +51,6 @@ function exportarReporteCaja(formato) {
     const segmentoActivo = document.querySelector('input[name="cajaSegmento"]:checked');
     if (!segmentoActivo) return;
 
-    // Failsafe preventivo: Si el botón ya fue desactivado visualmente, frena el flujo
     if (document.querySelector(`button[onclick="exportarReporteCaja('${formato}')"]`)?.disabled) {
         return;
     }
@@ -75,12 +74,16 @@ function exportarReporteCaja(formato) {
     else if (panelId === 'panel-historial') {
         params.set('inicio', document.getElementById('historialFechaInicio')?.value || '');
         params.set('fin', document.getElementById('historialFechaFin')?.value || '');
+        // 🎯 Enlazamos el selector del turno del panel de Historial Cerrado
+        params.set('turno', document.getElementById('historialFiltroTurno')?.value || 'TODOS');
     }
     else if (panelId === 'panel-historial-completo') {
         params.set('inicio', document.getElementById('ticketFechaInicio')?.value || '');
         params.set('fin', document.getElementById('ticketFechaFin')?.value || '');
         params.set('metodo', document.getElementById('ticketFiltroMetodo')?.value || '');
         params.set('origen', document.getElementById('ticketFiltroOrigen')?.value || '');
+        // 🎯 Captura e inyección del filtro del turno para el Buscador Global
+        params.set('turno', document.getElementById('ticketFiltroTurno')?.value || '');
     }
 
     const urlFinal = params.toString() ? `${urlBase}?${params.toString()}` : urlBase;

@@ -38,9 +38,8 @@ async function cargarDetalleReceta(idProducto, nombreProducto) {
             <tr>
                 <td class="ps-3 fw-semibold text-dark">${item.nombreInsumo}</td>
                 <td class="text-muted">${item.unidadMedida}</td>
-                <td class="text-end fw-bold">${item.cantidadUsada.toFixed(3)}</td>
+                <td class="text-end fw-bold">${item.cantidadUsada}</td>
                 <td class="text-center pe-3">
-                    <!-- 🌟 OPTIMIZADO: Manejo por AJAX directo para evitar recargas completas -->
                     <button type="button" class="btn btn-sm text-danger p-1" title="Quitar de la receta"
                             onclick="confirmarQuitarInsumo(${item.id}, '${item.nombreInsumo}')">
                         <i class="bi bi-x-circle-fill fs-5"></i>

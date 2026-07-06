@@ -15,12 +15,10 @@ async function abrirModalInsumos(elemento) {
     const nombre = elemento.getAttribute('data-nombre');
     const precio = parseFloat(elemento.getAttribute('data-precio'));
 
-    // Guardamos el estado temporal del plato por si pasa la aduana
     productoTemporal = { id, nombre, precio };
 
     // ─── 🛡️ ADUANA RECTIFICADORA: CONTROL DE PLATOS SIN RECETA ───
     try {
-        // Bloqueamos la UI un milisegundo para la consulta ligera
         document.body.style.cursor = 'wait';
 
         const res = await fetch('/insumos/producto/' + id);
@@ -28,12 +26,11 @@ async function abrirModalInsumos(elemento) {
 
         document.body.style.cursor = 'default';
 
-        // 🔥 REG DE NEGOCIO: Si el array viene vacío, el plato está "Húfano" (Sin insumos asignados)
         if (!insumosProductoActual || insumosProductoActual.length === 0) {
             AppUtils.showNotification(`⚠️ El plato [${nombre}] no tiene insumos configurados en el recetario. Avisa al Administrador.`, 'error');
             productoTemporal = null;
             insumosProductoActual = [];
-            return; // 🛑 Frenamos en seco, no abre modal ni entra al carrito
+            return;
         }
 
     } catch (e) {
@@ -44,33 +41,46 @@ async function abrirModalInsumos(elemento) {
     }
     // ─────────────────────────────────────────────────────────────
 
-    // Si pasó el escudo de arriba, el flujo original continúa con total normalidad...
+    // 🥩 CONTROL DE ADUANA DINÁMICO EN SEGUNDO PLANO (REGLA DE PROTEÍNAS)
+    const proteinaBase = insumosProductoActual.find(ins =>
+        ins.categoriaInsumo && ins.categoriaInsumo.toUpperCase() === "PROTEINA"
+    );
+
+    if (proteinaBase) {
+        // Ecuación matemática del escudo defensivo: Stock Seleccionable = Stock Total - Stock Comprometido
+        const stockActualInsumo = parseFloat(proteinaBase.stockActual || 0);
+        const stockComprometidoInsumo = parseFloat(proteinaBase.stockComprometido || 0);
+        const stockDisponibleReal = stockActualInsumo - stockComprometidoInsumo;
+
+        const cantidadUsadaPorPlato = parseFloat(proteinaBase.cantidadUsada || 1);
+        const maxPlatosPermitidos = Math.floor(stockDisponibleReal / cantidadUsadaPorPlato);
+
+        // Contamos cuántos de este plato ya están en el carrito local
+        const cantidadEnCarritoLocal = carrito.filter(item => item.productoId === id).length;
+
+        if (cantidadEnCarritoLocal >= maxPlatosPermitidos) {
+            AppUtils.showNotification(`🚨 Acción Bloqueada: Stock límite alcanzado. Solo quedan porciones en cocina para ${maxPlatosPermitidos} plato(s) y ya tienes ${cantidadEnCarritoLocal} en la comanda.`, 'error');
+            productoTemporal = null;
+            return;
+        }
+    }
+
     document.getElementById('modalNombrePlato').innerText = nombre;
     document.getElementById('listaInsumosModal').innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-primary"></span></div>';
 
-    if (bsModalInsumos) bsModalInsumos.show();
-
-    // 🔥 PALABRAS CLAVE DE PROTEÍNAS EN LA JAMA:
-    const palabrasClaveProteina = ["PESCADO", "CARNE", "POLLO", "LOMO", "CHANCHO", "MARISCO", "RES", "PATO"];
-
-    // Filtramos los insumos para el modal de exclusión
+    // 🌟 FILTRADO 100% DINÁMICO: Excluimos del modal los que son PROTEINA desde la BD
     const insumosModificables = insumosProductoActual.filter(ins => {
-        if (!ins.nombreInsumo) return true;
-        const nombreInsumoUpper = ins.nombreInsumo.toUpperCase();
-        return !palabrasClaveProteina.some(palabra => nombreInsumoUpper.includes(palabra));
+        return !(ins.categoriaInsumo && ins.categoriaInsumo.toUpperCase() === "PROTEINA");
     });
 
     if (insumosModificables.length === 0) {
-        // Si solo tiene su proteína base fija (ej. Lomo), va directo al carrito
-        if (bsModalInsumos) bsModalInsumos.hide();
+        // Si el plato solo tiene su proteína base fija e intocable, va directo a la canasta
         agregarAlCarrito(id, nombre, precio, [], []);
     } else {
+        if (bsModalInsumos) bsModalInsumos.show();
         let html = '';
         insumosModificables.forEach(ins => {
-            // 💡 ID Único Dinámico combinando prefijo y código de insumo
             const idCheckboxDinamico = `cbx_${ins.idInsumo}`;
-
-            // 🛠️ Integración limpia de la estructura Uiverse de RiccardoRapelli (Reciclable)
             html += `
                 <div class="d-flex align-items-center mb-3">
                     <div class="cntr">
@@ -100,15 +110,31 @@ function cerrarModal() {
 function confirmarAgregarAlCarrito() {
     if (!productoTemporal) return;
 
+    // 🥩 CONTROL DE ADUANA EN LA CONFIRMACIÓN DEL MODAL
+    const proteinaBase = insumosProductoActual.find(ins =>
+        ins.categoriaInsumo && ins.categoriaInsumo.toUpperCase() === "PROTEINA"
+    );
+
+    if (proteinaBase) {
+        const stockDisponibleReal = parseFloat(proteinaBase.stockActual || 0) - parseFloat(proteinaBase.stockComprometido || 0);
+        const maxPlatosPermitidos = Math.floor(stockDisponibleReal / parseFloat(proteinaBase.cantidadUsada || 1));
+        const cantidadEnCarritoLocal = carrito.filter(item => item.productoId === productoTemporal.id).length;
+
+        if (cantidadEnCarritoLocal >= maxPlatosPermitidos) {
+            AppUtils.showNotification(`🚨 Acción Bloqueada: No puedes añadir más porciones. Límite de stock físico alcanzado.`, 'error');
+            cerrarModal();
+            return;
+        }
+    }
+
     const idsSinDescontar = [];
     const nombresSinDescontar = [];
 
     insumosProductoActual.forEach(ins => {
-        // Interceptamos el ID adaptado dinámicamente
         const checkbox = document.getElementById('cbx_' + ins.idInsumo);
         if (checkbox && !checkbox.checked) {
             idsSinDescontar.push(ins.idInsumo);
-            nombresSinDescontar.push(ins.nombreInsumo); // Capturamos el nombre para la UX visual
+            nombresSinDescontar.push(ins.nombreInsumo);
         }
     });
 
@@ -124,13 +150,27 @@ function confirmarAgregarAlCarrito() {
 }
 
 function agregarAlCarrito(id, nombre, precio, idsSin, nombresSin) {
-    // 🔥 REGLA DE NEGOCIO: Eliminamos la agrupación masiva (x2, x3).
-    // Cada plato ingresa al carrito de manera individual.
+    // 🥩 CONTROL DE ADUANA DE PROTEÍNA PARA INGRESO DIRECTO SIN PASAR POR EL MODAL
+    const proteinaBase = insumosProductoActual.find(ins =>
+        ins.categoriaInsumo && ins.categoriaInsumo.toUpperCase() === "PROTEINA"
+    );
+
+    if (proteinaBase) {
+        const stockDisponibleReal = parseFloat(proteinaBase.stockActual || 0) - parseFloat(proteinaBase.stockComprometido || 0);
+        const maxPlatosPermitidos = Math.floor(stockDisponibleReal / parseFloat(proteinaBase.cantidadUsada || 1));
+        const cantidadEnCarritoLocal = carrito.filter(item => item.productoId === id).length;
+
+        if (cantidadEnCarritoLocal >= maxPlatosPermitidos) {
+            AppUtils.showNotification(`🚨 No puedes agregar más porciones de [${nombre}]. Stock de proteína agotado por alta demanda.`, 'error');
+            return;
+        }
+    }
+
     carrito.push({
         productoId: id,
         nombre,
         precio,
-        cantidad: 1, // Siempre será 1 por fila individual
+        cantidad: 1,
         subtotal: precio,
         insumosSinDescontar: idsSin,
         nombresSinDescontar: nombresSin
@@ -157,12 +197,10 @@ function renderizarCarrito() {
     carrito.forEach((item, index) => {
         total += item.subtotal;
 
-        // Maquetación limpia de insumos omitidos (Si aplica)
         const sinEsto = item.nombresSinDescontar && item.nombresSinDescontar.length > 0
             ? `<small class="text-danger d-block fw-bold font-monospace mt-1" style="font-size:0.75rem;"><i class="bi bi-dash-circle-fill me-1"></i>Sin: ${item.nombresSinDescontar.join(', ')}</small>`
             : '';
 
-        // 🚀 INYECCIÓN DE FILA PREMIUM ESTILO TICKET FINTECH (CERO CELESTE)
         html += `
             <div class="cart-item-premium-row">
                 <div class="item-ticket-details">
@@ -186,9 +224,9 @@ function renderizarCarrito() {
 function limpiarBuscadorCarta() {
     const input = document.getElementById('buscador');
     if (input) {
-        input.value = ''; // Vacía la caja de texto
-        filtrarProductos(); // Restaura la visibilidad total de los platos
-        input.focus(); // Coloca el cursor adentro automáticamente
+        input.value = '';
+        filtrarProductos();
+        input.focus();
     }
 }
 
@@ -211,8 +249,8 @@ function enviarPedido() {
     const pedidoId = urlParams.get('pedidoId');
 
     let pedidoIdRaw = urlParams.get('pedidoId');
-        if (pedidoIdRaw === "null" || pedidoIdRaw === "") {
-            pedidoIdRaw = null;
+    if (pedidoIdRaw === "null" || pedidoIdRaw === "") {
+        pedidoIdRaw = null;
     }
 
     if (carrito.length === 0) {
@@ -230,28 +268,24 @@ function enviarPedido() {
 
         AppUtils.showLoading(true);
 
-        // --- SOLUCIÓN DIRECTA PARA COCINA ---
-        // Recorremos el carrito recolectando lo que el cliente quitó para armar la nota automática
         let notasDeOmision = [];
         carrito.forEach(item => {
             if (item.nombresSinDescontar && item.nombresSinDescontar.length > 0) {
-                notasDeOmision.push(`${item.nombre} (SIN: ${item.nombresSinDescontar.join(', ')})`);
+                notesDeOmision.push(`${item.nombre} (SIN: ${item.nombresSinDescontar.join(', ')})`);
             }
         });
 
-        // Almacenamos la nota del input del mesero y le sumamos las exclusiones de ingredientes de forma legible
         const notaUsuario = document.getElementById('direccion').value || "";
         let notaFinalParaCocina = notaUsuario;
 
         if (notasDeOmision.length > 0) {
             notaFinalParaCocina += (notaFinalParaCocina ? " | " : "") + "🚨 " + notasDeOmision.join(" - ");
         }
-        // ------------------------------------
 
         const pedido = {
             id: pedidoId ? parseInt(pedidoId) : null,
             cliente: document.getElementById('cliente').value || "Mesa " + mesaId,
-            direccion: notaFinalParaCocina, // <-- AQUÍ SE ENVÍA TODA LA EXCLUSIÓN DE FORMA SEGURA
+            direccion: notaFinalParaCocina,
             listaDetalles: carrito.map(item => ({
                 producto: { id: parseInt(item.productoId) },
                 cantidad: item.cantidad,
@@ -278,12 +312,12 @@ function enviarPedido() {
                     text: 'La orden ha sido distribuida a las estaciones de cocina de La Jama.',
                     confirmButtonColor: '#1B3A2C'
                 }).then(() => {
-                                    if (urlParams.get('embed') === 'true') {
-                                        window.location.href = '/admin/mesas?embed=true';
-                                    } else {
-                                        window.location.href = '/admin/mesas';
-                                    }
-                                });
+                    if (urlParams.get('embed') === 'true') {
+                        window.location.href = '/admin/mesas?embed=true';
+                    } else {
+                        window.location.href = '/admin/mesas';
+                    }
+                });
             } else {
                 AppUtils.showNotification("Error al procesar el pedido: " + resultadoTexto, "error");
             }

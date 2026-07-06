@@ -1,0 +1,193 @@
+/* ==========================================================================
+   📅 CALENDARIO SHADCN UI INDEPENDIENTE — MOTOR DE RANGOS VIVO LA JAMA
+   ========================================================================== */
+
+.calendar {
+    --side-padding: 20px;
+    --border-radius: 14px;
+    --accent-br: 8px;
+
+    --cal-green: #1B3A2C;
+    --cal-green-hover: #26503d;
+    --cal-cream: #FFF7ED;
+    --cal-text-dark: #0f172a;
+    --cal-text-muted: #94a3b8;
+    --cal-border: rgba(0, 0, 0, 0.06);
+
+    width: 100%;
+    max-width: 350px;
+    background-color: #ffffff;
+    border: 1px solid var(--cal-border);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.02);
+}
+
+/* Cabecera Shadcn con flechas laterales */
+.calendar__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px var(--side-padding);
+    border-bottom: 1px solid var(--cal-border);
+    background-color: #ffffff;
+}
+
+.calendar__nav-btn {
+    background: none;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--cal-text-dark);
+    transition: all 0.2s ease;
+}
+
+.calendar__nav-btn:hover {
+    background-color: #f1f5f9;
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+.calendar__month-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--cal-text-dark);
+    text-transform: capitalize;
+}
+
+.calendar__body {
+    padding: 8px 0;
+}
+
+.calendar__days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    padding: 0 var(--side-padding) 6px;
+}
+
+.calendar__days > div {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: var(--cal-text-muted);
+}
+
+.calendar__dates {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    row-gap: 4px;
+    padding: 0 var(--side-padding) 10px;
+}
+
+.calendar__date {
+    --cell-h: 38px;
+    text-align: center;
+    height: var(--cell-h);
+    line-height: var(--cell-h);
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--cal-text-dark);
+    cursor: pointer;
+    position: relative;
+}
+
+.calendar__date span {
+    position: relative;
+    z-index: 2;
+}
+
+.calendar__date::before {
+    content: "";
+    position: absolute;
+    background-color: transparent;
+    width: calc(100% - 4px);
+    height: calc(var(--cell-h) * 0.9);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: var(--accent-br);
+    transition: background-color 0.15s;
+    z-index: 1;
+}
+
+.calendar__date:not(.calendar__date--disabled):not(.calendar__date--selected):hover::before {
+    background-color: #f1f5f9;
+}
+
+/* 🔒 ESTADO ADUANA: Días fuera de rango (Apagados y bloqueados) */
+.calendar__date--disabled {
+    color: #e2e8f0 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important; /* Capa física: Bloquea los clics */
+}
+
+.calendar__date--grey {
+    color: #cbd5e1;
+    opacity: 0.5;
+}
+
+/* Modificadores de Selección (Resaltado Verde Corporativo) */
+.calendar__date--selected {
+    color: #ffffff !important;
+}
+
+.calendar__date--selected::before {
+    background-color: var(--cal-green) !important;
+    box-shadow: 0 4px 10px rgba(27, 58, 44, 0.2);
+}
+
+/* ==========================================================================
+   ⏰ COMPONENTE HORARIO PREMIUM (ESTILO LA JAMA)
+   ========================================================================== */
+
+/* Estilo base para el input de hora */
+.jama-input-time {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background-color: #ffffff;
+    border: 1.5px solid rgba(27, 58, 44, 0.12); /* Borde sutil */
+    border-radius: 8px;
+    color: var(--cal-text-dark);
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+}
+
+/* Estado de Foco (Alineado con el estilo Shadcn) */
+.jama-input-time:focus {
+    border-color: var(--cal-green); /* Verde oscuro La Jama */
+    box-shadow: 0 0 0 4px rgba(255, 179, 138, 0.25); /* Glow durazno */
+}
+
+/* Efecto Hover */
+.jama-input-time:hover {
+    background-color: var(--cal-cream);
+    border-color: rgba(27, 58, 44, 0.25);
+}
+
+/* ── ESTILIZADO DEL ICONO DEL RELOJ (Navegadores WebKit) ── */
+/* Esto hace que el icono del reloj nativo se vea limpio */
+.jama-input-time::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(16%) sepia(21%) saturate(1478%) hue-rotate(113deg) brightness(93%) contrast(93%); /* Filtro verde */
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.jama-input-time:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+}
+
+/* Asegurar que el texto sea legible */
+.jama-input-time::-webkit-datetime-edit-hour-field,
+.jama-input-time::-webkit-datetime-edit-minute-field {
+    font-weight: 600;
+    color: var(--cal-text-dark);
+}

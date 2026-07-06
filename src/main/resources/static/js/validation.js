@@ -231,34 +231,43 @@ const Validation = {
         const hoyStr = hoyObj.toISOString().split('T')[0];
         const minDateStr = '2026-06-01';
 
-        // 1. SELECTOR ESTRICTO: Solo aplicamos la restricción de reservas a inputs con clase .input-fecha-reserva
-        document.querySelectorAll('input[type="date"].input-fecha-reserva').forEach(el => {
+        // ─── 🚀 REEMPLAZAR ÚNICAMENTE ESTE BLOQUE DENTRO DE VALIDATION.JS ───
 
-            // 🛡️ ADUANA RESERVAS: Mínimo hoy, máximo 11 días adelante
-            const limiteFuturo = new Date();
-            limiteFuturo.setDate(limiteFuturo.getDate() + 11);
-            const maxReservaStr = limiteFuturo.toISOString().split('T')[0];
+                // 1. SELECTOR ESTRICTO: Solo aplicamos la restricción de reservas a inputs con clase .input-fecha-reserva
+                document.querySelectorAll('input[type="date"].input-fecha-reserva').forEach(el => {
 
-            el.setAttribute('min', hoyStr);
-            el.setAttribute('max', maxReservaStr);
+                            const hoyAduana = new Date();
+                            hoyAduana.setHours(0, 0, 0, 0);
 
-            el.addEventListener('change', function () {
-                if (!this.value) return;
+                            const limiteFuturo = new Date();
+                            limiteFuturo.setDate(limiteFuturo.getDate() + 11);
+                            limiteFuturo.setHours(0, 0, 0, 0);
 
-                const escogida = new Date(this.value + 'T00:00:00');
-                const hoyValidacion = new Date();
-                hoyValidacion.setHours(0, 0, 0, 0);
+                            const minStr = hoyAduana.toISOString().split('T')[0];
+                            const maxStr = limiteFuturo.toISOString().split('T')[0];
 
-                const maxValidacion = new Date();
-                maxValidacion.setDate(maxValidacion.getDate() + 11);
-                maxValidacion.setHours(23, 59, 59, 999);
+                            el.setAttribute('min', minStr);
+                            el.setAttribute('max', maxStr);
 
-                if (escogida < hoyValidacion || escogida > maxValidacion) {
-                    Validation.mostrarError('🚨 Control de Reservas: La fecha debe estar comprendida entre hoy y máximo 11 días en el futuro.');
-                    this.value = '';
-                }
-            });
-        });
+                            el.addEventListener('change', function () {
+                                if (!this.value) return;
+
+                                // 🚀 TRUCO DE BLINDAJE ANTI-SABOTAJE: Separación por enteros locales
+                                const partes = this.value.split('-');
+                                const escogida = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+                                escogida.setHours(0, 0, 0, 0);
+
+                                if (escogida < hoyAduana || escogida > limiteFuturo) {
+                                    Validation.mostrarError('🚨 Control de Reservas: La fecha debe estar comprendida entre hoy y máximo 11 días en el futuro.');
+                                    this.value = '';
+
+                                    const prefijo = this.id.charAt(0); // 'r' o 'e'
+                                    if (typeof window.renderizarMatrizDiasDinamica === 'function') {
+                                        window.renderizarMatrizDiasDinamica(prefijo);
+                                    }
+                                }
+                            });
+                        });
 
         // 2. REGISTRO HISTÓRICO ORDINARIO (Para el resto de inputs de tipo date)
         // Aplicamos esto a los date que NO sean reservas

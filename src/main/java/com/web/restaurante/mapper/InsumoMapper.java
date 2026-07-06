@@ -10,11 +10,9 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface InsumoMapper {
 
-    // 🔥 FORZAMOS EL MAPEO DE IDA: Copia del Entity al DTO para que llegue al HTML
     @Mapping(source = "porcionesPorKg", target = "porcionesPorKg")
     InsumoDTO toDTO(Insumo insumo);
 
-    // 🔥 FORZAMOS EL MAPEO DE VUELTA: Copia del DTO al Entity para persistir en BD
     @Mapping(source = "porcionesPorKg", target = "porcionesPorKg")
     Insumo toEntity(InsumoDTO dto);
 
@@ -23,5 +21,9 @@ public interface InsumoMapper {
     @Mapping(source = "insumo.unidadMedida", target = "unidadMedida")
     @Mapping(source = "producto.id", target = "idProducto")
     @Mapping(source = "producto.nombre", target = "nombreProducto")
+    // 🛡️ ENLACES DINÁMICOS MAESTROS PARA EL CONTROL DE STOCK DE LA JAMA:
+    @Mapping(source = "insumo.categoria", target = "categoriaInsumo")
+    @Mapping(source = "insumo.stockActual", target = "stockActual")
+    @Mapping(source = "insumo.stockComprometido", target = "stockComprometido")
     InsumoProductoDTO toDTODetalle(InsumoProducto insumoProducto);
 }

@@ -668,10 +668,12 @@ public class MesaService {
             Pedido pedidoComprobante = new Pedido();
             String siguienteNotaVenta = notaVentaSequenceService.generarSiguienteNota();
             pedidoComprobante.setComprobanteNotaNumero(siguienteNotaVenta);
-
-            pedidoComprobante.setCliente(pedidoPadre.getCliente() + " (Ticket " + (i + 1) + ")");
+            if (t.getNombreCliente() != null && !t.getNombreCliente().trim().isEmpty()) {
+                pedidoComprobante.setCliente(t.getNombreCliente().trim().toUpperCase());
+            } else {
+                pedidoComprobante.setCliente(pedidoPadre.getCliente() + " (Ticket " + (i + 1) + ")");
+            }
             pedidoComprobante.setDireccion("Salón");
-            pedidoComprobante.setTipoPedido(pedidoPadre.getTipoPedido());
 
             if (t.getClienteCorreo() != null && !t.getClienteCorreo().trim().isEmpty()) {
                 pedidoComprobante.setClienteCorreo(t.getClienteCorreo().trim());
@@ -679,9 +681,15 @@ public class MesaService {
                 pedidoComprobante.setClienteCorreo(pedidoPadre.getClienteCorreo());
             }
 
-            pedidoComprobante.setNumeroMesa(null);
+            pedidoComprobante.setNumeroMesa(pedidoPadre.getNumeroMesa());
             pedidoComprobante.setFechaCreacion(LocalDateTime.now());
             pedidoComprobante.setFechaEntrega(LocalDateTime.now());
+
+            if (pedidoPadre.getTipoPedido() != null) {
+                pedidoComprobante.setTipoPedido(pedidoPadre.getTipoPedido());
+            } else {
+                pedidoComprobante.setTipoPedido(com.web.restaurante.model.enums.TipoPedido.SALON);
+            }
 
             pedidoComprobante.setEstado(EstadoPedido.ENTREGADO);
             pedidoComprobante.setEstadoPago(EstadoPago.PAGADO);
@@ -836,46 +844,70 @@ public class MesaService {
     }
 
     public void recalcularYNotificarEstadoCocinaMesa(Mesa mesa) {
+        // 🛡️ REGLA SUPREMA: SI LA MESA YA ESTÁ EN GRUPO, SU ESTADO ES UNIFICADA SÍ O SÍ
+        if ("UNIFICADA".equalsIgnoreCase(mesa.getEstado())
+                || mesa.getMesaPadre() != null
+                || (mesa.getMesasHijas() != null && !mesa.getMesasHijas().isEmpty())) {
+
+            System.out.println("🛡️ [La Jama Shield] Conservando prioridad de unificación para Mesa N° " + mesa.getNumero());
+
+            // Buscamos si hay algún pedido para enviar el ID correcto en la notificación
+            List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesa(mesa.getNumero()).stream()
+                    .filter(p -> p.getNumeroMesa() != null && !p.getCliente().contains("(Ticket")
+                            && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
+                    .toList();
+
+            Long pedidoId = pedidosActivos.isEmpty() ? null : pedidosActivos.get(0).getId();
+            String estadoPedido = pedidosActivos.isEmpty() ? "NINGUNO" : pedidosActivos.get(0).getEstado().name();
+
+            mesa.setEstado("UNIFICADA");
+            mesaRepository.save(mesa);
+
+            emitirCambioEstadoReactivo(mesa.getNumero(), "unificada", pedidoId, estadoPedido);
+            return; // 🛑 Frenamos en seco, ninguna prioridad de comida puede pisar el bloque unificado
+        }
+
+        // [Abajo sigue tu lógica ordinaria de prioridades de cocina para mesas individuales]
         List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesa(mesa.getNumero()).stream()
                 .filter(p -> p.getNumeroMesa() != null
                         && p.getCliente() != null && !p.getCliente().contains("(Ticket")
                         && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
                 .toList();
 
-        // 🛡️ REGLA SUPREMA DE AUTO-LIMPIEZA ASÍNCRONA PERMANENTE EN BD:
         boolean todoServidoYPagado = pedidosActivos.stream().allMatch(p ->
                 com.web.restaurante.model.enums.EstadoPago.PAGADO.equals(p.getEstadoPago())
                         && com.web.restaurante.model.enums.EstadoPedido.ENTREGADO.equals(p.getEstado()));
 
         if (pedidosActivos.isEmpty() || todoServidoYPagado) {
-            System.out.println("🧹 [La Jama Shield] Persistiendo liberación en BD para Mesa N° " + mesa.getNumero());
-
-            mesa.setEstado("DISPONIBLE"); // Se graba estable en verde en MySQL
+            mesa.setEstado("DISPONIBLE");
             mesaRepository.save(mesa);
-
-            // Removemos la vinculación física en la BD para que el F5 no la reviva
             for (Pedido p : pedidosActivos) {
                 p.setNumeroMesa(null);
                 pedidoRepository.save(p);
             }
-
             emitirCambioEstadoReactivo(mesa.getNumero(), "disponible", null, "NINGUNO");
             return;
         }
 
-        // --- (El resto de tu lógica tradicional de colores sigue abajo) ---
         Pedido pedidoPrincipal = pedidosActivos.get(0);
-        EstadoPedido estadoCocina = pedidoPrincipal.getEstado();
+        List<DetallePedido> platos = pedidoPrincipal.getListaDetalles() != null ? pedidoPrincipal.getListaDetalles() : new java.util.ArrayList<>();
 
-        String nuevoEstadoMesa = "ocupada";
-        if (estadoCocina == EstadoPedido.PREPARADO) {
-            nuevoEstadoMesa = "lista-para-pagar";
+        boolean tienePlatosPorPagar = platos.stream().anyMatch(d -> !d.isPagado());
+        boolean tienePlatosPorEntregar = platos.stream().anyMatch(d -> !d.isCanceladoPorCliente() && d.isCocinado() && !d.isEntregado());
+        boolean tienePlatosEnCocina = platos.stream().anyMatch(d -> !d.isCanceladoPorCliente() && !d.isCocinado());
+
+        String estadoMesaDestino = "ocupada";
+        if (tienePlatosPorEntregar) {
+            estadoMesaDestino = "lista-para-recoger";
+        } else if (tienePlatosEnCocina) {
+            estadoMesaDestino = "ocupada";
+        } else if (tienePlatosPorPagar) {
+            estadoMesaDestino = "lista-para-pagar";
         }
 
-        mesa.setEstado("OCUPADA");
+        mesa.setEstado(estadoMesaDestino.toUpperCase().replace("-", "_"));
         mesaRepository.save(mesa);
-
-        emitirCambioEstadoReactivo(mesa.getNumero(), nuevoEstadoMesa, pedidoPrincipal.getId(), estadoCocina.name());
+        emitirCambioEstadoReactivo(mesa.getNumero(), estadoMesaDestino, pedidoPrincipal.getId(), pedidoPrincipal.getEstado().name());
     }
 
     // 🛰️ Helper encapsulado para la mensajería asíncrona reactiva hacia el plano

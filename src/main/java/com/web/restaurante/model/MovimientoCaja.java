@@ -1,6 +1,7 @@
 package com.web.restaurante.model;
 
 import com.web.restaurante.model.enums.MetodoPago;
+import com.web.restaurante.model.enums.TipoMovimientoCaja;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,9 +17,9 @@ public class MovimientoCaja {
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         private Long id;
 
-        // APERTURA | VENTA | EGRESO | CIERRE
+        @Enumerated(EnumType.STRING)
         @Column(name = "tipo", nullable = false, length = 20)
-        private String tipo;
+        private TipoMovimientoCaja tipo;
 
         @Column(name = "concepto", nullable = false, length = 200)
         private String concepto;

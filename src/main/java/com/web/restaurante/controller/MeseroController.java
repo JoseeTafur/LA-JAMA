@@ -72,10 +72,12 @@ public class MeseroController {
 
             for (InsumoProducto ip : receta) {
                 if (ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria())) {
-                    double stockActual = ip.getInsumo().getStockActual() != null ? ip.getInsumo().getStockActual() : 0.0;
+                    //Obtenemos el stock disponible real aplicando la resta (Físico - Comprometido)
+                    double stockDisponibleReal = ip.getInsumo().getStockDisponible() != null ? ip.getInsumo().getStockDisponible() : 0.0;
                     double cantidadRequerida = ip.getCantidadUsada() != null ? ip.getCantidadUsada() : 0.0;
 
-                    if (stockActual < cantidadRequerida) {
+                    // Si el stock disponible real es menor a lo que necesita una porción, el plato se marca agotado
+                    if (stockDisponibleReal < cantidadRequerida) {
                         agotado = true;
                         break;
                     }

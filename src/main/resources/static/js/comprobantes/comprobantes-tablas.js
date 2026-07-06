@@ -170,7 +170,7 @@ function renderizarTablas(lista) {
 }
 
 function ejecutarFiltroCruzadoComprobantes() {
-    const textoVal   = document.getElementById('filtroCpeTexto').value.toLowerCase();
+    const textoVal   = document.getElementById('filtroCpeTexto').value.toLowerCase().trim();
     const fInicioVal = document.getElementById('filtroCpeFechaInicio').value;
     const fFinVal    = document.getElementById('filtroCpeFechaFin').value;
     const metodoVal  = document.getElementById('filtroCpeMetodo').value;
@@ -195,13 +195,25 @@ function ejecutarFiltroCruzadoComprobantes() {
             else if (idTabla === 'tablaAnulados' && fila.cells[2])       textoFechaCelda = fila.cells[2].textContent;
 
             let coincideFecha = true;
-            if (textoFechaCelda && (timestampInicio || timestampFin)) {
-                const celdaLimpia = textoFechaCelda.trim().split(' ')[0];
-                const partes = celdaLimpia.split('/');
-                if (partes.length === 3) {
-                    const timeFila = new Date(`${partes[2]}-${partes[1]}-${partes[0]}T12:00:00`).getTime();
-                    if (timestampInicio && timeFila < timestampInicio) coincideFecha = false;
-                    if (timestampFin   && timeFila > timestampFin)   coincideFecha = false;
+
+            // 🛡️ ESCUDO DE PROTECCIÓN PARA LA PESTAÑA "POR EMITIR"
+            // Si estamos en la pestaña de pendientes de cobro del turno, ignoramos el bloqueo de rango de fechas
+            // para evitar que la tabla se borre por las respuestas históricas del backend.
+            if (idTabla !== 'tablaPorEmitir') {
+                if (textoFechaCelda && textoFechaCelda.trim() !== '-' && (timestampInicio || timestampFin)) {
+                    const celdaLimpia = textoFechaCelda.trim().split(' ')[0];
+                    const partes = celdaLimpia.split('/');
+                    if (partes.length === 3) {
+                        const ano = partes[2].trim();
+                        const mes = partes[1].trim().padStart(2, '0');
+                        const dia = partes[0].trim().padStart(2, '0');
+
+                        const timeFila = new Date(`${ano}-${mes}-${dia}T12:00:00`).getTime();
+                        if (!isNaN(timeFila)) {
+                            if (timestampInicio && timeFila < timestampInicio) coincideFecha = false;
+                            if (timestampFin    && timeFila > timestampFin)    coincideFecha = false;
+                        }
+                    }
                 }
             }
 
@@ -211,11 +223,14 @@ function ejecutarFiltroCruzadoComprobantes() {
             const coincideOrigen = (origenVal === 'TODOS' || origenFila === origenVal);
 
             if (coincideTexto && coincideMetodo && coincideOrigen && coincideFecha) {
-                fila.removeAttribute('data-filtrado-oculto'); fila.style.removeProperty('display');
+                fila.removeAttribute('data-filtrado-oculto');
+                fila.style.removeProperty('display');
             } else {
-                fila.setAttribute('data-filtrado-oculto', 'true'); fila.style.setProperty('display', 'none', 'important');
+                fila.setAttribute('data-filtrado-oculto', 'true');
+                fila.style.setProperty('display', 'none', 'important');
             }
         });
+
         if (window.ejecutarPaginacionComprobantes) window.ejecutarPaginacionComprobantes(idTabla);
     });
     actualizarMensajesVacios();
@@ -296,32 +311,31 @@ function actualizarMensajesVacios() {
     // 🛡️ EL ESCUDO DE SEGURIDAD DE EXPORTACIÓN (REPORTE LIMPIO)
     // =========================================================================
     const inputFechaInicio = document.getElementById('filtroCpeFechaInicio').value;
-    const inputFechaFin    = document.getElementById('filtroCpeFechaFin').value;
+        const inputFechaFin    = document.getElementById('filtroCpeFechaFin').value;
 
-    // Condición 1: Ambas fechas deben estar seleccionadas obligatoriamente
-    const tieneFechasCompletas = (inputFechaInicio !== '' && inputFechaFin !== '');
+        // 🚀 REPARACIÓN MASTER: Si los inputs están vacíos, significa que está en modo "Por defecto / Hoy", lo cual ES VÁLIDO
+        const tieneFechasCompletas = (inputFechaInicio !== '' && inputFechaFin !== '') || (inputFechaInicio === '' && inputFechaFin === '');
 
-    // Condición 2: Debe haber por lo menos un registro visible en la grilla actual
-    const tieneDataParaExportar = (totalFilasVisiblesPestañaActiva > 0);
+        // Condición 2: Debe haber por lo menos un registro visible en la grilla de la pestaña abierta
+        const tieneDataParaExportar = (totalFilasVisiblesPestañaActiva > 0);
 
-    // El botón se habilitará únicamente si se cumplen ambas condiciones contables
-    const sePermiteBoton = tieneFechasCompletas && tieneDataParaExportar;
+        // El botón se habilitará cumpliendo la consistencia contable
+        const sePermiteBoton = tieneFechasCompletas && tieneDataParaExportar;
 
-    document.querySelectorAll('.btn-export-jama').forEach(btn => {
-        btn.disabled = !sePermiteBoton;
-        btn.style.opacity = sePermiteBoton ? "1" : "0.4";
-        btn.style.cursor = sePermiteBoton ? "pointer" : "not-allowed";
+        document.querySelectorAll('.btn-export-jama').forEach(btn => {
+            btn.disabled = !sePermiteBoton;
+            btn.style.opacity = sePermiteBoton ? "1" : "0.4";
+            btn.style.cursor = sePermiteBoton ? "pointer" : "not-allowed";
 
-        // Tooltip dinámico explicativo para orientar al cajero
-        if (!tieneFechasCompletas) {
-            btn.title = "Selecciona Fecha Inicial y Límite para habilitar la descarga.";
-        } else if (!tieneDataParaExportar) {
-            btn.title = "No hay registros aplicados en la grilla para exportar.";
-        } else {
-            btn.title = "Exportar registros actuales de la tabla.";
-        }
-    });
-}
+            if (inputFechaInicio !== '' && inputFechaFin === '') {
+                btn.title = "Selecciona una Fecha Límite válida para habilitar la descarga.";
+            } else if (!tieneDataParaExportar) {
+                btn.title = "No hay registros aplicados en la grilla para exportar.";
+            } else {
+                btn.title = "Exportar registros actuales de la tabla.";
+            }
+        });
+    }
 
 function seleccionarMetodo(valor) {
     const select = document.getElementById('filtroCpeMetodo');
@@ -331,16 +345,36 @@ function seleccionarMetodo(valor) {
 }
 
 function limpiarFiltrosComprobantesAsincronos() {
-    document.getElementById('filtroCpeTexto').value       = '';
+    // 1. Borramos los inputs superiores y vaciamos selectores al estado base tradicional
+    document.getElementById('filtroCpeTexto').value  = '';
+    document.getElementById('filtroCpeMetodo').value = 'TODOS';
+    document.getElementById('filtroCpeOrigen').value = 'TODOS';
+
+    // 2. 🛡️ CLEAN RESET: Vaciamos por completo las cajas de fechas de la pantalla
     document.getElementById('filtroCpeFechaInicio').value = '';
     document.getElementById('filtroCpeFechaFin').value    = '';
-    document.getElementById('filtroCpeMetodo').value      = 'TODOS';
-    document.getElementById('filtroCpeOrigen').value      = 'TODOS';
 
     if (window.actualizarBadgesMetodo) window.actualizarBadgesMetodo();
-    aplicarFiltroPorFecha();
 
-    // 🚀 RESTAURACIÓN SUPREMA: Devolvemos la notificación nativa de La Jama
+    // 3. Llamamos a la API limpia sin argumentos para obligar al backend a darnos 'obtenerPedidosParaCajaHoy()'
+    fetch('/admin/comprobantes/api/lista')
+        .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+        .then(data => {
+            // Re-renderizamos todas las filas con la data por defecto del turno
+            renderizarTablas(data);
+
+            // 4. Forzamos la re-paginación máster para que pinte las filas de Por Emitir de inmediato
+            if (typeof repaginarTodas === 'function') {
+                repaginarTodas();
+            } else {
+                ['tablaPorEmitir', 'tablaEmitidos', 'tablaAnulados'].forEach(id => {
+                    if (window.ejecutarPaginacionComprobantes) window.ejecutarPaginacionComprobantes(id);
+                });
+                actualizarMensajesVacios();
+            }
+        })
+        .catch(e => console.error('Error en restauración automática:', e));
+
     if (typeof AppUtils !== "undefined" && typeof AppUtils.showNotification === "function") {
         AppUtils.showNotification("Filtros contables restaurados", "success");
     }

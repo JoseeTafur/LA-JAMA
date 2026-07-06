@@ -16,4 +16,7 @@ public class InsumoProductoDTO {
     private Long idProducto;
     private String nombreProducto;
     private Double cantidadUsada;
+    private String categoriaInsumo;
+    private Double stockActual;
+    private Double stockComprometido;
 }

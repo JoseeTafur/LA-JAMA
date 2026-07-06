@@ -7,7 +7,6 @@ import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("/api/documentos")
-// 🌟 REPARACIÓN SUPREMA: Se eliminó por completo el @CrossOrigin para evitar el conflicto con allowCredentials
 public class DocumentoController {
 
     @Value("${miapi.token:}")
