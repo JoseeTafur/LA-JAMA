@@ -1,5 +1,5 @@
 // ============================================================================
-// CAJA MÓVIL - RENDER DE PLATOS Y TICKETS
+// CAJA MÓVIL - RENDER DE PLATOS Y TICKETS - render.js
 // ============================================================================
 
 function renderizarPlatos() {
@@ -182,11 +182,12 @@ function renderizarTickets() {
                            data-ticket-id="${t.id}"
                            placeholder="👤 Nombre / Razón Social"
                            value="${t.nombreCliente || ''}"
+                           ${t.docStatus === 'OK' ? 'readonly style="background-color: #f3f4f6; color: #1b3a2c; font-weight: 700; border: 1px solid #1b3a2c;"' : ''}
                            oninput="window.guardarNombreManualEnMemoria(${t.id}, this.value)">
                 </div>
 
                 <div class="mb-3">
-                    <input type="email" id="correo_ticket_${t.id}"
+                    <input type="text" inputmode="email" id="correo_ticket_${t.id}"
                            class="jama-input-text text-center form-control-sm input-correo-fiscal"
                            data-ticket-id="${t.id}"
                            placeholder="📧 Correo Comprobante (Opcional)"
@@ -197,7 +198,8 @@ function renderizarTickets() {
                 <select class="jama-select mb-3" onchange="actualizarDatoTicket(${t.id}, 'metodoPago', this.value)">
                     <option value="EFECTIVO" ${t.metodoPago === 'EFECTIVO' ? 'selected' : ''}>💵 Efectivo</option>
                     <option value="POS_TARJETA" ${t.metodoPago === 'POS_TARJETA' ? 'selected' : ''}>💳 POS Tarjeta</option>
-                    <option value="YAPE_PLIN" ${t.metodoPago === 'YAPE_PLIN' ? 'selected' : ''}>📱 Yape/Plin</option>
+                    <option value="YAPE" ${t.metodoPago === 'YAPE' ? 'selected' : ''}>📱 Yape</option>
+                    <option value="PLIN" ${t.metodoPago === 'PLIN' ? 'selected' : ''}>📱 Plin</option>
                 </select>
                 <div class="jama-pos-alert">
                     <span class="small text-muted d-block" style="font-size:0.75rem;">Monto POS:</span>
@@ -208,19 +210,28 @@ function renderizarTickets() {
 
     // ─── RESTAURACIÓN COHESIVA DEL FOCO ───
     if (esInputDoc && idTicketEnFoco !== null) {
-        const inputRestaurado = document.getElementById(`doc_ticket_${idTicketEnFoco}`);
-        if (inputRestaurado) { inputRestaurado.focus(); inputRestaurado.setSelectionRange(posicionCursor, posicionCursor); }
+            const inputRestaurado = document.getElementById(`doc_ticket_${idTicketEnFoco}`);
+            if (inputRestaurado) { inputRestaurado.focus(); inputRestaurado.setSelectionRange(posicionCursor, posicionCursor); }
+        }
+        else if (esInputCorreo && idTicketEnFoco !== null) {
+            const correoRestaurado = document.getElementById(`correo_ticket_${idTicketEnFoco}`);
+            if (correoRestaurado) {
+                correoRestaurado.focus();
+                // 🛡️ ESCUDO: Evitamos usar setSelectionRange en inputs tipo email/number para que no explote
+                if (correoRestaurado.type === 'text' || correoRestaurado.setSelectionRange && typeof correoRestaurado.select === 'function') {
+                    try { correoRestaurado.setSelectionRange(posicionCursor, posicionCursor); } catch(e) { console.warn(e); }
+                } else {
+                    // Fallback seguro: Mueve el cursor al final del texto de forma natural
+                    const longitudTexto = correoRestaurado.value.length;
+                    try { correoRestaurado.setSelectionRange(longitudTexto, longitudTexto); } catch(e) { /* Failsafe total */ }
+                }
+            }
+        }
+        else if (esInputNombre && idTicketEnFoco !== null) {
+            const nombreRestaurado = document.getElementById(`nombre_ticket_${idTicketEnFoco}`);
+            if (nombreRestaurado) { nombreRestaurado.focus(); nombreRestaurado.setSelectionRange(posicionCursor, posicionCursor); }
+        }
     }
-    else if (esInputCorreo && idTicketEnFoco !== null) {
-        const correoRestaurado = document.getElementById(`correo_ticket_${idTicketEnFoco}`);
-        if (correoRestaurado) { correoRestaurado.focus(); correoRestaurado.setSelectionRange(posicionCursor, posicionCursor); }
-    }
-    // 🚀 NUEVO: Mantiene el foco fluido si el cajero decide tipear o corregir un nombre a mano
-    else if (esInputNombre && idTicketEnFoco !== null) {
-        const nombreRestaurado = document.getElementById(`nombre_ticket_${idTicketEnFoco}`);
-        if (nombreRestaurado) { nombreRestaurado.focus(); nombreRestaurado.setSelectionRange(posicionCursor, posicionCursor); }
-    }
-}
 
 function actualizarDatoTicket(idTicket, llave, valor) {
     if (ticketsDeCobro[idTicket]) {
@@ -361,27 +372,35 @@ function generarPrevisualizacionCajero() {
  * Evalúa en tiempo real si se completaron los dígitos reglamentarios para gatillar el fetch.
  */
 function evaluarDisparoConsultaFiscal(idTicket, inputElement) {
-    // Limpiamos caracteres no numéricos
     let valor = inputElement.value.replace(/[^0-9]/g, '');
     inputElement.value = valor;
 
-    // Guardamos el valor en memoria limpia
     ticketsDeCobro[idTicket].numDoc = valor;
+    const tipoDoc = ticketsDeCobro[idTicket].tipoDoc;
 
-    const tipoDoc = ticketsDeCobro[idTicket].tipoDoc; // 'BOLETA' o 'FACTURA'
-
-    // Reseteamos el estado visual si el usuario borra dígitos
-    if (valor.length === 0) {
+    // 🎯 ESCUDO DE LIBERACIÓN: Si altera la cantidad reglamentaria o borra, se quita el candado
+    if ((tipoDoc === 'BOLETA' && valor.length !== 8) || (tipoDoc === 'FACTURA' && valor.length !== 11)) {
         ticketsDeCobro[idTicket].docStatus = null;
         ticketsDeCobro[idTicket].nombreCliente = '';
+
         const inputNombre = document.getElementById(`nombre_ticket_${idTicket}`);
-        if (inputNombre) inputNombre.value = '';
+        if (inputNombre) {
+            inputNombre.value = '';
+            inputNombre.removeAttribute('readonly');
+            inputNombre.style.backgroundColor = '';
+            inputNombre.style.color = '';
+            inputNombre.style.border = '';
+            inputNombre.placeholder = "👤 Nombre / Razón Social";
+        }
         const statusDiv = document.getElementById(`status_doc_${idTicket}`);
         if (statusDiv) statusDiv.innerHTML = '';
+
+        // Refrescamos métricas del botón sin reventar el foco
+        generarPrevisualizacionCajero();
         return;
     }
 
-    // 🎯 GATILLO: 8 dígitos para DNI (Boleta) o 11 dígitos para RUC (Factura)
+    // 🎯 GATILLO OFICIAL AUTOMÁTICO
     if ((tipoDoc === 'BOLETA' && valor.length === 8) || (tipoDoc === 'FACTURA' && valor.length === 11)) {
         ejecutarConsultaDocumentoOficial(idTicket, tipoDoc === 'FACTURA' ? 'ruc' : 'dni', valor);
     }

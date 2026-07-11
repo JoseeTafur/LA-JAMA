@@ -1,5 +1,5 @@
 // =======================================================
-// CONEXIÓN WEBSOCKET PARA COCINA
+// CONEXIÓN WEBSOCKET PARA COCINA - websocket.js
 // =======================================================
 var socket      = new SockJS('/ws-restaurante');
 var stompClient = Stomp.over(socket);

@@ -41,37 +41,58 @@ public class CajaService {
     public Map<String, Object> calcularMetricasDashboard(TurnoCaja turnoActivo, List<MovimientoCaja> movimientos) {
         Map<String, Object> metricas = new HashMap<>();
 
-        // 🚀 OPTIMIZACIÓN SUPREMA: Traemos de la BD solo los pedidos amarrados a este turno específico
-        // Si no tienes este método en tu repositorio, puedes usar el findAll() temporalmente, pero filtrando por Turno.
+        // 🚀 FILTRO ATÓMICO: Traemos estrictamente los pedidos amarrados a este turno específico
         List<Pedido> pedidosDelTurnoActivo = pedidoRepository.findAll().stream()
                 .filter(p -> p.getTurnoCaja() != null && p.getTurnoCaja().getId().equals(turnoActivo.getId()))
-                .collect(Collectors.toList());
-
-        // 1. LIQUIDADOS (Para matemática financiera del turno actual)
-        List<Pedido> liquidados = pedidoRepository.findAll().stream()
-                .filter(p -> EstadoPago.PAGADO.equals(p.getEstadoPago())) // ◄ Descarta automáticamente los EXTORNADO
-                .filter(p -> p.getFechaCreacion() != null
-                        && turnoActivo.getFechaApertura() != null
-                        && p.getFechaCreacion().isAfter(turnoActivo.getFechaApertura()))
                 .filter(p -> p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
                 .collect(Collectors.toList());
 
-        // 2. HISTORIAL VISUAL (Con aduanas de estado del turno actual)
-        List<Pedido> pedidosHistorialVisual = pedidoRepository.findAll().stream()
-                .filter(p -> p.getFechaCreacion() != null
-                        && turnoActivo.getFechaApertura() != null
-                        && p.getFechaCreacion().isAfter(turnoActivo.getFechaApertura()))
+        // 1. LIQUIDADOS (Fluye directo de los pedidos del turno activo)
+        List<Pedido> liquidados = pedidosDelTurnoActivo.stream()
+                .filter(p -> EstadoPago.PAGADO.equals(p.getEstadoPago()))
+                .filter(p -> p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
+                .collect(Collectors.toList());
+
+        // 2. HISTORIAL VISUAL (Fluye directo de los pedidos del turno activo)
+        List<Pedido> pedidosHistorialVisual = pedidosDelTurnoActivo.stream()
                 .filter(p -> EstadoPago.PAGADO.equals(p.getEstadoPago())
                         || EstadoPago.EXTORNADO.equals(p.getEstadoPago()))
-                // 🚨 EL MISMO CANDADO: No se muestran comprobantes sin número de nota asignado
                 .filter(p -> p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
                 .sorted(Comparator.comparing(Pedido::getId).reversed())
                 .collect(Collectors.toList());
 
-        // 3. CÁLCULOS MATEMÁTICOS (Tu lógica matemática es perfecta, se mantiene intacta)
+        // Helper interno para calcular el monto real de un pedido sumando platos si el montoTotal es 0 o null
+        java.util.function.ToDoubleFunction<Pedido> calcularMontoSeguro = p -> {
+            double monto = p.getMontoTotal() != null ? p.getMontoTotal() : 0.0;
+            if (monto <= 0.0 && p.getListaDetalles() != null) {
+                monto = p.getListaDetalles().stream()
+                        .filter(d -> !d.isCanceladoPorCliente())
+                        .mapToDouble(d -> d.getSubtotal() != null ? d.getSubtotal() : (d.getPrecioUnitario() != null ? d.getPrecioUnitario() * d.getCantidad() : 0.0))
+                        .sum();
+            }
+            return monto;
+        };
+
+        // 3. CÁLCULOS MATEMÁTICOS CON AUDITORÍA AUTO-HEALING
         double ventasEfectivo = liquidados.stream()
                 .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.EFECTIVO)
-                .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0).sum();
+                .mapToDouble(calcularMontoSeguro)
+                .sum();
+
+        double yapeEsperado = liquidados.stream()
+                .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.YAPE)
+                .mapToDouble(calcularMontoSeguro)
+                .sum();
+
+        double plinEsperado = liquidados.stream()
+                .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.PLIN)
+                .mapToDouble(calcularMontoSeguro)
+                .sum();
+
+        double tarjetaEsperada = liquidados.stream()
+                .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.TARJETA)
+                .mapToDouble(calcularMontoSeguro)
+                .sum();
 
         double totalIngresosManuales = movimientos.stream()
                 .filter(m -> m.getTipo() != null
@@ -86,23 +107,14 @@ public class CajaService {
                         && m.getTipo() != TipoMovimientoCaja.CIERRE)
                 .mapToDouble(MovimientoCaja::getMonto).sum();
 
-        // El signo negativo ya viene del Service: 200 + 10 + (-20) = 190.
-        double efectivoEsperadoTotal = turnoActivo.getMontoApertura() + ventasEfectivo + totalIngresosManuales + totalEgresos;
+        double totalVentasPedidos = liquidados.stream()
+                .mapToDouble(calcularMontoSeguro)
+                .sum();
 
+        double efectivoEsperadoTotal = turnoActivo.getMontoApertura() + ventasEfectivo + totalIngresosManuales + totalEgresos;
         if (efectivoEsperadoTotal < 0) {
             efectivoEsperadoTotal = 0.0;
         }
-
-        double yapePlinEsperado = liquidados.stream()
-                .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.YAPE || p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.PLIN)
-                .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0).sum();
-
-        double tarjetaEsperada = liquidados.stream()
-                .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.TARJETA)
-                .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0).sum();
-
-        double totalVentasPedidos = liquidados.stream()
-                .mapToDouble(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0).sum();
 
         double saldoTeoricoGlobal = turnoActivo.getMontoApertura() + totalVentasPedidos + totalIngresosManuales + totalEgresos;
 
@@ -116,8 +128,15 @@ public class CajaService {
                 .sorted(Comparator.comparing(MovimientoCaja::getId).reversed())
                 .collect(Collectors.toList());
 
-        // 5. POR COBRAR (Pedidos pendientes globales en el salón que exigen pago)
-        // Aquí sí consultamos el repositorio general porque un pedido pendiente de un turno anterior podría cobrarse hoy
+        long countIngresosManuales = movimientosExclusivosCajero.stream()
+                .filter(m -> m.getTipo() != null && "INGRESO".equals(m.getTipo().getGrupoMacro()))
+                .count();
+
+        long countEgresosManuales = movimientosExclusivosCajero.stream()
+                .filter(m -> m.getTipo() != null && "EGRESO".equals(m.getTipo().getGrupoMacro()))
+                .count();
+
+        // 5. POR COBRAR
         List<Pedido> porCobrar = pedidoRepository.findAll().stream()
                 .filter(p -> p.getNumeroMesa() != null)
                 .filter(p -> com.web.restaurante.model.enums.EstadoPago.PENDIENTE.equals(p.getEstadoPago()))
@@ -126,18 +145,20 @@ public class CajaService {
                 .sorted(Comparator.comparing(Pedido::getId).reversed())
                 .collect(Collectors.toList());
 
-        // Asignación final al mapa
         metricas.put("todosLosMovimientosCaja", movimientosExclusivosCajero);
         metricas.put("saldoTeorico", saldoTeoricoGlobal);
         metricas.put("totalVentasCalculado", totalVentasPedidos);
         metricas.put("efectivoEsperado", efectivoEsperadoTotal);
-        metricas.put("yapePlinEsperado", yapePlinEsperado);
+        metricas.put("yapeEsperado", yapeEsperado);
+        metricas.put("plinEsperado", plinEsperado);
+        metricas.put("countIngresosManuales", countIngresosManuales);
+        metricas.put("countEgresosManuales", countEgresosManuales);
         metricas.put("tarjetaEsperada", tarjetaEsperada);
         metricas.put("pedidosPorCobrar", porCobrar);
         metricas.put("pedidosLiquidados", pedidosHistorialVisual);
-        metricas.put("pedidosDiario", pedidosDelTurnoActivo); // Cambiado para que no explote la memoria del HTML
+        metricas.put("pedidosDiario", pedidosDelTurnoActivo);
 
-        System.out.println("📥 [AUDITORÍA FINANCIERA] Turno: " + turnoActivo.getId() + " | Ventas: S/. " + totalVentasPedidos + " | Efectivo: S/. " + efectivoEsperadoTotal);
+        System.out.println("📥 [AUDITORÍA FLUJO INTEGRAL] Turno: " + turnoActivo.getId() + " | Ventas Cuadradas: S/. " + totalVentasPedidos);
         return metricas;
     }
 
@@ -247,8 +268,10 @@ public class CajaService {
                 .filter(p -> {
                     if (metodoPago != null) {
                         String mpEnum = p.getMetodoPago().name().toUpperCase();
-                        if (metodoPago.contains("YAPE") || metodoPago.contains("DIGITAL")) {
-                            if (!mpEnum.equals("YAPE") && !mpEnum.equals("PLIN") && !mpEnum.equals("YAPE_PLIN")) return false;
+                        if ("YAPE".equals(metodoPago)) {
+                            if (!mpEnum.equals("YAPE") && !mpEnum.equals("YAPE_PLIN")) return false;
+                        } else if ("PLIN".equals(metodoPago)) {
+                            if (!mpEnum.equals("PLIN") && !mpEnum.equals("YAPE_PLIN")) return false;
                         } else if (!mpEnum.equals(metodoPago)) {
                             return false;
                         }
@@ -285,24 +308,34 @@ public class CajaService {
 
         int totalPaginas = (int) Math.ceil((double) totalElementos / pageable.getPageSize());
 
-        // 4. MAPEO AL DTO BLINDADO (Aquí forzamos Presencial/Virtual por tu Enum Real)
+        // 4. MAPEO AL DTO BLINDADO (Con la misma aduana de cálculo del ojito)
         List<Map<String, Object>> listaDTO = subListaPaginada.stream().map(p -> {
             Map<String, Object> dto = new HashMap<>();
 
             dto.put("comprobante", p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().isEmpty()
                     ? p.getComprobanteNotaNumero() : "NV-" + p.getId());
             dto.put("id", p.getId());
+            dto.put("comprobanteSunat", p.getComprobanteNumero());
             dto.put("cliente", p.getCliente() != null ? p.getCliente() : "Cliente General");
             dto.put("metodoPago", p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO");
             dto.put("fecha", p.getFechaCreacion().toLocalDate().toString());
             dto.put("hora", p.getFechaCreacion().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
-            dto.put("monto", p.getMontoTotal() != null ? p.getMontoTotal() : 0.0);
+            dto.put("fechaHoraOrden", p.getFechaCreacion().toString());
+
+            // ── 🎯 EL ESCUDO DE PROTECCIÓN REPLICADO DEL OJITO ──
+            double montoFinalFila = p.getMontoTotal() != null ? p.getMontoTotal() : 0.0;
+            if (montoFinalFila <= 0.0 && p.getListaDetalles() != null) {
+                montoFinalFila = p.getListaDetalles().stream()
+                        .filter(d -> !d.isCanceladoPorCliente())
+                        .mapToDouble(d -> d.getSubtotal() != null ? d.getSubtotal() : (d.getPrecioUnitario() != null ? d.getPrecioUnitario() * d.getCantidad() : 0.0))
+                        .sum();
+            }
+            dto.put("monto", montoFinalFila);
+
             dto.put("estado", p.getEstado() != null ? p.getEstado().name() : "ENTREGADO");
             dto.put("estadoPago", p.getEstadoPago() != null ? p.getEstadoPago().name() : "PAGADO");
 
-            // 🛡️ REPARACIÓN DE JERARQUÍA BASADA EN TU ENUM REAL DE BASE DE DATOS
             com.web.restaurante.model.enums.TipoPedido tipo = p.getTipoPedido();
-
             if (tipo == com.web.restaurante.model.enums.TipoPedido.SALON) {
                 dto.put("tipoServicio", "SALON");
                 dto.put("canal", "Presencial");
@@ -387,8 +420,9 @@ public class CajaService {
 
                     if (!(concepto.toUpperCase().contains("LIQUIDACIÓN") ||
                             concepto.toUpperCase().contains("LIQUIDACION") ||
-                            concepto.toUpperCase().contains("DELIVERY MANUAL CAJERO") || // ◄ ELIMINA EL "M-" DUPLICADO DEL REPORTE
-                            concepto.toUpperCase().contains("VENTA POS DIRECTO") ||      // ◄ FILTRO COMPLEMENTARIO
+                            concepto.toUpperCase().contains("DELIVERY MANUAL CAJERO") ||
+                            concepto.toUpperCase().contains("VENTA POS DIRECTO") ||
+                            concepto.toUpperCase().contains("CARTA") ||
                             tipoMov.equals("VENTA") ||
                             tipoMov.equals("CIERRE"))) {
                         Map<String, Object> mov = new HashMap<>();
@@ -428,6 +462,10 @@ public class CajaService {
         LocalDateTime ahora = LocalDateTime.now();
         pedido.setFechaCreacion(ahora);
 
+        // 🛡️ [LA JAMA SHIELD] ¡AÑADE ESTA LÍNEA AQUÍ PARA BLINDAR LA HORA!
+        // Al igual que en venta directa POS, igualamos la entrega para que no viaje en null
+        pedido.setFechaEntrega(ahora);
+
         // 🚀 CANAL INTERNO DIRECTO: Va a cocina directo sin aduanas de aprobación
         pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
         pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO); // Validado por el cajero
@@ -456,7 +494,6 @@ public class CajaService {
                 // 🍳 EN COLA DE PRODUCCIÓN: El cocinero se encargará del descuento al despachar
                 detalle.setCocinado(false);
                 detalle.setEntregado(false);
-
             }
         }
 
@@ -469,5 +506,16 @@ public class CajaService {
         }
 
         return pedidoGuardado;
+    }
+
+    public long contarItemsVendidosEnTurno(Long turnoId) {
+        try {
+            // Ejecuta un conteo directo en el repositorio sumando la cantidad de platos de pedidos válidos del turno
+            Long cantidad = pedidoRepository.countCantidadProductosPorTurno(turnoId);
+            return cantidad != null ? cantidad : 0L;
+        } catch (Exception e) {
+            System.out.println("⚠️ No se pudo contar los platos del turno: " + e.getMessage());
+            return 0L;
+        }
     }
 }

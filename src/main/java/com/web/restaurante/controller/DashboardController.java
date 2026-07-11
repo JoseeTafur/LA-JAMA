@@ -1,7 +1,9 @@
 package com.web.restaurante.controller;
 
-import com.web.restaurante.repository.MovimientoCajaRepository;
+import com.web.restaurante.model.TurnoCaja;
+import com.web.restaurante.service.CajaService;
 import com.web.restaurante.service.EmpleadoService;
+import com.web.restaurante.service.TurnoCajaService;
 import com.web.restaurante.service.UsuarioService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -14,13 +16,15 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Controller
 public class DashboardController {
     private final UsuarioService usuarioService;
     private final EmpleadoService empleadoService;
-    private final MovimientoCajaRepository movimientoCajaRepository;
+    private final TurnoCajaService turnoCajaService; // 🛡️ Conexión al estado operativo del turno
+    private final CajaService cajaService;           // 📊 Acceso a los cálculos dinámicos de ventas
 
     @GetMapping("/dashboard")
     public String mostrarPagina(Model model, HttpSession session) {
@@ -28,22 +32,33 @@ public class DashboardController {
                 ? session.getAttribute("rol").toString().toUpperCase()
                 : "INVITADO";
 
-        // ========================================================
-        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
-        // ========================================================
         model.addAttribute("activeUri", "/dashboard");
         model.addAttribute("titleHeader", "Panel de Control Principal");
         model.addAttribute("rol", rol);
 
-        // 📊 KPIs COMERCIALES: Visibles para la plana de control (ADMIN, SUPER_ADMIN) y la gestión de caja (CAJERO)
+        // 📊 KPIs COMERCIALES CONECTADOS AL TURNO ACTIVO
         if ("SUPER_ADMIN".equals(rol) || "ADMIN".equals(rol) || "CAJERO".equals(rol)) {
-            Double ventasHoy = movimientoCajaRepository.sumVentasHoy();
-            Long platosHoy   = movimientoCajaRepository.countVentasHoy();
-            model.addAttribute("totalVentasHoy",    ventasHoy  != null ? ventasHoy  : 0.0);
-            model.addAttribute("platosVendidosHoy", platosHoy  != null ? platosHoy  : 0L);
+            Optional<TurnoCaja> turnoActivoOpt = turnoCajaService.obtenerTurnoActivo();
+
+            double totalVendidoTurno = 0.0;
+            long platosVendidosTurno = 0L;
+
+            if (turnoActivoOpt.isPresent()) {
+                TurnoCaja turno = turnoActivoOpt.get();
+                // 🚀 Extraemos el total acumulado de ventas del turno usando la lógica que ya calcula caja
+                totalVendidoTurno = turno.getTotalVendido() != null ? turno.getTotalVendido() : 0.0;
+
+                // Si tu CajaService calcula la cantidad de órdenes o platos del turno, lo mapeamos aquí.
+                // Por ahora, usaremos una consulta rápida filtrando por el ID del turno activo.
+                platosVendidosTurno = cajaService.contarItemsVendidosEnTurno(turno.getId());
+            }
+
+            model.addAttribute("totalVentasHoy",    totalVendidoTurno);
+            model.addAttribute("platosVendidosHoy", platosVendidosTurno);
+            model.addAttribute("turnoAbierto",      turnoActivoOpt.isPresent());
         }
 
-        // 👥 KPIS DE AUDITORÍA DE PERSONAL: Exclusivos para el dueño (SUPER_ADMIN) y el administrador (ADMIN)
+        // 👥 KPIS DE AUDITORÍA DE PERSONAL
         if ("SUPER_ADMIN".equals(rol) || "ADMIN".equals(rol)) {
             model.addAttribute("totalUsuarios",   usuarioService.contar());
             model.addAttribute("totalEmpleados",  empleadoService.contar());
@@ -52,7 +67,7 @@ public class DashboardController {
         return "dashboard";
     }
 
-    /** 🔄 Endpoint AJAX para refrescar KPIs de forma reactiva sin recargar la página */
+    /** 🔄 Endpoint AJAX reactivo conectado al Turno de Caja */
     @GetMapping("/dashboard/kpis")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> obtenerKpis(HttpSession session) {
@@ -60,17 +75,24 @@ public class DashboardController {
                 ? session.getAttribute("rol").toString().toUpperCase()
                 : "INVITADO";
 
-        // 🛡️ ADUANA PERIMETRAL: Bloqueamos mozos, cocineros o invitados maliciosos
         if (!"SUPER_ADMIN".equals(rol) && !"ADMIN".equals(rol) && !"CAJERO".equals(rol)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        Double ventasHoy = movimientoCajaRepository.sumVentasHoy();
-        Long   platosHoy = movimientoCajaRepository.countVentasHoy();
+        Optional<TurnoCaja> turnoActivoOpt = turnoCajaService.obtenerTurnoActivo();
+        double totalVendidoTurno = 0.0;
+        long platosVendidosTurno = 0L;
+
+        if (turnoActivoOpt.isPresent()) {
+            TurnoCaja turno = turnoActivoOpt.get();
+            totalVendidoTurno = turno.getTotalVendido() != null ? turno.getTotalVendido() : 0.0;
+            platosVendidosTurno = cajaService.contarItemsVendidosEnTurno(turno.getId());
+        }
 
         return ResponseEntity.ok(Map.of(
-                "totalVentasHoy",    ventasHoy != null ? ventasHoy : 0.0,
-                "platosVendidosHoy", platosHoy != null ? platosHoy : 0L
+                "totalVentasHoy",    totalVendidoTurno,
+                "platosVendidosHoy", platosVendidosTurno,
+                "turnoAbierto",      turnoActivoOpt.isPresent()
         ));
     }
 }

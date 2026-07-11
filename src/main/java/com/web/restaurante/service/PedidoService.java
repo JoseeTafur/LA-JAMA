@@ -487,13 +487,11 @@ public class PedidoService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Línea de comanda no encontrada ID: " + detalleId));
 
-        // 🛡️ ADUANA CORREGIDA: Si el front dice que es merma, o si la BD ya lo tenía impreso, va a producción de Merma
         boolean esMermaReal = forzarMerma || detalleTarget.isImpresoEnCocina();
 
         if (esMermaReal) {
             System.out.println("🔥 [La Jama] Ítem calificado como MERMA. Cambiando estado operativo.");
             detalleTarget.setCanceladoPorCliente(true);
-            // Nos aseguramos de sincronizar la bandera por si la cocina no la grabó
             detalleTarget.setImpresoEnCocina(true);
         } else {
             System.out.println("🧹 [La Jama] Ítem NO impreso. Borrando por completo de la comanda de forma limpia.");
@@ -513,23 +511,20 @@ public class PedidoService {
                     double comprometidoActual = (insumo.getStockComprometido() != null) ? insumo.getStockComprometido() : 0.0;
                     insumo.setStockComprometido(Math.max(0.0, comprometidoActual - totalInsumo));
 
-                    // 2. 🛡️ FILTRADO DE PROTEÍNAS ATÓMICO USANDO LA ADUANA BLINDADA
+                    // 2. 🛡️ FILTRADO DE PROTEÍNAS ATÓMICO CORREGIDO:
                     if (esMermaReal) {
                         if (insumo.getCategoria() != null && insumo.getCategoria().toUpperCase().contains("PROTEIN")) {
-
-                            // Descontamos la porción directamente del Stock Actual real de la BD
-                            double stockActual = (insumo.getStockActual() != null) ? insumo.getStockActual() : 0.0;
-                            insumo.setStockActual(Math.max(0.0, stockActual - totalInsumo));
-
-                            // Registramos la pérdida legítima en tu Kardex de porciones
+                            // 🎯 CORRECCIÓN: Eliminamos el 'insumo.setStockActual(...)' manual de aquí
+                            // porque registrarKardexPorVenta ya disminuye el Stock Actual de forma nativa en la BD.
                             proteinaService.registrarKardexPorVenta(insumo.getId(), detalleTarget.getCantidad(), pedido.getId());
-                            System.out.println("🥩 [KARDEX ENTRÓ EN ACCIÓN] Reduciendo stock actual por merma de proteína: " + insumo.getNombre());
+                            System.out.println("🥩 [KARDEX CONFORME] Reduciendo stock por merma de proteína únicamente a través de la transacción: " + insumo.getNombre());
                         } else {
                             System.out.println("🥫 [La Jama Insumos] Se ignora descuento de '" + insumo.getNombre() + "' (No es proteína).");
                         }
                     }
                 }
             });
+            detalleTarget.setCocinado(true);
         }
 
         recalcularTotalesPedido(pedido);

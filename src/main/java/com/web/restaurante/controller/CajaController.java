@@ -38,6 +38,7 @@ public class CajaController {
     private final MesaRepository mesaRepository;
     private final MovimientoCajaRepository movimientoCajaRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final CierreCajaSequenceService cierreCajaSequenceService;
 
     @GetMapping
     public String verCaja(Model model) {
@@ -64,23 +65,22 @@ public class CajaController {
         Map<String, Object> metricas = cajaService.calcularMetricasDashboard(turnoActivo, movimientosCrudos);
         model.addAllAttributes(metricas);
 
-        // 🚀 CONSTRUCCIÓN DE LA BITÁCORA PURA SIN DUPLICADOS
         List<Map<String, Object>> movimientosBitacoraLimpia = new ArrayList<>();
 
-        // RECORREMOS LA LISTA: No agregamos la apertura a la fuerza, dejamos que pase el filtro si viene en la lista
         for (MovimientoCaja m : movimientosCrudos) {
             if (m == null) continue;
+
             TipoMovimientoCaja tipoEnum = m.getTipo() != null ? m.getTipo() : TipoMovimientoCaja.INGRESO_MANUAL;
             String conceptoCrudo = m.getConcepto() != null ? m.getConcepto() : "";
             String conceptoUpper = conceptoCrudo.toUpperCase();
 
-            // Filtro de control contable visual usando tipos reales
-            if (!(conceptoUpper.contains("LIQUIDACIÓN") ||
-                    conceptoUpper.contains("LIQUIDACION") ||
-                    conceptoUpper.contains("EXTORNO") ||
-                    tipoEnum == TipoMovimientoCaja.INGRESO_VENTA ||
-                    tipoEnum == TipoMovimientoCaja.CIERRE)) {
+            boolean esMovimientoOperativoOculto =
+                    conceptoUpper.contains("LIQUIDACIÓN") ||
+                            conceptoUpper.contains("LIQUIDACION") ||
+                            conceptoUpper.contains("EXTORNO") ||
+                            tipoEnum == TipoMovimientoCaja.INGRESO_VENTA;
 
+            if (!esMovimientoOperativoOculto) {
                 Map<String, Object> mMov = new HashMap<>();
                 mMov.put("id", m.getId());
                 mMov.put("comprobante", m.getComprobante() != null ? m.getComprobante() : "M-" + m.getId());
@@ -88,8 +88,11 @@ public class CajaController {
                 if (tipoEnum == TipoMovimientoCaja.APERTURA) {
                     mMov.put("tipo", "APERTURA");
                     mMov.put("concepto", "Fondo inicial");
+                } else if (tipoEnum == TipoMovimientoCaja.CIERRE) {
+                    mMov.put("tipo", "CIERRE");
+                    mMov.put("concepto", "Cierre de caja");
                 } else {
-                    mMov.put("tipo", tipoEnum.getGrupoMacro()); // "INGRESO" o "EGRESO" para compatibilidad CSS
+                    mMov.put("tipo", tipoEnum.getGrupoMacro());
                     mMov.put("concepto", conceptoCrudo.startsWith("Manual: ") ? conceptoCrudo.substring(8) : conceptoCrudo);
                 }
 
@@ -97,19 +100,17 @@ public class CajaController {
 
                 LocalDateTime fechaMov = m.getFecha() != null ? m.getFecha() : LocalDateTime.now();
                 mMov.put("hora", fechaMov.toLocalTime().toString().substring(0, 5));
+                mMov.put("fechaHoraOrden", fechaMov.toString());
                 mMov.put("origen", "👤 HISTÓRICO");
 
                 movimientosBitacoraLimpia.add(mMov);
             }
         }
 
-        // 🔄 ORDEN CRONOLÓGICO INVERSO PERFECTO:
-        // Ordenamos de mayor a menor ID. Al ser #M-7 el ID más alto, irá ARRIBA.
-        // Como la Apertura (#M-2) tiene el ID más bajo, por lógica matemática quedará al ÚLTIMO (ABAJO).
         movimientosBitacoraLimpia.sort((a, b) -> {
             Long idA = Long.parseLong(a.get("id").toString());
             Long idB = Long.parseLong(b.get("id").toString());
-            return idB.compareTo(idA); // Mayor a menor
+            return idB.compareTo(idA);
         });
 
         model.addAttribute("turno", turnoActivo);
@@ -226,41 +227,83 @@ public class CajaController {
                 for (String idStr : idsDetallesPagados.split(",")) idsDetalles.add(Long.parseLong(idStr.trim()));
             }
 
+            // ── 🛡️ ESCUDO DE RESPALDO PARA EL MESERO (ANTI MONTO EN CERO) ──
+            // Si el terminal del mesero envió los IDs vacíos por problemas de escaneo del DOM,
+            // el propio servidor se auto-abastece recuperando todos los detalles activos sin pagar del pedido padre.
+            if (idsDetalles.isEmpty()) {
+                pedidoRepository.findById(pedidoId).ifPresent(p -> {
+                    if (p.getListaDetalles() != null) {
+                        for (DetallePedido d : p.getListaDetalles()) {
+                            if (!d.isCanceladoPorCliente() && !d.isPagado()) {
+                                idsDetalles.add(d.getId());
+                            }
+                        }
+                    }
+                });
+            }
+
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             List<com.web.restaurante.dto.mesas.TicketDTO> listaTickets = mapper.readValue(
                     matrizTickets, new com.fasterxml.jackson.core.type.TypeReference<>() {}
             );
 
-            // 1. Ejecutamos la liquidación nativa (Genera el pedido histórico y las notas de venta clonadas)
+            // 1. Ejecutamos la liquidación nativa del sistema
             mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, idsDetalles);
 
-            // 2. 🛡️ REPARACIÓN POST-LIQUIDACIÓN ANTI-NULL TOTAL (Turno + TipoPedido)
+            // 2. 🛡️ BARRIDO CONTABLE POST-LIQUIDACIÓN BLINDADO: FORZAR NÚMERO DE MESA Y PRECIO
             try {
+                // Obtenemos el número real de la mesa directamente desde el repositorio
+                Integer numeroMesaReal = mesaRepository.findById(mesaId)
+                        .map(Mesa::getNumero).orElse(null);
+
                 turnoCajaService.obtenerTurnoActivo().ifPresent(turnoActivo -> {
-                    mesaRepository.findById(mesaId).ifPresent(mesa -> {
-                        List<Pedido> notasVentaHuerfanas = pedidoRepository.findAll().stream()
-                                .filter(p -> p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.PAGADO)
-                                .filter(p -> p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.ENTREGADO)
-                                .filter(p -> p.getTurnoCaja() == null || p.getTipoPedido() == null) // 🔥 Detecta si falta el turno o el tipo
-                                .collect(Collectors.toList());
+                    // Jalamos el monto original de la comanda de la mesa como resguardo de seguridad
+                    double montoOriginalMesa = pedidoRepository.findById(pedidoId)
+                            .map(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0).orElse(0.0);
 
-                        for (Pedido nv : notasVentaHuerfanas) {
-                            // Seteamos el turno operativo activo
+                    // Buscamos las Notas de Venta recién creadas que pertenezcan a este turno
+                    List<Pedido> notasVentaPorCorregir = pedidoRepository.findAll().stream()
+                            .filter(p -> p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.PAGADO || p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.PAGADO)
+                            .filter(p -> p.getTurnoCaja() == null || p.getMontoTotal() == null || p.getMontoTotal() <= 0.0 || p.getNumeroMesa() == null)
+                            .collect(Collectors.toList());
+
+                    for (Pedido nv : notasVentaPorCorregir) {
+                        // Amarramos el turno operativo activo si le faltaba
+                        if (nv.getTurnoCaja() == null) {
                             nv.setTurnoCaja(turnoActivo);
-
-                            // 🎯 EL CANDADO SUPREMO: Si el tipo llegó como NULL o vacío, le forzamos SALON
-                            if (nv.getTipoPedido() == null) {
-                                nv.setTipoPedido(com.web.restaurante.model.enums.TipoPedido.SALON);
-                                System.out.println("🛡️ [ESCUDO DE ORIGEN] Forzando TipoPedido.SALON a la Nota de Venta #" + nv.getId());
-                            }
-
-                            pedidoRepository.save(nv);
-                            System.out.println("🚀 [ESCUDO CONTABLE] Nota de Venta #" + nv.getId() + " amarrada correctamente.");
                         }
-                    });
+
+                        // Forzamos el origen de salón si llegó huérfano
+                        if (nv.getTipoPedido() == null) {
+                            nv.setTipoPedido(com.web.restaurante.model.enums.TipoPedido.SALON);
+                        }
+
+                        // 🎯 FORZADO SEGURO DEL NÚMERO DE MESA
+                        if (nv.getNumeroMesa() == null && numeroMesaReal != null) {
+                            nv.setNumeroMesa(numeroMesaReal);
+                            System.out.println("🛡️ [LA JAMA SHIELD] Forzando Mesa #" + numeroMesaReal + " a la NV ID: " + nv.getId());
+                        }
+
+                        // El candado financiero del monto por si acaso
+                        if (nv.getMontoTotal() == null || nv.getMontoTotal() <= 0.0) {
+                            double totalCalculado = 0.0;
+                            if (nv.getListaDetalles() != null && !nv.getListaDetalles().isEmpty()) {
+                                totalCalculado = nv.getListaDetalles().stream()
+                                        .filter(d -> !d.isCanceladoPorCliente())
+                                        .mapToDouble(d -> d.getSubtotal() != null ? d.getSubtotal() : (d.getPrecioUnitario() != null ? d.getPrecioUnitario() * d.getCantidad() : 0.0))
+                                        .sum();
+                            }
+                            if (totalCalculado <= 0.0) {
+                                totalCalculado = montoOriginalMesa;
+                            }
+                            nv.setMontoTotal(totalCalculado);
+                        }
+
+                        pedidoRepository.save(nv);
+                    }
                 });
             } catch (Exception ex) {
-                System.out.println("⚠️ No se pudo realizar el barrido anti-null de origen: " + ex.getMessage());
+                System.out.println("⚠️ No se pudo realizar el barrido contable de seguridad: " + ex.getMessage());
             }
 
             return ResponseEntity.ok(Map.of("success", true, "message", "Mesa liquidada con metadatos corregidos"));
@@ -338,7 +381,27 @@ public class CajaController {
             response.put("tipoPedido", tipoServicioFinal);
             response.put("canal", canalFinal);
             response.put("numeroMesa", pedido.getNumeroMesa());
-            response.put("montoTotal", pedido.getMontoTotal() != null ? pedido.getMontoTotal() : 0.0);
+            double totalCalculadoDetalles = 0.0;
+
+            if (pedido.getListaDetalles() != null) {
+                totalCalculadoDetalles = pedido.getListaDetalles().stream()
+                        .filter(d -> !d.isCanceladoPorCliente())
+                        .mapToDouble(d -> {
+                            double precio = d.getPrecioUnitario() != null ? d.getPrecioUnitario() : 0.0;
+                            int cantidad = d.getCantidad() != null ? d.getCantidad() : 0;
+                            double subtotal = d.getSubtotal() != null ? d.getSubtotal() : precio * cantidad;
+                            return subtotal;
+                        })
+                        .sum();
+            }
+
+            double montoSeguro = pedido.getMontoTotal() != null ? pedido.getMontoTotal() : 0.0;
+
+            if (montoSeguro <= 0 && totalCalculadoDetalles > 0) {
+                montoSeguro = totalCalculadoDetalles;
+            }
+
+            response.put("montoTotal", montoSeguro);
 
             List<Map<String, Object>> detallesDTO = pedido.getListaDetalles().stream().map(d -> {
                 Map<String, Object> item = new HashMap<>();
@@ -510,11 +573,17 @@ public class CajaController {
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(required = false) String metodoPago,
             @RequestParam(required = false) String tipoServicio,
-            @RequestParam(required = false) String turno) {
+            @RequestParam(required = false) String turno,
+            @RequestParam(required = false) String operacion,
+            @RequestParam(required = false) String canal,
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) Double montoMin,
+            @RequestParam(required = false) Double montoMax
+    )
+    {
         try {
             Pageable pageable = PageRequest.of(pagina, 20);
 
-            // 1. Límites cronológicos estándar para pedidos
             LocalDateTime horaInicioCalculada = inicio.atTime(8, 0);
             LocalDateTime horaFinCalculada = fin.atTime(23, 59, 59);
 
@@ -532,12 +601,10 @@ public class CajaController {
             String metodoFinal = (metodoPago != null && !metodoPago.trim().isEmpty()) ? metodoPago.trim().toUpperCase() : null;
             String servicioFinal = (tipoServicio != null && !tipoServicio.trim().isEmpty()) ? tipoServicio.trim().toUpperCase() : null;
 
-            // 2. Extraemos el mapa base original de pedidos que ya calcula el Service de forma limpia
             Map<String, Object> respuestaMapeada = cajaService.obtenerHistorialComprobantesFiltrosAvanzados(
                     horaInicioCalculada, horaFinCalculada, metodoFinal, servicioFinal, turno, pageable
             );
 
-            // Lista unificada para el Buscador Global
             List<Map<String, Object>> listaUnificadaMaster = new ArrayList<>();
 
             List<Map<String, Object>> comprobantesOriginales = (List<Map<String, Object>>) respuestaMapeada.get("comprobantes");
@@ -549,13 +616,11 @@ public class CajaController {
                 }
             }
 
-            // 3. Buscamos los turnos reales que calzan estrictamente con el rango
             double sumaFondoApertura = 0.0;
             double sumaVentasRealizadas = 0.0;
             double sumaEfectivoGaveta = 0.0;
             List<Map<String, Object>> listaMovimientosManualesHistoricos = new ArrayList<>();
 
-            // Rango amplio de búsqueda física de turnos
             LocalDateTime inicioBusquedaTurnos = inicio.atStartOfDay();
             LocalDateTime finBusquedaTurnos = fin.atTime(LocalTime.MAX);
 
@@ -570,10 +635,12 @@ public class CajaController {
             for (TurnoCaja turnoObjetivo : turnosDelRango) {
                 if (turnoObjetivo == null) continue;
 
-                // Verificación estricta del tipo de turno
-                String tipoTurnoReal = turnoObjetivo.getTipoTurno() != null ? turnoObjetivo.getTipoTurno().toUpperCase().trim() : "DIA";
+                String tipoTurnoReal = turnoObjetivo.getTipoTurno() != null
+                        ? turnoObjetivo.getTipoTurno().toUpperCase().trim()
+                        : "DIA";
+
                 if (!"TODOS".equals(turnoFiltroUpper) && !tipoTurnoReal.equals(turnoFiltroUpper)) {
-                    continue; // Descarta turnos no correspondientes
+                    continue;
                 }
 
                 sumaFondoApertura += turnoObjetivo.getMontoApertura() != null ? turnoObjetivo.getMontoApertura() : 0.0;
@@ -582,54 +649,72 @@ public class CajaController {
                 List<MovimientoCaja> movs = movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(turnoObjetivo.getId());
 
                 double ingresosManuales = movs.stream()
-                        .filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("INGRESO"))
-                        .mapToDouble(MovimientoCaja::getMonto).sum();
+                        .filter(m -> m.getTipo() == TipoMovimientoCaja.INGRESO_MANUAL)
+                        .mapToDouble(MovimientoCaja::getMonto)
+                        .sum();
 
                 double egresosManuales = movs.stream()
-                        .filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("EGRESO"))
-                        .mapToDouble(MovimientoCaja::getMonto).sum();
+                        .filter(m -> m.getTipo() == TipoMovimientoCaja.EGRESO_MANUAL)
+                        .mapToDouble(MovimientoCaja::getMonto)
+                        .sum();
 
                 for (MovimientoCaja m : movs) {
                     if (m == null) continue;
-                    String tipoMovCrudo = m.getTipo() != null ? m.getTipo().getGrupoMacro() : "INGRESO";
+
+                    TipoMovimientoCaja tipoEnum = m.getTipo() != null ? m.getTipo() : TipoMovimientoCaja.INGRESO_MANUAL;
+                    String tipoMovCrudo = tipoEnum.getGrupoMacro();
+                    boolean esAperturaCaja = tipoEnum == TipoMovimientoCaja.APERTURA;
+                    boolean esCierreCaja = tipoEnum == TipoMovimientoCaja.CIERRE;
+
                     String conceptoCrudo = m.getConcepto() != null ? m.getConcepto() : "";
                     String conceptoUpper = conceptoCrudo.toUpperCase();
+                    String conceptoLimpio = conceptoCrudo.startsWith("Manual: ")
+                            ? conceptoCrudo.substring(8)
+                            : conceptoCrudo;
 
-                    if (!(conceptoUpper.contains("LIQUIDACIÓN") ||
-                            conceptoUpper.contains("LIQUIDACION") ||
-                            conceptoUpper.contains("EXTORNO") ||
-                            conceptoUpper.contains("DELIVERY MANUAL CAJERO") || // ◄ CANDADO EXCLUSIVO ANTI-DUPLICADOS
-                            conceptoUpper.contains("VENTA POS DIRECTO") ||      // ◄ CANDADO ADICIONAL PREVENTIVO
-                            tipoMovCrudo.equals("VENTA") ||
-                            tipoMovCrudo.equals("CIERRE"))) {
+                    boolean esVentaAutomatica =
+                            conceptoUpper.contains("LIQUIDACIÓN") ||
+                                    conceptoUpper.contains("LIQUIDACION") ||
+                                    conceptoUpper.contains("EXTORNO") ||
+                                    conceptoUpper.contains("DELIVERY MANUAL CAJERO") ||
+                                    conceptoUpper.contains("VENTA POS DIRECTO") ||
+                                    tipoEnum == TipoMovimientoCaja.INGRESO_VENTA;
+
+                    if (!esVentaAutomatica) {
+                        LocalDateTime fechaMov = m.getFecha() != null ? m.getFecha() : LocalDateTime.now();
 
                         Map<String, Object> mMov = new HashMap<>();
                         mMov.put("id", m.getId());
-                        mMov.put("tipo", tipoMovCrudo);
-                        mMov.put("concepto", m.getConcepto().startsWith("Manual: ") ? m.getConcepto().substring(8) : m.getConcepto());
+                        mMov.put("comprobante", m.getComprobante() != null ? m.getComprobante() : "M-" + m.getId());
+                        mMov.put("tipo", esAperturaCaja ? "APERTURA" : (esCierreCaja ? "CIERRE" : tipoMovCrudo));
+                        mMov.put("concepto", esAperturaCaja ? "Fondo inicial" : (esCierreCaja ? "Cierre de caja" : conceptoLimpio));
                         mMov.put("monto", Math.abs(m.getMonto()));
-
-                        LocalDateTime fechaMov = m.getFecha() != null ? m.getFecha() : LocalDateTime.now();
                         mMov.put("hora", fechaMov.toLocalTime().toString().substring(0, 5));
 
                         listaMovimientosManualesHistoricos.add(mMov);
 
-                        // Inyección controlada al Buscador Global (Solo efectivo y local)
                         if (metodoFinal == null || "EFECTIVO".equals(metodoFinal)) {
-                            if (servicioFinal == null || "LOCAL".equals(servicioFinal) || "SALON".equals(servicioFinal)) {
+                            boolean pasaFiltroServicio = servicioFinal == null
+                                    || "LOCAL".equals(servicioFinal)
+                                    || "SALON".equals(servicioFinal)
+                                    || "MANUAL".equals(servicioFinal)
+                                    || (esCierreCaja && "CIERRE_CAJA".equals(servicioFinal));
+
+                            if (pasaFiltroServicio) {
                                 Map<String, Object> movConvertido = new HashMap<>();
                                 movConvertido.put("id", m.getId());
                                 movConvertido.put("comprobante", m.getComprobante() != null ? m.getComprobante() : "M-" + m.getId());
-                                movConvertido.put("tipoServicio", "MANUAL");
+                                movConvertido.put("tipoServicio", esAperturaCaja ? "APERTURA_CAJA" : (esCierreCaja ? "CIERRE_CAJA" : "MANUAL"));
                                 movConvertido.put("canal", "Presencial");
                                 movConvertido.put("mesa", "—");
-                                movConvertido.put("cliente", m.getConcepto().startsWith("Manual: ") ? m.getConcepto().substring(8) : m.getConcepto());
+                                movConvertido.put("cliente", esAperturaCaja ? "Fondo inicial" : (esCierreCaja ? "Cierre de caja" : conceptoLimpio));
                                 movConvertido.put("fecha", fechaMov.toLocalDate().toString());
                                 movConvertido.put("hora", fechaMov.toLocalTime().toString().substring(0, 5));
+                                movConvertido.put("fechaHoraOrden", fechaMov.toString());
                                 movConvertido.put("monto", Math.abs(m.getMonto()));
                                 movConvertido.put("metodoPago", "EFECTIVO");
-                                movConvertido.put("estado", "MOV_MANUAL");
-                                movConvertido.put("estadoPago", tipoMovCrudo);
+                                movConvertido.put("estado", esAperturaCaja ? "APERTURA_CAJA" : (esCierreCaja ? "CIERRE_CAJA" : "MOV_MANUAL"));
+                                movConvertido.put("estadoPago", esAperturaCaja ? "APERTURA" : (esCierreCaja ? "CIERRE" : tipoMovCrudo));
                                 movConvertido.put("isMovimientoManual", true);
 
                                 listaUnificadaMaster.add(movConvertido);
@@ -637,17 +722,86 @@ public class CajaController {
                         }
                     }
                 }
+
                 sumaEfectivoGaveta += (turnoObjetivo.getMontoApertura() + ingresosManuales + egresosManuales);
             }
 
-            // 4. Ordenamos la lista combinada del Buscador Global de forma descendente (Más nuevos arriba)
+
+            listaUnificadaMaster = listaUnificadaMaster.stream()
+                    .filter(item -> {
+                        if (operacion != null && !operacion.isBlank()) {
+                            String estadoPagoItem = item.get("estadoPago") != null
+                                    ? item.get("estadoPago").toString().toUpperCase()
+                                    : "";
+
+                            boolean esIngreso = "INGRESO".equals(estadoPagoItem)
+                                    || "APERTURA".equals(estadoPagoItem)
+                                    || "LIQUIDADO".equals(estadoPagoItem)
+                                    || "PAGADO".equals(estadoPagoItem);
+
+                            boolean esEgreso = "EGRESO".equals(estadoPagoItem)
+                                    || "CIERRE".equals(estadoPagoItem)
+                                    || "EXTORNADO".equals(estadoPagoItem)
+                                    || "ANULADO".equals(estadoPagoItem);
+
+                            if ("INGRESO".equalsIgnoreCase(operacion) && !esIngreso) return false;
+                            if ("EGRESO".equalsIgnoreCase(operacion) && !esEgreso) return false;
+                        }
+
+                        if (canal != null && !canal.isBlank()) {
+                            String canalItem = item.get("canal") != null
+                                    ? item.get("canal").toString().toUpperCase()
+                                    : "";
+                            if (!canalItem.equals(canal.toUpperCase())) return false;
+                        }
+
+                        if (estado != null && !estado.isBlank()) {
+                            String estadoItem = item.get("estado") != null
+                                    ? item.get("estado").toString().toUpperCase()
+                                    : "";
+                            String estadoPagoItem = item.get("estadoPago") != null
+                                    ? item.get("estadoPago").toString().toUpperCase()
+                                    : "";
+
+                            if ("LIQUIDADO".equalsIgnoreCase(estado)) {
+                                if (!"LIQUIDADO".equals(estadoItem) && !"PAGADO".equals(estadoPagoItem)) return false;
+                            } else if ("ANULADO".equalsIgnoreCase(estado)) {
+                                if (!"ANULADO".equals(estadoItem) && !"EXTORNADO".equals(estadoPagoItem) && !"CANCELADO".equals(estadoItem)) return false;
+                            } else if (!estadoItem.equals(estado.toUpperCase())) {
+                                return false;
+                            }
+                        }
+
+                        if (montoMin != null || montoMax != null) {
+                            double montoItem = item.get("monto") != null
+                                    ? Double.parseDouble(item.get("monto").toString())
+                                    : 0.0;
+
+                            if (montoMin != null && montoItem < montoMin) return false;
+                            if (montoMax != null && montoItem > montoMax) return false;
+                        }
+
+                        return true;
+                    })
+                    .collect(Collectors.toList());
+
             listaUnificadaMaster.sort((a, b) -> {
-                String tiempoA = a.get("fecha").toString() + " " + (a.get("hora") != null ? a.get("hora").toString() : "00:00");
-                String tiempoB = b.get("fecha").toString() + " " + (b.get("hora") != null ? b.get("hora").toString() : "00:00");
-                return tiempoB.compareTo(tiempoA);
+                String tiempoA = a.get("fechaHoraOrden") != null
+                        ? a.get("fechaHoraOrden").toString()
+                        : a.get("fecha").toString() + "T" + (a.get("hora") != null ? a.get("hora").toString() : "00:00");
+
+                String tiempoB = b.get("fechaHoraOrden") != null
+                        ? b.get("fechaHoraOrden").toString()
+                        : b.get("fecha").toString() + "T" + (b.get("hora") != null ? b.get("hora").toString() : "00:00");
+
+                int comparacionTiempo = tiempoB.compareTo(tiempoA);
+                if (comparacionTiempo != 0) return comparacionTiempo;
+
+                Long idA = Long.parseLong(a.get("id").toString());
+                Long idB = Long.parseLong(b.get("id").toString());
+                return idB.compareTo(idA);
             });
 
-            // 5. Empaquetamos la respuesta final
             Map<String, Object> respuestaExtendida = new HashMap<>();
             respuestaExtendida.put("comprobantes", listaUnificadaMaster);
             respuestaExtendida.put("paginaActual", respuestaMapeada.get("paginaActual"));
@@ -678,22 +832,24 @@ public class CajaController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "No existe la NV."));
             }
 
+            // ── 🛡️ ADUANA FISCAL DE CONTROL: Impedir extornos de CPEs ya timbrados ──
+            if (pedidoReal.getComprobanteNumero() != null && !pedidoReal.getComprobanteNumero().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Operación denegada: La Nota de Venta ya está vinculada al Comprobante Emitido " + pedidoReal.getComprobanteNumero() + ". Debe anularse desde el panel de SUNAT mediante Nota de Crédito."
+                ));
+            }
+
             if (com.web.restaurante.model.enums.EstadoPago.EXTORNADO.equals(pedidoReal.getEstadoPago())) {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Ya fue extornada."));
             }
 
-            // 1. Cambiamos los estados de facturación del Pedido Padre de forma limpia
+            // Cambiamos los estados de facturación del Pedido Padre de forma limpia
             pedidoReal.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.EXTORNADO);
             pedidoReal.setEstado(com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
 
-            // 🛡️ Guardamos la justificación del extorno en la auditoría del propio pedido
             pedidoReal.setClienteCorreo("EXTORNO: " + motivo);
             pedidoService.guardar(pedidoReal);
-
-            // 2. 🚨 LA CORRECCIÓN SUPREMA:
-            // NO HACEMOS: turnoCajaService.registrarEgreso(...);
-            // Al NO registrar un movimiento manual de EGRESO, la gaveta física no restará dinero fantasma,
-            // y la bitácora de movimientos manuales se quedará limpia solo para tus vueltos de 20 soles.
 
             System.out.println("✅ [La Jama Contable] NV #" + pedidoId + " anulada de forma aislada. Vueltos manuales intactos.");
 

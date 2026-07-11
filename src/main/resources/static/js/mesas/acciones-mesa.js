@@ -1,5 +1,5 @@
 // =======================================================
-// MODAL DE ACCIÓN UNIFICADO (CAMBIAR / DIVIDIR)
+// MODAL DE ACCIÓN UNIFICADO (CAMBIAR / DIVIDIR) - acciones-mesa.js
 // =======================================================
 function abrirModalAccionUnificado(modo) {
     modoAccionMesaActual      = modo;
@@ -145,6 +145,22 @@ function _ejecutarTrasladoCompleto(idMesaDestino) {
     const destinoIdReal = idMesaDestino || mesaDestinoSeleccionadaId;
     if (!destinoIdReal) {
         AppUtils.showNotification("Por favor, selecciona una mesa de destino válida.", "warning");
+        return;
+    }
+
+    // 🛡️ EL ESCUDO HISTÓRICO SUPREMO ANTI-ARRASTRE
+    // Si la mesa contiene platos ya pagados, bloqueamos el traslado total de la orden principal
+    const filasPlatos = document.querySelectorAll('#lista-platos-previsualizar > div');
+    let tieneItemsPagados = false;
+
+    filasPlatos.forEach(row => {
+        if (row.innerHTML.includes('Pagado') || row.style.borderLeft.includes('rgb(22, 163, 74)')) {
+            tieneItemsPagados = true;
+        }
+    });
+
+    if (tieneItemsPagados) {
+        AppUtils.showNotification("Esta mesa contiene platos ya pagados. Use 'Dividir Comanda' para trasladar solo los ítems pendientes.", "warning");
         return;
     }
 

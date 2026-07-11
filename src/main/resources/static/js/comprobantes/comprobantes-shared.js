@@ -1,5 +1,5 @@
 /**
- * 📦 LA JAMA - SHARED: Constantes, estado y funciones compartidas entre módulos
+ * 📦 LA JAMA - SHARED: Constantes, estado y funciones compartidas entre módulos comprobantes-shared.js
  * Debe cargarse PRIMERO antes que comprobantes-tablas.js y comprobantes-core.js
  */
 
@@ -12,18 +12,17 @@ let estadoPaginacionComprobantes = {
 };
 
 document.addEventListener('DOMContentLoaded', function () {
-    const txtBusqueda  = document.getElementById('filtroCpeTexto');
-    const fechaInicio  = document.getElementById('filtroCpeFechaInicio');
-    const fechaFin     = document.getElementById('filtroCpeFechaFin');
-    const selectMetodo = document.getElementById('filtroCpeMetodo');
-    const selectOrigen = document.getElementById('filtroCpeOrigen');
-
-    if (txtBusqueda && fechaInicio && fechaFin && selectMetodo && selectOrigen) {
-        txtBusqueda.addEventListener('keyup',   window.ejecutarFiltroCruzadoComprobantes);
-        fechaInicio.addEventListener('change', window.aplicarFiltroPorFecha);
-        fechaFin.addEventListener('change',    window.aplicarFiltroPorFecha);
-        selectMetodo.addEventListener('change', window.ejecutarFiltroCruzadoComprobantes);
-        selectOrigen.addEventListener('change', window.ejecutarFiltroCruzadoComprobantes);
+    // 🎯 CORRECCIÓN MASTER: Ahora el filtro se comporta EXACTAMENTE igual que en Caja
+    // (panel Buscador Global): la búsqueda contra el servidor solo se dispara al
+    // presionar el botón "Buscar" (o Enter en el campo de texto). Ya no se filtra
+    // en caliente con cada tecla o cada cambio de selector.
+    const txtBusqueda = document.getElementById('filtroCpeTexto');
+    if (txtBusqueda) {
+        txtBusqueda.addEventListener('keyup', function (e) {
+            if (e.key === 'Enter' && typeof window.buscarComprobantesAsincrono === 'function') {
+                window.buscarComprobantesAsincrono();
+            }
+        });
     }
 
     if (window.repaginarTodas) window.repaginarTodas();

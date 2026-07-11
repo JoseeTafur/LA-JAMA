@@ -1,5 +1,5 @@
 // ============================================================================
-// 📊 AUTOMATIZACIÓN DE BOTONES DE REPORTE (ANTI-HOJAS VACÍAS)
+// caja-reportes.js
 // ============================================================================
 function actualizarBotonesReporte() {
     const segmentoActivo = document.querySelector('input[name="cajaSegmento"]:checked');
@@ -82,8 +82,21 @@ function exportarReporteCaja(formato) {
         params.set('fin', document.getElementById('ticketFechaFin')?.value || '');
         params.set('metodo', document.getElementById('ticketFiltroMetodo')?.value || '');
         params.set('origen', document.getElementById('ticketFiltroOrigen')?.value || '');
-        // 🎯 Captura e inyección del filtro del turno para el Buscador Global
         params.set('turno', document.getElementById('ticketFiltroTurno')?.value || '');
+
+        params.set('operacion', document.getElementById('ticketFiltroOperacion')?.value || '');
+        params.set('canal', document.getElementById('ticketFiltroCanal')?.value || '');
+        params.set('estado', document.getElementById('ticketFiltroEstado')?.value || '');
+        params.set('montoMin', document.getElementById('ticketFiltroMontoMin')?.value || '');
+        params.set('montoMax', document.getElementById('ticketFiltroMontoMax')?.value || '');
+
+        const seleccion = typeof obtenerSeleccionReporteGlobal === 'function'
+            ? obtenerSeleccionReporteGlobal()
+            : [];
+
+        if (seleccion.length > 0) {
+            params.set('seleccion', seleccion.join(','));
+        }
     }
 
     const urlFinal = params.toString() ? `${urlBase}?${params.toString()}` : urlBase;

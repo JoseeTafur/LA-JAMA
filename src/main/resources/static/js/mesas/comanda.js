@@ -1,5 +1,5 @@
 // =======================================================
-// GESTIÓN DE COMANDA (carga, entrega, eliminación)
+// GESTIÓN DE COMANDA (carga, entrega, eliminación) - comanda.js
 // =======================================================
 function cargarDetalleComandaAsincrono(pedidoEstado) {
     const contenedorComanda = document.getElementById('contenedor-previsualizacion-comanda');

@@ -1,5 +1,5 @@
 // ============================================================================
-// CAJA - ESTADO, PESTAÑAS, PAGINACIÓN Y FILTROS
+// ui.js
 // ============================================================================
 
 const LIMITE_ITEMS_PAGINA = 15;
@@ -112,7 +112,8 @@ function ejecutarFiltradoHistorialEnCaliente() {
         const contenidoFila = fila.textContent.toLowerCase();
 
         let metodoFila = 'EFECTIVO';
-        if (fila.querySelector('.bm-tarjeta'))     metodoFila = 'TARJETA';
+        if (fila.querySelector('.bm-tarjeta'))      metodoFila = 'TARJETA';
+        else if (fila.querySelector('.bm-plin'))    metodoFila = 'PLIN';
         else if (fila.querySelector('.bm-digital')) metodoFila = 'YAPE';
 
         let origenFila = 'DELIVERY';

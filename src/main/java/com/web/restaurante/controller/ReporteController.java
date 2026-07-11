@@ -3,6 +3,7 @@ package com.web.restaurante.controller;
 import com.web.restaurante.model.TurnoCaja;
 import com.web.restaurante.repository.MovimientoCajaRepository;
 import com.web.restaurante.repository.TurnoCajaRepository;
+import com.web.restaurante.service.ReporteComprobantesService;
 import com.web.restaurante.service.ReporteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +20,8 @@ public class ReporteController {
     @Autowired
     private ReporteService reporteService;
 
+    @Autowired
+    private ReporteComprobantesService reporteComprobantesService;
 
     @GetMapping("/caja/liquidados/{formato}")
     public ResponseEntity<byte[]> liquidados(
@@ -56,9 +59,19 @@ public class ReporteController {
             @RequestParam String fin,
             @RequestParam(required = false, defaultValue = "") String metodo,
             @RequestParam(required = false, defaultValue = "") String origen,
-            @RequestParam(required = false, defaultValue = "") String turno) {
+            @RequestParam(required = false, defaultValue = "") String turno,
+            @RequestParam(required = false, defaultValue = "") String operacion,
+            @RequestParam(required = false, defaultValue = "") String canal,
+            @RequestParam(required = false, defaultValue = "") String estado,
+            @RequestParam(required = false, defaultValue = "") String montoMin,
+            @RequestParam(required = false, defaultValue = "") String montoMax,
+            @RequestParam(required = false, defaultValue = "") String seleccion) {
 
-        byte[] data = reporteService.generarReporteHistorialCompleto(formato, inicio, fin, metodo, origen, turno);
+        byte[] data = reporteService.generarReporteHistorialCompleto(
+                formato, inicio, fin, metodo, origen, turno,
+                operacion, canal, estado, montoMin, montoMax, seleccion
+        );
+
         return crearResponseBinario(data, "reporte_buscador_global", formato);
     }
 
@@ -78,16 +91,20 @@ public class ReporteController {
                 .body(data);
     }
 
-    @Autowired
-    private com.web.restaurante.service.ReporteComprobantesService reporteComprobantesService;
-
     @GetMapping("/comprobantes/{pestaña}/{formato}")
     public ResponseEntity<byte[]> reporteComprobantes(
             @PathVariable String pestaña,
-            @PathVariable String formato) {
+            @PathVariable String formato,
+            @RequestParam(required = false, defaultValue = "") String inicio,
+            @RequestParam(required = false, defaultValue = "") String fin,
+            @RequestParam(required = false, defaultValue = "") String texto,
+            @RequestParam(required = false, defaultValue = "TODOS") String metodo,
+            @RequestParam(required = false, defaultValue = "TODOS") String origen) {
 
         // pestaña recibirá: "PENDIENTES", "EMITIDOS" o "ANULADOS"
-        byte[] data = reporteComprobantesService.generarReporteComprobantes(pestaña, formato);
+        byte[] data = reporteComprobantesService.generarReporteComprobantes(
+                pestaña, formato, inicio, fin, texto, metodo, origen
+        );
 
         String nombreArchivo = "reporte_comprobantes_" + pestaña.toLowerCase();
         return crearResponseBinario(data, nombreArchivo, formato);

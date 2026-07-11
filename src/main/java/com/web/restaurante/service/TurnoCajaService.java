@@ -22,6 +22,7 @@ public class TurnoCajaService {
     private final MovimientoCajaRepository movimientoCajaRepository;
     private final TurnoSequenceService turnoSequenceService;
     private final MovimientoSequenceService movimientoSequenceService;
+    private final CierreCajaSequenceService cierreCajaSequenceService;
 
     public Optional<TurnoCaja> obtenerTurnoActivo() {
         return turnoCajaRepository.findByActivoTrue();
@@ -97,14 +98,24 @@ public class TurnoCajaService {
     @Transactional
     public TurnoCaja cerrarTurno(Double montoCierre, String observaciones) {
         TurnoCaja turno = turnoCajaRepository.findByActivoTrue()
-                .orElseThrow(() -> new IllegalStateException("No hay ningún turno de caja abierto."));
+                .orElseThrow(() -> new IllegalStateException("No hay ningun turno de caja abierto."));
 
         List<MovimientoCaja> movimientos = movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(turno.getId());
 
-        // 📊 Comparación limpia y directa contra los objetos Enum correspondientes
-        double totalVendido = movimientos.stream().filter(m -> m.getTipo() == TipoMovimientoCaja.INGRESO_VENTA).mapToDouble(MovimientoCaja::getMonto).sum();
-        double totalIngresos = movimientos.stream().filter(m -> m.getTipo() == TipoMovimientoCaja.INGRESO_MANUAL).mapToDouble(MovimientoCaja::getMonto).sum();
-        double totalEgresos = movimientos.stream().filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("EGRESO")).mapToDouble(MovimientoCaja::getMonto).sum();
+        double totalVendido = movimientos.stream()
+                .filter(m -> m.getTipo() == TipoMovimientoCaja.INGRESO_VENTA)
+                .mapToDouble(MovimientoCaja::getMonto)
+                .sum();
+
+        double totalIngresos = movimientos.stream()
+                .filter(m -> m.getTipo() == TipoMovimientoCaja.INGRESO_MANUAL)
+                .mapToDouble(MovimientoCaja::getMonto)
+                .sum();
+
+        double totalEgresos = movimientos.stream()
+                .filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("EGRESO"))
+                .mapToDouble(MovimientoCaja::getMonto)
+                .sum();
 
         double saldoTeorico = turno.getMontoApertura() + totalVendido + totalIngresos + totalEgresos;
         double diferencia = montoCierre - saldoTeorico;
@@ -116,10 +127,11 @@ public class TurnoCajaService {
         turno.setFechaCierre(LocalDateTime.now());
         turno.setActivo(false);
 
-        registrarMovimiento(turno, TipoMovimientoCaja.CIERRE, "Cierre estricto de caja por el operador", montoCierre, null);
+        String serieCierre = cierreCajaSequenceService.generarSiguienteCierreCaja();
+        registrarMovimiento(turno, TipoMovimientoCaja.CIERRE, "Cierre estricto de caja por el operador", montoCierre, serieCierre);
 
         if (Math.abs(diferencia) > 0.1) {
-            System.out.println("⚠️ [ALERTA DE SEGURIDAD CONTABLE - LA JAMA]");
+            System.out.println("[ALERTA DE SEGURIDAD CONTABLE - LA JAMA]");
             System.out.println("Se ha detectado un descuadre en el arqueo del turno ID #" + turno.getId());
             System.out.println("Diferencia registrada: S/. " + diferencia);
         }

@@ -1,5 +1,5 @@
 // ============================================================================
-// CAJA - AUDITORÍA, HISTORIAL Y FLUJO DE PAGO
+// historial.js
 // ============================================================================
 
 function abrirPlanoMesasDesdeCaja() {
@@ -143,6 +143,11 @@ function cargarComprobantesHistoricos() {
     const tipoServicio = document.getElementById("ticketFiltroOrigen").value;
     const turno        = document.getElementById("ticketFiltroTurno")?.value || "";
     const tbody        = document.getElementById("cuerpoHistorialComprobantesAsincrono");
+    const operacion = document.getElementById("ticketFiltroOperacion")?.value || "";
+    const canal     = document.getElementById("ticketFiltroCanal")?.value || "";
+    const estado    = document.getElementById("ticketFiltroEstado")?.value || "";
+    const montoMin  = document.getElementById("ticketFiltroMontoMin")?.value || "";
+    const montoMax  = document.getElementById("ticketFiltroMontoMax")?.value || "";
 
     if (!fechaInicio || !fechaFin) {
         Swal.fire({ icon: 'warning', title: 'Parámetros Incompletos', text: 'Por favor, define un rango de fechas.', confirmButtonColor: '#2e7d32' });
@@ -155,17 +160,17 @@ function cargarComprobantesHistoricos() {
     if (metodoPago)   url += `&metodoPago=${metodoPago}`;
     if (tipoServicio) url += `&tipoServicio=${tipoServicio}`;
     if (turno)        url += `&turno=${turno}`;
+    if (operacion) url += `&operacion=${operacion}`;
+    if (canal)     url += `&canal=${canal}`;
+    if (estado)    url += `&estado=${estado}`;
+    if (montoMin)  url += `&montoMin=${montoMin}`;
+    if (montoMax)  url += `&montoMax=${montoMax}`;
 
     fetch(url)
         .then(response => { if (!response.ok) throw new Error(); return response.json(); })
         .then(data => {
             tbody.innerHTML = '';
             const lista = data.comprobantes;
-
-            // =========================================================================
-            // 🛡️ CANDADO FINANCIERO: SE ELIMINÓ EL REFRESH EN CALIENTE DE LAS TARJETAS
-            // Los totales de Apertura, Ventas y Gaveta del Turno Actual permanecen fijos.
-            // =========================================================================
 
             if (!lista || lista.length === 0) {
                 tbody.innerHTML = `
@@ -184,41 +189,68 @@ function cargarComprobantesHistoricos() {
                 return;
             }
 
-            // =========================================================================
-            // 🚀 PASO 2: RENDERIZADO HÍBRIDO CRONOLÓGICO EXCLUSIVO PARA EL BUSCADOR GLOBAL
-            // =========================================================================
             lista.forEach(p => {
                 const fila = document.createElement("tr");
                 fila.className = "fila-pedido-caja";
 
+                const reporteKey = p.isMovimientoManual ? `MOVIMIENTO:${p.id}` : `PEDIDO:${p.id}`;
+
                 if (p.isMovimientoManual) {
                     const tipoMovimiento = p.estadoPago ? p.estadoPago.toString().toUpperCase().trim() : 'INGRESO';
-                    const badgeTipoOperacion = tipoMovimiento === 'EGRESO'
+                    const estadoMovimiento = p.estado ? p.estado.toString().toUpperCase().trim() : 'MOV_MANUAL';
+
+                    const esCierreCaja = estadoMovimiento === 'CIERRE_CAJA' || tipoMovimiento === 'CIERRE';
+                    const esAperturaCaja = estadoMovimiento === 'APERTURA_CAJA' || tipoMovimiento === 'APERTURA';
+                    const esEgreso = tipoMovimiento === 'EGRESO' || esCierreCaja;
+
+                    const badgeTipoOperacion = esEgreso
                         ? '<span class="badge bg-danger text-white fw-bold px-2 py-1" style="font-size:0.7rem;">EGRESO</span>'
                         : '<span class="badge bg-success text-white fw-bold px-2 py-1" style="font-size:0.7rem;">INGRESO</span>';
 
-                    const badgeEstado = '<span class="badge text-white fw-bold px-3 py-2 rounded-pill" style="font-size:0.72rem; background-color: #6c757d !important;">MOV. MANUAL</span>';
+                    let textoEstado = 'MOV. MANUAL';
+                    let colorEstado = '#6c757d';
+                    let textoSubtitulo = '<i class="bi bi-person-gear"></i> Ajuste manual de caja';
+                    let clienteTexto = p.cliente || 'Movimiento manual';
 
-                    if (tipoMovimiento === 'EGRESO') {
+                    if (esAperturaCaja) {
+                        textoEstado = 'APERTURA CAJA';
+                        colorEstado = '#0f766e';
+                        textoSubtitulo = '<i class="bi bi-unlock-fill"></i> Inicio operativo de turno';
+                        clienteTexto = 'Fondo inicial';
+                    } else if (esCierreCaja) {
+                        textoEstado = 'CIERRE CAJA';
+                        colorEstado = '#7c2d12';
+                        textoSubtitulo = '<i class="bi bi-lock-fill"></i> Clausura operativa de turno';
+                        clienteTexto = 'Cierre de caja';
+                    }
+
+                    const badgeEstado = `
+                        <span class="badge text-white fw-bold px-3 py-2 rounded-pill"
+                              style="font-size:0.72rem; background-color: ${colorEstado} !important;">
+                            ${textoEstado}
+                        </span>`;
+
+                    if (esEgreso) {
                         fila.style = "background-color: #fffdf5 !important; opacity: 0.95;";
                     }
 
                     fila.innerHTML = `
-                        <td><span class="badge bg-dark font-monospace" style="font-size:0.82rem; padding: 4px 8px;">${p.comprobante}</span></td>
+                        <td>
+                            <input type="checkbox" class="chk-reporte-global me-2" value="${reporteKey}">
+                            <span class="badge bg-dark font-monospace" style="font-size:0.82rem; padding: 4px 8px;">${p.comprobante}</span>
+                        </td>
                         <td>${badgeTipoOperacion}</td>
                         <td><span class="text-muted">—</span></td>
                         <td>
-                            <div class="cliente-nombre fw-bold text-dark text-uppercase" style="font-size: 0.88rem; color: #444;">${p.cliente}</div>
-                            <div class="text-muted small fw-semibold" style="font-size:0.75rem; margin-top:2px;"><i class="bi bi-person-gear"></i> Ajuste manual de caja</div>
+                            <div class="cliente-nombre fw-bold text-dark text-uppercase" style="font-size: 0.88rem; color: #444;">${clienteTexto}</div>
+                            <div class="text-muted small fw-semibold" style="font-size:0.75rem; margin-top:2px;">${textoSubtitulo}</div>
                         </td>
                         <td><span class="badge bg-light text-dark font-monospace border px-2 py-1">${p.fecha} (${p.hora || '-'})</span></td>
-                        <td><span class="fw-bold text-dark">S/ ${p.monto.toFixed(2)}</span></td>
-                        <td><span class="badge-metodo-jama bm-efectivo"><img src="/img/Efectivo.png" alt="Efectivo"> Efectivo</span></td>
+                        <td><span class="fw-bold text-dark">S/ ${parseFloat(p.monto || 0).toFixed(2)}</span></td>
+                        <td><span class="badge-metodo-jama bm-efectivo"><img src="/img/Efectivo.png" alt="Efectivo" class="me-1" style="width:16px; height:16px; object-fit:contain;"> Efectivo</span></td>
                         <td class="text-center"><span class="text-muted small italic">—</span></td>
                         <td class="text-end">${badgeEstado}</td>`;
-
                 } else {
-                    // 🍔 SUB-FLUJO B: Es una Nota de Venta estándar (Mapeo directo y blindado)
                     const servicioCrudo = p.tipoServicio ? p.tipoServicio.toString().toUpperCase().trim() : 'SALON';
                     const canalPedido   = p.canal ? p.canal : 'Presencial';
 
@@ -244,16 +276,20 @@ function cargarComprobantesHistoricos() {
                         nombreIdentificador = "Orden #" + p.id;
                     }
 
-                    let metodoHTML = '-';
-                    if (p.metodoPago) {
-                        const mp = p.metodoPago.toUpperCase();
-                        if (mp === 'EFECTIVO') {
-                            metodoHTML = `<span class="badge-metodo-jama bm-efectivo"><img src="/img/Efectivo.png" alt="Efectivo"> Efectivo</span>`;
-                        } else if (mp === 'YAPE' || mp === 'YAPE_PLIN' || mp === 'PLIN') {
-                            metodoHTML = `<span class="badge-metodo-jama bm-digital"><img src="/img/YapePlin.png" alt="Yape Plin"> Yape/Plin</span>`;
-                        } else if (mp === 'TARJETA') {
-                            metodoHTML = `<span class="badge-metodo-jama bm-tarjeta"><img src="/img/Tarjeta.png" alt="Tarjeta"> Tarjeta</span>`;
-                        }
+                    // ✅ CORRECCIÓN DE VARIABLE: Usamos 'p' en lugar de 'c' para evitar el error 'c is not defined'
+                    let badgeMetodoHtml = '';
+                    const metodo = p.metodoPago ? p.metodoPago.toString().toUpperCase().trim() : 'N/A';
+
+                    if (metodo.includes('EFECTIVO')) {
+                        badgeMetodoHtml = `<span class="badge-metodo-jama bm-efectivo"><img src="/img/Efectivo.png" style="width:14px; height:14px; margin-right:4px; object-fit:contain;"> Efectivo</span>`;
+                    } else if (metodo.includes('YAPE')) {
+                        badgeMetodoHtml = `<span class="badge-metodo-jama bm-yape"><img src="/img/Yape.png" style="width:14px; height:14px; margin-right:4px; object-fit:contain;"> Yape</span>`;
+                    } else if (metodo.includes('PLIN')) {
+                        badgeMetodoHtml = `<span class="badge-metodo-jama bm-plin"><img src="/img/Plin.png" style="width:14px; height:14px; margin-right:4px; object-fit:contain;"> Plin</span>`;
+                    } else if (metodo.includes('TARJETA')) {
+                        badgeMetodoHtml = `<span class="badge-metodo-jama bm-tarjeta"><img src="/img/Tarjeta.png" style="width:14px; height:14px; margin-right:4px; object-fit:contain;"> Tarjeta</span>`;
+                    } else {
+                        badgeMetodoHtml = `<span class="badge bg-secondary">${metodo}</span>`;
                     }
 
                     const esAnulado = (p.estadoPago === 'EXTORNADO' || p.estado === 'CANCELADO');
@@ -269,8 +305,50 @@ function cargarComprobantesHistoricos() {
                         fila.style = "background-color: #fff5f5 !important; opacity: 0.75;";
                     }
 
+                    const tieneComprobanteEmitido = p.comprobanteSunat && p.comprobanteSunat.trim() !== "" && p.comprobanteSunat !== "null";
+
+                    let botonExtornoHTML = '';
+                    if (esAnulado) {
+                        botonExtornoHTML = `
+                            <button type="button" class="action-jama-btn" disabled
+                                    title="Nota de Venta ya extornada"
+                                    style="background-color:#e5e7eb; border-color:#d1d5db; color:#9ca3af; cursor:not-allowed; opacity:0.5; display:inline-flex; align-items:center; justify-content:center;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                    <path d="M3 3v5h5"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/>
+                                </svg>
+                            </button>`;
+                    } else if (tieneComprobanteEmitido) {
+                        botonExtornoHTML = `
+                            <button type="button" class="action-jama-btn" disabled
+                                    title="No se puede extornar un comprobante ya emitido ante la SUNAT (${p.comprobanteSunat})"
+                                    style="background-color:#e5e7eb; border-color:#d1d5db; color:#9ca3af; cursor:not-allowed; opacity:0.5; display:inline-flex; align-items:center; justify-content:center;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                    <path d="M3 3v5h5"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/>
+                                </svg>
+                            </button>`;
+                    } else {
+                        botonExtornoHTML = `
+                            <button type="button" class="action-jama-btn"
+                                    onclick="extornarNotaVenta(${p.id}, ${p.monto})"
+                                    title="Extornar Nota de Venta"
+                                    style="background-color:#933D2D; border-color:#7a2e1f; color:#fff; display:inline-flex; align-items:center; justify-content:center;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                    <path d="M3 3v5h5"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/>
+                                </svg>
+                            </button>`;
+                    }
+
                     fila.innerHTML = `
-                        <td><span class="texto-negrita">#${p.comprobante}</span></td>
+                        <td>
+                            <input type="checkbox" class="chk-reporte-global me-2" value="${reporteKey}">
+                            <span class="texto-negrita">#${p.comprobante}</span>
+                        </td>
                         <td>${badgeTipoOperacion}</td> <td><span class="texto-servicio">${textoServicioFinal}</span></td>
                         <td>
                             <div class="cliente-nombre fw-bold text-dark" style="${esAnulado ? 'text-decoration: line-through; color: #999;' : ''}">${nombreIdentificador}</div>
@@ -278,7 +356,7 @@ function cargarComprobantesHistoricos() {
                         </td>
                         <td><span class="badge bg-light text-dark font-monospace border px-2 py-1">${p.fecha} (${p.hora || '-'})</span></td>
                         <td><span class="${esAnulado ? 'text-danger fw-bold' : 'fw-bold text-success'}" style="${esAnulado ? 'text-decoration: line-through;' : ''}">S/ ${p.monto.toFixed(2)}</span></td>
-                        <td>${metodoHTML}</td>
+                        <td>${badgeMetodoHtml}</td>
                         <td class="text-center">
                             <div class="action-buttons-wrapper justify-content-center d-flex gap-1">
                                 <button type="button" class="action-jama-btn btn-action-edit" data-id="${p.id}" onclick="verDetallesComandaAuditoria(this)">
@@ -287,6 +365,7 @@ function cargarComprobantesHistoricos() {
                                 <button type="button" class="action-jama-btn btn-action-print bg-light-jama" onclick="window.open('/admin/caja/ticket-venta/${p.id}', '_blank')">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                                 </button>
+                                ${botonExtornoHTML}
                             </div>
                         </td>
                         <td class="text-end">${badgeEstado}</td>`;
@@ -544,4 +623,42 @@ async function extornarNotaVenta(pedidoId, montoTotal) {
             confirmButtonColor: '#933D2D'
         });
     }
+}
+
+function limpiarFiltrosComprobantesHistoricos() {
+    const ids = [
+        "ticketFiltroTurno",
+        "ticketFiltroMetodo",
+        "ticketFiltroOrigen",
+        "ticketFiltroOperacion",
+        "ticketFiltroCanal",
+        "ticketFiltroEstado",
+        "ticketFiltroMontoMin",
+        "ticketFiltroMontoMax"
+    ];
+
+    // 1. Resetea todos los selectores y campos numéricos de la barra de filtros
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        if (el.tagName === "SELECT") {
+            el.selectedIndex = 0;
+        } else {
+            el.value = "";
+        }
+    });
+
+    paginaActualComprobantes = 0;
+    cargarComprobantesHistoricos();
+}
+
+function toggleSeleccionReporteGlobal(marcar) {
+    document.querySelectorAll("#cuerpoHistorialComprobantesAsincrono .chk-reporte-global")
+        .forEach(chk => chk.checked = marcar);
+}
+
+function obtenerSeleccionReporteGlobal() {
+    return Array.from(document.querySelectorAll("#cuerpoHistorialComprobantesAsincrono .chk-reporte-global:checked"))
+        .map(chk => chk.value);
 }

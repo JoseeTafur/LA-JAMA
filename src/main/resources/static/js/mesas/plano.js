@@ -1,5 +1,5 @@
 // =======================================================
-// MOTOR EN VIVO: REACTIVIDAD DEL PLANO DE MESAS
+// MOTOR EN VIVO: REACTIVIDAD DEL PLANO DE MESAS - plano.js
 // =======================================================
 function actualizarEstadoMesaEnPlano(numeroMesa, nuevoEstado, nuevoPedidoId, pedidoEstado) {
     const tarjeta = document.querySelector(`[data-numero="${numeroMesa}"]`);

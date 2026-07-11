@@ -16,6 +16,7 @@ public class TicketDTO {
     private String clienteCorreo;
     private double consumoFinal;
     private double propina;
+    private Integer numeroMesa;
 
     private List<DetalleTicketDTO> listaDetalles;
 }

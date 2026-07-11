@@ -116,7 +116,7 @@ public class ReporteService {
                 String concepto = m.getConcepto() != null ? m.getConcepto() : "";
                 String conceptoUpper = concepto.toUpperCase();
 
-                if (!(conceptoUpper.contains("LIQUIDACIÓN") || conceptoUpper.contains("LIQUIDACION") || conceptoUpper.contains("EXTORNO") || tipo.equals("VENTA") || tipo.equals("CIERRE"))) {
+                if (!(conceptoUpper.contains("LIQUIDACIÓN") || conceptoUpper.contains("LIQUIDACION") || conceptoUpper.contains("EXTORNO") || conceptoUpper.contains("CARTA") || tipo.equals("VENTA") || tipo.equals("CIERRE"))) {
 
                     Pedido pSimulado = new Pedido();
                     pSimulado.setId(m.getId());
@@ -204,11 +204,23 @@ public class ReporteService {
         return procesarReporteEstructurado(resumenTurnosSimulados, formato);
     }
 
-    public byte[] generarReporteHistorialCompleto(String formato, String inicio, String fin, String metodo, String origen, String turnoFiltro) {
+    public byte[] generarReporteHistorialCompleto(
+            String formato,
+            String inicio,
+            String fin,
+            String metodo,
+            String origen,
+            String turnoFiltro,
+            String operacion,
+            String canal,
+            String estado,
+            String montoMin,
+            String montoMax,
+            String seleccion) {
+
         LocalDate fechaInicio = (inicio != null && !inicio.isEmpty()) ? LocalDate.parse(inicio) : LocalDate.now().minusDays(30);
         LocalDate fechaFin = (fin != null && !fin.isEmpty()) ? LocalDate.parse(fin) : LocalDate.now();
 
-        // 🚀 MEJORADO: Consultamos el espectro completo usando findAll() para no perder Deliverys de Yape/Plin
         List<Pedido> lista = pedidoRepository.findAll().stream()
                 .filter(p -> p.getFechaCreacion() != null
                         && !p.getFechaCreacion().toLocalDate().isBefore(fechaInicio)
@@ -218,6 +230,11 @@ public class ReporteService {
         final String metodoUpper = (metodo != null && !metodo.trim().isEmpty()) ? metodo.trim().toUpperCase() : "TODOS";
         final String origenUpper = (origen != null && !origen.trim().isEmpty()) ? origen.trim().toUpperCase() : "TODOS";
         final String turnoUpper = (turnoFiltro != null && !turnoFiltro.trim().isEmpty()) ? turnoFiltro.trim().toUpperCase() : "TODOS";
+        final String operacionUpper = (operacion != null && !operacion.trim().isEmpty()) ? operacion.trim().toUpperCase() : "TODOS";
+        final String canalUpper = (canal != null && !canal.trim().isEmpty()) ? canal.trim().toUpperCase() : "TODOS";
+        final String estadoUpper = (estado != null && !estado.trim().isEmpty()) ? estado.trim().toUpperCase() : "TODOS";
+        final Double montoMinValor = (montoMin != null && !montoMin.trim().isEmpty()) ? Double.parseDouble(montoMin.trim()) : null;
+        final Double montoMaxValor = (montoMax != null && !montoMax.trim().isEmpty()) ? Double.parseDouble(montoMax.trim()) : null;
 
         List<Pedido> filtrados = lista.stream()
                 .filter(p -> p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
@@ -286,31 +303,93 @@ public class ReporteService {
                         if (!(conceptoUpper.contains("LIQUIDACIÓN") ||
                                 conceptoUpper.contains("LIQUIDACION") ||
                                 conceptoUpper.contains("EXTORNO") ||
-                                conceptoUpper.contains("DELIVERY MANUAL CAJERO") || // ◄ BLOQUEO DE DUPLICADO EN EL HISTORIAL COMPLETO
-                                conceptoUpper.contains("VENTA POS DIRECTO") ||      // ◄ BLOQUEO DE DUPLICADO EN EL HISTORIAL COMPLETO
+                                conceptoUpper.contains("DELIVERY MANUAL CAJERO") ||
+                                conceptoUpper.contains("VENTA POS DIRECTO") ||
+                                conceptoUpper.contains("CARTA") ||
                                 tipo.equals("VENTA") ||
                                 tipo.equals("CIERRE"))) {
 
                             Pedido pSimulado = new Pedido();
                             pSimulado.setId(m.getId());
 
-                            if (m.getTipo() == com.web.restaurante.model.enums.TipoMovimientoCaja.APERTURA || conceptoUpper.contains("FONDO INICIAL")) {
-                                String correlativoFormateado = String.format("%08d", t.getId());
-                                pSimulado.setComprobanteNotaNumero("AC01-" + correlativoFormateado);
-                            } else {
-                                pSimulado.setComprobanteNotaNumero("M-" + m.getId());
-                            }
+                            pSimulado.setComprobanteNotaNumero(m.getComprobante() != null ? m.getComprobante() : "M-" + m.getId());
 
                             pSimulado.setCliente(concepto.startsWith("Manual: ") ? concepto.substring(8) : concepto);
                             pSimulado.setFechaCreacion(m.getFecha() != null ? m.getFecha() : LocalDateTime.now());
                             pSimulado.setMontoTotal(Math.abs(m.getMonto()));
-                            pSimulado.setClienteCorreo("EGRESO".equals(tipo) ? "MANUAL_EGRESO" : "MANUAL_INGRESO");
+                            if (m.getTipo() == com.web.restaurante.model.enums.TipoMovimientoCaja.APERTURA) {
+                                pSimulado.setClienteCorreo("APERTURA_CAJA");
+                            } else if (m.getTipo() == com.web.restaurante.model.enums.TipoMovimientoCaja.CIERRE) {
+                                pSimulado.setClienteCorreo("CIERRE_CAJA");
+                            } else {
+                                pSimulado.setClienteCorreo("EGRESO".equals(tipo) ? "MANUAL_EGRESO" : "MANUAL_INGRESO");
+                            }
                             pSimulado.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
                             filtrados.add(pSimulado);
                         }
                     }
                 }
             }
+        }
+
+        filtrados = filtrados.stream()
+                .filter(p -> {
+                    String nroDoc = p.getComprobanteNotaNumero() != null ? p.getComprobanteNotaNumero() : "";
+                    String metadata = p.getClienteCorreo() != null ? p.getClienteCorreo().toUpperCase() : "";
+
+                    boolean esMovimiento = nroDoc.startsWith("M-") || nroDoc.startsWith("AC01-") || nroDoc.startsWith("CC01-");
+                    boolean esAnulado = p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.EXTORNADO
+                            || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.CANCELADO;
+
+                    double monto = p.getMontoTotal() != null ? p.getMontoTotal() : 0.0;
+
+                    String operacionItem = "INGRESO";
+                    if (metadata.contains("MANUAL_EGRESO") || metadata.contains("CIERRE_CAJA") || esAnulado) {
+                        operacionItem = "EGRESO";
+                    }
+
+                    String estadoItem = "LIQUIDADO";
+                    if (metadata.contains("APERTURA_CAJA")) {
+                        estadoItem = "APERTURA_CAJA";
+                    } else if (metadata.contains("CIERRE_CAJA")) {
+                        estadoItem = "CIERRE_CAJA";
+                    } else if (metadata.contains("MANUAL_")) {
+                        estadoItem = "MOV_MANUAL";
+                    } else if (esAnulado) {
+                        estadoItem = "ANULADO";
+                    }
+
+                    String canalItem = "VIRTUAL";
+                    if (p.getTipoPedido() == com.web.restaurante.model.enums.TipoPedido.SALON || p.getNumeroMesa() != null || esMovimiento) {
+                        canalItem = "PRESENCIAL";
+                    }
+
+                    if (!"TODOS".equals(operacionUpper) && !operacionItem.equals(operacionUpper)) return false;
+                    if (!"TODOS".equals(canalUpper) && !canalItem.equals(canalUpper)) return false;
+                    if (!"TODOS".equals(estadoUpper) && !estadoItem.equals(estadoUpper)) return false;
+                    if (montoMinValor != null && monto < montoMinValor) return false;
+                    if (montoMaxValor != null && monto > montoMaxValor) return false;
+
+                    return true;
+                })
+                .collect(Collectors.toList());
+
+        if (seleccion != null && !seleccion.trim().isEmpty()) {
+            Set<String> clavesSeleccionadas = Arrays.stream(seleccion.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
+
+            filtrados = filtrados.stream()
+                    .filter(p -> {
+                        String nroDoc = p.getComprobanteNotaNumero() != null ? p.getComprobanteNotaNumero() : "";
+                        String tipoClave = nroDoc.startsWith("M-") || nroDoc.startsWith("AC01-") || nroDoc.startsWith("CC01-")
+                                ? "MOVIMIENTO"
+                                : "PEDIDO";
+
+                        return clavesSeleccionadas.contains(tipoClave + ":" + p.getId());
+                    })
+                    .collect(Collectors.toList());
         }
 
         filtrados.sort((a, b) -> {
@@ -402,11 +481,11 @@ public class ReporteService {
             styleMontoAnulado.setAlignment(HorizontalAlignment.RIGHT);
             styleMontoAnulado.setDataFormat(formatoMoneda);
 
-            XSSFCellStyle styleTotalLabel = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.CellStyle styleTotalLabel = workbook.createCellStyle();
             styleTotalLabel.setFont(fontTotal);
             styleTotalLabel.setAlignment(HorizontalAlignment.RIGHT);
 
-            XSSFCellStyle styleTotalMonto = workbook.createCellStyle();
+            org.apache.poi.ss.usermodel.CellStyle styleTotalMonto = workbook.createCellStyle();
             styleTotalMonto.setFont(fontTotal);
             styleTotalMonto.setAlignment(HorizontalAlignment.RIGHT);
             styleTotalMonto.setDataFormat(formatoMoneda);
@@ -434,10 +513,7 @@ public class ReporteService {
                 org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowIndex);
                 row.setHeightInPoints(18);
 
-                // Mantenemos la Nota de Venta como identificador primario para la caja
                 String nroDoc = p.getComprobanteNotaNumero() != null ? p.getComprobanteNotaNumero() : "NV-" + p.getId();
-
-                // 🚀 BLINDAJE ENUM: Detectamos la anulación en base a tus nuevos casilleros desacoplados
                 boolean esAnulado = (p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.EXTORNADO
                         || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
 
@@ -451,11 +527,15 @@ public class ReporteService {
                 if (p.getClienteCorreo() != null && p.getClienteCorreo().contains("MANUAL_EGRESO")) {
                     tipoOperacion = "EGRESO";
                 } else if (esAnulado) {
-                    tipoOperacion = "EGRESO"; // Se resta del arqueo de la gaveta física
+                    tipoOperacion = "EGRESO";
                 }
 
-                // 📐 FLUJO NETO REAL: Las Notas de Venta extornadas aportan 0, los egresos manuales restan
-                if (nroDoc.startsWith("M-")) {
+                String metadata = p.getClienteCorreo() != null ? p.getClienteCorreo().toUpperCase() : "";
+
+                // ── 🎯 CANDADO FINANCIERO: Si empieza con CC01 o es metadata de CIERRE, aporta 0 al Flujo Neto Real ──
+                if (nroDoc.startsWith("CC01-") || metadata.contains("CIERRE_CAJA")) {
+                    // Sigue de largo y no acumula monto en totalNetoFlujoExcel
+                } else if (nroDoc.startsWith("M-") || nroDoc.startsWith("AC01-")) {
                     if ("EGRESO".equals(tipoOperacion)) {
                         totalNetoFlujoExcel -= monto;
                     } else {
@@ -470,14 +550,20 @@ public class ReporteService {
                 String tipoServicio = "Salón";
                 if (p.getTipoPedido() == com.web.restaurante.model.enums.TipoPedido.DELIVERY) tipoServicio = "Delivery";
                 else if (p.getTipoPedido() == com.web.restaurante.model.enums.TipoPedido.LLEVAR) tipoServicio = "Para Llevar";
-                else if (nroDoc.startsWith("M-")) tipoServicio = "—";
+                else if (nroDoc.startsWith("M-") || nroDoc.startsWith("AC01-") || nroDoc.startsWith("CC01-")) tipoServicio = "—";
 
                 String cliente = p.getCliente() != null ? p.getCliente() : "Mesa #" + p.getNumeroMesa();
                 String fecha = p.getFechaCreacion() != null ? p.getFechaCreacion().format(DateTimeFormatter.ofPattern("dd/MM/yyyy (HH:mm)")) : "-";
                 String metodo = p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO";
 
-                // Forzar etiquetas exactas
-                String estadoTxt = esAnulado ? "ANULADO" : (nroDoc.startsWith("M-") ? "MOV. MANUAL" : "LIQUIDADO");
+                String estadoTxt = esAnulado ? "ANULADO" : "LIQUIDADO";
+                if (metadata.contains("APERTURA_CAJA")) {
+                    estadoTxt = "APERTURA CAJA";
+                } else if (metadata.contains("CIERRE_CAJA")) {
+                    estadoTxt = "CIERRE CAJA";
+                } else if (metadata.contains("MANUAL_")) {
+                    estadoTxt = "MOV. MANUAL";
+                }
 
                 org.apache.poi.ss.usermodel.Cell c0 = row.createCell(0); c0.setCellValue(nroDoc); c0.setCellStyle(currentStyle);
                 org.apache.poi.ss.usermodel.Cell c1 = row.createCell(1); c1.setCellValue(tipoOperacion); c1.setCellStyle(currentStyle);
@@ -561,8 +647,6 @@ public class ReporteService {
 
             for (Pedido p : pedidos) {
                 String nroDoc = p.getComprobanteNotaNumero() != null ? p.getComprobanteNotaNumero() : "NV-" + p.getId();
-
-                // 🚀 BLINDAJE ENUM SINCRO
                 boolean esAnulado = (p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.EXTORNADO
                         || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
 
@@ -575,7 +659,12 @@ public class ReporteService {
                     tipoOperacion = "EGRESO";
                 }
 
-                if (nroDoc.startsWith("M-")) {
+                String metadata = p.getClienteCorreo() != null ? p.getClienteCorreo().toUpperCase() : "";
+
+                // ── 🎯 CANDADO FINANCIERO: Si empieza con CC01 o es metadata de CIERRE, aporta 0 al Flujo Neto Real ──
+                if (nroDoc.startsWith("CC01-") || metadata.contains("CIERRE_CAJA")) {
+                    // Salta el acumulador del pie de página
+                } else if (nroDoc.startsWith("M-") || nroDoc.startsWith("AC01-")) {
                     if ("EGRESO".equals(tipoOperacion)) totalNetoFlujo -= monto;
                     else totalNetoFlujo += monto;
                 } else {
@@ -586,12 +675,19 @@ public class ReporteService {
                 String tipoServicio = "Salón";
                 if (p.getTipoPedido() == com.web.restaurante.model.enums.TipoPedido.DELIVERY) tipoServicio = "Delivery";
                 else if (p.getTipoPedido() == com.web.restaurante.model.enums.TipoPedido.LLEVAR) tipoServicio = "Para Llevar";
-                else if (nroDoc.startsWith("M-")) tipoServicio = "—";
+                else if (nroDoc.startsWith("M-") || nroDoc.startsWith("AC01-") || nroDoc.startsWith("CC01-")) tipoServicio = "—";
 
                 String cliente = p.getCliente() != null ? p.getCliente() : "Mesa #" + p.getNumeroMesa();
                 String fecha = p.getFechaCreacion() != null ? p.getFechaCreacion().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "-";
                 String metodo = p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO";
-                String estadoTxt = esAnulado ? "ANULADO" : (nroDoc.startsWith("M-") ? "MOV. MANUAL" : "LIQUIDADO");
+                String estadoTxt = esAnulado ? "ANULADO" : "LIQUIDADO";
+                if (metadata.contains("APERTURA_CAJA")) {
+                    estadoTxt = "APERTURA CAJA";
+                } else if (metadata.contains("CIERRE_CAJA")) {
+                    estadoTxt = "CIERRE CAJA";
+                } else if (metadata.contains("MANUAL_")) {
+                    estadoTxt = "MOV. MANUAL";
+                }
 
                 table.addCell(new Cell().add(new Paragraph(nroDoc).setBold().setFontSize(8f)).setBackgroundColor(rowBg).setPadding(5).setBorder(Border.NO_BORDER).setFontColor(colorTextoCelda));
                 table.addCell(new Cell().add(new Paragraph(tipoOperacion).setBold().setFontSize(8f).setFontColor(esAnulado ? colorSecundario : colorPrimario)).setBackgroundColor(rowBg).setPadding(5).setBorder(Border.NO_BORDER));

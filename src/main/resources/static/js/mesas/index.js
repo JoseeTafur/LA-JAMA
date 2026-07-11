@@ -1,5 +1,5 @@
 // =======================================================
-// ESTADO GLOBAL — compartido por todos los módulos
+// ESTADO GLOBAL — compartido por todos los módulos - index.js
 // =======================================================
 let currentMesaId     = null;
 let currentMesaNumero = null;

@@ -64,9 +64,7 @@ export async function enviarPedidoFinal() {
 
     const total = carrito.reduce((s, i) => s + i.precio, 0);
 
-    // ── 🎯 UNIFICACIÓN DE ESTADO GLOBAL DE AUDITORÍA ──
-    // Priorizamos window.estadoCheckout que es donde escribe el validador de vouchers.
-    const wizardRef = window.estadoCheckout || estadoCheckout || {};
+    const wizardRef = { ...estadoCheckout, ...(window.estadoCheckout || {}) };
 
     // Sincronización exacta de las variables
     const codigoPago = wizardRef.codigoOperacion || wizardRef.codigoPagoOperacion || "PENDIENTE";

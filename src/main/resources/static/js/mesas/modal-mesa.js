@@ -1,5 +1,5 @@
 // =========================================================================
-// 💎 LA JAMA MASTER - GESTIÓN OPERATIVA DE COMANDAS Y CONTROLES DE MESA
+// 💎 LA JAMA MASTER - GESTIÓN OPERATIVA DE COMANDAS Y CONTROLES DE MESA - modal-mesa.js
 // =========================================================================
 
 // ─── 1. CARGADOR ASÍNCRONO DE PRECUENTAS Y SEGMENTACIÓN DE PAGOS (CORREGIDO) ───
@@ -13,7 +13,6 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
 
     const tarjetaMesaDOM = document.getElementById(`mesa-card-${currentMesaId}`);
 
-    // 🛡️ DETECTOR ABSOLUTO DE UNIFICACIÓN: Evaluamos clases, flag padre o llaves foráneas del HTML
     const esPadreGrupo   = tarjetaMesaDOM ? tarjetaMesaDOM.getAttribute('data-es-padre') === 'SI' : false;
     const esUnificada    = tarjetaMesaDOM ? (tarjetaMesaDOM.classList.contains('unificada') ||
                             tarjetaMesaDOM.getAttribute('data-id-mesa-padre') != null ||
@@ -26,6 +25,10 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                 return res.json();
             })
             .then(data => {
+                if (data.idPedido) {
+                    currentPedidoId = data.idPedido;
+                }
+
                 if (txtSubtotal) txtSubtotal.innerText = (data.montoTotal != null ? data.montoTotal : 0.0).toFixed(2);
                 if (listaPlatos) listaPlatos.innerHTML = "";
 
@@ -38,69 +41,58 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                 const tienePlatosPorEntregar = platosArray.some(d => !d.canceladoPorCliente && d.cocinado && !d.entregado);
                 const tienePlatosEnCocina = platosArray.some(d => !d.canceladoPorCliente && !d.cocinado);
 
-                if (tarjetaMesaDOM) {
-                    // Limpiamos los estados cromáticos anteriores de la tarjeta física
-                    tarjetaMesaDOM.classList.remove('disponible', 'ocupada', 'lista-para-recoger', 'lista-para-pagar');
-                    const iconoI = tarjetaMesaDOM.querySelector('.mesa-icon-wrapper i');
+                // ─── 🛡️ ADUANA CONTROLADORA DE TRASLADOS PARCIALES/COMPLETOS ───
+                const btnCambiarMesaActivo = document.getElementById('btnCambiarMesa');
+                const btnDividirComandaActiva = document.getElementById('btnDividirComanda');
 
-                    // 👑 PRIORIDAD CRÍTICA 1: SI LA MESA ES UNIFICADA, SU LOOK ES INVIOLABLE
-                    if (esUnificada) {
-                        tarjetaMesaDOM.classList.add('unificada');
-                        if (iconoI) iconoI.className = "bi bi-link-45deg";
-
-                        // Si la comanda se vació o completó, limpiamos el pedido pero MANTENEMOS la unificación morada
-                        if (platosArray.length === 0 || (!tienePlatosPorPagar && !tienePlatosPorEntregar && !tienePlatosEnCocina)) {
-                            tarjetaMesaDOM.setAttribute('data-pedido-id', '');
-                            tarjetaMesaDOM.setAttribute('data-pedido-estado', 'NINGUNO');
-                            if (avisoVacio)        avisoVacio.classList.remove('d-none');
-                            if (contenedorComanda) contenedorComanda.classList.add('d-none');
-                            if (panelSubtotal)     panelSubtotal.classList.add('d-none');
-                            currentPedidoId = "";
-                            renderizarControlesModal(esPadreGrupo, true, 'NINGUNO', tarjetaMesaDOM);
-                            return;
-                        }
+                if (btnCambiarMesaActivo && btnDividirComandaActiva) {
+                    if (platosArray.length > 0) {
+                        btnCambiarMesaActivo.classList.remove('disabled', 'd-none');
+                        btnCambiarMesaActivo.disabled = false;
+                        btnDividirComandaActiva.classList.remove('disabled', 'd-none');
+                        btnDividirComandaActiva.disabled = false;
+                    } else {
+                        btnCambiarMesaActivo.classList.add('disabled');
+                        btnCambiarMesaActivo.disabled = true;
+                        btnDividirComandaActiva.classList.add('disabled');
+                        btnDividirComandaActiva.disabled = true;
                     }
-                    // 🟢 CASO ORDINARIO CIERRE TOTAL (Mesa individual ordinaria vacía -> Va a libre Verde)
-                    else if (platosArray.length === 0 || (!tienePlatosPorPagar && !tienePlatosPorEntregar && !tienePlatosEnCocina)) {
+                }
+
+                // 🎯 AUTO-CIERRE OPERATIVO AUTOMÁTICO (Si ya no hay saldos ni platos pendientes)
+                if (platosArray.length === 0 || (!tienePlatosPorPagar && !tienePlatosPorEntregar && !tienePlatosEnCocina)) {
+                    if (tarjetaMesaDOM) {
+                        tarjetaMesaDOM.classList.remove('ocupada', 'lista-para-recoger', 'lista-para-pagar');
                         tarjetaMesaDOM.classList.add('disponible');
                         tarjetaMesaDOM.setAttribute('data-pedido-id', '');
                         tarjetaMesaDOM.setAttribute('data-pedido-estado', 'NINGUNO');
+                        const iconoI = tarjetaMesaDOM.querySelector('.mesa-icon-wrapper i');
                         if (iconoI) iconoI.className = "bi bi-cup-hot-fill";
-
-                        if (avisoVacio)        avisoVacio.classList.remove('d-none');
-                        if (contenedorComanda) contenedorComanda.classList.add('d-none');
-                        if (panelSubtotal)     panelSubtotal.classList.add('d-none');
-
-                        currentPedidoId = "";
-                        renderizarControlesModal(esPadreGrupo, false, 'NINGUNO', tarjetaMesaDOM);
-                        if (mesaModal) mesaModal.hide();
-                        return;
                     }
+                    if (avisoVacio)        avisoVacio.classList.remove('d-none');
+                    if (contenedorComanda) contenedorComanda.classList.add('d-none');
+                    if (panelSubtotal)     panelSubtotal.classList.add('d-none');
 
-                    // 3️⃣ MÁQUINA DE ESTADOS REACTIVA POR PRIORIDAD DE CAÍDA (Solo si NO es unificada)
-                    if (!esUnificada) {
-                        let claseDestino = 'ocupada';
-                        let iconoDestino = 'bi bi-cup-hot-fill';
+                    currentPedidoId = "";
+                    if (mesaModal) mesaModal.hide(); // Cierra el modal solo
+                    return;
+                }
 
-                        if (tienePlatosPorEntregar) {
-                            claseDestino = 'lista-para-recoger';
-                            iconoDestino = 'bi bi-bell-fill';
-                        } else if (tienePlatosEnCocina) {
-                            claseDestino = 'ocupada';
-                            iconoDestino = 'bi bi-cup-hot-fill';
-                        } else if (tienePlatosPorPagar) {
-                            claseDestino = 'lista-para-pagar';
-                            iconoDestino = 'bi bi-person-check-fill';
-                        }
+                if (tarjetaMesaDOM && !esUnificada) {
+                    tarjetaMesaDOM.classList.remove('disponible', 'ocupada', 'lista-para-recoger', 'lista-para-pagar');
+                    let claseDestino = 'ocupada';
+                    let iconoDestino = 'bi bi-cup-hot-fill';
 
-                        tarjetaMesaDOM.classList.add(claseDestino);
-                        if (iconoI) iconoI.className = `bi ${iconoDestino}`;
-                    }
+                    if (tienePlatosPorEntregar) { claseDestino = 'lista-para-recoger'; iconoDestino = 'bi bi-bell-fill'; }
+                    else if (tienePlatosEnCocina) { claseDestino = 'ocupada'; iconoDestino = 'bi bi-cup-hot-fill'; }
+                    else if (tienePlatosPorPagar) { claseDestino = 'lista-para-pagar'; iconoDestino = 'bi bi-person-check-fill'; }
 
+                    tarjetaMesaDOM.classList.add(claseDestino);
+                    const iconoI = tarjetaMesaDOM.querySelector('.mesa-icon-wrapper i');
+                    if (iconoI) iconoI.className = `bi ${iconoDestino}`;
                     tarjetaMesaDOM.setAttribute('data-pedido-estado', tienePlatosEnCocina ? 'EN_COCINA' : 'PREPARADO');
                 }
 
-                // [El mapeo de platos en htmlPlatosActivos se queda exactamente igual]
                 let htmlPlatosActivos = "";
                 platosArray.forEach(d => {
                     const nombreProducto = d.producto && d.producto.nombre ? d.producto.nombre : (d.nombre || "Producto");
@@ -114,7 +106,7 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                     let badgeFinancieroHTML = ''; if (d.pagado) { badgeFinancieroHTML = `<span class="badge bg-light text-success border border-success rounded-pill px-2 py-1" style="font-size:0.7rem;"><i class="bi bi-cash-coin me-1"></i>Pagado</span>`; }
                     const precioSeguro = d.subtotal ? d.subtotal : (d.precioUnitario ? d.precioUnitario : 0);
                     const idCheckModalMesa = `cbx_mesa_modal_${d.id}`;
-                    let checkboxHTML = d.pagado ? `<div style="width: 27px; margin-left: 10px;"></div>` : `<div class="cntr" style="margin-left: 10px;"><input type="checkbox" id="${idCheckModalMesa}" class="hidden-xs-up chk-mesa-confirmar" value="${d.id}" data-precio="${precioSeguro}" data-estado-plato="${badgeTexto}" onchange="evaluarBotonConfirmarPago()"><label for="${idCheckModalMesa}" class="cbx"></label></div>`;
+                    let checkboxHTML = d.pagado ? `<div style="width: 27px; margin-left: 10px;"></div>` : `<div class="cntr" style="margin-left: 10px;"><input type="checkbox" id="${idCheckModalMesa}" class="hidden-xs-up chk-mesa-confirmar" value="${d.id}" data-precio="${precioSeguro}" data-estado-plato="${badgeTexto}" onchange="event.stopPropagation(); evaluarBotonConfirmarPago();"><label for="${idCheckModalMesa}" class="cbx"></label></div>`;
                     if (d.pagado && !d.canceladoPorCliente) { bordeFila = 'border-left:4px solid #16a34a !important;'; }
                     htmlPlatosActivos += `<div class="d-flex justify-content-between align-items-center p-2 rounded border item-plato-comanda mb-2 shadow-sm" data-estado="${badgeTexto}" data-precio="${d.subtotal || 0}" style="font-size:0.9rem; ${estiloFila} ${bordeFila}"><div class="d-flex align-items-center gap-2" style="max-width:50%;"><span class="badge bg-dark text-white rounded-pill fw-bold">${d.cantidad}x</span><span class="${nombreClaseTexto} fw-semibold text-truncate" style="max-width:140px;">${nombreProducto}</span></div><div class="d-flex align-items-center gap-2"><span class="text-muted small fw-bold">S/. ${precioSeguro.toFixed(2)}</span>${badgeFinancieroHTML}<span class="badge ${badgeColor} rounded-pill px-2 py-1" style="font-size:0.7rem;">${badgeTexto}</span>${btnCheckUnitarioHTML}${btnEliminarHTML}${checkboxHTML}</div></div>`;
                 });
@@ -122,17 +114,35 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                 listaPlatos.innerHTML = htmlPlatosActivos;
                 if (contenedorComanda) contenedorComanda.classList.remove('d-none');
                 if (panelSubtotal)     panelSubtotal.classList.remove('d-none');
+                if (avisoVacio)        avisoVacio.add
                 if (avisoVacio)        avisoVacio.classList.add('d-none');
 
                 renderizarControlesModal(esPadreGrupo, esUnificada, tienePlatosEnCocina ? 'EN_COCINA' : 'PREPARADO', tarjetaMesaDOM);
             })
             .catch(err => {
-                console.error("🚨 [La Jama] Error en precuenta unificada:", err);
+                console.error("🚨 [La Jama] Error en precuenta:", err);
+
+                // 🎯 EL DESENGANCHADOR DE ATRIBUTOS VISUALES (ANTI-ZOMBIE)
+                // Si el servidor ya limpió la mesa, forzamos a la tarjeta del plano a ponerse en verde disponible
+                if (tarjetaMesaDOM) {
+                    tarjetaMesaDOM.classList.remove('ocupada', 'lista-para-recoger', 'lista-para-pagar', 'unificada');
+                    tarjetaMesaDOM.classList.add('disponible');
+                    tarjetaMesaDOM.setAttribute('data-pedido-id', '');
+                    tarjetaMesaDOM.setAttribute('data-pedido-estado', 'NINGUNO');
+                    const iconoI = tarjetaMesaDOM.querySelector('.mesa-icon-wrapper i');
+                    if (iconoI) iconoI.className = "bi bi-cup-hot-fill";
+                }
+
                 if (avisoVacio)        avisoVacio.classList.remove('d-none');
                 if (panelSubtotal)     panelSubtotal.classList.add('d-none');
                 if (contenedorComanda) contenedorComanda.classList.add('d-none');
+
                 currentPedidoId = "";
-                renderizarControlesModal(esPadreGrupo, esUnificada, 'NINGUNO', tarjetaMesaDOM);
+                renderizarControlesModal(false, false, 'NINGUNO', tarjetaMesaDOM);
+
+                // 🚀 CIERRE MANDATORIO AUTOMÁTICO:
+                // Ocultamos el modal en el acto para que el mozo vea el plano limpio y actualizado
+                if (mesaModal) mesaModal.hide();
             });
     } else {
         if (avisoVacio)        avisoVacio.classList.remove('d-none');
@@ -175,6 +185,12 @@ function renderizarControlesModal(esPadre, esUnificada, pedidoEstado, elemento) 
     if (btnDesocupar) {
         btnDesocupar.classList.add('disabled');
         btnDesocupar.disabled = true;
+    }
+
+    const btnLiberarReset = document.getElementById('btnLiberarMesa');
+    if (btnLiberarReset) {
+        btnLiberarReset.disabled = true;
+        btnLiberarReset.classList.add('disabled');
     }
 
     if (btnUnificar)  btnUnificar.classList.remove('d-none');
@@ -416,7 +432,14 @@ function evaluarBotonConfirmarPago() {
     const btnDesocupar = document.getElementById('btnDesocupar');
     if (!btnDesocupar) return;
 
-    if (checkboxesMarcados.length > 0) {
+    // 🛡️ EL INTERRUPTOR DE SEGURIDAD OPERATIVA:
+    // Analizamos si entre los checkboxes elegidos hay alguno cuyo plato esté en estado "Enviado"
+    let tieneItemEnviado = Array.from(checkboxesMarcados).some(cb => {
+        return cb.getAttribute('data-estado-plato') === 'Enviado';
+    });
+
+    // El botón solo se habilitará si hay platos seleccionados Y ninguno de ellos es un "Enviado"
+    if (checkboxesMarcados.length > 0 && !tieneItemEnviado) {
         btnDesocupar.classList.remove('disabled');
         btnDesocupar.disabled = false;
 
@@ -427,6 +450,7 @@ function evaluarBotonConfirmarPago() {
         const txtElegido = document.getElementById('txt-subtotal-elegido');
         if (txtElegido) txtElegido.innerText = subtotalElegido.toFixed(2);
     } else {
+        // Bloqueo inmediato del botón si la lista está vacía o si se metió un intruso en estado Enviado
         btnDesocupar.classList.add('disabled');
         btnDesocupar.disabled = true;
         const txtElegido = document.getElementById('txt-subtotal-elegido');
@@ -508,4 +532,34 @@ function irAMenu() {
 
         window.location.href = url;
     }
+}
+
+function liberarMesaManualmente() {
+    if (!currentMesaNumero) return;
+
+    AppUtils.showConfirmationDialog({
+        title: '¿Liberar Mesa?',
+        text: `La Mesa #${currentMesaNumero} quedará libre y disponible en el plano.`,
+        icon: 'question',
+        confirmButtonColor: '#1B3A2C',
+        confirmButtonText: 'Sí, liberar mesa'
+    }, async function () {
+        AppUtils.showLoading(true);
+        try {
+            const res = await fetch(`/admin/mesas/liberar-manual/${currentMesaNumero}`, { method: 'POST' });
+            const data = await res.json();
+            AppUtils.showLoading(false);
+
+            if (res.ok && data.success) {
+                AppUtils.showNotification("Mesa liberada con éxito", "success");
+                actualizarEstadoMesaEnPlano(currentMesaNumero, 'disponible', null, 'NINGUNO');
+                if (mesaModal) mesaModal.hide();
+            } else {
+                AppUtils.showNotification(data.message || "No se pudo liberar la mesa", "error");
+            }
+        } catch (error) {
+            AppUtils.showLoading(false);
+            console.error("Error al liberar mesa manualmente:", error);
+        }
+    });
 }

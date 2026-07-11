@@ -1,5 +1,5 @@
 // ============================================================================
-// CAJA MÓVIL - CANASTAS Y DISTRIBUCIÓN DE SALDOS
+// CAJA MÓVIL - CANASTAS Y DISTRIBUCIÓN DE SALDOS - canastas.js
 // ============================================================================
 
 function configurarSelectorPersonas() {

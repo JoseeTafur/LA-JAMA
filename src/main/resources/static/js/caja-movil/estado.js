@@ -1,5 +1,5 @@
 // ============================================================================
-// CAJA MÓVIL - ESTADO GLOBAL Y EXTRACCIÓN DE PLATOS (LA JAMA)
+// CAJA MÓVIL - ESTADO GLOBAL Y EXTRACCIÓN DE PLATOS (LA JAMA) - estado.js
 // ============================================================================
 
 let platosSeleccionadosParaCobro = [];
@@ -11,8 +11,9 @@ const TASA_IGV = 0.18;
 function inicializarFlujoCaja(montoTotal, numeroMesa, preferenciaComprobante = 'BOLETA', documentoCliente = '') {
     currentMesaNumero = numeroMesa;
     platosSeleccionadosParaCobro = [];
-    totalConsumoMesa = 0;
-    document.getElementById('cobroNumMesa').innerText = numeroMesa;
+    totalConsumoMesa = Math.round((parseFloat(montoTotal) || 0) * 100) / 100;
+
+    document.getElementById('cobroNumMesa').innerText = numeroMesa || 'N/A';
     document.getElementById('cobroTotalBase').innerText = totalConsumoMesa.toFixed(2);
 
     const contenedorAviso = document.getElementById('cobroIndicacionCliente');
@@ -35,6 +36,13 @@ function inicializarFlujoCaja(montoTotal, numeroMesa, preferenciaComprobante = '
     }
 
     extraerPlatosDelModal();
+
+    if (totalConsumoMesa <= 0 && montoTotal > 0) {
+        totalConsumoMesa = Math.round((parseFloat(montoTotal) || 0) * 100) / 100;
+        const txtTotalBase = document.getElementById('cobroTotalBase');
+        if (txtTotalBase) txtTotalBase.innerText = totalConsumoMesa.toFixed(2);
+    }
+
     configurarSelectorPersonas();
     reconstruirCanastas(preferenciaComprobante, documentoCliente);
 }
@@ -76,12 +84,8 @@ function extraerPlatosDelModal() {
             indexCobro++;
         });
     } else {
-        console.log("🍽️ [La Jama Salón] Ejecutando escaneo físico del DOM de mesas...");
+        console.log("🍽️ [La Jama Salón] Ejecutando escaneo físico del DOM de mesas con extractor multiformato...");
         document.querySelectorAll('#lista-platos-previsualizar > div').forEach((row) => {
-
-            // 🚀 REPARACIÓN MASTER ANTI-BLANQUEO:
-            // Eliminamos la línea restrictiva de row.style.backgroundColor que descartaba las mermas.
-            // Ahora, las mermas de color rojo pasaran libremente por la aduana fiscal de la caja.
 
             const estadoPlato = row.getAttribute('data-estado');
             if (estadoPlato === 'Enviado') return;
@@ -99,21 +103,28 @@ function extraerPlatosDelModal() {
             let nombrePlato = elementoNombre ? elementoNombre.innerText : 'Producto';
             nombrePlato = nombrePlato.replace(/^\d+x\s*/, '');
 
-            const elementoPrecio = row.querySelector('.text-muted.small.fw-bold') || row.querySelector('span.small.fw-bold') || row.querySelector('.font-monospace');
-            let subtotalPlato = 0;
+            // ── 🎯 EXTRACTOR MULTIFORMATO SEGURO CON EXPRESIÓN REGULAR ──
+            const elementoPrecio = row.querySelector('.text-muted.small.fw-bold') ||
+                                   row.querySelector('span.small.fw-bold') ||
+                                   row.querySelector('.font-monospace');
+
+            let textoPrecioCrudo = "";
             if (elementoPrecio) {
-                subtotalPlato = parseFloat(elementoPrecio.innerText.replace('S/. ', '').replace('S/.', '')) || 0;
+                textoPrecioCrudo = elementoPrecio.innerText;
             } else {
                 const todosLosSpans = row.querySelectorAll('.d-flex.align-items-center.gap-2 span');
                 for (let span of todosLosSpans) {
-                    if (span.innerText.includes('S/.')) {
-                        subtotalPlato = parseFloat(span.innerText.replace('S/. ', '').replace('S/.', '')) || 0;
+                    if (span.innerText.includes('S/') || span.innerText.includes('S/.')) {
+                        textoPrecioCrudo = span.innerText;
                         break;
                     }
                 }
             }
 
-            // 🍳 Si el plato es una merma, le concatenamos la etiqueta al nombre para que el cajero sepa qué está cobrando
+            // Limpieza radical: eliminamos S/, S/., espacios y cambiamos comas decimales por puntos de flotación
+            let textoLimpio = textoPrecioCrudo.replace(/S\/\.?\s*/g, '').replace(/,/, '.').trim();
+            let subtotalPlato = parseFloat(textoLimpio) || 0;
+
             const esUnaMermaReal = estadoPlato === 'MERMA' || row.style.backgroundColor.includes('rgb(255, 229, 229)');
             let nombreFinalCaja = esUnaMermaReal ? `${nombrePlato.trim()} (MERMA)` : nombrePlato.trim();
 

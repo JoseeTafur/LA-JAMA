@@ -39,81 +39,87 @@
                 </span>
             </div>
 
-            <div class="card-filtrador-contable mb-4" style="background: #ffffff; padding: 1.2rem; border-radius: 12px; border: 1px solid rgba(27,58,44,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label-contable fw-bold" style="font-size: 0.75rem; color: #1B3A2C;">Buscar Cliente / Documento / CPE</label>
-                        <input type="text" id="filtroCpeTexto" class="form-control form-control-sm form-control-contable" placeholder="DNI, RUC, Nombre o Serie...">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label-contable fw-bold" style="font-size: 0.75rem; color: #1B3A2C;">Fecha Inicial</label>
-                        <input type="date" id="filtroCpeFechaInicio"
-                               class="form-control form-control-sm form-control-contable"
-                               th:value="${fechaInicioParam}"
-                               min="2025-06-01"
-                               th:max="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label-contable fw-bold" style="font-size: 0.75rem; color: #1B3A2C;">Fecha Límite</label>
-                        <input type="date" id="filtroCpeFechaFin"
-                               class="form-control form-control-sm form-control-contable"
-                               th:value="${fechaFinParam}"
-                               min="2025-06-01"
-                               th:max="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label-contable fw-bold" style="font-size: 0.75rem; color: #1B3A2C;">Método de Pago</label>
-                        <select id="filtroCpeMetodo" class="form-select form-select-sm form-select-contable">
-                            <option value="TODOS">-- Todos --</option>
-                            <option value="EFECTIVO">Efectivo</option>
-                            <option value="YAPE">Yape / Plin</option>
-                            <option value="TARJETA">Tarjeta Crédito</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label-contable fw-bold" style="font-size: 0.75rem; color: #1B3A2C;">Origen Servicio</label>
-                        <select id="filtroCpeOrigen" class="form-select form-select-sm form-select-contable">
-                            <option value="TODOS">-- Todos --</option>
-                            <option value="SALON">🍽️ Salón (Mesa)</option>
-                            <option value="DELIVERY">🏍️ Delivery / Web</option>
-                        </select>
-                    </div>
-                    <div class="col-md-1 d-flex align-items-end">
-                        <button type="button" class="btn btn-sm w-100 btn-limpiar-contable fw-bold"
-                                style="background-color: #6b7280; color: #fff; height: 31px; font-size: 0.75rem;"
-                                onclick="window.limpiarFiltrosComprobantesAsincronos ? window.limpiarFiltrosComprobantesAsincronos() : limpiarFiltrosComprobantesAsincronos()">
-                            Reset
-                        </button>
-                    </div>
+            <!-- ── 🎯 FILTRO GLOBAL (mismo esquema estructural y clases que el Buscador Global de Caja) ── -->
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-3 p-3 bg-light rounded-3 border" style="border-color: rgba(27,58,44,0.06) !important;">
+                <div class="d-flex align-items-center gap-1">
+                    <label class="m-0 small fw-bold text-secondary">Buscar:</label>
+                    <input type="text" id="filtroCpeTexto" class="form-control form-control-sm" placeholder="DNI, RUC, Nombre o Serie..." style="width:200px; height:31px;">
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <label class="m-0 small fw-bold text-secondary">Desde:</label>
+                    <input type="date" id="filtroCpeFechaInicio" class="form-control form-control-sm"
+                           th:value="${fechaInicioParam}"
+                           min="2025-06-01"
+                           th:max="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"
+                           style="width:auto; height:31px;">
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <label class="m-0 small fw-bold text-secondary">Hasta:</label>
+                    <input type="date" id="filtroCpeFechaFin" class="form-control form-control-sm"
+                           th:value="${fechaFinParam}"
+                           min="2025-06-01"
+                           th:max="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}"
+                           style="width:auto; height:31px;">
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <select id="filtroCpeMetodo" class="form-select form-select-sm" style="width:auto; height:31px;">
+                        <option value="TODOS">-- Método --</option>
+                        <option value="EFECTIVO">Efectivo</option>
+                        <option value="YAPE">Yape</option>
+                        <option value="PLIN">Plin</option>
+                        <option value="TARJETA">Tarjeta</option>
+                    </select>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <select id="filtroCpeOrigen" class="form-select form-select-sm" style="width:auto; height:31px;">
+                        <option value="TODOS">-- Origen --</option>
+                        <option value="SALON">🍽️ Salón (Mesa)</option>
+                        <option value="LLEVAR">📦 Por recoger</option>
+                        <option value="DELIVERY">🏍️ Delivery / Web</option>
+                    </select>
                 </div>
 
-                <div class="d-flex align-items-center gap-2 mt-2 ms-1" style="flex-wrap: wrap;">
-                    <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('EFECTIVO')" id="badge-EFECTIVO">
-                        <img th:src="@{/img/Efectivo.png}" alt="Efectivo" style="width:14px;height:14px;object-fit:contain;">
-                        Efectivo
-                    </span>
-                    <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('YAPE')" id="badge-YAPE">
-                        <img th:src="@{/img/Yape.png}" alt="Yape" style="width:14px;height:14px;object-fit:contain;">
-                        Yape
-                    </span>
-                    <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('YAPE')" id="badge-PLIN">
-                        <img th:src="@{/img/Plin.png}" alt="Plin" style="width:14px;height:14px;object-fit:contain;">
-                        Plin
-                    </span>
-                    <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('TARJETA')" id="badge-TARJETA">
-                        <img th:src="@{/img/Tarjeta.png}" alt="Tarjeta" style="width:14px;height:14px;object-fit:contain;">
-                        Tarjeta
-                    </span>
-                </div>
-                <div class="d-flex gap-2 mb-3 justify-content-end">
-                    <button type="button" class="btn-export-jama btn-pdf" onclick="exportarReporteComprobantesOficial('PDF')">
-                        <i class="bi bi-file-earmark-pdf-fill"></i> Exportar PDF
-                    </button>
+                <button type="button" class="btn btn-sm text-white px-3 d-flex align-items-center gap-1"
+                        style="background:#2e7d32; border-radius:8px; height:31px;"
+                        onclick="window.buscarComprobantesAsincrono()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    Buscar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary px-3 d-flex align-items-center gap-1"
+                        style="border-radius:8px; height:31px;"
+                        onclick="window.limpiarFiltrosComprobantesAsincronos ? window.limpiarFiltrosComprobantesAsincronos() : limpiarFiltrosComprobantesAsincronos()">
+                    <i class="bi bi-x-circle"></i>
+                    Limpiar
+                </button>
+            </div>
 
-                    <button type="button" class="btn-export-jama btn-excel" onclick="exportarReporteComprobantesOficial('EXCEL')">
-                        <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
-                    </button>
-                </div>
+            <div class="d-flex align-items-center gap-2 mt-2 ms-1 mb-3" style="flex-wrap: wrap;">
+    <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('EFECTIVO')" id="badge-EFECTIVO">
+        <img th:src="@{/img/Efectivo.png}" alt="Efectivo" style="width:14px;height:14px;object-fit:contain;">
+        Efectivo
+    </span>
+                <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('YAPE')" id="badge-YAPE">
+        <img th:src="@{/img/Yape.png}" alt="Yape" style="width:14px;height:14px;object-fit:contain;">
+        Yape
+    </span>
+                <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('PLIN')" id="badge-PLIN">
+        <img th:src="@{/img/Plin.png}" alt="Plin" style="width:14px;height:14px;object-fit:contain;">
+        Plin
+    </span>
+                <span class="badge-metodo-filtro-jama" onclick="seleccionarMetodo('TARJETA')" id="badge-TARJETA">
+        <img th:src="@{/img/Tarjeta.png}" alt="Tarjeta" style="width:14px;height:14px;object-fit:contain;">
+        Tarjeta
+    </span>
+            </div>
+
+            <div class="d-flex gap-2 mb-3 justify-content-end">
+                <button type="button" class="btn-export-jama btn-pdf" onclick="exportarReporteComprobantesOficial('PDF')">
+                    <i class="bi bi-file-earmark-pdf-fill"></i> Exportar PDF
+                </button>
+
+                <button type="button" class="btn-export-jama btn-excel" onclick="exportarReporteComprobantesOficial('EXCEL')">
+                    <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
+                </button>
             </div>
 
             <ul class="nav nav-tabs custom-tabs-jama mb-4" id="comprobantesTabs" role="tablist">
@@ -209,16 +215,16 @@
                                     <span class="badge-preferencia" th:text="${comp.preferenciaComprobante != null ? comp.preferenciaComprobante.toUpperCase() : 'BOLETA'}">BOLETA</span>
                                 </td>
                                 <td class="text-center">
-                                    <div class="action-buttons-wrapper justify-content-center">
-                                        <button type="button" class="btn-jama-kinetic px-2 py-1 small btn-imprimir" th:onclick="|verTicketTermico(${comp.id})|" title="Imprimir Ticket Previo" style="background:#4b5563 !important;">
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                    <div class="action-buttons-wrapper justify-content-center" style="display: flex; gap: 6px; align-items: center;">
+                                        <button type="button" class="action-jama-btn bg-success border-success text-light" th:onclick="|verTicketTermico(${comp.id})|" title="Imprimir Ticket Previo">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 0-2 2v-5a2 2 0 0 0 2-2h16a2 2 0 0 0 2 2v5a2 2 0 0 0-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                                         </button>
-                                        <button type="button" class="btn-jama-kinetic px-2 py-1 small btn-timbrar btn-timbrar-trigger"
+                                        <button type="button" class="action-jama-btn bg-dark border-dark text-light btn-timbrar-trigger"
                                                 th:data-id="${comp.id}"
                                                 th:data-preferencia="${comp.preferenciaComprobante}"
                                                 th:data-documento="${comp.documentoCliente}"
                                                 onclick="capturarYTimbrar(this)" title="Emitir CPE Oficial">
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.2 15c.1-.7.3-1.4.3-2.2a8 8 0 0 0-16 0c0 .8.1 1.5.3 2.2"></path><path d="M12 11v9"></path><polyline points="8 16 12 20 16 16"></polyline></svg>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 15c.1-.7.3-1.4.3-2.2a8 8 0 0 0-16 0c0 .8.1 1.5.3 2.2"></path><path d="M12 11v9"></path><polyline points="8 16 12 20 16 16"></polyline></svg>
                                         </button>
                                     </div>
                                 </td>
@@ -248,7 +254,7 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <tr th:each="comp : ${listaComprobantes}" th:if="${comp.comprobanteNumero != null && comp.estado.name() != 'ANULADO'}" class="align-middle">
+                            <tr th:each="comp : ${listaComprobantes}" th:if="${comp.comprobanteNumero != null && comp.estado.name() != 'ANULADO'}" class="align-middle fila-pedido-caja">
                                 <td>
                                     <div class="d-flex flex-column gap-1">
                                         <div class="d-flex align-items-center flex-wrap gap-1">
@@ -309,10 +315,52 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="action-buttons-wrapper justify-content-center" style="display: flex; gap: 6px; align-items: center;">
-                                        <a th:href="${comp.comprobanteA4Url != null ? comp.comprobanteA4Url : '#'}" th:target="${comp.comprobanteA4Url != null ? '_blank' : '_self'}" class="action-jama-btn bg-primary border-primary text-light" th:styleappend="${comp.comprobanteA4Url == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}" title="Ver Factura/Boleta Oficial (A4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></a>
-                                        <a th:href="${comp.comprobantePdfUrl != null ? comp.comprobantePdfUrl : '#'}" th:target="${comp.comprobantePdfUrl != null ? '_blank' : '_self'}" class="action-jama-btn bg-success border-success text-light" th:styleappend="${comp.comprobantePdfUrl == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}" title="Imprimir Ticket (80mm)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a>
-                                        <a th:href="@{/admin/comprobantes/xml/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado SUNAT"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></a>
-                                        <button type="button" class="action-jama-btn bg-danger border-danger text-light" th:data-id="${comp.id}" th:data-cpe="${comp.comprobanteNumero}" onclick="capturarYAnular(this)" title="Emitir Nota de Crédito Total"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg></button>
+
+                                        <a th:href="${comp.comprobanteA4Url != null ? comp.comprobanteA4Url : '#'}"
+                                           th:target="${comp.comprobanteA4Url != null ? '_blank' : '_self'}"
+                                           class="action-jama-btn bg-primary border-primary text-light"
+                                           th:styleappend="${comp.comprobanteA4Url == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}"
+                                           title="Ver Factura/Boleta Oficial (A4)">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                                        </a>
+
+                                        <a th:href="${comp.comprobantePdfUrl != null ? comp.comprobantePdfUrl : '#'}"
+                                           th:target="${comp.comprobantePdfUrl != null ? '_blank' : '_self'}"
+                                           class="action-jama-btn bg-success border-success text-light"
+                                           th:styleappend="${comp.comprobantePdfUrl == null ? 'opacity: 0.35; cursor: not-allowed; pointer-events: none;' : ''}"
+                                           title="Imprimir Ticket (80mm)">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                        </a>
+
+                                        <a th:href="@{/admin/comprobantes/xml/{id}(id=${comp.id})}"
+                                           target="_blank"
+                                           class="action-jama-btn bg-dark border-dark text-light"
+                                           title="Ver XML Firmado SUNAT">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                                        </a>
+
+                                        <th:block th:with="diasTranscurridos=${comp.fechaCreacion != null ? T(java.time.temporal.ChronoUnit).DAYS.between(comp.fechaCreacion.toLocalDate(), T(java.time.LocalDate).now()) : 0}, diasRestantes=${7 - diasTranscurridos}">
+
+                                            <button th:if="${diasRestantes < 0 || diasTranscurridos > 7}"
+                                                    type="button"
+                                                    class="action-jama-btn"
+                                                    style="background-color: #9ca3af !important; border-color: #9ca3af !important; color: #ffffff !important; cursor: not-allowed;"
+                                                    onclick="Swal.fire({ icon: 'error', title: 'Plazo Expirado', text: 'Este comprobante superó el límite de 7 días calendario establecido por SUNAT y no puede ser anulado.', confirmButtonColor: '#933D2D' })"
+                                                    title="Plazo de anulación expirado (Máx 7 días)">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+                                            </button>
+
+                                            <button th:if="${diasRestantes >= 0 && diasTranscurridos <= 7}"
+                                                    type="button"
+                                                    class="action-jama-btn bg-danger border-danger text-light"
+                                                    th:data-id="${comp.id}"
+                                                    th:data-cpe="${comp.comprobanteNumero}"
+                                                    onclick="capturarYAnular(this)"
+                                                    th:title="${diasRestantes == 0 ? 'Emitir NC Total (¡Último día disponible!)' : 'Emitir Nota de Crédito Total (Quedan ' + diasRestantes + ' días)'}">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+                                            </button>
+
+                                        </th:block>
                                     </div>
                                 </td>
                             </tr>
@@ -371,7 +419,11 @@
                                             <a th:href="@{/admin/comprobantes/imprimir-nota-a4/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-primary border-primary text-light" title="Ver Nota de Crédito Oficial (A4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg></a>
                                             <a th:href="@{/admin/comprobantes/imprimir-nota/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-success border-success text-light" title="Imprimir Ticket Nota de Crédito (80mm)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline></svg></a>
                                             <a th:href="@{/admin/comprobantes/xml-nota/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado de la Nota de Crédito"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline></svg></a>
-                                            <button type="button" class="action-jama-btn text-light shadow-sm" th:onclick="|abrirEditorReemision(${comp.id})|" title="Editar y Emitir Nuevo Comprobante Corregido" style="background-color: #d97706; border-color: #b45309;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path></svg></button>
+                                            <button type="button" class="action-jama-btn text-light shadow-sm"
+                                                     th:data-id="${comp.id}"
+                                                     onclick="abrirEditorReemision(this)"
+                                                     title="Editar y Emitir Nuevo Comprobante Corregido"
+                                                     style="background-color: #d97706; border-color: #b45309;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path></svg></button>
                                         </div>
                                     </td>
                                 </tr>

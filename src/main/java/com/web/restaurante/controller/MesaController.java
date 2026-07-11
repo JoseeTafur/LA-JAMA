@@ -239,9 +239,6 @@ public class MesaController {
     }
 
 
-    // =========================================================================
-    // 🟩 MASIVO 1: MUDAR LOTE DE MESAS DESOCUPADAS AL APARTADO DE RESERVAS
-    // =========================================================================
     @PostMapping("/api/trasladar-a-reserva-masivo")
     @ResponseBody
     public ResponseEntity<?> trasladarAReservaMasivo(@RequestParam("idsMesas") List<Long> idsMesas) {
@@ -292,6 +289,17 @@ public class MesaController {
             response.put("success", false);
             response.put("message", "Error al liberar lote: " + e.getMessage());
             return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    @PostMapping("/liberar-manual/{numeroMesa}")
+    @ResponseBody
+    public ResponseEntity<?> liberarMesaManual(@PathVariable Integer numeroMesa) {
+        try {
+            mesaService.liberarMesaManual(numeroMesa);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Mesa liberada con éxito"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 }

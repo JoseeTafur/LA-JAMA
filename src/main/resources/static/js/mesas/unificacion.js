@@ -1,5 +1,5 @@
 // =========================================================================
-// 💎 LA JAMA MASTER - MOTOR DE UNIFICACIÓN Y DESFRAGMENTACIÓN EN CALIENTE
+// 💎 LA JAMA MASTER - MOTOR DE UNIFICACIÓN Y DESFRAGMENTACIÓN EN CALIENTE - unificacion.js
 // =========================================================================
 
 function activarModoSeleccionUnificacion() {

@@ -1,5 +1,5 @@
 // =========================================================================
-// 📅 LA JAMA (2026) - GESTIÓN DE RESERVAS MASIVAS E INDIVIDUALES BLINDADAS
+// 📅 LA JAMA (2026) - GESTIÓN DE RESERVAS MASIVAS E INDIVIDUALES BLINDADAS - reservas.js
 // =========================================================================
 
 function activarModoReservaMasiva() {

@@ -60,15 +60,22 @@ if (typeof chartCanalesInstance === 'undefined') {
 
 async function cargarMetricasYGraficosRealtime() {
     try {
-        const res = await fetch('/api/admin/metricas/dashboard');
+        const res = await fetch('/api/admin/metricas/dashboard'); // Asegúrate que este endpoint devuelva "totalVentasHoy"
         if (!res.ok) throw new Error("Error de comunicación API");
         const data = await res.json();
 
+        // 🟢 ACTUALIZA LOS PLATOS VENDIDOS
         if (document.getElementById('kpiPlatosVendidosHoy')) {
-            document.getElementById('kpiPlatosVendidosHoy').innerText = data.totalPedidosHoy;
+            document.getElementById('kpiPlatosVendidosHoy').innerText = data.totalPedidosHoy || 0;
         }
 
-const ctxMesas = document.getElementById('chartMesasSalon');
+        // 🟢 ¡NUEVA LÍNEA ASIGNADA!: SINCRONIZACIÓN ULTRA-AESTHETIC DE VENTAS DEL TURNO ACTIVO
+        if (document.getElementById('kpiIngresosHoy')) {
+            const ingresos = parseFloat(data.totalVentasHoy || 0).toFixed(2);
+            document.getElementById('kpiIngresosHoy').innerText = ingresos;
+        }
+
+        const ctxMesas = document.getElementById('chartMesasSalon');
         if (ctxMesas) {
             const libres    = parseInt(data.estadoMesas.DISPONIBLE) || 0;
             const ocupadas  = parseInt(data.estadoMesas.OCUPADA) || 0;

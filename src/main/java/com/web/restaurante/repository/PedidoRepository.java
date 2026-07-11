@@ -109,4 +109,17 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     List<Pedido> findByFechaCreacionBetweenOrderByFechaCreacionDesc(
             LocalDateTime inicio, LocalDateTime fin);
+
+    // Agrega esto en tu PedidoRepository.java
+    @Query("SELECT COALESCE(SUM(d.cantidad), 0) FROM Pedido p JOIN p.listaDetalles d " +
+            "WHERE p.turnoCaja.id = :turnoId AND p.estadoPago != 'EXTORNADO' AND p.estado != 'CANCELADO'")
+    Long countCantidadProductosPorTurno(@Param("turnoId") Long turnoId);
+
+    @Query("SELECT COALESCE(SUM(p.montoTotal), 0.0) FROM Pedido p " +
+            "WHERE p.turnoCaja.id = :turnoId " +
+            "AND p.estado NOT IN ('CANCELADO', 'PENDIENTE') " +
+            "AND p.estadoPago != 'EXTORNADO' " +
+            "AND p.comprobanteNotaNumero IS NOT NULL " +
+            "AND TRIM(p.comprobanteNotaNumero) != ''")
+    Double sumMontoTotalPorTurno(@Param("turnoId") Long turnoId);
 }

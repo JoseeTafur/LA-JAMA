@@ -10,6 +10,7 @@ let etapaActual = 1;
 const totalEtapas = 4;        // 1:Carta, 2:Entrega, 3:Fiscal, 4:Pago
 let mapa = null;
 let marcador = null;
+let documentoValidadoOk = false;
 
 window.addEventListener('load', () => {
     if (typeof L !== 'undefined') {
@@ -24,22 +25,13 @@ window.addEventListener('load', () => {
 /* ======================================================== */
 
 function validarPasoActual() {
-    // Validaciones al intentar salir del PASO 1 (Carta)
     if (etapaActual === 1) {
-        const nombre = document.getElementById('cliente_nombre').value.trim();
-
         if (carrito.length === 0) {
             Swal.fire({ icon: 'warning', title: 'Comanda Vacía', text: 'Agrega al menos un plato a la orden antes de avanzar.', confirmButtonColor: '#1B3A2C' });
             return false;
         }
-        if (!nombre) {
-            Swal.fire({ icon: 'warning', title: 'Falta Cliente', text: 'Ingresa el Nombre o Razón Social en el panel derecho.', confirmButtonColor: '#1B3A2C' });
-            document.getElementById('cliente_nombre').focus();
-            return false;
-        }
     }
 
-    // Validaciones al intentar salir del PASO 2 (Logística)
     if (etapaActual === 2 && tipoEntrega === 'DELIVERY') {
         const dir = document.getElementById('direccionCliente').value.trim();
         const lat = document.getElementById('latCliente').value;
@@ -56,19 +48,26 @@ function validarPasoActual() {
         const numDoc = document.getElementById('numeroDocumento').value.trim();
 
         if (tipoDoc === 'FACTURA') {
+            // 🛡️ REGLA: El RUC es estrictamente obligatorio y debe estar validado por la API
             if (!numDoc || numDoc.length !== 11 || isNaN(numDoc)) {
-                Swal.fire({ icon: 'error', title: 'RUC Inválido', text: 'La Factura Electrónica requiere un RUC válido de 11 dígitos.', confirmButtonColor: '#933D2D' });
+                Swal.fire({ icon: 'error', title: 'RUC Requerido', text: 'Para emitir Factura Electrónica, es obligatorio un RUC válido de 11 dígitos.', confirmButtonColor: '#933D2D' });
                 return false;
             }
-            if (!numDoc.startsWith('10') && !numDoc.startsWith('20')) {
-                Swal.fire({ icon: 'error', title: 'Prefijo Incorrecto', text: 'El RUC debe iniciar con 10 o 20.', confirmButtonColor: '#933D2D' });
+            if (!documentoValidadoOk) {
+                Swal.fire({ icon: 'error', title: 'RUC No Validado', text: 'El RUC ingresado no ha sido validado correctamente por los servidores oficiales.', confirmButtonColor: '#933D2D' });
                 return false;
             }
         } else {
-            // 🚀 REPARADO AQUÍ: isNaN puro y conforme
-            if (numDoc && (numDoc.length !== 8 || isNaN(numDoc))) {
-                Swal.fire({ icon: 'error', title: 'DNI Inválido', text: 'El DNI debe contener exactamente 8 dígitos numéricos.', confirmButtonColor: '#933D2D' });
-                return false;
+            // Para boletas: El DNI es opcional, pero si escribieron algo, exigimos que esté correcto y validado
+            if (numDoc) {
+                if (numDoc.length !== 8 || isNaN(numDoc)) {
+                    Swal.fire({ icon: 'error', title: 'DNI Incorrecto', text: 'El DNI ingresado debe contener exactamente 8 dígitos.', confirmButtonColor: '#933D2D' });
+                    return false;
+                }
+                if (!documentoValidadoOk) {
+                    Swal.fire({ icon: 'error', title: 'DNI No Validado', text: 'Ha digitado un DNI incompleto o inválido. Termine de escribirlo o bórrelo si es boleta anónima.', confirmButtonColor: '#933D2D' });
+                    return false;
+                }
             }
         }
     }
@@ -356,6 +355,12 @@ async function enviarPedidoFinal() {
     const lat = document.getElementById('latCliente').value;
     const lng = document.getElementById('lngCliente').value;
 
+    if (!nombre) {
+        Swal.fire({ icon: 'warning', title: 'Cliente Requerido', text: 'Por favor, ingrese el Nombre o Razón Social antes de emitir.', confirmButtonColor: '#1B3A2C' });
+        document.getElementById('cliente_nombre').focus();
+        return;
+    }
+
     if (metodoPago === 'EFECTIVO') {
         const pagaCon = parseFloat(document.getElementById('inputPagaCon').value) || 0;
         if (pagaCon < total) {
@@ -364,6 +369,7 @@ async function enviarPedidoFinal() {
         }
     }
 
+    // El contrato JSON que viaja a Spring Boot
     const pedidoDataJson = {
         cliente: nombre,
         direccion: direccion,
@@ -371,7 +377,10 @@ async function enviarPedidoFinal() {
         longitud: lng ? parseFloat(lng) : 0.0,
         montoTotal: parseFloat(total.toFixed(2)),
         metodoPago: metodoPago,
-        tipoPedido: tipoEntrega === 'DELIVERY' ? 'DELIVERY' : 'LOCAL',
+
+        // 🔥 ¡BARRIDO DE ERROR AQUÍ! Enviamos 'LLEVAR' para que active el canal Virtual de mostrador
+        tipoPedido: tipoEntrega === 'DELIVERY' ? 'DELIVERY' : 'LLEVAR',
+
         clienteCorreo: correo || null,
         preferenciaComprobante: prefComprobante,
         documentoCliente: numDocumento || null,
@@ -402,13 +411,26 @@ async function enviarPedidoFinal() {
 
         const dataPedido = await resPedido.json();
 
-        // Limpieza total y reactiva de la memoria del módulo
         carrito = [];
-        renderizarCarritoCajero();
-        document.getElementById('cliente_nombre').value = '';
-        document.getElementById('cliente_correo').value = '';
-        document.getElementById('numeroDocumento').value = '';
-        document.getElementById('inputPagaCon').value = '';
+                documentoValidadoOk = false;
+                renderizarCarritoCajero();
+
+                const inputNombre = document.getElementById('cliente_nombre');
+                if (inputNombre) {
+                    inputNombre.value = '';
+                    inputNombre.readOnly = false;
+
+                    // 🛡️ RESTAURAR VISIBILIDAD DE LAS X PARA EL PRÓXIMO CLIENTE
+                    const btnResetNombre = inputNombre.closest('form')?.querySelector('.reset');
+                    if (btnResetNombre) btnResetNombre.style.display = 'block';
+                }
+
+                const btnResetDoc = document.getElementById('numeroDocumento')?.closest('form')?.querySelector('.reset');
+                if (btnResetDoc) btnResetDoc.style.display = 'block';
+
+                document.getElementById('cliente_correo').value = '';
+                document.getElementById('numeroDocumento').value = '';
+                document.getElementById('inputPagaCon').value = '';
         if (marcador && mapa) mapa.removeLayer(marcador);
 
         // Resetear visualmente el flujo al Paso 1 manipulando las clases jama-hidden del DOM
@@ -441,3 +463,148 @@ function configurarBuscadorCarta() {
         });
     });
 }
+
+// ======================================================== //
+// 🔍 CONSULTA AUTOMÁTICA DE DOCUMENTOS DE IDENTIDAD        //
+// ======================================================== //
+
+document.getElementById('numeroDocumento')?.addEventListener('input', async function() {
+    this.value = this.value.replace(/[^0-9]/g, ''); // Forzar únicamente caracteres numéricos
+
+    const tipoCpe = document.getElementById('preferenciaComprobante').value;
+    const documento = this.value.trim();
+    const spinner = document.getElementById('spinner-doc');
+    const inputNombre = document.getElementById('cliente_nombre');
+
+    // Mapear los botones X (reset) de los campos fiscales
+    const btnResetNombre = inputNombre?.closest('form')?.querySelector('.reset');
+    const btnResetDoc = this.closest('form')?.querySelector('.reset');
+
+    const esFactura = (tipoCpe === 'FACTURA');
+    const longitudCorrecta = esFactura ? 11 : 8;
+
+    // Si se están borrando dígitos o se rompe la longitud exacta, el documento deja de ser válido
+    if (documento.length < longitudCorrecta) {
+        documentoValidadoOk = false;
+        if (inputNombre) inputNombre.readOnly = false;
+        if (btnResetNombre) btnResetNombre.style.display = 'block'; // Reaparece la X del nombre
+        if (btnResetDoc) btnResetDoc.style.display = 'block';       // Reaparece la X del documento
+    }
+
+    if (documento.length === longitudCorrecta) {
+        if (esFactura && !documento.startsWith('10') && !documento.startsWith('20')) {
+            Swal.fire({
+                icon: 'error',
+                title: 'RUC Incorrecto',
+                text: 'El número de RUC ingresado es inválido. Recuerde que debe iniciar con prefijo 10 o 20.',
+                confirmButtonColor: '#933D2D'
+            });
+            documentoValidadoOk = false;
+            if (btnResetNombre) btnResetNombre.style.display = 'block';
+            if (btnResetDoc) btnResetDoc.style.display = 'block';
+            return;
+        }
+
+        const endpoint = esFactura ? `/api/documentos/ruc/${documento}` : `/api/documentos/dni/${documento}`;
+
+        if (spinner) spinner.style.display = 'block';
+
+        try {
+            const response = await fetch(endpoint);
+            if (!response.ok) throw new Error("Error en la pasarela de consulta");
+
+            const responseData = await response.json();
+
+            if (responseData.success && responseData.datos) {
+                const info = responseData.datos;
+                let nombreFinal = "";
+
+                if (esFactura) {
+                    nombreFinal = info.razon_social || info.razonSocial || info.nombre || "";
+                } else {
+                    const nombres = info.nombres || "";
+                    const paterno = info.ape_paterno || info.apePaterno || "";
+                    const materno = info.ape_materno || info.apeMaterno || "";
+                    nombreFinal = `${nombres} ${paterno} ${materno}`.replace(/\s+/g, ' ').trim();
+                }
+
+                if (nombreFinal && inputNombre) {
+                    inputNombre.value = nombreFinal;
+
+                    // 🛡️ DOCUMENTO VÁLIDO EN PADRÓN: Congelar nombre y ocultar las "X" (reset)
+                    inputNombre.readOnly = true;
+                    documentoValidadoOk = true;
+
+                    if (btnResetNombre) btnResetNombre.style.display = 'none'; // Desaparece la X del nombre
+                    if (btnResetDoc) btnResetDoc.style.display = 'none';       // Desaparece la X del documento
+
+                    inputNombre.style.backgroundColor = '#e8f5e9';
+                    setTimeout(() => inputNombre.style.backgroundColor = '', 1000);
+                } else {
+                    documentoValidadoOk = false;
+                    if (btnResetNombre) btnResetNombre.style.display = 'block';
+                    if (btnResetDoc) btnResetDoc.style.display = 'block';
+
+                    // 🚨 ADVERTENCIA: Estructura vacía en la base de datos oficial
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Documento No Ubicado',
+                        text: `El ${tipoCpe} ingresado no registra ninguna Razón Social o Persona asociada en el padrón comercial.`,
+                        confirmButtonColor: '#933D2D'
+                    });
+                }
+            } else {
+                documentoValidadoOk = false;
+                if (btnResetNombre) btnResetNombre.style.display = 'block';
+                if (btnResetDoc) btnResetDoc.style.display = 'block';
+
+                // 🚨 ADVERTENCIA: Documento inexistente o rechazado por la SUNAT/RENIEC
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Documento Inválido',
+                    text: `El número de ${tipoCpe} digitado no existe en las bases de datos del Estado peruano.`,
+                    confirmButtonColor: '#933D2D'
+                });
+            }
+        } catch (error) {
+            documentoValidadoOk = false;
+            if (btnResetNombre) btnResetNombre.style.display = 'block';
+            if (btnResetDoc) btnResetDoc.style.display = 'block';
+            console.error("💥 Error consultando padrón oficial:", error);
+
+            // 🚨 ADVERTENCIA: Caída del servicio central de consultas
+            Swal.fire({
+                icon: 'error',
+                title: 'Falla de Conexión',
+                text: 'No se pudo establecer comunicación con la base de datos de consultas de identidad. Intente de nuevo.',
+                confirmButtonColor: '#933D2D'
+            });
+        } finally {
+            if (spinner) spinner.style.display = 'none';
+        }
+    }
+});
+
+// Escudo complementario: Si conmutan entre DNI/RUC o limpian el formulario, reseteamos el candado de solo lectura
+document.getElementById('preferenciaComprobante')?.addEventListener('change', () => {
+    documentoValidadoOk = false;
+    const inputNombre = document.getElementById('cliente_nombre');
+    if (inputNombre) {
+        inputNombre.readOnly = false;
+        // Hacer reaparecer la X de limpieza si se cambia de tipo de CPE
+        const btnResetNombre = inputNombre.closest('form')?.querySelector('.reset');
+        if (btnResetNombre) btnResetNombre.style.display = 'block';
+    }
+    const btnResetDoc = document.getElementById('numeroDocumento')?.closest('form')?.querySelector('.reset');
+    if (btnResetDoc) btnResetDoc.style.display = 'block';
+});
+
+// Si presionan el botón "reset" (X) del formulario de documento, liberamos el nombre
+document.querySelector('#numeroDocumento')?.closest('form')?.addEventListener('reset', () => {
+    documentoValidadoOk = false;
+    const inputNombre = document.getElementById('cliente_nombre');
+    if (inputNombre) {
+        inputNombre.readOnly = false;
+        inputNombre.value = '';
+    }
+});

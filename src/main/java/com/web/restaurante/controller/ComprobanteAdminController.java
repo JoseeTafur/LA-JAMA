@@ -369,6 +369,15 @@ public class ComprobanteAdminController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "El pedido no cuenta con un comprobante emitido."));
             }
 
+            // Regla de los 7 días
+            if (pedidoOriginal.getFechaCreacion() != null) {
+                java.time.LocalDate fechaEmision = pedidoOriginal.getFechaCreacion().toLocalDate();
+                long diasTranscurridos = java.time.temporal.ChronoUnit.DAYS.between(fechaEmision, java.time.LocalDate.now());
+                if (diasTranscurridos > 7) {
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Plazo legal expirado. Según SUNAT, un CPE no puede ser revertido pasados los 7 días calendario."));
+                }
+            }
+
             NotaCreditoRequest request = new NotaCreditoRequest();
             request.setClaveSecreta(facturacionService.obtenerClaveSecretaConfigurada());
 
@@ -436,6 +445,7 @@ public class ComprobanteAdminController {
 
                 pedidoOriginal.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.EXTORNADO);
                 pedidoOriginal.setEstado(com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
+                pedidoOriginal.setFechaCreacion(java.time.LocalDateTime.now());
                 pedidoService.guardar(pedidoOriginal);
 
                 AuditoriaAnulacion auditoria = new AuditoriaAnulacion();
@@ -477,11 +487,10 @@ public class ComprobanteAdminController {
     public ResponseEntity<?> reemitirComprobanteCorregido(@RequestBody Map<String, Object> payload) {
         try {
             Long pedidoId = Long.parseLong(payload.get("pedidoId").toString());
-            String nuevoCliente = payload.get("clienteNombre").toString().toUpperCase();
+            String nuevoCliente = payload.get("clienteNombre").toString().trim().toUpperCase();
             String nuevoDoc = payload.get("documento").toString().trim();
             String nuevoTipoCpe = payload.get("comprobanteTipo").toString().toUpperCase();
             String nuevoMetodo = payload.get("metodoPago").toString();
-
             String nuevoCorreo = payload.get("clienteCorreo") != null ? payload.get("clienteCorreo").toString().trim() : null;
 
             Pedido pedidoOriginal = pedidoService.obtenerPorId(pedidoId);
@@ -489,37 +498,19 @@ public class ComprobanteAdminController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Pedido origen no encontrado."));
             }
 
-            if (nuevoCorreo == null || nuevoCorreo.isEmpty()) {
-                nuevoCorreo = pedidoOriginal.getClienteCorreo(); // Respaldo contable
+            if (nuevoCliente.isEmpty() || "CLIENTE GENERAL".equals(nuevoCliente)) {
+                nuevoCliente = "CLIENTE";
             }
 
-
-            Pedido nuevoPedido = new Pedido();
-            nuevoPedido.setCliente(nuevoCliente);
-            nuevoPedido.setDocumentoCliente(nuevoDoc.isEmpty() ? null : nuevoDoc);
-            nuevoPedido.setClienteCorreo(nuevoCorreo);
-            nuevoPedido.setPreferenciaComprobante(nuevoTipoCpe);
-            nuevoPedido.setDireccion(pedidoOriginal.getDireccion() != null ? pedidoOriginal.getDireccion() : "Chiclayo, Lambayeque");
-            nuevoPedido.setNumeroMesa(pedidoOriginal.getNumeroMesa());
-            nuevoPedido.setTipoPedido(pedidoOriginal.getTipoPedido());
-
-            String nuevaNotaVentaSeq = notaVentaSequenceService.generarSiguienteNota();
-            nuevoPedido.setComprobanteNotaNumero(nuevaNotaVentaSeq);
-
-            nuevoPedido.setTurnoCaja(pedidoOriginal.getTurnoCaja());
-
-            nuevoPedido.setFechaCreacion(java.time.LocalDateTime.now());
-            nuevoPedido.setFechaEntrega(java.time.LocalDateTime.now());
-
-            try {
-                nuevoPedido.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.valueOf(nuevoMetodo));
-            } catch(Exception ex) {
-                nuevoPedido.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.EFECTIVO);
+            if (nuevoCorreo == null || nuevoCorreo.isEmpty()) {
+                nuevoCorreo = pedidoOriginal.getClienteCorreo();
             }
 
             List<Map<String, Object>> detallesModificados = (List<Map<String, Object>>) payload.get("detallesModificados");
             List<DetallePedido> nuevosDetalles = new ArrayList<>();
             double nuevoTotalAcumulado = 0.0;
+
+            Pedido nuevoPedido = new Pedido();
 
             if (detallesModificados != null) {
                 for (Map<String, Object> detMod : detallesModificados) {
@@ -536,6 +527,7 @@ public class ComprobanteAdminController {
                             DetallePedido nuevoDetalle = new DetallePedido();
                             nuevoDetalle.setPedido(nuevoPedido);
                             nuevoDetalle.setProducto(detalleOriginal.getProducto());
+                            // Congelación estricta del precio original de carta corporativa
                             nuevoDetalle.setPrecioUnitario(detalleOriginal.getPrecioUnitario());
                             nuevoDetalle.setCantidad(nuevaCantidad);
                             nuevoDetalle.setCanceladoPorCliente(false);
@@ -547,8 +539,45 @@ public class ComprobanteAdminController {
                 }
             }
 
+            // ── ADUANA BACKEND 1: Control de Total Mínimo ──
+            if (nuevoTotalAcumulado <= 0) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Error fiscal: El monto total de re-emisión debe ser mayor a S/ 0.00."));
+            }
+
+            // ── ADUANA BACKEND 2: Control Obligatorio de Facturas ──
+            if ("FACTURA".equals(nuevoTipoCpe) && (nuevoDoc.length() != 11 || !nuevoDoc.matches("\\d+"))) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Error fiscal: Las facturas exigen un número de RUC válido de 11 dígitos."));
+            }
+
+            // ── ADUANA BACKEND 3: Límite Legal SUNAT Boletas S/ 700 ──
+            if ("BOLETA".equals(nuevoTipoCpe) && nuevoTotalAcumulado >= 700.00) {
+                if (nuevoDoc.isEmpty() || nuevoDoc.length() < 8 || "CLIENTE".equals(nuevoCliente)) {
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Regulación SUNAT: Boletas con montos mayores o iguales a S/ 700.00 exigen registrar los datos del cliente obligatoriamente."));
+                }
+            }
+
+            // Mapeo e Inyección de la estructura de clonación limpia
+            nuevoPedido.setCliente(nuevoCliente);
+            nuevoPedido.setDocumentoCliente(nuevoDoc.isEmpty() ? null : nuevoDoc);
+            nuevoPedido.setClienteCorreo(nuevoCorreo);
+            nuevoPedido.setPreferenciaComprobante(nuevoTipoCpe);
+            nuevoPedido.setDireccion(pedidoOriginal.getDireccion() != null ? pedidoOriginal.getDireccion() : "Chiclayo, Lambayeque");
+            nuevoPedido.setNumeroMesa(pedidoOriginal.getNumeroMesa());
+            nuevoPedido.setTipoPedido(pedidoOriginal.getTipoPedido());
+            nuevoPedido.setTurnoCaja(pedidoOriginal.getTurnoCaja());
+            nuevoPedido.setFechaCreacion(java.time.LocalDateTime.now());
+            nuevoPedido.setFechaEntrega(java.time.LocalDateTime.now());
             nuevoPedido.setListaDetalles(nuevosDetalles);
             nuevoPedido.setMontoTotal(nuevoTotalAcumulado);
+
+            String nuevaNotaVentaSeq = notaVentaSequenceService.generarSiguienteNota();
+            nuevoPedido.setComprobanteNotaNumero(nuevaNotaVentaSeq);
+
+            try {
+                nuevoPedido.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.valueOf(nuevoMetodo));
+            } catch(Exception ex) {
+                nuevoPedido.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.EFECTIVO);
+            }
 
             String comprobanteOficial = comprobanteSequenceService.generarSiguienteNumero(nuevoTipoCpe);
             String correlativoPuro = comprobanteOficial.split("-")[1];
@@ -557,6 +586,7 @@ public class ComprobanteAdminController {
 
             if (respuestaSunat != null) {
                 nuevoPedido.setComprobanteNumero(comprobanteOficial);
+                nuevoPedido.setComprobanteENumero(comprobanteOficial);
                 nuevoPedido.setComprobantePdfUrl(respuestaSunat.getPdfTicket());
                 nuevoPedido.setComprobanteA4Url(respuestaSunat.getPdfA4());
                 nuevoPedido.setComprobanteXmlContenido(respuestaSunat.getXmlFirmado());
@@ -569,9 +599,9 @@ public class ComprobanteAdminController {
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
                     try {
                         emailService.enviarComprobante(nuevoPedidoParaEmail.getClienteCorreo(), nuevoPedidoParaEmail);
-                        System.out.println("📧 [Background Thread] Correo de re-emisión enviado en segundo plano para NV: " + nuevoPedidoParaEmail.getId());
+                        System.out.println("📧 [Background Thread] Correo de re-emisión enviado para NV: " + nuevoPedidoParaEmail.getId());
                     } catch (Exception ex) {
-                        System.err.println("⚠️ [Background Thread Error] Falló el envío diferido de re-emisión: " + ex.getMessage());
+                        System.err.println("⚠️ [Background Thread Error] Falló el envío diferido: " + ex.getMessage());
                     }
                 });
 
@@ -580,17 +610,11 @@ public class ComprobanteAdminController {
                         "message", "¡Comprobante corregido generado con éxito! Número: " + comprobanteOficial
                 ));
             } else {
-                return ResponseEntity.status(500).body(Map.of(
-                        "success", false,
-                        "message", "Error de comunicación con miapi.cloud. Estructura rechazada por SUNAT."
-                ));
+                return ResponseEntity.status(500).body(Map.of("success", false, "message", "Error de comunicación con miapi.cloud. Estructura rechazada por SUNAT."));
             }
 
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "Fallo al procesar el timbrado de re-emisión: " + e.getMessage()
-            ));
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "Fallo al procesar el timbrado de re-emisión: " + e.getMessage()));
         }
     }
 

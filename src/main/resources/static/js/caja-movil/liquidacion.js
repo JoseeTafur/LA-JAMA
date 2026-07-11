@@ -1,5 +1,5 @@
 // ============================================================================
-// CAJA MÓVIL - LIQUIDACIÓN Y ENVÍO AL BACKEND
+// CAJA MÓVIL - LIQUIDACIÓN Y ENVÍO AL BACKEND - liquidacion.js
 // ============================================================================
 
 function procesarLiquidacion() {
@@ -7,29 +7,49 @@ function procesarLiquidacion() {
         const t = ticketsDeCobro[i];
         const totalCPE = Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
         const documento = t.numDoc ? t.numDoc.trim() : '';
+        const nombreCliente = t.nombreCliente ? t.nombreCliente.trim() : '';
 
         if (t.tipoDoc === 'FACTURA') {
+            // 🔒 Candados estrictos para RUC
             if (!documento) {
-                AppUtils.showNotification(`🚨 Ticket #${i + 1}: El número de RUC es obligatorio para Facturas.`, 'error');
+                AppUtils.showNotification(`🚨 Ticket #${i + 1}: El número de RUC es obligatorio para Facturas comercial.`, 'error');
                 return;
             }
-            if (documento.length !== 11 || !Validation.soloNumeros(documento)) {
-                AppUtils.showNotification(`🚨 Ticket #${i + 1}: El RUC comercial debe contener exactamente 11 dígitos numéricos.`, 'error');
+            if (documento.length !== 11) {
+                AppUtils.showNotification(`🚨 Ticket #${i + 1}: El RUC debe contener exactamente 11 dígitos.`, 'error');
+                return;
+            }
+            if (t.docStatus !== 'OK') {
+                AppUtils.showNotification(`🚨 Ticket #${i + 1}: Debes ingresar un número de RUC válido y verificado en la consulta oficial de Sunat.`, 'error');
+                return;
+            }
+            if (!nombreCliente) {
+                AppUtils.showNotification(`🚨 Ticket #${i + 1}: Razón Social no puede estar vacía para procesar la Factura.`, 'error');
                 return;
             }
         } else if (t.tipoDoc === 'BOLETA') {
+            // 🔒 Candados estrictos para Boletas
             if (totalCPE >= 700) {
                 if (!documento) {
-                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: Por ley SUNAT, montos ≥ S/. 700.00 exigen DNI obligatorio.`, 'error');
+                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: Por ley SUNAT, montos ≥ S/. 700.00 exigen DNI obligatorio de forma lícita.`, 'error');
                     return;
                 }
-                if (documento.length !== 8 || !Validation.soloNumeros(documento)) {
-                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: El DNI civil debe contener exactamente 8 dígitos numéricos.`, 'error');
+                if (documento.length !== 8) {
+                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: El DNI debe contener exactamente 8 dígitos.`, 'error');
+                    return;
+                }
+                if (t.docStatus !== 'OK') {
+                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: El DNI ingresado no pasó la auditoría oficial de Reniec. Verifica el número.`, 'error');
                     return;
                 }
             } else {
-                if (documento && (documento.length !== 8 || !Validation.soloNumeros(documento))) {
-                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: Si registras un DNI opcional, debe tener 8 dígitos válidos.`, 'error');
+                // Si colocó DNI opcional pero está incompleto o mal hecho
+                if (documento.length > 0 && documento.length !== 8) {
+                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: Si deseas registrar un DNI opcional, este debe tener exactamente 8 dígitos.`, 'error');
+                    return;
+                }
+                if (documento.length === 8 && t.docStatus !== 'OK') {
+                    AppUtils.showNotification(`🚨 Ticket #${i + 1}: El DNI opcional ingresado es incorrecto o inexistente en el padrón nacional.`, 'error');
                     return;
                 }
             }
@@ -82,6 +102,7 @@ function procesarLiquidacion() {
             nombreCliente: nombreFinalComprobante,
             clienteCorreo: t.clienteCorreo || "",
             metodoPago: t.metodoPago,
+            numeroMesa: parseInt(currentMesaNumero),
             listaDetalles: listaPlatosModificados
         };
     });
@@ -137,11 +158,30 @@ async function ejecutarEnvioBackend(payloadTickets) {
     urlParams.append("mesaId", currentMesaId);
     urlParams.append("matrizTickets", JSON.stringify(payloadTickets));
 
-    const idsPagados = Array.from(document.querySelectorAll('.chk-mesa-confirmar:checked')).map(cb => cb.value);
-    urlParams.append("idsDetallesPagados", idsPagados.join(','));
+    // ── 🎯 ESCUDO DE IDENTIFICADORES HÍBRIDO (ANTI-CERO) ──
+    let checksNativos = document.querySelectorAll('.chk-mesa-confirmar:checked');
+    let idsPagados = Array.from(checksNativos).map(cb => cb.value);
 
-    console.log(`📡 [BUG-HUNT-JS] Enviando PedidoId Padre: ${currentPedidoId} | MesaId: ${currentMesaId}`);
-    console.log(`📡 [BUG-HUNT-JS] Platos que se están pagando en este instante (IDs):`, idsPagados);
+    if (idsPagados.length === 0 && typeof platosDisponibles !== 'undefined' && platosDisponibles.length > 0) {
+        console.log("🍽️ [La Jama Salón] Detectado flujo de mesero. Extrayendo IDs desde platosDisponibles en memoria...");
+
+        if (typeof datosPedidoActualCaja !== 'undefined' && datosPedidoActualCaja && (datosPedidoActualCaja.detalles || datosPedidoActualCaja.listaDetalles)) {
+            const detallesOriginales = datosPedidoActualCaja.detalles || datosPedidoActualCaja.listaDetalles;
+            idsPagados = platosSeleccionadosParaCobro.map(idx => {
+                return detallesOriginales[idx] ? detallesOriginales[idx].id : null;
+            }).filter(id => id !== null);
+        } else {
+            let checksParciales = document.querySelectorAll('.chk-cobro-parcial:checked');
+            if (checksParciales.length > 0) {
+                idsPagados = Array.from(checksParciales).map(cb => {
+                    const platoObj = platosDisponibles.find(p => p.id == cb.value);
+                    return platoObj ? platoObj.productoId : cb.value;
+                });
+            }
+        }
+    }
+
+    urlParams.append("idsDetallesPagados", idsPagados.join(','));
 
     try {
         const res = await fetch(`/admin/mesas/comanda/liquidar-bloque-multiticket/${currentPedidoId}`, {
@@ -150,56 +190,38 @@ async function ejecutarEnvioBackend(payloadTickets) {
             body: urlParams
         });
 
-        console.log(`📡 [BUG-HUNT-JS] Respuesta HTTP del servidor recibida. Status: ${res.status}`);
         AppUtils.showLoading(false);
 
         if (res.ok) {
             console.log("🎯 [BUG-HUNT-JS] Servidor procesó el cobro con ÉXITO (res.ok).");
 
             const elModalCaja = document.getElementById('modalFacturacion');
-                        if (elModalCaja) {
-                            const modalBootstrap = bootstrap.Modal.getInstance(elModalCaja);
-                            if (modalBootstrap) modalBootstrap.hide(); // Oculta el modal de pantalla de golpe
-                        }
+            if (elModalCaja) {
+                const modalBootstrap = bootstrap.Modal.getInstance(elModalCaja);
+                if (modalBootstrap) modalBootstrap.hide();
+            }
 
-            // Guardamos temporalmente el número de mesa antes de que cualquier otra función lo altere
-            const mesaParaRefrescar = currentMesaNumero;
-            console.log(`🎯 [BUG-HUNT-JS] Guardando número de mesa de respaldo para refrescar: ${mesaParaRefrescar}`);
-
-            // Ejecutamos tu actualización contable del turno si existe
             if (typeof cargarLiquidadosTurnoAsincrono === 'function') {
                 cargarLiquidadosTurnoAsincrono();
             }
 
+            // ─── 🛡️ TU NUEVO REINICIADOR ATÓMICO ANTI-ZOMBIE ───
             Swal.fire({
                 icon: 'success',
-                title: '¡Cobro Procesado!',
-                text: 'Los comprobantes fiscales han sido enviados a cola de timbrado de forma segura.',
-                confirmButtonColor: '#1B3A2C'
-            }).then(() => {
-                console.log("🔮 [BUG-HUNT-JS] Alerta de éxito cerrada por el usuario. Evaluando estado de la comanda...");
-
-                // 🍔 REPARACIÓN DEL FRONTEND ANTI-BLANQUEO:
-                // En vez de reventar la pantalla borrando todo, llamamos a la función nativa
-                // de 'modal-mesa.js' para que vuelva a traer la comanda viva desde el controlador.
-                if (typeof cargarDetalleComandaAsincrono === 'function' && mesaParaRefrescar) {
-                    console.log(`🔮 [BUG-HUNT-JS] Forzando recarga asíncrona de platos en pantalla para Mesa N° ${mesaParaRefrescar}`);
-
-                    // Remonitorizamos el modal pasándole un estado activo para que pinte los platos con deuda 0
-                    cargarDetalleComandaAsincrono('ATENDIDO');
-
-                    // Si tienes un modal contenedor de la mesa principal, lo volvemos a mostrar estable
-                    if (typeof mesaModal !== 'undefined' && mesaModal) {
-                        mesaModal.show();
-                    }
-                } else {
-                    console.warn("⚠️ [BUG-HUNT-JS] No se encontró la función cargarDetalleComandaAsincrono, ejecutando limpieza por defecto.");
-                    limpiarInstanciaCaja();
+                title: '¡Cobro Procesado Exitosamente!',
+                text: 'La venta ha sido registrada en caja y los comprobantes fueron enviados a la SUNAT de forma lícita.',
+                confirmButtonColor: '#1B3A2C',
+                confirmButtonText: 'Ok',
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // 🚀 REFRESH TOTAL: Reconstruye el plano, limpia la UI y libera las mesas de residuos visuales
+                    window.location.reload();
                 }
             });
         } else {
             const txtError = await res.text();
-            console.error("🚨 [BUG-HUNT-JS] El servidor rechazó la operación. Detalle:", txtError);
             AppUtils.showNotification(txtError || "Error en la liquidación", "error");
             if (btnCierreGlobal) {
                 btnCierreGlobal.disabled = false;
@@ -208,13 +230,12 @@ async function ejecutarEnvioBackend(payloadTickets) {
         }
     } catch (error) {
         AppUtils.showLoading(false);
-        console.error("🚨 [BUG-HUNT-JS] FALLO CRÍTICO en la petición Fetch (Catch):", error);
+        console.error("🚨 FALLO CRÍTICO en la petición Fetch:", error);
         if (btnCierreGlobal) {
             btnCierreGlobal.disabled = false;
             btnCierreGlobal.innerHTML = `<i class="bi bi-shield-check me-2"></i> Procesar Cierre Masivo`;
         }
     }
-    console.log("📡 [BUG-HUNT-JS] >>> FIN del flujo ejecutarEnvioBackend <<<");
 }
 
 function evaluarBotonConfirmarPago() {

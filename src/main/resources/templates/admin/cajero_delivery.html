@@ -138,11 +138,16 @@
                         <div>
                             <label class="jama-control-label" id="labelDocumento">DNI (Opcional)</label>
 
-                            <form class="form w-100" onsubmit="return false;">
+                            <form class="form w-100" onsubmit="return false;" style="position: relative;">
                                 <button type="button">
                                     <i class="bi bi-card-text" style="font-size: 0.95rem;"></i>
                                 </button>
                                 <input class="input" id="numeroDocumento" placeholder="Ej. 74589632" required="" type="text" maxlength="8" autocomplete="off">
+
+                                <span id="spinner-doc" style="position: absolute; right: 40px; top: 50%; transform: translateY(-50%); display: none;">
+            <i class="bi bi-arrow-repeat animate-spin text-success" style="font-size: 1.1rem; display: inline-block; animation: spin 1s linear infinite;"></i>
+        </span>
+
                                 <button class="reset" type="reset">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
