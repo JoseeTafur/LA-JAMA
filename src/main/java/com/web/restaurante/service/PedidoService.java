@@ -623,4 +623,21 @@ public class PedidoService {
             });
         }
     }
+
+    public List<Pedido> obtenerPedidosPorRangoEmision(LocalDate inicio, LocalDate fin) {
+        LocalDateTime desde = inicio.atStartOfDay();
+        LocalDateTime hasta = fin.atTime(23, 59, 59);
+
+        return pedidoRepository.findAll().stream()
+                .filter(p -> {
+                    // 🎯 Fecha efectiva: si ya es un comprobante emitido, usamos cuándo se timbró (fechaEntrega).
+                    // Si sigue siendo solo Nota de Venta, usamos cuándo se creó (fechaCreacion).
+                    LocalDateTime fechaEfectiva = (p.getComprobanteNumero() != null && p.getFechaEntrega() != null)
+                            ? p.getFechaEntrega()
+                            : p.getFechaCreacion();
+                    return fechaEfectiva != null && !fechaEfectiva.isBefore(desde) && !fechaEfectiva.isAfter(hasta);
+                })
+                .sorted(Comparator.comparing(Pedido::getFechaCreacion).reversed())
+                .toList();
+    }
 }

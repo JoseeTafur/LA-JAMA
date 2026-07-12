@@ -20,6 +20,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     // 🔒 MÉTODOS TRADICIONALES DE AUTENTICACIÓN (LOGIN DE SESIÓN NATIVA)
     Optional<Usuario> findByUsuario(String usuario);
     Optional<Usuario> findByCorreo(String correo);
+    Optional<Usuario> findByUsuarioAndEstadoNot(String usuario, Integer estadoEliminado);
 
     // 🚀 CAMBIADOS A LIST PARA PREVENIR EL COLAPSO DEL ERROR 500 AL EDITAR/VALIDAR DUPLICADOS
     List<Usuario> findByUsuarioIgnoreCase(String usuario);

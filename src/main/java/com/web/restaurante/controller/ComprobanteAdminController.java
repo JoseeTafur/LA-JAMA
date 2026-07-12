@@ -5,6 +5,7 @@ import com.web.restaurante.model.AuditoriaAnulacion;
 import com.web.restaurante.model.DetallePedido;
 import com.web.restaurante.model.Pedido;
 import com.web.restaurante.model.enums.EstadoPedido;
+import com.web.restaurante.repository.PedidoRepository;
 import com.web.restaurante.service.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,8 @@ public class ComprobanteAdminController {
     private final AuditoriaAnulacionRepository auditoriaRepository;
     private final EmailService emailService;
     private final NotaVentaSequenceService notaVentaSequenceService;
+    private final PedidoRepository pedidoRepository;
+    private final TurnoCajaService turnoCajaService;
 
     @GetMapping("/comprobantes")
     public String listarComprobantesCaja(
@@ -41,16 +44,34 @@ public class ComprobanteAdminController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
             Model model) {
 
-        List<Pedido> historialCaja;
+        LocalDate inicio = fechaInicio != null ? fechaInicio : LocalDate.now();
+        LocalDate fin    = fechaFin    != null ? fechaFin    : LocalDate.now();
 
-        if (fechaInicio != null || fechaFin != null) {
-            LocalDate inicio = fechaInicio != null ? fechaInicio : LocalDate.now();
-            LocalDate fin    = fechaFin    != null ? fechaFin    : LocalDate.now();
-            historialCaja = pedidoService.obtenerPedidosPorRango(inicio, fin);
-        } else {
-            historialCaja = pedidoService.obtenerPedidosParaCajaHoy();
+        List<Pedido> historialCaja = new ArrayList<>(pedidoService.obtenerPedidosPorRangoEmision(inicio, fin));
+
+        // =========================================================================
+        // 🎯 INYECCIÓN MAESTRA: BACKLOG HISTÓRICO DE COMPROBANTES POR EMITIR
+        // =========================================================================
+        List<Pedido> backlogPendientes = pedidoRepository.findAll().stream()
+                .filter(p -> p.getComprobanteNumero() == null
+                        && p.getComprobanteNotaNumero() != null
+                        && !p.getComprobanteNotaNumero().trim().isEmpty()
+                        && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO
+                        && p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.EXTORNADO
+                        && p.getFechaCreacion() != null
+                        && !p.getFechaCreacion().toLocalDate().isBefore(inicio)
+                        && !p.getFechaCreacion().toLocalDate().isAfter(fin))
+                .toList();
+
+        // Fusionamos los pendientes históricos en la lista general evitando duplicados por ID
+        java.util.Set<Long> idsExistentes = historialCaja.stream().map(Pedido::getId).collect(Collectors.toSet());
+        for (Pedido p : backlogPendientes) {
+            if (!idsExistentes.contains(p.getId())) {
+                historialCaja.add(p);
+            }
         }
 
+        // Segmentación en memoria original (permanece intacta)
         List<Pedido> pendientes = historialCaja.stream()
                 .filter(p -> p.getComprobanteNumero() == null)
                 .collect(Collectors.toList());
@@ -61,7 +82,7 @@ public class ComprobanteAdminController {
 
         double totalFacturadoTurno = emitidos.stream()
                 .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO
-                        && p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.EXTORNADO) // 🚀 Filtro de escudo financiero
+                        && p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.EXTORNADO)
                 .mapToDouble(Pedido::getMontoTotal)
                 .sum();
 
@@ -103,6 +124,8 @@ public class ComprobanteAdminController {
                 pedido.setComprobantePdfUrl(respuestaSunat.getPdfTicket());
                 pedido.setComprobanteA4Url(respuestaSunat.getPdfA4());
                 pedido.setComprobanteXmlContenido(respuestaSunat.getXmlFirmado());
+
+                pedido.setFechaEntrega(java.time.LocalDateTime.now());
 
                 pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
                 pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.ENTREGADO);
@@ -161,7 +184,17 @@ public class ComprobanteAdminController {
             String numeroNotaCompleto = comprobanteSequenceService.generarSiguienteNumero(tipoSolicitadoNota);
             compDto.setCorrelativo(numeroNotaCompleto.split("-")[1]);
 
-            compDto.setCodmotivo("01");
+            // 🎯 TRADUCCIÓN DINÁMICA DE CATÁLOGO SUNAT (CORREGIDO):
+            // Evaluamos el valor que viaja en el parámetro 'motivo' y asignamos el código oficial SUNAT.
+            String codigoMotivoSunat = "01";
+            if ("ERROR_CLIENTE".equals(motivo)) {
+                codigoMotivoSunat = "02";
+            } else if ("ERROR_PRODUCTOS".equals(motivo)) {
+                codigoMotivoSunat = "06";
+            }
+
+            compDto.setCodmotivo(codigoMotivoSunat);
+
             compDto.setDescripcion(motivo.toUpperCase());
 
             compDto.setSerieRef(serieOriginal);
@@ -439,13 +472,18 @@ public class ComprobanteAdminController {
                         : numeroNotaCompleto;
 
                 pedidoOriginal.setCreditoNotaNumero(nroNota);
+                pedidoOriginal.setMotivoAnulacion(sustento);
                 pedidoOriginal.setNotaPdfUrl(respuesta.getPdfTicket());
                 pedidoOriginal.setNotaA4Url(respuesta.getPdfA4());
                 pedidoOriginal.setNotaXmlContenido(respuesta.getXmlFirmado());
 
                 pedidoOriginal.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.EXTORNADO);
                 pedidoOriginal.setEstado(com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
-                pedidoOriginal.setFechaCreacion(java.time.LocalDateTime.now());
+
+                // 🎯 ELIMINADO EL BUG: Quitamos 'setFechaCreacion(now)' para no romper el histórico de la NV.
+                // Registramos el momento exacto de la anulación contable en fechaEntrega.
+                pedidoOriginal.setFechaEntrega(java.time.LocalDateTime.now());
+
                 pedidoService.guardar(pedidoOriginal);
 
                 AuditoriaAnulacion auditoria = new AuditoriaAnulacion();
@@ -564,7 +602,7 @@ public class ComprobanteAdminController {
             nuevoPedido.setDireccion(pedidoOriginal.getDireccion() != null ? pedidoOriginal.getDireccion() : "Chiclayo, Lambayeque");
             nuevoPedido.setNumeroMesa(pedidoOriginal.getNumeroMesa());
             nuevoPedido.setTipoPedido(pedidoOriginal.getTipoPedido());
-            nuevoPedido.setTurnoCaja(pedidoOriginal.getTurnoCaja());
+            turnoCajaService.obtenerTurnoActivo().ifPresent(nuevoPedido::setTurnoCaja);
             nuevoPedido.setFechaCreacion(java.time.LocalDateTime.now());
             nuevoPedido.setFechaEntrega(java.time.LocalDateTime.now());
             nuevoPedido.setListaDetalles(nuevosDetalles);
@@ -595,6 +633,14 @@ public class ComprobanteAdminController {
                 nuevoPedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
                 pedidoService.guardar(nuevoPedido);
 
+                pedidoOriginal.setComprobanteENumero("REEMITIDO");
+                pedidoService.guardar(pedidoOriginal);
+
+                // 🎯 SINCRONIZACIÓN DE FLUJO NETO: Registramos el ingreso legítimo en la caja actual
+                String origenLabel = nuevoPedido.getNumeroMesa() != null ? "Mesa " + nuevoPedido.getNumeroMesa() : "POS";
+                String conceptoCaja = "Re-emisión CPE Corregido (" + origenLabel + ") - Nota: " + nuevoPedido.getComprobanteNotaNumero();
+                turnoCajaService.registrarVenta(conceptoCaja, nuevoTotalAcumulado);
+
                 final Pedido nuevoPedidoParaEmail = nuevoPedido;
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
                     try {
@@ -624,36 +670,63 @@ public class ComprobanteAdminController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin) {
 
-        List<Pedido> lista;
+        List<Pedido> lista = new ArrayList<>();
 
-        if (fechaInicio != null || fechaFin != null) {
-            LocalDate inicio = fechaInicio != null ? fechaInicio : LocalDate.now();
-            LocalDate fin    = fechaFin    != null ? fechaFin    : LocalDate.now();
-            lista = pedidoService.obtenerPedidosPorRango(inicio, fin);
-        } else {
-            lista = pedidoService.obtenerPedidosParaCajaHoy();
+        LocalDate inicio = fechaInicio != null ? fechaInicio : LocalDate.now();
+        LocalDate fin    = fechaFin    != null ? fechaFin    : LocalDate.now();
+
+        lista.addAll(pedidoService.obtenerPedidosPorRangoEmision(inicio, fin));
+
+// El backlog de "Por Emitir" también respeta el mismo rango de fechas —
+// ya no aparece incondicionalmente sin importar el filtro.
+        List<Pedido> backlogPendientes = pedidoRepository.findAll().stream()
+                .filter(p -> p.getComprobanteNumero() == null
+                        && p.getComprobanteNotaNumero() != null
+                        && !p.getComprobanteNotaNumero().trim().isEmpty()
+                        && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO
+                        && p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.EXTORNADO
+                        && p.getFechaCreacion() != null
+                        && !p.getFechaCreacion().toLocalDate().isBefore(inicio)
+                        && !p.getFechaCreacion().toLocalDate().isAfter(fin))
+                .toList();
+
+        java.util.Set<Long> idsExistentesApi = lista.stream().map(Pedido::getId).collect(Collectors.toSet());
+        for (Pedido p : backlogPendientes) {
+            if (!idsExistentesApi.contains(p.getId())) {
+                lista.add(p);
+            }
         }
+
+// 🎯 Orden por fecha de emisión/anulación real, más reciente primero
+        lista.sort((a, b) -> {
+            java.time.LocalDateTime fechaA = (a.getComprobanteNumero() != null && a.getFechaEntrega() != null) ? a.getFechaEntrega() : a.getFechaCreacion();
+            java.time.LocalDateTime fechaB = (b.getComprobanteNumero() != null && b.getFechaEntrega() != null) ? b.getFechaEntrega() : b.getFechaCreacion();
+            if (fechaA == null) fechaA = java.time.LocalDateTime.MIN;
+            if (fechaB == null) fechaB = java.time.LocalDateTime.MIN;
+            return fechaB.compareTo(fechaA);
+        });
 
         List<Map<String, Object>> dto = lista.stream().map(p -> {
             Map<String, Object> m = new java.util.LinkedHashMap<>();
             m.put("id",                   p.getId());
 
-            // Si la NV se perdió en registros antiguos, usamos el ID, sino enviamos su columna intacta
             String nvLimpia = (p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
                     ? p.getComprobanteNotaNumero()
                     : "NV01-" + String.format("%08d", p.getId());
 
             m.put("numeroNotaVenta",      nvLimpia);
-            m.put("fechaCreacion",        p.getFechaCreacion() != null ? p.getFechaCreacion().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "");
+
+            java.time.LocalDateTime fechaParaApi = (p.getComprobanteNumero() != null && p.getFechaEntrega() != null)
+                    ? p.getFechaEntrega()
+                    : p.getFechaCreacion();
+
+            m.put("fechaCreacion",        fechaParaApi != null ? fechaParaApi.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "");
             m.put("cliente",              p.getCliente());
             m.put("montoTotal",           p.getMontoTotal());
             m.put("metodoPago",           p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO");
-            m.put("comprobanteNumero",    p.getComprobanteENumero() != null ? p.getComprobanteENumero() : p.getComprobanteNumero());
-
-            // Envíos mapeados quirúrgicamente para las tablas
+            m.put("comprobanteNumero",    p.getComprobanteNumero());
             m.put("comprobanteENumero",   p.getComprobanteENumero());
             m.put("creditoNotaNumero",    p.getCreditoNotaNumero());
-
             m.put("estado",               p.getEstado() != null ? p.getEstado().name() : "");
             m.put("estadoPago",           p.getEstadoPago() != null ? p.getEstadoPago().name() : "");
             m.put("comprobanteA4Url",     p.getComprobanteA4Url());

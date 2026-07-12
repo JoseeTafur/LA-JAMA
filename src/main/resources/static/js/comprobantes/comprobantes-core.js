@@ -209,29 +209,66 @@ async function procesarTimbradoCorregido() {
 
     // ── ADUANA 1: Nombre de cliente estrictamente OBLIGATORIO ──
     if (!nuevoCliente) {
-        Swal.fire({ icon: 'warning', title: 'Campo Requerido', text: 'Por favor, asigne un Nombre o Razón Social para el comprobante.', confirmButtonColor: '#933D2D' });
+        if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+            AppUtils.showNotification("⚠️ Por favor, asigne un Nombre o Razón Social para el comprobante.", "warning");
+        } else {
+            Swal.fire({ icon: 'warning', title: 'Campo Requerido', text: 'Por favor, asigne un Nombre o Razón Social.', confirmButtonColor: '#933D2D' });
+        }
         return;
     }
 
     // ── ADUANA 2: Validaciones rigurosas de consistencia fiscal (SUNAT) ──
     if (nuevoTipoCpe === 'FACTURA') {
         if (!nuevoDoc || nuevoDoc.length !== 11 || isNaN(nuevoDoc)) {
-            Swal.fire({ icon: 'error', title: 'RUC Requerido', text: 'Para emitir Factura Electrónica, es obligatorio un número de RUC válido de 11 dígitos.', confirmButtonColor: '#933D2D' });
+            if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+                AppUtils.showNotification("❌ Error fiscal: Las facturas exigen obligatoriamente un RUC válido de 11 dígitos.", "error");
+            } else {
+                Swal.fire({ icon: 'error', title: 'RUC Requerido', text: 'Para emitir Factura Electrónica, es obligatorio un número de RUC válido de 11 dígitos.', confirmButtonColor: '#933D2D' });
+            }
             return;
         }
         if (!documentoValidadoOk) {
-            Swal.fire({ icon: 'error', title: 'RUC No Validado', text: 'El RUC ingresado no ha superado la homologación del padrón oficial.', confirmButtonColor: '#933D2D' });
+            if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+                AppUtils.showNotification("❌ Operación denegada: El RUC digitado no ha superado la homologación del padrón oficial.", "error");
+            } else {
+                Swal.fire({ icon: 'error', title: 'RUC No Validado', text: 'El RUC ingresado no ha superado la homologación del padrón oficial.', confirmButtonColor: '#933D2D' });
+            }
             return;
         }
     } else {
         // Boleta de venta: El documento es opcional, pero si contiene datos, se exige control estricto
         if (nuevoDoc) {
             if (nuevoDoc.length !== 8 || isNaN(nuevoDoc)) {
-                Swal.fire({ icon: 'error', title: 'DNI Incorrecto', text: 'El número de DNI ingresado debe contener exactamente 8 dígitos.', confirmButtonColor: '#933D2D' });
+                if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+                    AppUtils.showNotification("❌ Error fiscal: El número de DNI ingresado debe contener exactamente 8 dígitos.", "error");
+                } else {
+                    Swal.fire({ icon: 'error', title: 'DNI Incorrecto', text: 'El número de DNI ingresado debe contener exactamente 8 dígitos.', confirmButtonColor: '#933D2D' });
+                }
                 return;
             }
             if (!documentoValidadoOk) {
-                Swal.fire({ icon: 'error', title: 'DNI No Validado', text: 'El DNI digitado no ha sido validado correctamente por RENIEC. Termine de escribirlo.', confirmButtonColor: '#933D2D' });
+                if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+                    AppUtils.showNotification("❌ Operación denegada: El DNI digitado no ha sido validado correctamente por RENIEC.", "error");
+                } else {
+                    Swal.fire({ icon: 'error', title: 'DNI No Validado', text: 'El DNI digitado no ha sido validado correctamente por RENIEC.', confirmButtonColor: '#933D2D' });
+                }
+                return;
+            }
+        }
+
+        // ── ADUANA 3: Límite Legal SUNAT Boletas S/ 700 ──
+        let totalComprobanteCalculado = 0;
+        detallesPedidoEdicionBuffer.forEach(item => {
+            if (!item.canceladoPorCliente) totalComprobanteCalculado += item.subtotal;
+        });
+
+        if (totalComprobanteCalculado >= 700.00) {
+            if (!nuevoDoc || nuevoDoc.length < 8 || nuevoCliente === 'CLIENTE VARIOS' || nuevoCliente === 'CLIENTE') {
+                if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+                    AppUtils.showNotification("⚠️ Regulación SUNAT: Boletas con montos mayores o iguales a S/ 700.00 exigen registrar los datos del cliente obligatoriamente.", "warning");
+                } else {
+                    Swal.fire({ icon: 'warning', title: 'Regulación SUNAT', text: 'Boletas con montos mayores o iguales a S/ 700.00 exigen registrar los datos del cliente obligatoriamente.', confirmButtonColor: '#933D2D' });
+                }
                 return;
             }
         }
@@ -366,7 +403,7 @@ function configurarMascaraDocumento() {
     }
 }
 
-// ── 🎯 CONSULTA LIMPIA AL PADRÓN (VINCULADO AL NODO '.datos' DEL MOSTRADOR) ──
+// ── 🎯 CONSULTA LIMPIA AL PADRÓN CON CANDADOS DE ALERTA APPUTILS ──
 async function consultarPadronOficialLaJama() {
     const tipoCpe = document.getElementById('reemision-cpe-tipo').value;
     const numDoc = document.getElementById('reemision-cliente-doc').value.trim();
@@ -378,6 +415,9 @@ async function consultarPadronOficialLaJama() {
     const longEsperada = tipoCpe === 'FACTURA' ? 11 : 8;
 
     if (numDoc.length !== longEsperada || /[^0-9]/.test(numDoc)) {
+        if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+            AppUtils.showNotification(`⚠️ Formato incorrecto. El documento para ${tipoCpe} exige exactamente ${longEsperada} dígitos numéricos.`, "warning");
+        }
         return;
     }
 
@@ -389,11 +429,18 @@ async function consultarPadronOficialLaJama() {
 
     try {
         const response = await fetch(endpoint);
-        if (!response.ok) throw new Error("Error de red en pasarela");
+        if (!response.ok) {
+            documentoValidadoOk = false;
+            txtNombre.readOnly = false;
+            if (btnEmitir) btnEmitir.disabled = false;
+            if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+                AppUtils.showNotification(`❌ El número de ${tipoCpe} ingresado es inválido o no existe en el padrón.`, "error");
+            }
+            return;
+        }
 
         const responseData = await response.json();
 
-        // Mapeo exacto basado en la estructura funcional de tu mostrador
         if (responseData.success && responseData.datos) {
             const info = responseData.datos;
             let nombreFinal = "";
@@ -409,20 +456,26 @@ async function consultarPadronOficialLaJama() {
 
             if (nombreFinal) {
                 txtNombre.value = nombreFinal.toUpperCase();
-
-                // 🔒 CANDADO EXIGIDO: Al ser correcto e imprimirse, el nombre se congela
                 txtNombre.readOnly = true;
                 documentoValidadoOk = true;
+                if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+                    AppUtils.showNotification("✅ Documento homologado y verificado con éxito.", "success");
+                }
             }
         } else {
             documentoValidadoOk = false;
             txtNombre.readOnly = false;
-            Swal.fire({ icon: 'error', title: 'Documento Inválido', text: `El número de ${tipoCpe} no existe en las bases de datos del Estado.`, confirmButtonColor: '#933D2D' });
+            if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+                AppUtils.showNotification(`❌ El número de ${tipoCpe} ingresado es inválido o no existe.`, "error");
+            }
         }
     } catch (err) {
         documentoValidadoOk = false;
         txtNombre.readOnly = false;
-        console.error("🚨 Falla en la aduana de lectura del documento:", err);
+        console.error(err);
+        if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+            AppUtils.showNotification("💥 Falla de red: No se pudo establecer conexión con el servidor de consultas.", "error");
+        }
     } finally {
         if (spinner) spinner.style.display = 'none';
         if (btnBuscar) btnBuscar.disabled = false;
@@ -448,10 +501,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 🚀 EXCORE REAL-TIME: Obliga a que todo lo que se escriba en el Nombre sea MAYÚSCULAS
     if (inputNombre) {
-        inputNombre.addEventListener('input', function () {
-            this.value = this.value.toUpperCase();
-        });
-    }
+            inputNombre.addEventListener('input', function () {
+                this.value = this.value.replace(/[^a-zA-ZñÑáéíóúÁÉÍÓÚüÜ ]/g, '');
+                this.value = this.value.toUpperCase();
+            });
+        }
 
     if (selectorTipoCpe && inputDoc) {
         selectorTipoCpe.addEventListener('change', function () {

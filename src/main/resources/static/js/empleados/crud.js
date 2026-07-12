@@ -11,7 +11,6 @@
             dni:          $('#dni').val().trim(),
             telefono:     $('#telefono').val().trim(),
             turno:        $('#turno').val(),
-            tipoContrato: $('#tipoContrato').val(),
             fechaIngreso: $('#fechaIngreso').val() || null,
             cargo:        cargoId ? { id: parseInt(cargoId) } : null,
             usuario:      usuarioId ? { id: parseInt(usuarioId) } : null
@@ -63,7 +62,6 @@
             $('#dni').val(e.dni);
             $('#telefono').val(e.telefono);
             $('#turno').val(e.turno);
-            $('#tipoContrato').val(e.tipoContrato);
             $('#fechaIngreso').val(e.fechaIngreso);
             if (e.cargo) $('#id_cargo').val(e.cargo.id);
             if (e.usuario) $('#id_usuario').val(e.usuario.id);

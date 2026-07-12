@@ -41,19 +41,27 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                 const tienePlatosPorEntregar = platosArray.some(d => !d.canceladoPorCliente && d.cocinado && !d.entregado);
                 const tienePlatosEnCocina = platosArray.some(d => !d.canceladoPorCliente && !d.cocinado);
 
-                // ─── 🛡️ ADUANA CONTROLADORA DE TRASLADOS PARCIALES/COMPLETOS ───
                 const btnCambiarMesaActivo = document.getElementById('btnCambiarMesa');
                 const btnDividirComandaActiva = document.getElementById('btnDividirComanda');
 
                 if (btnCambiarMesaActivo && btnDividirComandaActiva) {
-                    if (platosArray.length > 0) {
+                    // Evaluamos si la comanda ya registra algún pago parcial o total
+                    const tieneElementosPagados = platosArray.some(d => d.pagado);
+
+                    // "Cambiar Mesa" (Traslado total) solo se permite si no hay NADA pagado
+                    if (platosArray.length > 0 && !tieneElementosPagados) {
                         btnCambiarMesaActivo.classList.remove('disabled', 'd-none');
                         btnCambiarMesaActivo.disabled = false;
-                        btnDividirComandaActiva.classList.remove('disabled', 'd-none');
-                        btnDividirComandaActiva.disabled = false;
                     } else {
                         btnCambiarMesaActivo.classList.add('disabled');
                         btnCambiarMesaActivo.disabled = true;
+                    }
+
+                    // "Dividir Comanda" (Parcial) sigue activo si hay ítems activos en la orden
+                    if (platosArray.length > 0) {
+                        btnDividirComandaActiva.classList.remove('disabled', 'd-none');
+                        btnDividirComandaActiva.disabled = false;
+                    } else {
                         btnDividirComandaActiva.classList.add('disabled');
                         btnDividirComandaActiva.disabled = true;
                     }
@@ -106,8 +114,13 @@ function cargarDetalleComandaAsincrono(pedidoEstado) {
                     let badgeFinancieroHTML = ''; if (d.pagado) { badgeFinancieroHTML = `<span class="badge bg-light text-success border border-success rounded-pill px-2 py-1" style="font-size:0.7rem;"><i class="bi bi-cash-coin me-1"></i>Pagado</span>`; }
                     const precioSeguro = d.subtotal ? d.subtotal : (d.precioUnitario ? d.precioUnitario : 0);
                     const idCheckModalMesa = `cbx_mesa_modal_${d.id}`;
-                    let checkboxHTML = d.pagado ? `<div style="width: 27px; margin-left: 10px;"></div>` : `<div class="cntr" style="margin-left: 10px;"><input type="checkbox" id="${idCheckModalMesa}" class="hidden-xs-up chk-mesa-confirmar" value="${d.id}" data-precio="${precioSeguro}" data-estado-plato="${badgeTexto}" onchange="event.stopPropagation(); evaluarBotonConfirmarPago();"><label for="${idCheckModalMesa}" class="cbx"></label></div>`;
-                    if (d.pagado && !d.canceladoPorCliente) { bordeFila = 'border-left:4px solid #16a34a !important;'; }
+                    let checkboxHTML = '';
+
+                    if (d.pagado) {
+                        checkboxHTML = `<div class="cntr" style="margin-left: 10px; opacity: 0.35; cursor: not-allowed;"><input type="checkbox" id="${idCheckModalMesa}" class="hidden-xs-up chk-mesa-confirmar" value="${d.id}" data-ya-pagado="true" disabled><label for="${idCheckModalMesa}" class="cbx" style="cursor: not-allowed;"></label></div>`;
+                    } else {
+                        checkboxHTML = `<div class="cntr" style="margin-left: 10px;"><input type="checkbox" id="${idCheckModalMesa}" class="hidden-xs-up chk-mesa-confirmar" value="${d.id}" data-precio="${precioSeguro}" data-estado-plato="${badgeTexto}" data-ya-pagado="false" onchange="evaluarBotonConfirmarPago()"><label for="${idCheckModalMesa}" class="cbx"></label></div>`;
+                    }
                     htmlPlatosActivos += `<div class="d-flex justify-content-between align-items-center p-2 rounded border item-plato-comanda mb-2 shadow-sm" data-estado="${badgeTexto}" data-precio="${d.subtotal || 0}" style="font-size:0.9rem; ${estiloFila} ${bordeFila}"><div class="d-flex align-items-center gap-2" style="max-width:50%;"><span class="badge bg-dark text-white rounded-pill fw-bold">${d.cantidad}x</span><span class="${nombreClaseTexto} fw-semibold text-truncate" style="max-width:140px;">${nombreProducto}</span></div><div class="d-flex align-items-center gap-2"><span class="text-muted small fw-bold">S/. ${precioSeguro.toFixed(2)}</span>${badgeFinancieroHTML}<span class="badge ${badgeColor} rounded-pill px-2 py-1" style="font-size:0.7rem;">${badgeTexto}</span>${btnCheckUnitarioHTML}${btnEliminarHTML}${checkboxHTML}</div></div>`;
                 });
 
@@ -430,36 +443,54 @@ function prepararGestion(elemento) {
 function evaluarBotonConfirmarPago() {
     const checkboxesMarcados = document.querySelectorAll('.chk-mesa-confirmar:checked');
     const btnDesocupar = document.getElementById('btnDesocupar');
+    const btnDividirComandaActiva = document.getElementById('btnDividirComanda');
+
+    // 1. Calcular el subtotal de lo que se vaya seleccionando
+    let subtotalElegido = 0;
+    checkboxesMarcados.forEach(cb => {
+        subtotalElegido += parseFloat(cb.getAttribute('data-precio') || 0);
+    });
+    const txtElegido = document.getElementById('txt-subtotal-elegido');
+    if (txtElegido) txtElegido.innerText = subtotalElegido.toFixed(2);
+
+    // 2. Controlar el botón de Dividir/Trasladar Comanda (Debe dejar mover cualquier plato activo)
+    if (btnDividirComandaActiva) {
+        if (checkboxesMarcados.length > 0) {
+            btnDividirComandaActiva.classList.remove('disabled');
+            btnDividirComandaActiva.disabled = false;
+        } else {
+            // Si no hay nada marcado, el botón vuelve a su estado normal (sigue la lógica general de la comanda)
+            const listaPlatos = document.getElementById('lista-platos-previsualizar');
+            const tienePlatos = listaPlatos && listaPlatos.children.length > 0;
+            if (tienePlatos) {
+                btnDividirComandaActiva.classList.remove('disabled');
+                btnDividirComandaActiva.disabled = false;
+            }
+        }
+    }
+
     if (!btnDesocupar) return;
 
-    // 🛡️ EL INTERRUPTOR DE SEGURIDAD OPERATIVA:
-    // Analizamos si entre los checkboxes elegidos hay alguno cuyo plato esté en estado "Enviado"
-    let tieneItemEnviado = Array.from(checkboxesMarcados).some(cb => {
-        return cb.getAttribute('data-estado-plato') === 'Enviado';
-    });
+    // 3. ADUANA DE CONTROL PARA EL BOTÓN DE PAGO (Desocupar)
+    // Evaluamos si el usuario seleccionó platos que aún están en cocina ("Enviado")
+    let tieneItemEnviado = Array.from(checkboxesMarcados).some(cb => cb.getAttribute('data-estado-plato') === 'Enviado');
+    let tieneItemYaPagado = Array.from(checkboxesMarcados).some(cb => cb.getAttribute('data-ya-pagado') === 'true');
 
-    // El botón solo se habilitará si hay platos seleccionados Y ninguno de ellos es un "Enviado"
-    if (checkboxesMarcados.length > 0 && !tieneItemEnviado) {
+    // El botón de pagar SOLO se prende si hay selección Y ninguno está en cocina o ya pagado
+    if (checkboxesMarcados.length > 0 && !tieneItemEnviado && !tieneItemYaPagado) {
         btnDesocupar.classList.remove('disabled');
         btnDesocupar.disabled = false;
-
-        let subtotalElegido = 0;
-        checkboxesMarcados.forEach(cb => {
-            subtotalElegido += parseFloat(cb.getAttribute('data-precio') || 0);
-        });
-        const txtElegido = document.getElementById('txt-subtotal-elegido');
-        if (txtElegido) txtElegido.innerText = subtotalElegido.toFixed(2);
+        btnDesocupar.style.opacity = "1";
     } else {
-        // Bloqueo inmediato del botón si la lista está vacía o si se metió un intruso en estado Enviado
         btnDesocupar.classList.add('disabled');
         btnDesocupar.disabled = true;
-        const txtElegido = document.getElementById('txt-subtotal-elegido');
-        if (txtElegido) txtElegido.innerText = "0.00";
+        btnDesocupar.style.opacity = "0.5";
     }
 }
 
 function toggleSeleccionarTodosLosPlatos() {
-    const checkboxesActivos = Array.from(document.querySelectorAll('.chk-mesa-confirmar'));
+    // 🎯 REPARADO: Solo capturamos checkboxes de platos que NO estén pagados
+    const checkboxesActivos = Array.from(document.querySelectorAll('.chk-mesa-confirmar:not([data-ya-pagado="true"])'));
     const btn = document.getElementById('btnSeleccionarTodo');
 
     if (checkboxesActivos.length === 0) {

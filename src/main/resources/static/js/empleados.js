@@ -6,6 +6,7 @@ $(document).ready(function () {
     let dataTable;
     let isEditing = false;
     let modal;
+    let cargoOriginalId = null;
 
     const formId = '#form';
     const API_BASE = '/empleados/api';
@@ -141,31 +142,16 @@ $(document).ready(function () {
     }
 
     function setupEventListeners() {
-            // 🔒 ADUANA DE CAMPAÑA GENERAL: Interceptar cualquier acción si está fuera de turno
-            $('#btnNuevoRegistro, #tabla').on('click', '#btnNuevoRegistro, .action-edit, .action-status, .action-delete', function (e) {
-                // 💡 Reemplaza 'DIA' o 'NOCHE' con la variable real de la sesión del empleado logueado
-                const turnoActualSesion = window.turnoUsuarioLogueado || 'DIA';
-
-                if (!verificarTurnoOperativo(turnoActualSesion)) {
-                    e.preventDefault();
-                    e.stopPropagation(); // Detiene por completo la propagación del click e impide animaciones
-
-                    if (typeof AppUtils !== 'undefined' && typeof AppUtils.showNotification === 'function') {
-                        AppUtils.showNotification("Operación denegada: No es tu turno de trabajo asignado.", "error");
-                    } else {
-                        alert("Operación denegada: No es tu turno de trabajo asignado.");
-                    }
-                    return false;
-                }
-            });
 
             // =========================================================================
             // Los escuchadores originales se ejecutan solo si pasan la aduana superior:
             // =========================================================================
             $('#btnNuevoRegistro').on('click', function () {
                 isEditing = false;
+                cargoOriginalId = null;
                 $('#modalTitle').text('Agregar Empleado');
                 AppUtils.clearForm(formId);
+                $('#id_cargo').prop('disabled', false);
                 modal.show();
             });
 
@@ -225,52 +211,51 @@ $(document).ready(function () {
         }
 
     function guardarEmpleado() {
-        limpiarErrores();
-        const idVal = $('#id').val();
-        const cargoId = $('#id_cargo').val();
-        const usuarioId = $('#id_usuario').val();
+            limpiarErrores();
+            const idVal = $('#id').val();
+            const cargoId = $('#id_cargo').val();
+            const usuarioId = $('#id_usuario').val();
 
-        const payload = {
-            id:           idVal ? parseInt(idVal) : null,
-            nombre:       $('#nombre').val().trim(),
-            apellido:     $('#apellido').val().trim(),
-            dni:          $('#dni').val().trim(),
-            telefono:     $('#telefono').val().trim(),
-            turno:        $('#turno').val(),
-            tipoContrato: $('#tipoContrato').val(),
-            fechaIngreso: $('#fechaIngreso').val() || null,
-            cargo:        cargoId ? { id: parseInt(cargoId) } : null,
-            usuario:      usuarioId ? { id: parseInt(usuarioId) } : null
-        };
+            const payload = {
+                id:           idVal ? parseInt(idVal) : null,
+                nombre:       $('#nombre').val().trim(),
+                apellido:     $('#apellido').val().trim(),
+                dni:          $('#dni').val().trim(),
+                telefono:     $('#telefono').val().trim(),
+                turno:        $('#turno').val(),
+                fechaIngreso: $('#fechaIngreso').val() || null,
+                cargo:        cargoId ? { id: parseInt(cargoId) } : null,
+                usuario:      usuarioId ? { id: parseInt(usuarioId) } : null
+            };
 
-        // 🛡️ ADUANA FRONTEND UNIFICADA (Límites estrictos antes de viajar al servidor)
-        let hayError = false;
-        if (!payload.nombre) { mostrarError('nombre-error', 'El nombre es obligatorio.'); hayError = true; }
-        if (!payload.apellido) { mostrarError('apellido-error', 'El apellido es obligatorio.'); hayError = true; }
-        if (payload.dni && payload.dni.length !== 8) { mostrarError('dni-error', 'El DNI debe contener exactamente 8 dígitos.'); hayError = true; }
-        if (payload.telefono && payload.telefono.length !== 9) { mostrarError('telefono-error', 'El teléfono debe contener exactamente 9 dígitos.'); hayError = true; }
+            // 🛡️ ADUANA FRONTEND UNIFICADA
+            let hayError = false;
+            if (!payload.nombre) { mostrarError('nombre-error', 'El nombre es obligatorio.'); hayError = true; }
+            if (!payload.apellido) { mostrarError('apellido-error', 'El apellido es obligatorio.'); hayError = true; }
+            if (payload.dni && payload.dni.length !== 8) { mostrarError('dni-error', 'El DNI debe contener exactamente 8 dígitos.'); hayError = true; }
+            if (payload.telefono && payload.telefono.length !== 9) { mostrarError('telefono-error', 'El teléfono debe contener exactamente 9 dígitos.'); hayError = true; }
 
-        if (hayError) return;
+            if (hayError) return;
 
-        AppUtils.showLoading(true);
-        $.ajax({
-            url: ENDPOINTS.save, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
-            success: function (res) {
-                AppUtils.showLoading(false);
-                if (res.success) {
-                    modal.hide();
-                    dataTable.ajax.reload(null, false);
-                    AppUtils.showNotification(res.message, 'success');
-                } else { AppUtils.showNotification(res.message, 'error'); }
-            },
-            error: function (xhr) {
-                AppUtils.showLoading(false);
-                // 🌟 CAPTURA DEFENSIVA: Lee el mensaje 403 o 400 del servidor
-                const errorMsg = xhr.responseJSON?.message || 'Error de privilegios al procesar la operación.';
-                AppUtils.showNotification(errorMsg, 'error');
-            }
-        });
-    }
+            AppUtils.showLoading(true);
+            $.ajax({
+                url: ENDPOINTS.save, method: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
+                success: function (res) {
+                    AppUtils.showLoading(false);
+                    if (res.success) {
+                        modal.hide();
+                        dataTable.ajax.reload(null, false);
+                        AppUtils.showNotification(res.message, 'success');
+                    } else { AppUtils.showNotification(res.message, 'error'); }
+                },
+                error: function (xhr) {
+                    AppUtils.showLoading(false);
+                    // 🌟 Captura el mensaje exacto que configuramos en el backend (ej: "Cupo completo...")
+                    const errorMsg = xhr.responseJSON?.message || 'Error al procesar la operación.';
+                    AppUtils.showNotification(errorMsg, 'error');
+                }
+            });
+        }
 
     function editarEmpleado(id) {
         AppUtils.showLoading(true);
@@ -289,9 +274,14 @@ $(document).ready(function () {
             $('#dni').val(e.dni);
             $('#telefono').val(e.telefono);
             $('#turno').val(e.turno);
-            $('#tipoContrato').val(e.tipoContrato);
             $('#fechaIngreso').val(e.fechaIngreso);
-            if (e.cargo) $('#id_cargo').val(e.cargo.id);
+
+            if (e.cargo) {
+                $('#id_cargo').val(e.cargo.id);
+                cargoOriginalId = e.cargo.id;
+            } else {
+                cargoOriginalId = null;
+            }
             if (e.usuario) $('#id_usuario').val(e.usuario.id);
 
             modal.show();

@@ -108,10 +108,10 @@ function renderizarTablas(lista) {
                             <td><span class="badge-preferencia">${comp.preferenciaComprobante || 'BOLETA'}</span></td>
                             <td class="text-center">
                                 <div class="action-buttons-wrapper justify-content-center" style="display: flex; gap: 6px; align-items: center;">
-                                    <button type="button" class="action-jama-btn bg-success border-success text-light" onclick="window.verTicketTermico(${comp.id})" title="Imprimir Ticket Previo">
+                                    <button type="button" class="btn btn-sm btn-success text-light rounded border-success" onclick="window.verTicketTermico(${comp.id})" title="Imprimir Ticket Previo" style="padding: 4px 8px;">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                                     </button>
-                                    <button type="button" class="action-jama-btn bg-dark border-dark text-light btn-timbrar-trigger" data-id="${comp.id}" data-preferencia="${comp.preferenciaComprobante || 'BOLETA'}" data-documento="${comp.documentoCliente || ''}" onclick="window.capturarYTimbrar(this)" title="Emitir CPE Oficial">
+                                    <button type="button" class="btn btn-sm btn-dark text-light rounded border-dark btn-timbrar-trigger" data-id="${comp.id}" data-preferencia="${comp.preferenciaComprobante || 'BOLETA'}" data-documento="${comp.documentoCliente || ''}" onclick="window.capturarYTimbrar(this)" title="Emitir CPE Oficial" style="padding: 4px 8px;">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 15c.1-.7.3-1.4.3-2.2a8 8 0 0 0-16 0c0 .8.1 1.5.3 2.2"></path><path d="M12 11v9"></path><polyline points="8 16 12 20 16 16"></polyline></svg>
                                     </button>
                                 </div>
@@ -123,41 +123,46 @@ function renderizarTablas(lista) {
         }
 
         // ── 2. PESTAÑA: COMPROBANTES ANULADOS ───────────────────────────────
-        if (estado === 'CANCELADO' || estadoPago === 'EXTORNADO') {
-            const pId = comp.id;
-            const cpeAfectadoOriginal = comp.comprobanteNumero || '—';
-            const notaVentaEstable = comp.numeroNotaVenta || comp.comprobanteNotaNumero || `NV01-${String(pId).padStart(8, '0')}`;
-            const notaCreditoSunat = comp.creditoNotaNumero || 'Generando...';
+        if (estado === 'CANCELADO' || estadoPago === 'EXTORNADO' || comp.creditoNotaNumero) {
+                    const pId = comp.id;
+                    const cpeAfectadoOriginal = comp.comprobanteNumero || '—';
+                    const notaVentaEstable = comp.numeroNotaVenta || comp.comprobanteNotaNumero || `NV01-${String(pId).padStart(8, '0')}`;
+                    const notaCreditoSunat = comp.creditoNotaNumero || 'Generando...';
 
-            tbodyAnulados.insertAdjacentHTML('beforeend', `
-                <tr class="align-middle text-muted fila-pedido-caja" style="cursor:pointer; background-color:#fdf2f2;" data-bs-toggle="collapse" data-bs-target="#desglose-anulado-${pId}" data-metodo="${metodoPago}" data-origen="${tipoServicio}">
-                    <td>
-                        <div class="d-flex flex-column gap-1">
-                            <span class="fw-bold text-dark">${notaVentaEstable}</span>
-                            <span class="badge bg-secondary font-monospace fw-bold small" style="text-decoration: line-through; width: fit-content;">${cpeAfectadoOriginal}</span>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="fw-bold text-danger font-monospace">${notaCreditoSunat}</span>
-                    </td>
-                    <td>${fechaFormateada}</td>
-                    <td class="fw-semibold text-start text-dark">${comp.cliente || ''}</td>
-                    <td class="fw-bold text-danger text-end">S/. ${monto}</td>
-                    <td>
-                        <span class="badge bg-danger text-light fw-bold px-2 py-1 rounded-pill small" style="font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-                            ANULADO (CPE)
-                        </span>
-                    </td>
-                    <td class="text-center" onclick="event.stopPropagation();">
-                        <div class="action-buttons-wrapper justify-content-center" style="display:flex; gap:6px; align-items:center;">
-                            <a href="/admin/comprobantes/imprimir-nota-a4/${pId}" target="_blank" class="action-jama-btn bg-primary border-primary text-light" title="Ver Nota de Crédito Oficial (A4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></a>
-                            <a href="/admin/comprobantes/imprimir-nota/${pId}" target="_blank" class="action-jama-btn bg-success border-success text-light" title="Imprimir Ticket Nota de Crédito (80mm)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v15a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a>
-                            <a href="/admin/comprobantes/xml-nota/${pId}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado de la Nota de Crédito"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></a>
-                            <button type="button" class="action-jama-btn text-light shadow-sm" onclick="window.abrirEditorReemision(${pId})" style="background-color: #d97706; border-color: #b45309;" title="Editar y Emitir Nuevo Comprobante Corregido"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path></svg></button>
-                        </div>
-                    </td>
-                </tr>
+                    // 🎯 CANDADO FRONTAL DE UNICIDAD: Si el backend ya marcó este CPE anulado
+                    // como "REEMITIDO", le inyectamos la clase 'd-none' para fulminar el botón del DOM.
+                    const ocultarBotonReemitir = (comp.comprobanteENumero === "REEMITIDO") ? 'd-none' : '';
+
+                    tbodyAnulados.insertAdjacentHTML('beforeend', `
+                        <tr class="align-middle text-muted fila-pedido-caja" style="cursor:pointer; background-color:#fdf2f2;" data-bs-toggle="collapse" data-bs-target="#desglose-anulado-${pId}" data-metodo="${metodoPago}" data-origen="${tipoServicio}">
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <span class="fw-bold text-dark">${notaVentaEstable}</span>
+                                    <span class="badge bg-secondary font-monospace fw-bold small" style="text-decoration: line-through; width: fit-content;">${cpeAfectadoOriginal}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="fw-bold text-danger font-monospace">${notaCreditoSunat}</span>
+                            </td>
+                            <td>${fechaFormateada}</td>
+                            <td class="fw-semibold text-start text-dark">${comp.cliente || ''}</td>
+                            <td class="fw-bold text-danger text-end">S/. ${monto}</td>
+                            <td>
+                                <span class="badge bg-danger text-light fw-bold px-2 py-1 rounded-pill small" style="font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                                    ANULADO (CPE)
+                                </span>
+                            </td>
+                            <td class="text-center" onclick="event.stopPropagation();">
+                                <div class="action-buttons-wrapper justify-content-center" style="display:flex; gap:6px; align-items:center;">
+                                    <a href="/admin/comprobantes/imprimir-nota-a4/${pId}" target="_blank" class="action-jama-btn bg-primary border-primary text-light" title="Ver Nota de Crédito Oficial (A4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></a>
+                                    <a href="/admin/comprobantes/imprimir-nota/${pId}" target="_blank" class="action-jama-btn bg-success border-success text-light" title="Imprimir Ticket Nota de Crédito (80mm)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v15a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a>
+                                    <a href="/admin/comprobantes/xml-nota/${pId}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado de la Nota de Crédito"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></a>
+
+                                    <button type="button" class="action-jama-btn text-light shadow-sm ${ocultarBotonReemitir}" onclick="window.abrirEditorReemision(${pId})" style="background-color: #d97706; border-color: #b45309;" title="Editar y Emitir Nuevo Comprobante Corregido"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path></svg></button>
+                                </div>
+                            </td>
+                        </tr>
                 <tr id="desglose-anulado-${pId}" class="collapse bg-light">
                     <td colspan="7" class="p-3" style="background-color:#FFF5F5; border-left:4px solid #dc2626;">
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -174,7 +179,7 @@ function renderizarTablas(lista) {
                                 <div class="action-buttons-wrapper justify-content-md-end" style="display: flex; gap: 6px; align-items: center;">
                                     <a href="${comp.comprobanteA4Url || '#'}" ${comp.comprobanteA4Url ? 'target="_blank"' : ''} class="action-jama-btn bg-primary border-primary text-light" style="${comp.comprobanteA4Url ? '' : 'opacity:0.35;cursor:not-allowed;pointer-events:none;'}" title="Ver CPE Original (A4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg><span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver PDF A4</span></a>
                                     <a href="${comp.comprobantePdfUrl || '#'}" ${comp.comprobantePdfUrl ? 'target="_blank"' : ''} class="action-jama-btn bg-success border-success text-light" style="${comp.comprobantePdfUrl ? '' : 'opacity:0.35;cursor:not-allowed;pointer-events:none;'}" title="Imprimir Ticket Original (80mm)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg><span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver Ticket</span></a>
-                                    <a href="/admin/comprobantes/xml/${pId}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado CPE Original"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg><span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver XML</span></a>
+                                    <a href="/admin/comprobantes/xml/${comp.id}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado CPE Original"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg><span class="ms-1 d-none d-sm-inline" style="font-size: 0.75rem;">Ver XML</span></a>
                                 </div>
                             </div>
                         </div>
@@ -183,91 +188,89 @@ function renderizarTablas(lista) {
             return;
         }
 
-        // ── 3. PESTAÑA: COMPROBANTES EMITIDOS (CON CANDADO DE 7 DÍAS) ────────────────
-        let esInanulable = false;
-        let diasRestantes = 7;
-                if (fechaFormateada !== '-') {
-                    const fechaCorta = fechaFormateada.split(' ')[0];
-                    const partesFecha = fechaCorta.split(/[-/]/);
-                    if (partesFecha.length === 3) {
-                        let ano, mes, dia;
-                        if (partesFecha[0].length === 4) { ano = partesFecha[0]; mes = partesFecha[1]; dia = partesFecha[2]; }
-                        else { dia = partesFecha[0]; mes = partesFecha[1]; ano = partesFecha[2]; }
+        // ── 3. PESTAÑA: COMPROBANTES EMITIDOS (EXCLUSIÓN TOTAL DE ANULADOS) ──
+        if (estado !== 'CANCELADO' && estadoPago !== 'EXTORNADO' && !comp.creditoNotaNumero && comp.comprobanteENumero !== "REEMITIDO") {
+                     let esInanulable = false;
+                     let diasRestantes = 7;
 
-                        // Forzamos ambas instancias a la medianoche (00:00:00) para restar solo días naturales
-                        const fechaEmisionPure = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
-                        const hoy = new Date();
-                        const fechaHoyPure = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+                     if (fechaFormateada !== '-') {
+                         const fechaCorta = fechaFormateada.split(' ')[0]; // Extrae 'dd/MM/yyyy' o 'yyyy-MM-dd'
+                         const partesFecha = fechaCorta.split(/[-/]/);
+                         if (partesFecha.length === 3) {
+                             let ano, mes, dia;
+                             if (partesFecha[0].length === 4) {
+                                 ano = partesFecha[0]; mes = partesFecha[1]; dia = partesFecha[2];
+                             } else {
+                                 dia = partesFecha[0]; mes = partesFecha[1]; ano = partesFecha[2];
+                             }
 
-                        const diferenciaTiempo = fechaHoyPure.getTime() - fechaEmisionPure.getTime();
-                        const diasTranscurridos = Math.floor(diferenciaTiempo / (1000 * 60 * 60 * 24));
+                             // Forzamos ambas instancias a la medianoche (00:00:00) para restar solo días naturales puros
+                             const fechaEmisionPure = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+                             const hoy = new Date();
+                             const fechaHoyPure = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
 
-                        diasRestantes = 7 - diasTranscurridos;
-                        if (diasTranscurridos > 7 || diasRestantes < 0) esInanulable = true;
-                    }
-                }
+                             const diferenciaTiempo = fechaHoyPure.getTime() - fechaEmisionPure.getTime();
+                             const diasTranscurridos = Math.floor(diferenciaTiempo / (1000 * 60 * 60 * 24));
 
-                // Construcción estética del botón de anulación
-                let botonAnularHtml = "";
-                if (esInanulable) {
-                    botonAnularHtml = `
-                        <button type="button" class="action-jama-btn" style="background-color: #9ca3af !important; border-color: #9ca3af !important; color: #ffffff !important; cursor: not-allowed;" onclick="Swal.fire({ icon: 'error', title: 'Plazo Expirado', text: 'Este comprobante superó el límite de 7 días calendario establecido por SUNAT y no puede ser anulado.', confirmButtonColor: '#933D2D' })" title="Plazo de anulación expirado (Máx 7 días)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
-                        </button>`;
-                } else {
-                    botonAnularHtml = `
-                        <button type="button" class="action-jama-btn bg-danger border-danger text-light" data-id="${comp.id}" data-cpe="${comp.comprobanteNumero}" onclick="window.capturarYAnular(this)" title="Emitir Nota de Crédito Total">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
-                        </button>`;
-                }
+                             diasRestantes = 7 - diasTranscurridos;
+                             if (diasTranscurridos > 7 || diasRestantes < 0) esInanulable = true;
+                         }
+                     }
 
-                // Construcción dinámica del indicador de tiempo restante
-                let textoDiasHtml = `EMITIDO (Quedan ${diasRestantes} días)`;
-                let estiloAlertaColor = "";
-                if (diasRestantes === 1) textoDiasHtml = "EMITIDO (Queda 1 día)";
-                else if (diasRestantes === 0) textoDiasHtml = "EMITIDO (Último día)";
-                else if (diasRestantes < 0) textoDiasHtml = "EMITIDO (Plazo Expirado)";
+                     let botonAnularHtml = esInanulable ? `
+                         <button type="button" class="action-jama-btn" style="background-color: #9ca3af !important; border-color: #9ca3af !important; color: #ffffff !important; cursor: not-allowed;" onclick="Swal.fire({ icon: 'error', title: 'Plazo Expirado', text: 'Este comprobante superó el límite de 7 días calendario establecido por SUNAT y no puede ser anulado.', confirmButtonColor: '#933D2D' })" title="Plazo de anulación expirado (Máx 7 días)">
+                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+                         </button>` : `
+                         <button type="button" class="action-jama-btn bg-danger border-danger text-light" data-id="${comp.id}" data-cpe="${comp.comprobanteNumero}" onclick="window.capturarYAnular(this)" title="Emitir Nota de Crédito Total">
+                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+                         </button>`;
 
-                if (diasRestantes <= 2 && diasRestantes >= 0) {
-                    estiloAlertaColor = `style="background-color: #fff3cd !important; color: #856404 !important; border: 1px solid #ffeeba !important;"`;
-                }
+                     let textoDiasHtml = `EMITIDO (Quedan ${diasRestantes} días)`;
+                     let estiloAlertaColor = "";
+                     if (diasRestantes === 1) textoDiasHtml = "EMITIDO (Queda 1 día)";
+                     else if (diasRestantes === 0) textoDiasHtml = "EMITIDO (Último día)";
+                     else if (diasRestantes < 0) textoDiasHtml = "EMITIDO (Plazo Expirado)";
 
-                tbodyEmitidos.insertAdjacentHTML('beforeend', `
-                    <tr data-metodo="${metodoPago}" data-origen="${tipoServicio}" class="align-middle fila-pedido-caja">
-                        <td>
-                            <div class="d-flex flex-column gap-1">
-                                <div class="d-flex align-items-center flex-wrap gap-1">
-                                    <span class="fw-bold text-dark font-monospace">${notaVentaLabel}</span>
-                                    <span class="badge bg-secondary ms-1 font-monospace fw-bold" style="font-size: 0.75rem; letter-spacing: 0.3px;">${comp.comprobanteNumero}</span>
+                     if (diasRestantes <= 2 && diasRestantes >= 0) {
+                         estiloAlertaColor = `style="background-color: #fff3cd !important; color: #856404 !important; border: 1px solid #ffeeba !important;"`;
+                     }
+
+                    tbodyEmitidos.insertAdjacentHTML('beforeend', `
+                        <tr data-metodo="${metodoPago}" data-origen="${tipoServicio}" class="align-middle fila-pedido-caja">
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="d-flex align-items-center flex-wrap gap-1">
+                                        <span class="fw-bold text-dark font-monospace">${notaVentaLabel}</span>
+                                        <span class="badge bg-secondary ms-1 font-monospace fw-bold" style="font-size: 0.75rem; letter-spacing: 0.3px;">${comp.comprobanteNumero}</span>
+                                    </div>
+                                    <small class="text-secondary small fw-medium">${fechaFormateada}</small>
                                 </div>
-                                <small class="text-secondary small fw-medium">${fechaFormateada}</small>
-                            </div>
-                        </td>
-                        <td><span class="badge-origen">${mesaLabel}</span></td>
-                        <td class="text-start"><span class="fw-semibold text-dark d-block text-truncate" style="max-width: 220px;">${comp.cliente || ''}</span></td>
-                        <td class="fw-bold text-jama-gold text-end font-monospace" style="padding-right: 20px; font-size: 0.95rem;">S/. ${monto}</td>
-                        <td>${window.badgeMetodoPago(metodoPago)}</td>
-                        <td>
-                            <span class="badge-estado-sunat" ${estiloAlertaColor}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                ${textoDiasHtml}
-                            </span>
-                        </td>
-                        <td class="text-center">
-                            <div class="action-buttons-wrapper justify-content-center" style="display:flex;gap:6px;align-items:center;">
-                                <a href="${comp.comprobanteA4Url || '#'}" ${comp.comprobanteA4Url ? 'target="_blank"' : ''} class="action-jama-btn bg-primary border-primary text-light" style="${comp.comprobanteA4Url ? '' : 'opacity:0.35;cursor:not-allowed;pointer-events:none;'}" title="Ver Factura/Boleta Oficial (A4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></a>
-                                <a href="${comp.comprobantePdfUrl || '#'}" ${comp.comprobantePdfUrl ? 'target="_blank"' : ''} class="action-jama-btn bg-success border-success text-light" style="${comp.comprobantePdfUrl ? '' : 'opacity:0.35;cursor:not-allowed;pointer-events:none;'}" title="Imprimir Ticket (80mm)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a>
-                                <a href="/admin/comprobantes/xml/${comp.id}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado SUNAT"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></a>
-                                ${botonAnularHtml}
-                            </div>
-                        </td>
-                    </tr>`);
+                            </td>
+                            <td><span class="badge-origen">${mesaLabel}</span></td>
+                            <td class="text-start"><span class="fw-semibold text-dark d-block text-truncate" style="max-width: 220px;">${comp.cliente || ''}</span></td>
+                            <td class="fw-bold text-jama-gold text-end font-monospace" style="padding-right: 20px; font-size: 0.95rem;">S/. ${monto}</td>
+                            <td>${window.badgeMetodoPago(metodoPago)}</td>
+                            <td>
+                                <span class="badge-estado-sunat" ${estiloAlertaColor}>
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                    ${textoDiasHtml}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <div class="action-buttons-wrapper justify-content-center" style="display:flex;gap:6px;align-items:center;">
+                                    <a href="${comp.comprobanteA4Url || '#'}" ${comp.comprobanteA4Url ? 'target="_blank"' : ''} class="action-jama-btn bg-primary border-primary text-light" style="${comp.comprobanteA4Url ? '' : 'opacity:0.35;cursor:not-allowed;pointer-events:none;'}" title="Ver Factura/Boleta Oficial (A4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></a>
+                                    <a href="${comp.comprobantePdfUrl || '#'}" ${comp.comprobantePdfUrl ? 'target="_blank"' : ''} class="action-jama-btn bg-success border-success text-light" style="${comp.comprobantePdfUrl ? '' : 'opacity:0.35;cursor:not-allowed;pointer-events:none;'}" title="Imprimir Ticket (80mm)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></a>
+                                    <a href="/admin/comprobantes/xml/${comp.id}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado SUNAT"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></a>
+                                    ${botonAnularHtml}
+                                </div>
+                            </td>
+                        </tr>`);
+                }
     });
     ejecutarFiltroCruzadoComprobantes();
 }
 
 function ejecutarFiltroCruzadoComprobantes() {
-    // Sincronizamos los badges superiores primero
     actualizarBadgesMetodo();
 
     const textoVal   = document.getElementById('filtroCpeTexto').value.toLowerCase().trim();
@@ -285,7 +288,6 @@ function ejecutarFiltroCruzadoComprobantes() {
             if (fila.id?.startsWith('desglose-anulado-')) return;
             if (fila.classList.contains('fila-vacia-jama')) return;
 
-            // ── 🛡️ EXTRACTOR INTELIGENTE DE RESPALDO (ANTI-LOGS HUÉRFANOS) ──
             let metodoFila = fila.getAttribute('data-metodo');
             if (!metodoFila) {
                 if (fila.querySelector('.bm-efectivo') || fila.textContent.includes('Efectivo')) metodoFila = 'EFECTIVO';
@@ -305,7 +307,6 @@ function ejecutarFiltroCruzadoComprobantes() {
 
             const contenidoFila = fila.textContent.toLowerCase();
 
-            // Extracción segura de la celda de fecha para el filtrado cronológico cruzado
             let textoFechaCelda = '';
             if (idTabla === 'tablaPorEmitir' && fila.cells[1]) textoFechaCelda = fila.cells[1].textContent;
             else if (idTabla === 'tablaEmitidos' && fila.querySelector('small')) textoFechaCelda = fila.querySelector('small').textContent;
@@ -313,7 +314,8 @@ function ejecutarFiltroCruzadoComprobantes() {
 
             let coincideFecha = true;
 
-            // Conservamos tu candado original: "Por Emitir" ignora rangos históricos para no borrarse
+            // 🎯 MEJORA LOGÍSTICA: La tabla "Por Emitir" ignora los filtros de rangos históricos
+            // para mostrar siempre de manera consecutiva y paginada las Notas de Venta pendientes de saneo.
             if (idTabla !== 'tablaPorEmitir') {
                 if (textoFechaCelda && textoFechaCelda.trim() !== '-' && (timestampInicio || timestampFin)) {
                     const celdaLimpia = textoFechaCelda.trim().split(' ')[0];
@@ -333,23 +335,9 @@ function ejecutarFiltroCruzadoComprobantes() {
             }
 
             const coincideTexto  = contenidoFila.includes(textoVal);
-
-            let coincideMetodo = false;
-            if (metodoVal === 'TODOS') {
-                coincideMetodo = true;
-            } else if (metodoVal === 'YAPE') {
-                // Al marcar YAPE, solo entran los que son estrictamente YAPE (o el consolidado antiguo YAPE_PLIN)
-                coincideMetodo = (metodoFila === 'YAPE' || metodoFila === 'YAPE_PLIN');
-            } else if (metodoVal === 'PLIN') {
-                // Al marcar PLIN, solo entran los que son estrictamente PLIN (o el consolidado antiguo YAPE_PLIN)
-                coincideMetodo = (metodoFila === 'PLIN' || metodoFila === 'YAPE_PLIN');
-            } else {
-                coincideMetodo = (metodoFila === metodoVal);
-            }
-
+            let coincideMetodo = (metodoVal === 'TODOS' || metodoFila === metodoVal || ((metodoVal === 'YAPE' || metodoVal === 'PLIN') && metodoFila === 'YAPE_PLIN'));
             const coincideOrigen = (origenVal === 'TODOS' || origenFila === origenVal);
 
-            // 🎨 RENDERIZADO FLUIDO CINÉTICO
             if (coincideTexto && coincideMetodo && coincideOrigen && coincideFecha) {
                 fila.removeAttribute('data-filtrado-oculto');
                 fila.style.removeProperty('display');
@@ -357,7 +345,6 @@ function ejecutarFiltroCruzadoComprobantes() {
                 fila.setAttribute('data-filtrado-oculto', 'true');
                 fila.style.setProperty('display', 'none', 'important');
 
-                // Si la fila colapsable de desglose de anulados está abierta, la cerramos automáticamente
                 const siguienteFila = fila.nextElementSibling;
                 if (siguienteFila && siguienteFila.id?.startsWith('desglose-anulado-')) {
                     siguienteFila.style.setProperty('display', 'none', 'important');
@@ -379,15 +366,13 @@ function actualizarMensajesVacios() {
         document.getElementById('filtroCpeOrigen').value !== 'TODOS';
 
     const configs = [
-        { tablaId: 'tablaPorEmitir', cols: 8, vacioTxt: 'No hay órdenes pendientes de cobro en este turno.', subTxt: 'Todas las notas de venta han sido formalizadas o el turno está limpio.' },
+        { tablaId: 'tablaPorEmitir', cols: 8, vacioTxt: 'No hay órdenes pendientes de cobro.', subTxt: 'Todas las notas de venta han sido formalizadas.' },
         { tablaId: 'tablaEmitidos',  cols: 7, vacioTxt: 'No se encontraron comprobantes oficiales emitidos.', subTxt: 'Prueba ajustando los parámetros de fecha o los filtros cruzados.' },
         { tablaId: 'tablaAnulados',  cols: 7, vacioTxt: 'Sin Notas de Crédito emitidas en este periodo.',  subTxt: 'No se registran anulaciones estructurales de cara a la SUNAT.' },
     ];
 
-    // Variables de control de visualización
     let totalFilasVisiblesPestañaActiva = 0;
 
-    // Detectamos qué pestaña tiene abierta el cajero actualmente en la UI
     const linkActivo = document.querySelector('#comprobantesTabs .nav-link.active');
     const tabIdActivo = linkActivo ? linkActivo.id : 'pendientes-tab';
 
@@ -395,7 +380,6 @@ function actualizarMensajesVacios() {
         const tabla = document.getElementById(tablaId); if (!tabla) return;
         const tbody = tabla.querySelector('tbody');     if (!tbody) return;
 
-        // Evaluamos cuántas filas reales están superando los filtros en caliente
         const filasVisibles = [...tbody.querySelectorAll('tr')].filter(f => {
             if (f.id?.startsWith('desglose-anulado-')) return false;
             if (f.classList.contains('fila-vacia-jama')) return false;
@@ -405,15 +389,12 @@ function actualizarMensajesVacios() {
             return !ocultoFiltro && !ocultoPag && displayComputado !== 'none';
         });
 
-        // Si esta tabla corresponde a la pestaña visible en la pantalla, guardamos su conteo
         if (tabIdActivo === 'pendientes-tab' && tablaId === 'tablaPorEmitir') totalFilasVisiblesPestañaActiva = filasVisibles.length;
         if (tabIdActivo === 'emitidos-tab' && tablaId === 'tablaEmitidos') totalFilasVisiblesPestañaActiva = filasVisibles.length;
         if (tabIdActivo === 'anulados-tab' && tablaId === 'tablaAnulados') totalFilasVisiblesPestañaActiva = filasVisibles.length;
 
-        // Limpiamos letreros antiguos para evitar duplicaciones
         tbody.querySelectorAll('.fila-vacia-jama').forEach(el => el.remove());
 
-        // Si el filtro limpió la grilla, inyectamos la notificación de La Jama
         if (filasVisibles.length === 0) {
             let svg = '';
             let titulo = 'Nada por aquí';
@@ -442,34 +423,34 @@ function actualizarMensajesVacios() {
     });
 
     // =========================================================================
-    // 🛡️ EL ESCUDO DE SEGURIDAD DE EXPORTACIÓN (REPORTE LIMPIO)
+    // 🛡️ ADUANA CONTROLADORA DE DESCARGA ABSOLUTA (REPORTE LIMPIO)
     // =========================================================================
     const inputFechaInicio = document.getElementById('filtroCpeFechaInicio').value;
-        const inputFechaFin    = document.getElementById('filtroCpeFechaFin').value;
+    const inputFechaFin    = document.getElementById('filtroCpeFechaFin').value;
 
-        // 🚀 REPARACIÓN MASTER: Si los inputs están vacíos, significa que está en modo "Por defecto / Hoy", lo cual ES VÁLIDO
-        const tieneFechasCompletas = (inputFechaInicio !== '' && inputFechaFin !== '') || (inputFechaInicio === '' && inputFechaFin === '');
+    const tieneFechasCompletas = (inputFechaInicio !== '' && inputFechaFin !== '');
+    const tieneDataParaExportar = (totalFilasVisiblesPestañaActiva > 0);
 
-        // Condición 2: Debe haber por lo menos un registro visible en la grilla de la pestaña abierta
-        const tieneDataParaExportar = (totalFilasVisiblesPestañaActiva > 0);
+    // 🎯 CANDADO EXPORTACIÓN: Si está en la pestaña de "Por Emitir" (pendientes-tab), se bloquea al 100%
+    const esPestañaPendientes = (tabIdActivo === 'pendientes-tab');
+    const sePermiteBoton = tieneFechasCompletas && tieneDataParaExportar && !esPestañaPendientes;
 
-        // El botón se habilitará cumpliendo la consistencia contable
-        const sePermiteBoton = tieneFechasCompletas && tieneDataParaExportar;
+    document.querySelectorAll('.btn-export-jama').forEach(btn => {
+        btn.disabled = !sePermiteBoton;
+        btn.style.opacity = sePermiteBoton ? "1" : "0.4";
+        btn.style.cursor = sePermiteBoton ? "pointer" : "not-allowed";
 
-        document.querySelectorAll('.btn-export-jama').forEach(btn => {
-            btn.disabled = !sePermiteBoton;
-            btn.style.opacity = sePermiteBoton ? "1" : "0.4";
-            btn.style.cursor = sePermiteBoton ? "pointer" : "not-allowed";
-
-            if (inputFechaInicio !== '' && inputFechaFin === '') {
-                btn.title = "Selecciona una Fecha Límite válida para habilitar la descarga.";
-            } else if (!tieneDataParaExportar) {
-                btn.title = "No hay registros aplicados en la grilla para exportar.";
-            } else {
-                btn.title = "Exportar registros actuales de la tabla.";
-            }
-        });
-    }
+        if (esPestañaPendientes) {
+            btn.title = "🚫 Regulación Fiscal: No está permitido exportar reportes de documentos pendientes de emisión.";
+        } else if (!tieneFechasCompletas) {
+            btn.title = "Selecciona un rango de fechas (Desde y Hasta) para habilitar la descarga.";
+        } else if (!tieneDataParaExportar) {
+            btn.title = "No hay registros aplicados en la grilla para exportar.";
+        } else {
+            btn.title = "Exportar registros actuales de la tabla.";
+        }
+    });
+}
 
 function seleccionarMetodo(valor) {
     const select = document.getElementById('filtroCpeMetodo');

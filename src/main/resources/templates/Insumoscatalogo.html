@@ -38,7 +38,7 @@
                         <span class="badge bg-light text-secondary border px-2 py-1 rounded-pill small" th:text="${insumo.categoria}"></span>
                     </td>
                     <td class="text-muted" th:text="${insumo.unidadMedida}"></td>
-                    <td class="text-muted" th:text="${insumo.stockMinimo}"></td>
+                    <td class="text-muted" th:text="${#numbers.formatInteger(insumo.stockMinimo, 1)}"></td>
 
                     <td th:if="${session.rol == 'ADMIN' or session.rol == 'SUPER_ADMIN' or session.rol == 'COCINA'}" class="text-center pe-4" style="width: 1%; white-space: nowrap;">
                         <div class="action-buttons-wrapper d-flex align-items-center justify-content-center gap-1">

@@ -7,21 +7,32 @@ if (typeof $ !== 'undefined' && $.fn.dataTable) {
     $.fn.dataTable.ext.errMode = 'throw';
 }
 
-// 2. ADUANA GLOBAL DE CONTROL HORARIO POR TURNO (Mesas, Caja, Pedidos, etc.)
+// ========================================================
+// 🛡️ ADUANA GLOBAL DE CONTROL HORARIO POR TURNO (BLINDADA)
+// ========================================================
 $(document).ready(function () {
-    // Escuchamos CUALQUIER clic en botones operativos, formularios de pedidos o acciones del sistema
-    $(document).on('click', 'button, input[type="submit"], .action-jama-btn, .btn-mesa, #btnEnviarCocina', function (e) {
-        // Excepciones obvias: Permitir siempre cerrar sesión o ver el perfil propio
+
+    // Escuchamos CUALQUIER clic en botones operativos, enlaces del sidebar, tablas o acciones
+    $(document).on('click', 'button, input[type="submit"], .action-jama-btn, .btn-mesa, #btnEnviarCocina, #sidebar a, a.dynamic-link', function (e) {
+
+        // 1. Excepciones obvias: Permitir siempre cerrar sesión o ver el perfil propio
         if (this.id === 'btnLogout' || this.href?.includes('/logout') || this.href?.includes('/MiPerfil')) {
             return true;
         }
 
-        // Leemos la variable global inyectada por el layout
+        // 2. 👑 PASAPORTE DE PRIVILEGIOS ATÓMICO (BYPASS):
+        // Si las variables inyectadas por el layout determinan rango de administración,
+        // el escudo se apaga por completo al instante, permitiendo el acceso 24/7.
+        if (window.esSuperAdmin === true || window.esAdmin === true) {
+            return true;
+        }
+
+        // 3. Control horario restrictivo para personal de planilla ordinario
         const turnoActualSesion = window.turnoUsuarioLogueado;
 
         if (!verificarTurnoOperativo(turnoActualSesion)) {
             e.preventDefault();
-            e.stopPropagation(); // Congela animaciones cinéticas y flujos de Bootstrap
+            e.stopPropagation(); // Congela redirecciones dinámicas y flujos visuales
 
             if (typeof AppUtils !== 'undefined' && typeof AppUtils.showNotification === 'function') {
                 AppUtils.showNotification("🚫 Operación denegada: Te encuentras fuera de tu turno de trabajo asignado.", "error");

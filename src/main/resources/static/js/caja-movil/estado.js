@@ -16,25 +16,6 @@ function inicializarFlujoCaja(montoTotal, numeroMesa, preferenciaComprobante = '
     document.getElementById('cobroNumMesa').innerText = numeroMesa || 'N/A';
     document.getElementById('cobroTotalBase').innerText = totalConsumoMesa.toFixed(2);
 
-    const contenedorAviso = document.getElementById('cobroIndicacionCliente');
-    if (contenedorAviso) {
-        if (preferenciaComprobante === 'FACTURA') {
-            contenedorAviso.innerHTML = `
-                <div class="d-flex align-items-center gap-2 p-2 rounded-3"
-                     style="background-color: var(--lajama-skin); color: var(--lajama-green); border: 2px solid var(--lajama-peach); font-weight: 800; font-size: 0.8rem;">
-                    <i class="bi bi-building-fill-check fs-5"></i>
-                    <span>ALERTA: EL CLIENTE SOLICITA FACTURA</span>
-                </div>`;
-        } else {
-            contenedorAviso.innerHTML = `
-                <div class="d-flex align-items-center gap-2 p-2 rounded-3"
-                     style="background-color: var(--lajama-cream); color: var(--lajama-green); border: 2px solid var(--lajama-peach); font-weight: 700; font-size: 0.8rem;">
-                    <i class="bi bi-file-earmark-text-fill fs-5"></i>
-                    <span>ALERTA: EL CLIENTE SOLICITA BOLETA</span>
-                </div>`;
-        }
-    }
-
     extraerPlatosDelModal();
 
     if (totalConsumoMesa <= 0 && montoTotal > 0) {

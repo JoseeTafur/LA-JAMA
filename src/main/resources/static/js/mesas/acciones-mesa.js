@@ -150,19 +150,19 @@ function _ejecutarTrasladoCompleto(idMesaDestino) {
 
     // 🛡️ EL ESCUDO HISTÓRICO SUPREMO ANTI-ARRASTRE
     // Si la mesa contiene platos ya pagados, bloqueamos el traslado total de la orden principal
-    const filasPlatos = document.querySelectorAll('#lista-platos-previsualizar > div');
-    let tieneItemsPagados = false;
+    //const filasPlatos = document.querySelectorAll('#lista-platos-previsualizar > div');
+    //let tieneItemsPagados = false;
 
-    filasPlatos.forEach(row => {
-        if (row.innerHTML.includes('Pagado') || row.style.borderLeft.includes('rgb(22, 163, 74)')) {
-            tieneItemsPagados = true;
-        }
-    });
+   // filasPlatos.forEach(row => {
+       // if (row.innerHTML.includes('Pagado') || row.style.borderLeft.includes('rgb(22, 163, 74)')) {
+         //   tieneItemsPagados = true;
+      //  }
+   // });
 
-    if (tieneItemsPagados) {
-        AppUtils.showNotification("Esta mesa contiene platos ya pagados. Use 'Dividir Comanda' para trasladar solo los ítems pendientes.", "warning");
-        return;
-    }
+   // if (tieneItemsPagados) {
+      //  AppUtils.showNotification("Esta mesa contiene platos ya pagados. Use 'Dividir Comanda' para trasladar solo los ítems pendientes.", "warning");
+     //   return;
+  //  }
 
     const itemSeleccionado = document.querySelector('.item-mesa-accion.active');
     let numeroMesaDestino  = currentMesaNumero;
@@ -223,12 +223,28 @@ async function confirmarDivisionComanda(idMesaDestino) {
     const numeroMesaDestino  = parseInt(itemActivo.getAttribute('data-numero'));
     const idsDetallesAMover  = Array.from(checkboxesMarcados).map(cb => cb.value);
 
+    // 🛡️ ADUANA PREVENTIVA LOCAL ULTRA-ESTRICTA:
+    // Si por desfase del DOM asíncrono la lista está vacía, frenamos en seco.
+    // Esto evita que viaje un payload corrupto al servidor y previene el Error 400/405.
+    if (!idsDetallesAMover || idsDetallesAMover.length === 0) {
+        if (typeof AppUtils !== 'undefined' && AppUtils.showNotification) {
+            AppUtils.showNotification("⚠️ Operación cancelada: No se detectaron platos seleccionados en el DOM. Reintente.", "warning");
+        } else {
+            alert("⚠️ No se seleccionaron platos válidos para realizar el traslado.");
+        }
+        return;
+    }
+
     AppUtils.showLoading(true);
     try {
         const urlParams = new URLSearchParams();
         urlParams.append("idMesaOrigen",      currentMesaId);
         urlParams.append("numeroMesaDestino", numeroMesaDestino);
-        urlParams.append("idsDetalles",       idsDetallesAMover.join(','));
+
+        // Inyección multi-paramétrica limpia para Spring Boot (List<Long>)
+        idsDetallesAMover.forEach(id => {
+            urlParams.append("idsDetalles", id);
+        });
 
         const res = await fetch(window.location.origin + '/admin/mesas/comanda/dividir-platos-por-numero', {
             method: 'POST',
@@ -260,7 +276,10 @@ async function confirmarDivisionComanda(idMesaDestino) {
             }, 400);
         } else {
             AppUtils.showLoading(false);
-            AppUtils.showNotification("Error al procesar la división", "error");
+            const errorTxt = await res.text();
+
+            // 🛡️ CAPTURA DE ERROR CONTROLADA: Mostramos la alerta flotante sin romper el hilo de ejecución
+            AppUtils.showNotification(errorTxt || "Error al procesar la división de platos.", "error");
         }
     } catch (error) {
         AppUtils.showLoading(false);

@@ -135,6 +135,9 @@ public class Pedido {
     @Column(name = "estado_pago", length = 20)
     private EstadoPago estadoPago;
 
+    @Column(name = "motivo_anulacion", length = 500)
+    private String motivoAnulacion;
+
     public boolean isListoParaServir() {
         if (this.estado == EstadoPedido.PREPARADO || this.estado == EstadoPedido.ASIGNADO) {
             return true;

@@ -74,7 +74,6 @@
                                 <label class="fw-bold text-dark mb-0 d-flex align-items-center">
                                     <span class="recipe-step-indicator">2</span> Insumos y Porciones Requeridas
                                 </label>
-                                <input type="text" id="buscarInsumoMatriz" class="form-control form-control-sm px-3 selector-search-input" placeholder="🔍 Filtrar ingredientes...">
                             </div>
 
                             <div class="matrix-scroll-container pe-2 style-scrollbar-jama" style="max-height: 400px; overflow-y: auto;">
@@ -104,10 +103,10 @@
                                                        step="1"
                                                        value="1"
                                                        min="1"
-                                                       th:name="'porciones-' + ${ins.id}"
+                                                       max="4" th:name="'porciones-' + ${ins.id}"
                                                        th:id="'portion-' + ${ins.id}"
                                                        class="form-control form-control-sm text-center portion-field portion-field-protein"
-                                                       placeholder="1">
+                                                       placeholder="1-4">
                                                 <span class="text-muted widget-unit-text">porc.</span>
                                             </div>
                                         </div>
@@ -134,13 +133,13 @@
 
                                             <div class="portion-input-group d-flex align-items-center gap-1">
                                                 <input type="number"
-                                                       step="0.001"
-                                                       value="1.0"
-                                                       min="0.001"
-                                                       th:name="'porciones-' + ${ins.id}"
+                                                       step="1"
+                                                       value="1"
+                                                       min="1"
+                                                       max="4" th:name="'porciones-' + ${ins.id}"
                                                        th:id="'portion-' + ${ins.id}"
                                                        class="form-control form-control-sm text-center portion-field portion-field-general"
-                                                       placeholder="1.0">
+                                                       placeholder="1-4">
                                                 <span class="text-muted widget-unit-text" th:text="${ins.unidadMedida != null ? ins.unidadMedida : 'und.'}">porc.</span>
                                             </div>
                                         </div>
@@ -217,11 +216,7 @@
                                 if (checkbox) checkbox.checked = true;
                                 if (portionInput) {
                                     // 🌟 SINCRO INTELIGENTE: Si es proteína se redondea, si es abarroto mantiene sus decimales de origen
-                                    if(portionInput.classList.contains('portion-field-protein')) {
-                                        portionInput.value = Math.round(item.cantidadUsada);
-                                    } else {
-                                        portionInput.value = item.cantidadUsada;
-                                    }
+                                    portionInput.value = Math.round(item.cantidadUsada);
                                 }
                             });
                         }
@@ -267,29 +262,35 @@
             });
 
             // 🌟 CONTROL SUBDIVIDIDO DE ENTRADA DE DATOS
-            // A. Reglas estrictas para proteínas (Solo enteros)
-            document.querySelectorAll('.portion-field-protein').forEach(input => {
-                input.addEventListener('keydown', function(e) {
-                    if (['.', ',', 'e', 'E', '-', '+'].includes(e.key)) e.preventDefault();
-                });
-                input.addEventListener('input', function() {
-                    this.value = this.value.replace(/[^0-9]/g, '');
-                    if (this.value === '0' || this.value === '') this.value = '1';
-                });
-            });
+// A. Reglas estrictas para proteínas (Solo enteros)
+document.querySelectorAll('.portion-field-protein').forEach(input => {
+    input.addEventListener('keydown', function(e) {
+        if (['.', ',', 'e', 'E', '-', '+'].includes(e.key)) e.preventDefault();
+    });
+    input.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        if (this.value === '0') this.value = '1';
+        if (parseInt(this.value) > 4) this.value = '4';
+    });
+    input.addEventListener('blur', function() {
+        if (this.value === '' || parseInt(this.value) <= 0) this.value = '1';
+    });
+});
 
-            // B. Reglas flexibles para abarrotes (Permite punto decimal para gramos/kilos)
-            document.querySelectorAll('.portion-field-general').forEach(input => {
-                input.addEventListener('keydown', function(e) {
-                    if (['e', 'E', '-', '+'].includes(e.key)) e.preventDefault();
-                });
-                input.addEventListener('blur', function() {
-                    const val = parseFloat(this.value);
-                    if (isNaN(val) || val <= 0) {
-                        this.value = '1.0'; // Mínimo de respaldo seguro
-                    }
-                });
-            });
+// B. Reglas para vegetales, salsas y abarrotes (Ahora también solo enteros)
+document.querySelectorAll('.portion-field-general').forEach(input => {
+    input.addEventListener('keydown', function(e) {
+        if (['.', ',', 'e', 'E', '-', '+'].includes(e.key)) e.preventDefault();
+    });
+    input.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        if (this.value === '0') this.value = '1';
+        if (parseInt(this.value) > 4) this.value = '4';
+    });
+    input.addEventListener('blur', function() {
+        if (this.value === '' || parseInt(this.value) <= 0) this.value = '1';
+    });
+});
         });
     </script>
 </div>

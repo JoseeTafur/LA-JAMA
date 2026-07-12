@@ -63,7 +63,7 @@ function procesarUnificacionDirecta() {
         AppUtils.showLoading(true);
         const params = new URLSearchParams();
         params.append("idMesaPrincipal", currentMesaId);
-        idsHijas.forEach(id => params.append("idsMesasHijas", id));
+        idsHijas.forEach(id => params.append("idsMesasHijas[]", id));
 
         try {
             const res = await fetch("/admin/mesas/unificar", { method: "POST", body: params });
@@ -87,6 +87,9 @@ function procesarUnificacionDirecta() {
 
                 actualizarPanelGruposUnificados(currentMesaNumero, numerosHijas, 'AGRUPADO', currentPedidoId);
                 cancelarModoUnificacion();
+            } else {
+                const errorTxt = await res.text();
+                AppUtils.showNotification(errorTxt || "No se pudo unificar las mesas", "error");
             }
         } catch (error) {
             AppUtils.showLoading(false);

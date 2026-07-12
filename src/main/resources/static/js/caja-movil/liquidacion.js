@@ -112,7 +112,7 @@ function procesarLiquidacion() {
     let segundosRestantes = 5;
     Swal.fire({
         title: '<span style="color: #1B3A2C; font-weight: 800;">¿Confirmar Pago de Consumos?</span>',
-        text: `Procesando ${ticketsDeCobro.length} tickets tributarios con IGV de forma segura. Por favor, verifique detalladamente los montos en la pantalla.`,
+        text: `Procesando ${ticketsDeCobro.length} tickets de forma segura. Por favor, verifique detalladamente los montos en la pantalla.`,
         icon: 'warning',
         background: '#FFF7ED',
         showCancelButton: true,
@@ -209,7 +209,7 @@ async function ejecutarEnvioBackend(payloadTickets) {
             Swal.fire({
                 icon: 'success',
                 title: '¡Cobro Procesado Exitosamente!',
-                text: 'La venta ha sido registrada en caja y los comprobantes fueron enviados a la SUNAT de forma lícita.',
+                text: 'La venta ha sido registrada en caja.',
                 confirmButtonColor: '#1B3A2C',
                 confirmButtonText: 'Ok',
                 allowOutsideClick: false,

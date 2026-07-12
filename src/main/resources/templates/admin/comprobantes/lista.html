@@ -254,7 +254,14 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <tr th:each="comp : ${listaComprobantes}" th:if="${comp.comprobanteNumero != null && comp.estado.name() != 'ANULADO'}" class="align-middle fila-pedido-caja">
+                            <tr th:each="comp : ${listaComprobantes}"
+                                th:if="${comp.comprobanteNumero != null
+             and comp.creditoNotaNumero == null
+             and comp.estado != null
+             and comp.estado.name() != 'CANCELADO'
+             and comp.estadoPago != null
+             and comp.estadoPago.name() != 'EXTORNADO'}"
+                                class="align-middle fila-pedido-caja">
                                 <td>
                                     <div class="d-flex flex-column gap-1">
                                         <div class="d-flex align-items-center flex-wrap gap-1">
@@ -308,10 +315,20 @@
                     </span>
                                 </td>
                                 <td>
-                    <span class="badge-estado-sunat">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        EMITIDO
-                    </span>
+    <span th:with="diasTranscurridos=${comp.fechaCreacion != null ? T(java.time.temporal.ChronoUnit).DAYS.between(comp.fechaCreacion.toLocalDate(), T(java.time.LocalDate).now()) : 0}, diasRestantes=${7 - diasTranscurridos}"
+          class="badge-estado-sunat"
+          th:styleappend="${diasRestantes <= 2 and diasRestantes >= 0} ? 'background-color: #fff3cd !important; color: #856404 !important; border: 1px solid #ffeeba !important;' : ''">
+
+        <th:block th:if="${diasRestantes < 0 or diasTranscurridos > 7}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="me-1"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+            EMITIDO (Plazo Expirado)
+        </th:block>
+
+        <th:block th:if="${diasRestantes >= 0 and diasTranscurridos <= 7}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="me-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <span th:text="${diasRestantes == 1 ? 'EMITIDO (Queda 1 día)' : (diasRestantes == 0 ? 'EMITIDO (Último día)' : 'EMITIDO (Quedan ' + diasRestantes + ' días)')}">EMITIDO</span>
+        </th:block>
+    </span>
                                 </td>
                                 <td class="text-center">
                                     <div class="action-buttons-wrapper justify-content-center" style="display: flex; gap: 6px; align-items: center;">
@@ -419,11 +436,15 @@
                                             <a th:href="@{/admin/comprobantes/imprimir-nota-a4/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-primary border-primary text-light" title="Ver Nota de Crédito Oficial (A4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg></a>
                                             <a th:href="@{/admin/comprobantes/imprimir-nota/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-success border-success text-light" title="Imprimir Ticket Nota de Crédito (80mm)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline></svg></a>
                                             <a th:href="@{/admin/comprobantes/xml-nota/{id}(id=${comp.id})}" target="_blank" class="action-jama-btn bg-dark border-dark text-light" title="Ver XML Firmado de la Nota de Crédito"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline></svg></a>
-                                            <button type="button" class="action-jama-btn text-light shadow-sm"
-                                                     th:data-id="${comp.id}"
-                                                     onclick="abrirEditorReemision(this)"
-                                                     title="Editar y Emitir Nuevo Comprobante Corregido"
-                                                     style="background-color: #d97706; border-color: #b45309;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path></svg></button>
+                                            <button type="button"
+                                                    class="action-jama-btn text-light shadow-sm"
+                                                    th:classappend="${comp.comprobanteENumero == 'REEMITIDO'} ? 'd-none' : ''"
+                                                    th:data-id="${comp.id}"
+                                                    onclick="abrirEditorReemision(this)"
+                                                    title="Editar y Emitir Nuevo Comprobante Corregido"
+                                                    style="background-color: #d97706; border-color: #b45309;">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path></svg>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>

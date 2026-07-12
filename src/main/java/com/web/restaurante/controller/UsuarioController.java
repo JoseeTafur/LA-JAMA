@@ -234,30 +234,39 @@ public class UsuarioController {
             String rolSesion = session.getAttribute("rol") != null
                     ? session.getAttribute("rol").toString().trim().toUpperCase() : "";
 
-            if (usuarioService.obtenerPorId(id).isEmpty()) {
+            Usuario objetivo = usuarioService.obtenerPorId(id).orElse(null);
+            if (objetivo == null) {
                 response.put("success", false);
                 response.put("message", "Usuario no encontrado.");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
 
-            // 🛡️ Autoprotección: Bloquea el harakiri informático
+            // 🛡️ 1. Autoprotección: Bloquea el harakiri informático
             if (Objects.equals(usuarioLogueado.getId(), id)) {
                 response.put("success", false);
                 response.put("message", "Operación inválida: No puedes eliminar la cuenta con la que estás firmado.");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
             }
 
-            // 🛡️ Jerarquía: Un Admin no borra administradores
-            Usuario objetivo = usuarioService.obtenerPorId(id).orElse(null);
-            if (objetivo != null && objetivo.getPerfil() != null) {
+            if (objetivo.getPerfil() != null) {
                 String perfilObjetivo = objetivo.getPerfil().getNombre().toUpperCase().replace(" ", "_");
+
+                // 🛡️ 2. ESCUDO ABSOLUTO: Nadie (absolutamente nadie, ni otro admin) puede borrar la cuenta maestra SUPER_ADMIN
+                if (perfilObjetivo.contains("SUPER_ADMIN")) {
+                    response.put("success", false);
+                    response.put("message", "Violación de jerarquía: La cuenta maestra SUPER_ADMIN es inmutable y no puede ser removida.");
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+                }
+
+                // 🛡️ 3. REGLA OPERATIVA DE ADMISTRADORES: Un Admin plano NO borra a otro Administrador, pero el SUPER_ADMIN sí puede
                 if ((perfilObjetivo.contains("ADMIN") || perfilObjetivo.contains("ADMINISTRADOR")) && !"SUPER_ADMIN".equals(rolSesion)) {
                     response.put("success", false);
-                    response.put("message", "Operación denegada: Solo el Super Admin posee privilegios para purgar cuentas administradoras.");
+                    response.put("message", "Operación denegada: Solo el rango SUPER_ADMIN posee privilegios para purgar cuentas administradoras.");
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
                 }
             }
 
+            // Si pasa todas las aduanas de rango, se ejecuta el borrado lógico
             usuarioService.eliminar(id);
             response.put("success", true);
             response.put("message", "Usuario eliminado correctamente de los registros.");
@@ -266,9 +275,7 @@ public class UsuarioController {
         } catch (IllegalArgumentException e) {
             response.put("success", false);
             response.put("message", e.getMessage());
-            return e.getMessage().contains("no encontrado")
-                    ? ResponseEntity.status(HttpStatus.NOT_FOUND).body(response)
-                    : ResponseEntity.badRequest().body(response);
+            return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Error interno del servidor al eliminar el usuario.");

@@ -36,9 +36,6 @@ public class Empleado {
     @Column(name = "turno", length = 20)
     private String turno = "DIA";
 
-    @Column(name = "tipo_contrato", length = 20)
-    private String tipoContrato = "PLANILLA";
-
     @Column(name = "fecha_ingreso")
     @PastOrPresent(message = "La fecha de ingreso no puede ser futura.")
     private LocalDate fechaIngreso;

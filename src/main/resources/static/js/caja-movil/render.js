@@ -251,26 +251,6 @@ function actualizarVista() {
     renderizarPlatos();
     renderizarTickets();
 
-    const contenedorAviso = document.getElementById('cobroIndicacionCliente');
-    if (contenedorAviso && ticketsDeCobro.length > 0) {
-        const preferenciaActual = ticketsDeCobro[0].tipoDoc;
-        if (preferenciaActual === 'FACTURA') {
-            contenedorAviso.innerHTML = `
-                <div class="d-flex align-items-center gap-2 p-2 rounded-3 animate__animated animate__fadeIn"
-                     style="background-color: var(--lajama-skin); color: var(--lajama-green); border: 2px solid var(--lajama-peach); font-weight: 800; font-size: 0.8rem;">
-                    <i class="bi bi-building-fill-check fs-5"></i>
-                    <span>ALERTA: EL CLIENTE SOLICITA FACTURA</span>
-                </div>`;
-        } else {
-            contenedorAviso.innerHTML = `
-                <div class="d-flex align-items-center gap-2 p-2 rounded-3 animate__animated animate__fadeIn"
-                     style="background-color: var(--lajama-cream); color: var(--lajama-green); border: 2px solid var(--lajama-peach); font-weight: 700; font-size: 0.8rem;">
-                    <i class="bi bi-file-earmark-text-fill fs-5"></i>
-                    <span>ALERTA: EL CLIENTE SOLICITA BOLETA</span>
-                </div>`;
-        }
-    }
-
     const sumaConsumos = ticketsDeCobro.reduce((acc, t) => {
         return acc + Math.round((t.montoPlatos + t.montoLibre) * 100) / 100;
     }, 0);

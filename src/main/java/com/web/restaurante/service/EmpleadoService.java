@@ -64,22 +64,60 @@ public class EmpleadoService {
         return empleadoRepository.findById(id);
     }
 
-    
+
     @Transactional
     public Empleado guardar(Empleado empleado) {
 
+        // 🛡️ REGLA DE NEGOCIO: Máximo 5 empleados por cargo operativo
+        if (empleado.getCargo() != null && empleado.getCargo().getId() != null) {
+            // Contamos cuántos empleados activos (estado 1 o 0, excluyendo eliminados 2) tienen este cargo
+            long totalConEsteCargo = empleadoRepository.listarNoEliminados().stream()
+                    .filter(e -> e.getCargo() != null && e.getCargo().getId().equals(empleado.getCargo().getId()))
+                    .count();
+
+            if (empleado.getId() == null) {
+                // Caso Nuevo: Si ya llegó al límite, se corta el paso
+                if (totalConEsteCargo >= 5) {
+                    throw new IllegalArgumentException("Cupo completo: El cargo seleccionado ya cuenta con el límite máximo de 5 colaboradores.");
+                }
+            } else {
+                // Caso Edición: Buscamos el estado previo para ver si realmente está cambiando de puesto
+                Empleado existente = empleadoRepository.findById(empleado.getId())
+                        .orElseThrow(() -> new IllegalArgumentException("Empleado no encontrado"));
+
+                boolean estaCambiandoDeCargo = existente.getCargo() == null || !existente.getCargo().getId().equals(empleado.getCargo().getId());
+
+                // Si está migrando a un cargo nuevo y ese ya está lleno, bloqueamos
+                if (estaCambiandoDeCargo && totalConEsteCargo >= 5) {
+                    throw new IllegalArgumentException("Cupo completo: No se puede migrar al colaborador. El cargo destino ya cuenta con 5 empleados.");
+                }
+            }
+        }
+
+        // ========================================================
+        // 💾 FLUJO DE PERSISTENCIA ORIGINAL CORREGIDO (Anti-Duplicate User)
+        // ========================================================
         if (empleado.getId() != null) {
             Empleado existente = empleadoRepository.findById(empleado.getId())
                     .orElseThrow(() -> new IllegalArgumentException("Empleado no encontrado para actualizar"));
 
             validarDuplicados(empleado);
 
+            if (empleado.getUsuario() != null && empleado.getUsuario().getId() != null) {
+                Optional<Empleado> empConUsuario = empleadoRepository.findByUsuario(empleado.getUsuario());
+                if (empConUsuario.isPresent() && !empConUsuario.get().getId().equals(empleado.getId())) {
+                    throw new IllegalArgumentException("La cuenta de usuario seleccionada ya está en uso por otro empleado.");
+                }
+                if (existente.getUsuario() != null && existente.getUsuario().getId().equals(empleado.getUsuario().getId())) {
+                    empleado.setUsuario(existente.getUsuario());
+                }
+            }
+
             existente.setNombre(empleado.getNombre().trim());
             existente.setApellido(empleado.getApellido().trim());
             existente.setDni(empleado.getDni());
             existente.setTelefono(empleado.getTelefono());
             existente.setTurno(empleado.getTurno());
-            existente.setTipoContrato(empleado.getTipoContrato());
             existente.setFechaIngreso(empleado.getFechaIngreso());
             existente.setCargo(empleado.getCargo());
             existente.setUsuario(empleado.getUsuario());
@@ -88,6 +126,12 @@ public class EmpleadoService {
         }
 
         validarDuplicados(empleado);
+
+        if (empleado.getUsuario() != null && empleado.getUsuario().getId() != null) {
+            if (empleadoRepository.findByUsuario(empleado.getUsuario()).isPresent()) {
+                throw new IllegalArgumentException("La cuenta de usuario seleccionada ya está en uso por otro empleado.");
+            }
+        }
 
         if (empleado.getNombre() == null || empleado.getNombre().isBlank())
             throw new IllegalArgumentException("El nombre del empleado es obligatorio");

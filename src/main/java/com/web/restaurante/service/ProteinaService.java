@@ -270,7 +270,7 @@ public class ProteinaService {
         mov.setInsumo(insumo);
         mov.setCantidadPorciones(cantidadResta);
         mov.setTipo("EGRESO");
-        mov.setMotivo("VENTA_SALA - Despacho de comanda Pedido N° " + pedidoId);
+        mov.setMotivo("VENTA_SALA - Despacho de comanda");
         mov.setStockResultante(nuevoStock);
         mov.setMermaKg(0.0);
         mov.setFecha(LocalDateTime.now());

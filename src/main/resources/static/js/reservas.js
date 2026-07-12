@@ -212,75 +212,94 @@ $(document).ready(function () {
             window.renderizarMatrizDiasDinamica('e');
         });
 
+    $('#tablaReservas tbody').on('click', '.btn-eliminar', function () {
+        const id = $(this).data('id');
+        eliminarReserva(id);
+    });
+
     document.getElementById('btnGuardarEdicion').addEventListener('click', guardarEdicion);
 
     function initDataTable() {
-        dataTable = $('#tablaReservas').DataTable({
-            responsive: false,
-            autoWidth: false,
-            ajax: { url: '/admin/reservas/api/listar', dataSrc: 'data' },
-            columns: [
-                { data: 'id', width: '5%' },
-                { data: 'nombreCliente', width: '20%' },
-                { data: 'telefono', width: '10%' },
-                { data: 'numeroPersonas', width: '8%' },
-                { data: 'mesasAsignadas', defaultContent: '-', width: '15%' },
-                {
-                    data: 'fechaHoraReserva',
-                    width: '15%',
-                    render: (fecha) => {
-                        if (!fecha) return '-';
-                        const d = new Date(fecha);
-                        return d.toLocaleDateString('es-PE') + ' ' + d.toLocaleTimeString('es-PE', {hour: '2-digit', minute:'2-digit'});
+            dataTable = $('#tablaReservas').DataTable({
+                responsive: false,
+                autoWidth: false,
+                ajax: { url: '/admin/reservas/api/listar', dataSrc: 'data' },
+                columns: [
+                    { data: 'id', width: '5%' },
+                    { data: 'nombreCliente', width: '20%' },
+                    { data: 'telefono', width: '10%' },
+                    { data: 'numeroPersonas', width: '8%' },
+                    {
+                        data: null, // Lee toda la fila para evitar conflictos de nombres de variables
+                        width: '15%',
+                        render: (data, type, row) => {
+                            // Captura el aforo ya sea que venga como numeroPersonas o cantidadPersonas
+                            const personas = row.numeroPersonas || row.cantidadPersonas || 0;
+
+                            if (personas < 1) return '-';
+
+                            const CAPACIDAD_MESA = 4;
+                            const mesasNecesarias = Math.ceil(personas / CAPACIDAD_MESA);
+
+                            return mesasNecesarias === 1 ? '1 mesa' : `${mesasNecesarias} mesas`;
+                        }
+                    },
+                    {
+                        data: 'fechaHoraReserva',
+                        width: '15%',
+                        render: (fecha) => {
+                            if (!fecha) return '-';
+                            const d = new Date(fecha);
+                            return d.toLocaleDateString('es-PE') + ' ' + d.toLocaleTimeString('es-PE', {hour: '2-digit', minute:'2-digit'});
+                        }
+                    },
+                    {
+                        data: 'estado',
+                        width: '10%',
+                        render: (estado) => {
+                            const badges = {
+                                'PENDIENTE': 'bg-warning text-dark',
+                                'CONFIRMADA': 'bg-success',
+                                'CANCELADA': 'bg-danger',
+                                'COMPLETADA': 'bg-secondary',
+                                'EXPIRADA': 'bg-danger'
+                            };
+                            return `<span class="badge ${badges[estado] || 'bg-secondary'}">${estado}</span>`;
+                        }
+                    },
+                    { data: 'observacion', defaultContent: '-', width: '12%' },
+                    {
+                        data: null,
+                        orderable: false,
+                        width: '10%',
+                        className: 'text-center',
+                        render: (data, type, row) => {
+                            let btns = '<div class="d-flex justify-content-center gap-1">';
+                            if (row.estado === 'CONFIRMADA') {
+                                btns += `<button class="btn btn-sm btn-success btn-confirmar" data-id="${row.id}" title="Confirmar llegada"><i class="bi bi-check-circle"></i></button>`;
+                            }
+                            if (row.estado === 'PENDIENTE' || row.estado === 'CONFIRMADA') {
+                                btns += `<button class="btn btn-sm btn-danger btn-cancelar" data-id="${row.id}" title="Cancelar reserva"><i class="bi bi-x-circle"></i></button>`;
+                            }
+                            if (row.estado === 'PENDIENTE' || row.estado === 'CONFIRMADA') {
+                                btns += `<button class="btn btn-sm btn-warning btn-editar" data-id="${row.id}" data-nombre="${row.nombreCliente}" data-telefono="${row.telefono}" data-personas="${row.numeroPersonas || row.cantidadPersonas || 0}" data-fecha="${row.fechaHoraReserva || ''}" data-observacion="${row.observacion || ''}" title="Editar reserva"><i class="bi bi-pencil"></i></button>`;
+                            }
+                            btns += `<button class="btn btn-sm btn-outline-danger btn-eliminar" data-id="${row.id}" title="Eliminar reserva"><i class="bi bi-trash"></i></button>`;
+                            btns += '</div>';
+                            return btns;
+                        }
                     }
+                ],
+                language: {
+                    processing: "Procesando...", lengthMenu: "Mostrar _MENU_",
+                    zeroRecords: "No hay reservas", emptyTable: "Sin reservas registradas",
+                    info: "Mostrando _START_ al _END_ de _TOTAL_",
+                    search: "Buscar:",
+                    paginate: { first: "Primero", last: "Último", next: "Siguiente", previous: "Anterior" }
                 },
-                {
-                    data: 'estado',
-                    width: '10%',
-                    render: (estado) => {
-                        const badges = {
-                            'PENDIENTE': 'bg-warning text-dark',
-                            'CONFIRMADA': 'bg-success',
-                            'CANCELADA': 'bg-danger',
-                            'COMPLETADA': 'bg-secondary',
-                            'EXPIRADA': 'bg-danger'
-                        };
-                        return `<span class="badge ${badges[estado] || 'bg-secondary'}">${estado}</span>`;
-                    }
-                },
-                { data: 'observacion', defaultContent: '-', width: '12%' },
-                {
-                    data: null,
-                    orderable: false,
-                    width: '10%',
-                    className: 'text-center',
-                    render: (data, type, row) => {
-                        let btns = '<div class="d-flex justify-content-center gap-1">';
-                        if (row.estado === 'CONFIRMADA') {
-                            btns += `<button class="btn btn-sm btn-success btn-confirmar" data-id="${row.id}" title="Confirmar llegada"><i class="bi bi-check-circle"></i></button>`;
-                        }
-                        if (row.estado === 'PENDIENTE' || row.estado === 'CONFIRMADA') {
-                            btns += `<button class="btn btn-sm btn-danger btn-cancelar" data-id="${row.id}" title="Cancelar reserva"><i class="bi bi-x-circle"></i></button>`;
-                        }
-                        if (row.estado === 'PENDIENTE' || row.estado === 'CONFIRMADA') {
-                            btns += `<button class="btn btn-sm btn-warning btn-editar" data-id="${row.id}" data-nombre="${row.nombreCliente}" data-telefono="${row.telefono}" data-personas="${row.numeroPersonas}" data-fecha="${row.fechaHoraReserva || ''}" data-observacion="${row.observacion || ''}" title="Editar reserva"><i class="bi bi-pencil"></i></button>`;
-                        }
-                        btns += `<button class="btn btn-sm btn-outline-danger btn-eliminar" data-id="${row.id}" title="Eliminar reserva"><i class="bi bi-trash"></i></button>`;
-                        btns += '</div>';
-                        return btns;
-                    }
-                }
-            ],
-            language: {
-                processing: "Procesando...", lengthMenu: "Mostrar _MENU_",
-                zeroRecords: "No hay reservas", emptyTable: "Sin reservas registradas",
-                info: "Mostrando _START_ al _END_ de _TOTAL_",
-                search: "Buscar:",
-                paginate: { first: "Primero", last: "Último", next: "Siguiente", previous: "Anterior" }
-            },
-            order: [[5, 'desc']]
-        });
-    }
+                order: [[5, 'desc']]
+            });
+        }
 
     // 🟩 AUDITORÍA INTERNA DE REGLAS DE TIEMPO (DESACTIVADO: Siempre libre)
     function esIntervaloInvalido(horaStr) {

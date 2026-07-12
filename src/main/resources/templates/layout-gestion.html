@@ -78,7 +78,10 @@
 <script th:src="@{/js/validation.js}"></script>
 <script th:inline="javascript">
     window.turnoUsuarioLogueado = /*[[${session.empleadoTurno}]]*/ 'DIA';
-    window.rolUsuarioLogueado = /*[[${session.rol}]]*/ 'CAJERO';
+    window.rolUsuarioLogueado   = /*[[${session.rol}]]*/ 'CAJERO';
+
+    window.esSuperAdmin = /*[[${session.rol != null && session.rol.toString().toUpperCase() == 'SUPER_ADMIN'}]]*/ false;
+    window.esAdmin      = /*[[${session.rol != null && session.rol.toString().toUpperCase() == 'ADMIN'}]]*/ false;
 </script>
 <script th:src="@{{path}(path=${js})}"></script>
 </body>

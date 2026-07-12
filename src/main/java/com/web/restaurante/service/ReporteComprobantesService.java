@@ -40,6 +40,12 @@ public class ReporteComprobantesService {
     @Autowired
     private PedidoRepository pedidoRepository;
 
+    private LocalDateTime fechaEfectiva(Pedido p) {
+        return (p.getComprobanteNumero() != null && p.getFechaEntrega() != null)
+                ? p.getFechaEntrega()
+                : p.getFechaCreacion();
+    }
+
     public byte[] generarReporteComprobantes(String pestaña, String formato, String inicio, String fin, String texto, String metodo, String origen) {
         List<Pedido> todasLasOrdenes = pedidoRepository.findAll();
         List<Pedido> filtrados;
@@ -78,10 +84,13 @@ public class ReporteComprobantesService {
         filtrados = filtrados.stream()
                 .filter(p -> {
                     // Filtro de Rango Cronológico (La pestaña PENDIENTES ignora rangos históricos por regla de negocio)
-                    if (!"PENDIENTES".equalsIgnoreCase(pestaña) && p.getFechaCreacion() != null) {
-                        LocalDate fPedido = p.getFechaCreacion().toLocalDate();
-                        if (dateInicio != null && fPedido.isBefore(dateInicio)) return false;
-                        if (dateFin != null && fPedido.isAfter(dateFin)) return false;
+                    if (!"PENDIENTES".equalsIgnoreCase(pestaña)) {
+                        LocalDateTime fEfectiva = fechaEfectiva(p);
+                        if (fEfectiva != null) {
+                            LocalDate fPedido = fEfectiva.toLocalDate();
+                            if (dateInicio != null && fPedido.isBefore(dateInicio)) return false;
+                            if (dateFin != null && fPedido.isAfter(dateFin)) return false;
+                        }
                     }
 
                     // Filtro de Texto (Nombre, Serie CPE, Serie Nota de Venta, DNI/RUC)
@@ -123,7 +132,13 @@ public class ReporteComprobantesService {
                 .collect(Collectors.toList());
 
         // Ordenamos cronológicamente descendente (Lo más nuevo arriba)
-        filtrados.sort((a, b) -> b.getId().compareTo(a.getId()));
+        filtrados.sort((a, b) -> {
+            LocalDateTime fechaA = fechaEfectiva(a);
+            LocalDateTime fechaB = fechaEfectiva(b);
+            if (fechaA == null) fechaA = LocalDateTime.MIN;
+            if (fechaB == null) fechaB = LocalDateTime.MIN;
+            return fechaB.compareTo(fechaA);
+        });
 
         if ("EXCEL".equalsIgnoreCase(formato)) {
             return exportarExcelComprobantes(filtrados, pestaña);

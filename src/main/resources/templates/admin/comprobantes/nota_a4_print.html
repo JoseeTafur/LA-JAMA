@@ -4,40 +4,42 @@
     <meta charset="UTF-8">
     <title>Nota de Crédito Electrónica - A4</title>
     <style>
-        @page { size: A4; margin: 15mm; }
+        @page { size: A4; margin: 20mm 15mm; }
         body {
-            font-family: Arial, sans-serif;
-            color: #333;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #2c3e50;
             font-size: 13px;
-            line-height: 1.4;
+            line-height: 1.5;
             margin: 0;
+            padding: 0 5px;
         }
-        .header-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
-        .logo-box { width: 55%; vertical-align: top; }
+        .header-table { width: 100%; margin-bottom: 25px; border-collapse: collapse; }
+        .logo-box { width: 55%; vertical-align: top; padding-right: 15px; }
         .rno-box {
             width: 45%;
-            border: 2px solid #333;
+            border: 2px solid #1b3a2c;
             text-align: center;
-            padding: 15px;
+            padding: 20px;
             vertical-align: middle;
-            background-color: #fcfcfc;
+            background-color: #fcfdfa;
+            border-radius: 8px;
         }
         .info-box {
             width: 100%;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 12px;
-            margin-bottom: 20px;
-            background-color: #fafafa;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+            background-color: #f8fafc;
         }
-        .info-box td { padding: 4px 0; vertical-align: top; }
-        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-        .data-table th { background-color: #333; color: #fff; padding: 8px; text-align: left; font-size: 12px; }
-        .data-table td { padding: 10px 8px; border-bottom: 1px solid #ddd; }
-        .bottom-wrapper { width: 100%; border-collapse: collapse; }
-        .totales-box { width: 40%; float: right; }
+        .info-box td { padding: 6px 4px; vertical-align: top; }
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        .data-table th { background-color: #1b3a2c; color: #fff; padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; }
+        .data-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; color: #334155; }
+        .totales-box { width: 45%; float: right; margin-top: 10px; }
         .totales-table { width: 100%; border-collapse: collapse; }
-        .totales-table td { padding: 5px 8px; border: 1px solid #ddd; }
+        .totales-table td { padding: 7px 12px; border: 1px solid #e2e8f0; }
+        .totales-table tr:last-child { background-color: #f1f5f9; font-size: 14px; color: #1b3a2c; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .fw-bold { font-weight: bold; }
@@ -45,52 +47,49 @@
 </head>
 <body>
 
-<!-- CABECERA PRINCIPAL -->
 <table class="header-table">
     <tr>
         <td class="logo-box">
-            <span class="fw-bold" style="font-size: 22px; color: #111;">RESTAURANTE LA JAMA S.A.C.</span><br>
-            <span style="color: #666;">Chiclayo, Lambayeque, Perú</span><br>
-            <span>Sede Central Contable</span><br>
-            <span>Telf: 978654321</span>
+            <span class="fw-bold" style="font-size: 24px; color: #1b3a2c; letter-spacing: -0.5px;">RESTAURANTE LA JAMA S.A.C.</span><br>
+            <span style="color: #64748b; font-size: 12px; display: block; margin-top: 2px;">Chiclayo, Lambayeque, Perú</span><br>
+            <span style="font-size: 12px; color: #475569;">Sede Central Contable • Saneamiento de Caja</span><br>
+            <span style="font-size: 12px; color: #475569;">Telf: 978654321</span>
         </td>
         <td class="rno-box">
-            <span class="fw-bold" style="font-size: 16px;">R.U.C. 20000000001</span><br>
-            <span class="fw-bold" style="font-size: 18px; display: block; margin: 8px 0; color: #bd2130;">NOTA DE CRÉDITO ELECTRÓNICA</span><br>
-            <span class="fw-bold" style="font-size: 16px;" th:text="${pedido.comprobanteNotaNumero != null ? pedido.comprobanteNotaNumero : 'BC01-00000001'}">BC01-00000001</span>
+            <span class="fw-bold" style="font-size: 15px; color: #475569;">R.U.C. 20000000001</span><br>
+            <span class="fw-bold" style="font-size: 16px; display: block; margin: 10px 0; color: #933d2d; letter-spacing: 0.3px;">NOTA DE CRÉDITO ELECTRÓNICA</span><br>
+            <span class="fw-bold" style="font-size: 16px; color: #1b3a2c; font-family: monospace;" th:text="${pedido.comprobanteNotaNumero != null ? pedido.comprobanteNotaNumero : 'BC01-00000001'}">BC01-00000001</span>
         </td>
     </tr>
 </table>
 
-<!-- CAJA DE INFORMACIÓN DEL RECEPTOR Y REFERENCIA -->
 <div class="info-box">
     <table style="width: 100%;">
         <tr>
-            <td class="fw-bold" style="width: 18%;">CLIENTE:</td>
-            <td style="width: 42%;" th:text="${pedido.cliente}">MESA #10 (TICKET 1)</td>
-            <td class="fw-bold" style="width: 22%;">FECHA EMISIÓN:</td>
-            <td style="width: 18%;" th:text="${#temporals.format(pedido.fechaCreacion, 'dd/MM/yyyy HH:mm')}">20/06/2026 13:11</td>
+            <td class="fw-bold" style="width: 18%; color: #64748b;">CLIENTE:</td>
+            <td style="width: 42%; font-weight: 600;" th:text="${pedido.cliente}">MESA #10 (TICKET 1)</td>
+            <td class="fw-bold" style="width: 22%; color: #64748b;">FECHA EMISIÓN:</td>
+            <td style="width: 18%; font-weight: 600;" th:text="${#temporals.format(pedido.fechaEntrega != null ? pedido.fechaEntrega : pedido.fechaCreacion, 'dd/MM/yyyy HH:mm')}">20/06/2026 13:11</td>
         </tr>
         <tr>
-            <td class="fw-bold">DOCUMENTO:</td>
-            <td th:text="${pedido.documentoCliente != null && pedido.documentoCliente != '' ? pedido.documentoCliente : 'SIN DOCUMENTO'}">SIN DOCUMENTO</td>
-            <td class="fw-bold">MONEDA:</td>
+            <td class="fw-bold" style="color: #64748b;">DOCUMENTO:</td>
+            <td style="font-family: monospace;" th:text="${pedido.documentoCliente != null && pedido.documentoCliente != '' ? pedido.documentoCliente : 'SIN DOCUMENTO'}">SIN DOCUMENTO</td>
+            <td class="fw-bold" style="color: #64748b;">MONEDA:</td>
             <td>SOLES (PEN)</td>
         </tr>
         <tr>
-            <td class="fw-bold">DIRECCIÓN:</td>
+            <td class="fw-bold" style="color: #64748b;">DIRECCIÓN:</td>
             <td th:text="${pedido.documentoCliente != null && pedido.documentoCliente.length() == 11 ? 'CHICLAYO, LAMBAYEQUE' : 'CHICLAYO'}">CHICLAYO</td>
-            <td class="fw-bold">DOC. RELACIONADO:</td>
-            <td class="fw-bold" th:text="${pedido.comprobanteNumero}">BOLETA B001-00000005</td>
+            <td class="fw-bold" style="color: #64748b;">DOC. RELACIONADO:</td>
+            <td class="fw-bold" style="font-family: monospace;" th:text="${pedido.comprobanteNumero}">BOLETA B001-00000005</td>
         </tr>
         <tr>
-            <td class="fw-bold">MOTIVO EMISIÓN:</td>
-            <td colspan="3">01 - ERROR DE EMISION</td>
+            <td class="fw-bold" style="color: #64748b;">MOTIVO EMISIÓN:</td>
+            <td colspan="3" style="font-weight: 500;" th:text="${pedido.motivoAnulacion != null ? pedido.motivoAnulacion : 'Sin especificar'}">01 - ANULACIÓN DE LA OPERACIÓN Y BAJA TOTAL</td>
         </tr>
     </table>
 </div>
 
-<!-- TABLA DE ITEMS -->
 <table class="data-table">
     <thead>
     <tr>
@@ -105,17 +104,16 @@
         <td class="text-center">1</td>
         <td class="text-center">1</td>
         <td th:text="'ANULACION TOTAL DE LA ORDEN DE SERVICIO NV-' + ${pedido.id}">ANULACION TOTAL DE LA ORDEN DE SERVICIO NV-126</td>
-        <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)}">S/. 20.00</td>
+        <td class="text-right fw-bold" th:text="'S/. ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)}">S/. 20.00</td>
     </tr>
     </tbody>
 </table>
 
-<!-- SECCIÓN INFERIOR DE TOTALES -->
 <div style="width: 100%; overflow: hidden;">
-    <div style="width: 55%; float: left;">
-        <p class="fw-bold" th:text="'SON: ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)} + ' SOLES'"></p>
-        <p style="font-size: 11px; color: #55px; margin-top: 15px;">
-            Consulte su documento electrónico en: <span class="fw-bold">https://www.sunat.gob.pe</span><br>
+    <div style="width: 50%; float: left; padding-top: 15px;">
+        <span class="fw-bold d-block" style="font-size: 12px; color: #475569;" th:text="'SON: ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)} + ' SOLES'"></span>
+        <p style="font-size: 11px; color: #94a3b8; margin-top: 25px; line-height: 1.6;">
+            Consulte su documento electrónico en: <span class="fw-bold" style="color: #475569;">https://www.sunat.gob.pe</span><br>
             Representación impresa oficial de la Nota de Crédito Electrónica sin trazas de advertencia de pasarela externa.
         </p>
     </div>
@@ -123,34 +121,31 @@
     <div class="totales-box">
         <table class="totales-table">
             <tr>
-                <td>Op. Gravada:</td>
-                <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(subtotal, 1, 2)}">S/. 16.95</td>
+                <td style="color: #64748b;">Op. Gravada:</td>
+                <td class="text-right font-monospace" th:text="'S/. ' + ${#numbers.formatDecimal(subtotal, 1, 2)}">S/. 16.95</td>
             </tr>
             <tr>
-                <td>Op. Exonerada:</td>
-                <td class="text-right">S/. 0.00</td>
+                <td style="color: #64748b;">Op. Exonerada:</td>
+                <td class="text-right font-monospace">S/. 0.00</td>
             </tr>
             <tr>
-                <td>Op. Inafecta:</td>
-                <td class="text-right">S/. 0.00</td>
+                <td style="color: #64748b;">Op. Inafecta:</td>
+                <td class="text-right font-monospace">S/. 0.00</td>
             </tr>
             <tr>
-                <td>IGV (18%):</td>
-                <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(igv, 1, 2)}">S/. 3.05</td>
+                <td style="color: #64748b;">IGV (18%):</td>
+                <td class="text-right font-monospace" th:text="'S/. ' + ${#numbers.formatDecimal(igv, 1, 2)}">S/. 3.05</td>
             </tr>
-            <tr class="fw-bold" style="background-color: #f5f5f5;">
-                <td>Total:</td>
-                <td class="text-right" th:text="'S/. ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)}">S/. 20.00</td>
+            <tr class="fw-bold">
+                <td>Total Revertido:</td>
+                <td class="text-right font-monospace" th:text="'S/. ' + ${#numbers.formatDecimal(pedido.montoTotal, 1, 2)}">S/. 20.00</td>
             </tr>
         </table>
     </div>
 </div>
 
-<!-- Script de auto-disparo de impresión -->
 <script>
-    window.onload = function() {
-        window.print();
-    }
+    window.onload = function() { window.print(); }
 </script>
 </body>
 </html>

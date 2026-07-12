@@ -154,12 +154,28 @@ public class MesaController {
     @PostMapping("/unificar")
     @ResponseBody
     public ResponseEntity<String> unificarMesas(
-            @RequestParam Long idMesaPrincipal,
-            @RequestParam List<Long> idsMesasHijas) {
+            @RequestParam("idMesaPrincipal") Long idMesaPrincipal,
+            @RequestParam(value = "idsMesasHijas[]", required = false) List<String> idsMesasHijas) { // 🎯 Recibimos como String para evitar el rebote 400
         try {
-            mesaService.unificarMesas(idMesaPrincipal, idsMesasHijas);
+            // 🛡️ ADUANA PREVENTIVA DE CONTROL
+            if (idsMesasHijas == null || idsMesasHijas.isEmpty()) {
+                return ResponseEntity.badRequest().body("Error: No se seleccionaron mesas hijas para realizar la unificación.");
+            }
+
+            // Parseo seguro y explícito a Long libre de anomalías de binding
+            List<Long> idsMesasHijasLong = idsMesasHijas.stream()
+                    .map(id -> Long.parseLong(id.trim()))
+                    .toList();
+
+            // Invocamos al service; aquí sí saltarán tus excepciones controladas de la política
+            mesaService.unificarMesas(idMesaPrincipal, idsMesasHijasLong);
+
             return ResponseEntity.ok("Mesas unificadas con éxito");
+        } catch (IllegalArgumentException e) {
+            // 🎯 CAPTURA DE POLÍTICA: Retorna tus mensajes personalizados ("No se puede unificar...") con un HTTP 400 controlado
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error al unificar: " + e.getMessage());
         }
     }
@@ -216,6 +232,8 @@ public class MesaController {
         try {
             mesaService.trasladarComandaDeMesa(idMesaOrigen, idMesaDestino);
             return ResponseEntity.ok("Comanda trasladada con éxito");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al trasladar mesa: " + e.getMessage());
         }
@@ -224,15 +242,27 @@ public class MesaController {
     @PostMapping("/comanda/dividir-platos-por-numero")
     @ResponseBody
     public ResponseEntity<String> dividirYTrasladarPlatosPorNumero(
-            @RequestParam Long idMesaOrigen,
-            @RequestParam Integer numeroMesaDestino,
-            @RequestParam List<Long> idsDetalles) {
+            @RequestParam("idMesaOrigen") Long idMesaOrigen,
+            @RequestParam("numeroMesaDestino") Integer numeroMesaDestino,
+            @RequestParam("idsDetalles") List<String> idsDetalles) {
         try {
+            if (idsDetalles == null || idsDetalles.isEmpty()) {
+                return ResponseEntity.badRequest().body("Error: No se recibieron identificadores de platos.");
+            }
+
+            List<Long> idsDetallesLong = idsDetalles.stream()
+                    .map(id -> Long.parseLong(id.trim()))
+                    .toList();
+
             Mesa mesaDestino = mesaRepository.findByNumero(numeroMesaDestino)
                     .orElseThrow(() -> new RuntimeException("La mesa N° " + numeroMesaDestino + " no existe en el plano."));
 
-            mesaService.dividirYTrasladarPlatos(idMesaOrigen, mesaDestino.getId(), idsDetalles);
+            // Enviamos la lista de Longs perfectamente casteada al Service
+            mesaService.dividirYTrasladarPlatos(idMesaOrigen, mesaDestino.getId(), idsDetallesLong);
+
             return ResponseEntity.ok("Platos divididos correctamente");
+        } catch (NumberFormatException nfe) {
+            return ResponseEntity.badRequest().body("Error: Formato de ID de plato inválido.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
