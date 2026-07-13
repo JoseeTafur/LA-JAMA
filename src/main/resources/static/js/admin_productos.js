@@ -126,8 +126,12 @@ function filtrarTabla() {
     let contadorResultados = 0;
 
     rows.forEach(row => {
-        const nombre = row.querySelector(".target-busqueda-nombre").textContent.toUpperCase();
-        const categoria = row.querySelector(".target-busqueda-cat").textContent.toUpperCase();
+        const nombreEl = row.querySelector(".target-busqueda-nombre");
+        // Buscamos el elemento de categoría por clase o por su atributo data inyectado
+        const categoriaEl = row.querySelector("[data-categoria], .target-busqueda-cat-fix");
+
+        const nombre = nombreEl ? nombreEl.textContent.toUpperCase() : "";
+        const categoria = categoriaEl ? (categoriaEl.getAttribute("data-categoria") || categoriaEl.textContent).toUpperCase() : "";
 
         if (nombre.includes(input) || categoria.includes(input)) {
             row.classList.add("busqueda-valida");
@@ -138,14 +142,13 @@ function filtrarTabla() {
         }
     });
 
-    // Control de contingencia de resultados nulos
     const filaError = document.getElementById("filaSinResultados");
     if (contadorResultados === 0 && input !== "") {
-        filaError.style.display = "";
-        document.getElementById("paginadorContenedor").innerHTML = "";
+        if (filaError) filaError.style.display = "";
+        const paginador = document.getElementById("paginadorContenedor");
+        if (paginador) paginador.innerHTML = "";
     } else {
-        filaError.style.display = "none";
-        // Si hay búsqueda activa reinicia a pág 1, si no, respeta la paginación regular
+        if (filaError) filaError.style.display = "none";
         paginarTablaManual(input !== "" ? 1 : currentPage);
     }
 }

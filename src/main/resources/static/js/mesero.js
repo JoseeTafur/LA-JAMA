@@ -4,9 +4,16 @@ let insumosProductoActual = [];
 let bsModalInsumos = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Inicialización del Modal de Insumos original
     const modalEl = document.getElementById('modalInsumos');
     if (modalEl) {
         bsModalInsumos = new bootstrap.Modal(modalEl);
+    }
+
+    // 🎯 REPARACIÓN DE ADUANA DE BÚSQUEDA REACTIVA EN CALIENTE
+    const inputBuscador = document.getElementById('buscador');
+    if (inputBuscador) {
+        inputBuscador.addEventListener('input', filtrarProductos);
     }
 });
 
@@ -236,10 +243,17 @@ function eliminarItem(index) {
 }
 
 function filtrarProductos() {
-    const texto = document.getElementById('buscador').value.toLowerCase();
-    document.querySelectorAll('.producto-card').forEach(tarjeta => {
-        const nombre = tarjeta.querySelector('.nombre-producto').innerText.toLowerCase();
-        tarjeta.style.display = nombre.includes(texto) ? '' : 'none';
+    const texto = document.getElementById('buscador').value.toLowerCase().trim();
+
+    // 🎯 REPARACIÓN: Usamos la clase exacta del contenedor de tu bucle HTML
+    document.querySelectorAll('.producto-card-wrapper').forEach(tarjeta => {
+        // 🎯 REPARACIÓN: Buscamos la clase exacta del título del plato
+        const elNombre = tarjeta.querySelector('.product-title');
+
+        if (elNombre) {
+            const nombreTexto = elNombre.innerText.toLowerCase();
+            tarjeta.style.display = nombreTexto.includes(texto) ? '' : 'none';
+        }
     });
 }
 
@@ -271,7 +285,7 @@ function enviarPedido() {
         let notasDeOmision = [];
         carrito.forEach(item => {
             if (item.nombresSinDescontar && item.nombresSinDescontar.length > 0) {
-                notesDeOmision.push(`${item.nombre} (SIN: ${item.nombresSinDescontar.join(', ')})`);
+                notasDeOmision.push(`${item.nombre} (SIN: ${item.nombresSinDescontar.join(', ')})`);
             }
         });
 

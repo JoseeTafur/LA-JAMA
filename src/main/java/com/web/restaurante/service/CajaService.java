@@ -73,7 +73,7 @@ public class CajaService {
             return monto;
         };
 
-        // 3. CÁLCULOS MATEMÁTICOS CON AUDITORÍA AUTO-HEALING
+// 3. CÁLCULOS MATEMÁTICOS CON BALANCES PURIFICADOS
         double ventasEfectivo = liquidados.stream()
                 .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.EFECTIVO)
                 .mapToDouble(calcularMontoSeguro)
@@ -94,6 +94,7 @@ public class CajaService {
                 .mapToDouble(calcularMontoSeguro)
                 .sum();
 
+        // Ingresos manuales estrictos de billetes a la gaveta
         double totalIngresosManuales = movimientos.stream()
                 .filter(m -> m.getTipo() != null
                         && m.getTipo().getGrupoMacro().equals("INGRESO")
@@ -101,22 +102,27 @@ public class CajaService {
                         && m.getTipo() != TipoMovimientoCaja.APERTURA)
                 .mapToDouble(MovimientoCaja::getMonto).sum();
 
-        double totalEgresos = movimientos.stream()
+        // Egresos manuales o extornos que se devolvieron FÍSICAMENTE en efectivo
+        double totalEgresosEfectivo = movimientos.stream()
                 .filter(m -> m.getTipo() != null
                         && m.getTipo().getGrupoMacro().equals("EGRESO")
                         && m.getTipo() != TipoMovimientoCaja.CIERRE)
+                .filter(m -> m.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.EFECTIVO) // Candado de exclusión
                 .mapToDouble(MovimientoCaja::getMonto).sum();
 
         double totalVentasPedidos = liquidados.stream()
                 .mapToDouble(calcularMontoSeguro)
                 .sum();
 
-        double efectivoEsperadoTotal = turnoActivo.getMontoApertura() + ventasEfectivo + totalIngresosManuales + totalEgresos;
+        // 🎯 BALANCING MATEMÁTICO INTEGRAL: El efectivo esperado computará de forma exacta las tres fuerzas
+        double efectivoEsperadoTotal = turnoActivo.getMontoApertura() + ventasEfectivo + totalIngresosManuales + totalEgresosEfectivo;
         if (efectivoEsperadoTotal < 0) {
             efectivoEsperadoTotal = 0.0;
         }
 
-        double saldoTeoricoGlobal = turnoActivo.getMontoApertura() + totalVentasPedidos + totalIngresosManuales + totalEgresos;
+        double saldoTeoricoGlobal = turnoActivo.getMontoApertura() + totalVentasPedidos + totalIngresosManuales + movimientos.stream()
+                .filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("EGRESO") && m.getTipo() != TipoMovimientoCaja.CIERRE)
+                .mapToDouble(MovimientoCaja::getMonto).sum();
 
         // 4. MOVIMIENTOS EXCLUSIVOS CAJERO
         List<MovimientoCaja> movimientosExclusivosCajero = movimientos.stream()

@@ -479,15 +479,13 @@ public class ComprobanteAdminController {
 
                 pedidoOriginal.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.EXTORNADO);
                 pedidoOriginal.setEstado(com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
-
-                // 🎯 ELIMINADO EL BUG: Quitamos 'setFechaCreacion(now)' para no romper el histórico de la NV.
-                // Registramos el momento exacto de la anulación contable en fechaEntrega.
                 pedidoOriginal.setFechaEntrega(java.time.LocalDateTime.now());
 
                 pedidoService.guardar(pedidoOriginal);
 
                 AuditoriaAnulacion auditoria = new AuditoriaAnulacion();
                 auditoria.setPedido(pedidoOriginal);
+                auditoria.setMotivo(motivo); // O setMotivo según tu modelo
                 auditoria.setMotivo(motivo);
                 auditoria.setTipoNota("TOTAL");
                 auditoria.setSustento(sustento);
@@ -498,9 +496,8 @@ public class ComprobanteAdminController {
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
                     try {
                         emailService.enviarComprobante(pedidoAnuladoParaEmail.getClienteCorreo(), pedidoAnuladoParaEmail);
-                        System.out.println("📧 [Background Thread] Correo de Nota de Crédito enviado con éxito.");
                     } catch (Exception ex) {
-                        System.err.println("⚠️ [Background Thread Error] Falló el envío: " + ex.getMessage());
+                        System.err.println("⚠️ Falló el envío de correo de la nota: " + ex.getMessage());
                     }
                 });
 
@@ -540,8 +537,9 @@ public class ComprobanteAdminController {
                 nuevoCliente = "CLIENTE";
             }
 
-            if (nuevoCorreo == null || nuevoCorreo.isEmpty()) {
-                nuevoCorreo = pedidoOriginal.getClienteCorreo();
+            // 🟩 NORMALIZACIÓN: Si el casillero viene vacío o con espacios, se limpia a null de forma lícita
+            if (nuevoCorreo != null && nuevoCorreo.isEmpty()) {
+                nuevoCorreo = null;
             }
 
             List<Map<String, Object>> detallesModificados = (List<Map<String, Object>>) payload.get("detallesModificados");
@@ -565,7 +563,6 @@ public class ComprobanteAdminController {
                             DetallePedido nuevoDetalle = new DetallePedido();
                             nuevoDetalle.setPedido(nuevoPedido);
                             nuevoDetalle.setProducto(detalleOriginal.getProducto());
-                            // Congelación estricta del precio original de carta corporativa
                             nuevoDetalle.setPrecioUnitario(detalleOriginal.getPrecioUnitario());
                             nuevoDetalle.setCantidad(nuevaCantidad);
                             nuevoDetalle.setCanceladoPorCliente(false);
@@ -577,24 +574,20 @@ public class ComprobanteAdminController {
                 }
             }
 
-            // ── ADUANA BACKEND 1: Control de Total Mínimo ──
             if (nuevoTotalAcumulado <= 0) {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Error fiscal: El monto total de re-emisión debe ser mayor a S/ 0.00."));
             }
 
-            // ── ADUANA BACKEND 2: Control Obligatorio de Facturas ──
             if ("FACTURA".equals(nuevoTipoCpe) && (nuevoDoc.length() != 11 || !nuevoDoc.matches("\\d+"))) {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Error fiscal: Las facturas exigen un número de RUC válido de 11 dígitos."));
             }
 
-            // ── ADUANA BACKEND 3: Límite Legal SUNAT Boletas S/ 700 ──
             if ("BOLETA".equals(nuevoTipoCpe) && nuevoTotalAcumulado >= 700.00) {
                 if (nuevoDoc.isEmpty() || nuevoDoc.length() < 8 || "CLIENTE".equals(nuevoCliente)) {
                     return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Regulación SUNAT: Boletas con montos mayores o iguales a S/ 700.00 exigen registrar los datos del cliente obligatoriamente."));
                 }
             }
 
-            // Mapeo e Inyección de la estructura de clonación limpia
             nuevoPedido.setCliente(nuevoCliente);
             nuevoPedido.setDocumentoCliente(nuevoDoc.isEmpty() ? null : nuevoDoc);
             nuevoPedido.setClienteCorreo(nuevoCorreo);
@@ -636,20 +629,18 @@ public class ComprobanteAdminController {
                 pedidoOriginal.setComprobanteENumero("REEMITIDO");
                 pedidoService.guardar(pedidoOriginal);
 
-                // 🎯 SINCRONIZACIÓN DE FLUJO NETO: Registramos el ingreso legítimo en la caja actual
-                String origenLabel = nuevoPedido.getNumeroMesa() != null ? "Mesa " + nuevoPedido.getNumeroMesa() : "POS";
-                String conceptoCaja = "Re-emisión CPE Corregido (" + origenLabel + ") - Nota: " + nuevoPedido.getComprobanteNotaNumero();
-                turnoCajaService.registrarVenta(conceptoCaja, nuevoTotalAcumulado);
-
+                // 🟩 ESCUDO DE CORREO ASÍNCRONO: Solo despacha el hilo si el correo no es null ni está vacío
                 final Pedido nuevoPedidoParaEmail = nuevoPedido;
-                java.util.concurrent.CompletableFuture.runAsync(() -> {
-                    try {
-                        emailService.enviarComprobante(nuevoPedidoParaEmail.getClienteCorreo(), nuevoPedidoParaEmail);
-                        System.out.println("📧 [Background Thread] Correo de re-emisión enviado para NV: " + nuevoPedidoParaEmail.getId());
-                    } catch (Exception ex) {
-                        System.err.println("⚠️ [Background Thread Error] Falló el envío diferido: " + ex.getMessage());
-                    }
-                });
+                if (nuevoPedidoParaEmail.getClienteCorreo() != null && !nuevoPedidoParaEmail.getClienteCorreo().isEmpty()) {
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        try {
+                            emailService.enviarComprobante(nuevoPedidoParaEmail.getClienteCorreo(), nuevoPedidoParaEmail);
+                            System.out.println("📧 [Background Thread] Correo de re-emisión enviado para NV: " + nuevoPedidoParaEmail.getId());
+                        } catch (Exception ex) {
+                            System.err.println("⚠️ [Background Thread Error] Falló el envío diferido: " + ex.getMessage());
+                        }
+                    });
+                }
 
                 return ResponseEntity.ok(Map.of(
                         "success", true,
