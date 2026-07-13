@@ -41,19 +41,16 @@ public class CajaService {
     public Map<String, Object> calcularMetricasDashboard(TurnoCaja turnoActivo, List<MovimientoCaja> movimientos) {
         Map<String, Object> metricas = new HashMap<>();
 
-        // 🚀 FILTRO ATÓMICO: Traemos estrictamente los pedidos amarrados a este turno específico
         List<Pedido> pedidosDelTurnoActivo = pedidoRepository.findAll().stream()
                 .filter(p -> p.getTurnoCaja() != null && p.getTurnoCaja().getId().equals(turnoActivo.getId()))
                 .filter(p -> p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
                 .collect(Collectors.toList());
 
-        // 1. LIQUIDADOS (Fluye directo de los pedidos del turno activo)
         List<Pedido> liquidados = pedidosDelTurnoActivo.stream()
                 .filter(p -> EstadoPago.PAGADO.equals(p.getEstadoPago()))
                 .filter(p -> p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
                 .collect(Collectors.toList());
 
-        // 2. HISTORIAL VISUAL (Fluye directo de los pedidos del turno activo)
         List<Pedido> pedidosHistorialVisual = pedidosDelTurnoActivo.stream()
                 .filter(p -> EstadoPago.PAGADO.equals(p.getEstadoPago())
                         || EstadoPago.EXTORNADO.equals(p.getEstadoPago()))
@@ -61,7 +58,6 @@ public class CajaService {
                 .sorted(Comparator.comparing(Pedido::getId).reversed())
                 .collect(Collectors.toList());
 
-        // Helper interno para calcular el monto real de un pedido sumando platos si el montoTotal es 0 o null
         java.util.function.ToDoubleFunction<Pedido> calcularMontoSeguro = p -> {
             double monto = p.getMontoTotal() != null ? p.getMontoTotal() : 0.0;
             if (monto <= 0.0 && p.getListaDetalles() != null) {
@@ -73,7 +69,13 @@ public class CajaService {
             return monto;
         };
 
-// 3. CÁLCULOS MATEMÁTICOS CON BALANCES PURIFICADOS
+        java.util.function.Predicate<MovimientoCaja> esMovimientoManualPuro = m -> {
+            String c = m.getConcepto() != null ? m.getConcepto().toUpperCase() : "";
+            return !(c.contains("FONDO INICIAL") || c.contains("LIQUIDACIÓN") || c.contains("LIQUIDACION")
+                    || c.contains("CARTA") || c.contains("VENTA POS DIRECTO") || c.contains("ORDEN #")
+                    || c.contains("EXTORNO") || c.contains("ANULACI") || c.contains("RE-EMISI"));
+        };
+
         double ventasEfectivo = liquidados.stream()
                 .filter(p -> p.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.EFECTIVO)
                 .mapToDouble(calcularMontoSeguro)
@@ -94,43 +96,29 @@ public class CajaService {
                 .mapToDouble(calcularMontoSeguro)
                 .sum();
 
-        // Ingresos manuales estrictos de billetes a la gaveta
         double totalIngresosManuales = movimientos.stream()
-                .filter(m -> m.getTipo() != null
-                        && m.getTipo().getGrupoMacro().equals("INGRESO")
-                        && m.getTipo() != TipoMovimientoCaja.INGRESO_VENTA
-                        && m.getTipo() != TipoMovimientoCaja.APERTURA)
+                .filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("INGRESO"))
+                .filter(esMovimientoManualPuro)
                 .mapToDouble(MovimientoCaja::getMonto).sum();
 
-        // Egresos manuales o extornos que se devolvieron FÍSICAMENTE en efectivo
-        double totalEgresosEfectivo = movimientos.stream()
-                .filter(m -> m.getTipo() != null
-                        && m.getTipo().getGrupoMacro().equals("EGRESO")
-                        && m.getTipo() != TipoMovimientoCaja.CIERRE)
-                .filter(m -> m.getMetodoPago() == com.web.restaurante.model.enums.MetodoPago.EFECTIVO) // Candado de exclusión
+        double totalEgresos = movimientos.stream()
+                .filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("EGRESO"))
+                .filter(esMovimientoManualPuro)
                 .mapToDouble(MovimientoCaja::getMonto).sum();
 
         double totalVentasPedidos = liquidados.stream()
                 .mapToDouble(calcularMontoSeguro)
                 .sum();
 
-        // 🎯 BALANCING MATEMÁTICO INTEGRAL: El efectivo esperado computará de forma exacta las tres fuerzas
-        double efectivoEsperadoTotal = turnoActivo.getMontoApertura() + ventasEfectivo + totalIngresosManuales + totalEgresosEfectivo;
+        double efectivoEsperadoTotal = turnoActivo.getMontoApertura() + ventasEfectivo + totalIngresosManuales + totalEgresos;
         if (efectivoEsperadoTotal < 0) {
             efectivoEsperadoTotal = 0.0;
         }
 
-        double saldoTeoricoGlobal = turnoActivo.getMontoApertura() + totalVentasPedidos + totalIngresosManuales + movimientos.stream()
-                .filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("EGRESO") && m.getTipo() != TipoMovimientoCaja.CIERRE)
-                .mapToDouble(MovimientoCaja::getMonto).sum();
+        double saldoTeoricoGlobal = turnoActivo.getMontoApertura() + totalVentasPedidos + totalIngresosManuales + totalEgresos;
 
-        // 4. MOVIMIENTOS EXCLUSIVOS CAJERO
         List<MovimientoCaja> movimientosExclusivosCajero = movimientos.stream()
-                .filter(m -> {
-                    String c = m.getConcepto() != null ? m.getConcepto().toUpperCase() : "";
-                    return !(c.contains("FONDO INICIAL") || c.contains("LIQUIDACIÓN") || c.contains("LIQUIDACION")
-                            || c.contains("CARTA QR") || c.contains("VENTA POS DIRECTO") || c.contains("ORDEN #"));
-                })
+                .filter(esMovimientoManualPuro)
                 .sorted(Comparator.comparing(MovimientoCaja::getId).reversed())
                 .collect(Collectors.toList());
 
@@ -142,7 +130,6 @@ public class CajaService {
                 .filter(m -> m.getTipo() != null && "EGRESO".equals(m.getTipo().getGrupoMacro()))
                 .count();
 
-        // 5. POR COBRAR
         List<Pedido> porCobrar = pedidoRepository.findAll().stream()
                 .filter(p -> p.getNumeroMesa() != null)
                 .filter(p -> com.web.restaurante.model.enums.EstadoPago.PENDIENTE.equals(p.getEstadoPago()))
