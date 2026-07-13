@@ -593,8 +593,7 @@ public class ReporteService {
             totalMontoCell.setCellStyle(styleTotalMonto);
 
             for (int i = 0; i < columnas.length; i++) {
-                sheet.autoSizeColumn(i);
-                sheet.setColumnWidth(i, sheet.getColumnWidth(i) + 800);
+                sheet.setColumnWidth(i, 5200);
             }
 
             workbook.write(out);

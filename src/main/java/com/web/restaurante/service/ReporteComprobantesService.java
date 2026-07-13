@@ -283,7 +283,6 @@ public class ReporteComprobantesService {
                 rIdx++;
             }
 
-            // Pie de Página - Acumulador Neto de la Tabla
             org.apache.poi.ss.usermodel.Row rowTotal = sheet.createRow(rIdx + 1);
             rowTotal.setHeightInPoints(22);
 
@@ -296,8 +295,7 @@ public class ReporteComprobantesService {
             valorTotal.setCellStyle(styleTotalMonto);
 
             for (int i = 0; i < cabeceras.length; i++) {
-                sheet.autoSizeColumn(i);
-                sheet.setColumnWidth(i, sheet.getColumnWidth(i) != 0 ? sheet.getColumnWidth(i) + 800 : 4000);
+                sheet.setColumnWidth(i, 5500);
             }
             workbook.write(out);
         } catch (Exception e) {
