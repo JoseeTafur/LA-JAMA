@@ -126,6 +126,7 @@ public class LoginController {
                         .filter(op -> op.getRuta().equals("/dashboard") ||
                                 op.getRuta().equals("/admin/mesas") ||
                                 op.getRuta().contains("/mesero") ||
+                                op.getRuta().contains("/productos") ||
                                 op.getRuta().contains("/MiPerfil"))
                         .collect(Collectors.toList());
 

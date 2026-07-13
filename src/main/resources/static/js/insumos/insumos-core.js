@@ -563,7 +563,7 @@ function actualizarSemaforoVisualStock(celdaStock, nuevoStock, esProteina) {
 
 const UNIDADES_RESPALDO = [
     { value: "KG", text: "Kilogramos (KG)" },
-    { value: "UND", text: "Unidades (UND)" },
+    { value: "UND", text: "Unidades (UND) / Sacos" },
     { value: "LT", text: "Litros (LT)" }
 ];
 

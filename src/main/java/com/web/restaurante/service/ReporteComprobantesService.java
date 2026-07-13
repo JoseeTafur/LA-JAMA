@@ -267,7 +267,7 @@ public class ReporteComprobantesService {
                 row.createCell(1).setCellValue(p.getComprobanteENumero() != null ? p.getComprobanteENumero() : (p.getComprobanteNumero() != null ? p.getComprobanteNumero() : "—"));
                 row.createCell(2).setCellValue(p.getCreditoNotaNumero() != null ? p.getCreditoNotaNumero() : "—");
                 row.createCell(3).setCellValue(p.getCliente() != null ? p.getCliente() : "Mesa #" + p.getNumeroMesa());
-                row.createCell(4).setCellValue(p.getFechaCreacion() != null ? p.getFechaCreacion().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "—");
+                row.createCell(4).setCellValue(fechaEfectiva(p) != null ? fechaEfectiva(p).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "—");
                 row.createCell(5).setCellValue(origenTxt);
                 row.createCell(6).setCellValue(p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO");
 
@@ -364,7 +364,7 @@ public class ReporteComprobantesService {
                 table.addCell(new Cell().add(new Paragraph(p.getComprobanteENumero() != null ? p.getComprobanteENumero() : (p.getComprobanteNumero() != null ? p.getComprobanteNumero() : "—")).setFontSize(8f)).setBackgroundColor(rowBg).setPadding(5).setBorder(Border.NO_BORDER).setFontColor(colorTextoCelda));
                 table.addCell(new Cell().add(new Paragraph(p.getCreditoNotaNumero() != null ? p.getCreditoNotaNumero() : "—").setFontSize(8f).setBold().setFontColor(colorSecundario)).setBackgroundColor(rowBg).setPadding(5).setBorder(Border.NO_BORDER));
                 table.addCell(new Cell().add(new Paragraph(clienteTxt).setFontSize(8f)).setBackgroundColor(rowBg).setPadding(5).setBorder(Border.NO_BORDER).setFontColor(colorTextoCelda));
-                table.addCell(new Cell().add(new Paragraph(p.getFechaCreacion() != null ? p.getFechaCreacion().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "—").setFontSize(8f)).setBackgroundColor(rowBg).setPadding(5).setBorder(Border.NO_BORDER).setFontColor(colorTextoCelda));
+                table.addCell(new Cell().add(new Paragraph(fechaEfectiva(p) != null ? fechaEfectiva(p).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "—").setFontSize(8f)).setBackgroundColor(rowBg).setPadding(5).setBorder(Border.NO_BORDER).setFontColor(colorTextoCelda));
                 table.addCell(new Cell().add(new Paragraph(origenTxt).setFontSize(8f)).setBackgroundColor(rowBg).setPadding(5).setBorder(Border.NO_BORDER).setFontColor(colorTextoCelda));
                 table.addCell(new Cell().add(new Paragraph(p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO").setFontSize(8f)).setBackgroundColor(rowBg).setPadding(5).setBorder(Border.NO_BORDER).setFontColor(colorTextoCelda));
 
