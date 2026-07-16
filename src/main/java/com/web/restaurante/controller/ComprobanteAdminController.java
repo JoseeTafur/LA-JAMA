@@ -624,6 +624,7 @@ public class ComprobanteAdminController {
 
                 nuevoPedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.ENTREGADO);
                 nuevoPedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
+                nuevoPedido.setEsNotaVenta(true);
                 pedidoService.guardar(nuevoPedido);
 
                 pedidoOriginal.setComprobanteENumero("REEMITIDO");

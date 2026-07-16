@@ -211,6 +211,7 @@ public class CajaService {
         }
 
         pedido.setEstadoPago(EstadoPago.PAGADO);
+        pedido.setEsNotaVenta(true);
         Pedido pedidoGuardado = pedidoRepository.save(pedido);
 
         if (pedidoGuardado.getMontoTotal() != null && pedidoGuardado.getMontoTotal() > 0) {

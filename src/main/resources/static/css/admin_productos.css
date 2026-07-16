@@ -2,30 +2,49 @@
    💎 INTERFAZ DE GESTIÓN PREMIUM — ESTILO SHADCN / LA JAMA
    ========================================================================== */
 
+/* Colores Dinámicos de Identidad */
 .text-jama-green {
     color: var(--lajama-green, #1B3A2C) !important;
+}
+
+body.dark-mode .text-jama-green {
+    color: var(--brand-skin) !important; /* 🌟 Cambiamos a tono durazno en modo oscuro para legibilidad óptima */
 }
 
 .text-jama-skin {
     color: var(--lajama-brown, #933D2D) !important;
 }
 
+body.dark-mode .text-jama-skin {
+    color: var(--brand-skin) !important;
+}
+
 /* --- 1. CONTENEDORES Y BUSCADOR --- */
 .search-container {
     border-radius: 9999px;
     overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-input, rgba(0, 0, 0, 0.08));
+    background-color: var(--bg-input, #f9fafb);
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.03);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.search-container input {
+    background-color: transparent !important;
+    color: var(--text-main) !important;
+    border: none !important;
 }
 
 .search-container input:focus {
     box-shadow: none;
-    background-color: #fff !important;
+    background-color: var(--bg-card) !important; /* 🌟 Cambia dinámicamente según el tema */
 }
 
 .card-tabla {
-    background-color: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    background-color: var(--bg-card); /* 🌟 Blanco en modo claro, #121814 en modo oscuro */
+    border: 1px solid var(--border-card) !important;
+    box-shadow: var(--shadow-premium) !important;
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* --- 2. COMPONENTES DE FORMULARIO MAESTRO --- */
@@ -33,6 +52,9 @@
     width: 2.5em;
     height: 1.25em;
     cursor: pointer;
+    background-color: var(--bg-input, #f9fafb);
+    border-color: var(--border-input, rgba(27, 58, 44, 0.12));
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .custom-switch-jama .form-check-input:checked {
@@ -40,9 +62,19 @@
     border-color: var(--lajama-green, #1B3A2C);
 }
 
+body.dark-mode .custom-switch-jama .form-check-input:checked {
+    background-color: var(--brand-skin, #FFB38A); /* 🌟 Oro/piel premium cuando está checked en modo oscuro */
+    border-color: var(--brand-skin, #FFB38A);
+}
+
 #modalProducto .modal-header {
     background: radial-gradient(circle at top center, #26503d 0%, var(--lajama-green, #1B3A2C) 100%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode #modalProducto .modal-header {
+    background: radial-gradient(circle at top center, #1b261f 0%, #0B0F0C 100%); /* 🌟 Gradiente mucho más sutil en oscuro */
+    border-bottom: 1px solid var(--border-card);
 }
 
 
@@ -67,6 +99,13 @@
     position: relative;
     margin: 15px auto;
     perspective: 1000px; /* Crítico para perspectiva 3D real */
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.dark-mode .uiverse-wrapper-panel {
+    background: linear-gradient(135deg, #16201a, #0d120e); /* 🌟 Gradiente oscuro elegante para no romper la atmósfera de noche */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-card);
 }
 
 /* ── Carpeta flotante ───────────────────────────────────────────── */
@@ -124,6 +163,12 @@
     z-index: 0;
 }
 
+body.dark-mode .uiverse-wrapper-panel .folder .back-side::before,
+body.dark-mode .uiverse-wrapper-panel .folder .back-side::after {
+    background-color: #cbd5e1; /* 🌟 Un tono grisáceo suave en oscuro para no generar fogonazos blancos */
+    opacity: 0.25;
+}
+
 .uiverse-wrapper-panel:hover .folder .back-side::before {
     transform: rotateX(-5deg) skewX(5deg);
 }
@@ -150,13 +195,21 @@
     z-index: 1;
 }
 
+body.dark-mode .uiverse-wrapper-panel .folder .tip {
+    background: linear-gradient(135deg, #d97706, #b45309); /* 🌟 Tono ámbar/óxido más integrado en modo oscuro */
+}
+
 /* ── Tapas de la carpeta ────────────────────────────────────────── */
 .uiverse-wrapper-panel .folder .cover {
-    background: linear-gradient(135deg, #ffe563, #ffc663);
+    background: linear-gradient(135deg, #ffe663, #ffc663);
     width: 100%;
     height: 100%;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
     border-radius: 10px;
+}
+
+body.dark-mode .uiverse-wrapper-panel .folder .cover {
+    background: linear-gradient(135deg, #eab308, #ca8a04); /* 🌟 Tapa ligeramente más mate en modo noche */
 }
 
 /* ── Hoja central contenedora de la foto previa ─────────────────── */
@@ -175,11 +228,8 @@
     transition: transform var(--transition) cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.uiverse-wrapper-panel .folder .custom-paper-inside .folder-preview-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
+body.dark-mode .uiverse-wrapper-panel .folder .custom-paper-inside {
+    background-color: #1e293b; /* 🌟 Hoja interna oscura antes de renderizar la imagen */
 }
 
 /* ── La foto emerge hacia arriba al abrir la carpeta ────────────── */
@@ -209,6 +259,16 @@
 .uiverse-wrapper-panel .custom-file-upload:hover {
     background: rgba(255, 255, 255, 0.3);
     border-color: rgba(255, 255, 255, 0.3);
+}
+
+body.dark-mode .uiverse-wrapper-panel .custom-file-upload {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .uiverse-wrapper-panel .custom-file-upload:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--border-card);
 }
 
 .uiverse-wrapper-panel .custom-file-upload input[type="file"] {

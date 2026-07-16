@@ -2,32 +2,80 @@
    💎 INTERFAZ DE GESTIÓN PREMIUM - ESTILO SHADCN / LA JAMA
    ======================================================== */
 
+/* ========================================================
+   💎 INTERFAZ DE GESTIÓN PREMIUM - VARIABLES CORE (LA JAMA)
+   ======================================================== */
+
 :root {
-  --lajama-green: #1B3A2C;
-  --lajama-peach: #fed7aa;
-  --lajama-brown: #933D2D;
-  --lajama-skin: #FFB38A;
-  --lajama-cream: #FFF7ED;
-  --lajama-white: #FFFFFF;
-  --text-dark: #2D2D2D;
-  --border-color: rgba(27, 58, 44, 0.08);
+  /* 🎨 1. Paleta de Identidad (Valores absolutos de marca) */
+  --brand-green: #1B3A2C;
+  --brand-peach: #fed7aa;
+  --brand-brown: #933D2D;
+  --brand-skin: #FFB38A;
+  --brand-cream: #FFF7ED;
+  --brand-white: #FFFFFF;
+  --brand-dark: #2D2D2D;
+
+  /* ☀️ 2. Variables Semánticas - MODO CLARO (Por Defecto) */
+  --bg-app: var(--brand-cream);               /* Fondo general de la aplicación */
+  --bg-card: var(--brand-white);               /* Fondo de tarjetas, tablas, contenedores */
+  --bg-input: #f9fafb;                         /* Fondo de inputs y cajas de texto */
+  --text-main: var(--brand-dark);              /* Texto principal de alta legibilidad */
+  --text-muted: #6b7280;                       /* Texto secundario o leyendas */
+  --text-inverse: var(--brand-white);          /* Texto sobre fondos oscuros (como botones) */
+
+  --border-card: rgba(254, 215, 170, 0.4);     /* Bordes sutiles de las tarjetas */
+  --border-input: rgba(27, 58, 44, 0.12);      /* Bordes de formularios */
+  --shadow-premium: 0 10px 30px -10px rgba(27, 58, 44, 0.05); /* Sombra ligera de la marca */
+
+  /* 🟢 Estados Dinámicos en Modo Claro */
+  --status-disp-bg: #f0fdf4;     --status-disp-border: #bbf7d0;     --status-disp-text: #14532d;
+  --status-ocup-bg: #fef2f2;     --status-ocup-border: #fecaca;     --status-ocup-text: #7f1d1d;
+  --status-resv-bg: #fffbeb;     --status-resv-border: #fcd34d;     --status-resv-text: #78350f;
+  --status-unif-bg: #f5f3ff;     --status-unif-border: #ddd6fe;     --status-unif-text: #4c1d95;
+}
+
+/* 🌙 3. Variables Semánticas - MODO OSCURO (Activado vía clase .dark-mode) */
+body.dark-mode {
+  --bg-app: #0B0F0C;                           /* Tu fondo oscuro modular base */
+  --bg-card: #121814;                          /* Fondo de tarjeta premium oscuro */
+  --bg-input: #1a221c;                         /* Fondo para tus inputs */
+  --text-main: #f3f4f6;                        /* Gris claro de alta legibilidad */
+  --text-muted: #9ca3af;                       /* Gris suave intermedio */
+  --text-inverse: #0B0F0C;                     /* Texto oscuro sobre fondos claros alternativos */
+
+  --border-card: rgba(254, 215, 170, 0.12);    /* Borde durazno sutil para modo oscuro */
+  --border-input: rgba(254, 215, 170, 0.15);   /* Borde para formularios en oscuro */
+  --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.35); /* Sombra profunda sin el verde claro */
+
+  /* 🔴 Estados Dinámicos en Modo Oscuro (Diseño Shadcn para no fatigar la vista) */
+  --status-disp-bg: rgba(22, 163, 74, 0.15);    --status-disp-border: rgba(22, 163, 74, 0.4);   --status-disp-text: #4ade80;
+  --status-ocup-bg: rgba(220, 38, 38, 0.15);    --status-ocup-border: rgba(220, 38, 38, 0.4);   --status-ocup-text: #f87171;
+  --status-resv-bg: rgba(217, 119, 6, 0.15);    --status-resv-border: rgba(217, 119, 6, 0.4);   --status-resv-text: #fbbf24;
+  --status-unif-bg: rgba(109, 40, 217, 0.15);   --status-unif-border: rgba(109, 40, 217, 0.4);  --status-unif-text: #a78bfa;
 }
 
 /* --- 1. TARJETA Y CONTENEDOR PRINCIPAL --- */
 .card-color1 {
-  background: var(--lajama-white) !important;
-  border: 1px solid rgba(254, 215, 170, 0.4) !important;
+  background: var(--bg-card) !important;       /* 🌟 Automático: Blanco o #121814 */
+  border: 1px solid var(--border-card) !important; /* 🌟 Automático: Peach claro o Peach oscuro */
   border-radius: 1rem !important;
-  box-shadow: 0 10px 30px -10px rgba(27, 58, 44, 0.05) !important;
+  box-shadow: var(--shadow-premium) !important; /* 🌟 Automático: Sombra verde sutil o sombra negra profunda */
   padding: 0.5rem;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .card-title {
-  color: var(--lajama-green) !important;
+  color: var(--brand-green) !important;        /* Mantenemos la identidad verde de marca */
   font-size: 1.4rem !important;
   font-weight: 800 !important;
   letter-spacing: -0.02em;
   position: relative;
+}
+
+/* En modo oscuro, podemos darle un toque sutil al título para que contraste mejor */
+body.dark-mode .card-title {
+  color: var(--brand-skin) !important;         /* 🌟 El verde corporativo sobre fondo oscuro cansa; usamos el piel premium */
 }
 
 .card-title::after {
@@ -37,7 +85,7 @@
   left: 0;
   width: 30px;
   height: 3.5px;
-  background: var(--lajama-skin);
+  background: var(--brand-skin);
   border-radius: 50rem;
 }
 
@@ -238,7 +286,6 @@
 .dataTables_wrapper .pagination .page-item.disabled .page-link { opacity: 0.4 !important; border-color: var(--border-color) !important; color: var(--text-muted) !important; cursor: not-allowed; }
 
 /* --- 6. MODALES (BLUR BACKGROUND) --- */
-.modal-backdrop { background-color: #050807 !important; opacity: 0.6 !important; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 .modal-content { border: 1px solid var(--lajama-peach) !important; border-radius: 1.25rem !important; box-shadow: 0 20px 50px rgba(5, 8, 7, 0.15) !important; }
 .modal-header { background-color: var(--lajama-green) !important; color: white !important; border-bottom: none !important; border-radius: 1.25rem 1.25rem 0 0; }
 .form-control, .form-select { border: 2px solid var(--lajama-peach) !important; border-radius: 12px !important; padding: 12px !important; background-color: var(--lajama-white) !important; }
@@ -328,10 +375,18 @@
 /* --- Fondo desenfocado premium con mayor saturación --- */
 .modal-backdrop {
   background-color: #050807 !important;
-  opacity: 0.4 !important;
+}
+
+/* 🎯 Opacity/blur SOLO cuando Bootstrap añade .show — esto restaura el fade-out real */
+.modal-backdrop.fade {
+  transition: opacity 0.3s ease !important;
+  opacity: 0 !important;
   backdrop-filter: blur(8px) saturate(120%) !important;
   -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
-  transition: all 0.3s ease;
+}
+
+.modal-backdrop.fade.show {
+  opacity: 0.4 !important;
 }
 
 /* --- Cascarón del Modal --- */

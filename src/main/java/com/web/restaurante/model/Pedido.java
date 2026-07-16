@@ -138,6 +138,9 @@ public class Pedido {
     @Column(name = "motivo_anulacion", length = 500)
     private String motivoAnulacion;
 
+    @Column(name = "es_nota_venta", nullable = false)
+    private boolean esNotaVenta = false;
+
     public boolean isListoParaServir() {
         if (this.estado == EstadoPedido.PREPARADO || this.estado == EstadoPedido.ASIGNADO) {
             return true;

@@ -29,7 +29,7 @@ public class EntregasController {
         String rol = session.getAttribute("rol") != null ? session.getAttribute("rol").toString() : "";
 
         if ("SUPER_ADMIN".equals(rol) || "ADMIN".equals(rol)) {
-            List<Pedido> todosLosDeliveries = pedidoService.listarPreparados(); // O el método que liste delivery
+            List<Pedido> todosLosDeliveries = pedidoService.listarPreparadosParaDespacho();
             model.addAttribute("pedidos", todosLosDeliveries);
             model.addAttribute("nombreRepartidor", "Supervisor: " + usuario.getUsuario());
             return "admin/mis-pedidos";

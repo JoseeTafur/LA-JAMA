@@ -1,5 +1,5 @@
 // =========================================================================
-// 💎 LA JAMA MASTER - MOTOR DE UNIFICACIÓN Y DESFRAGMENTACIÓN EN CALIENTE - unificacion.js
+// unificacion.js
 // =========================================================================
 
 function activarModoSeleccionUnificacion() {
@@ -13,10 +13,18 @@ function activarModoSeleccionUnificacion() {
 
     document.querySelectorAll(".mesa-box").forEach(box => {
         const idMesaBox = box.getAttribute("data-id");
-        if (box.classList.contains("unificada") || idMesaBox === currentMesaId) {
+
+        // 🛡️ LIBERACIÓN LOGÍSTICA TOTAL (Frontend):
+        // Eliminamos el bloqueo '!estaLibreFisicamente'. Ahora se permite agrupar mesas con o sin consumo.
+        // El único candado real es no auto-seleccionarse y no romper un subgrupo unificado existente.
+        const esMesaHijaSubordinada = box.classList.contains("unificada") && box.getAttribute("data-es-padre") !== "SI";
+
+        if (idMesaBox === currentMesaId || esMesaHijaSubordinada) {
             box.style.opacity       = "0.4";
             box.style.pointerEvents = "none";
         } else {
+            box.style.opacity       = "1";
+            box.style.pointerEvents = "auto";
             box.querySelector(".checkbox-seleccion-unificacion")?.classList.remove("d-none");
         }
     });
@@ -29,10 +37,10 @@ function cancelarModoUnificacion() {
     document.getElementById("barre-unificacion").classList.remove("d-flex");
 
     document.querySelectorAll(".mesa-box").forEach(box => {
-        box.style.opacity       = "1";
-        box.style.pointerEvents = "auto";
-        box.style.border        = "2px solid transparent";
-        box.style.transform     = "none";
+        box.style.removeProperty('opacity');
+        box.style.removeProperty('pointer-events');
+        box.style.removeProperty('border');
+        box.style.removeProperty('transform');
         const check = box.querySelector(".check-salon-unir");
         if (check) check.checked = false;
         box.querySelector(".checkbox-seleccion-unificacion")?.classList.add("d-none");
@@ -63,10 +71,17 @@ function procesarUnificacionDirecta() {
         AppUtils.showLoading(true);
         const params = new URLSearchParams();
         params.append("idMesaPrincipal", currentMesaId);
+
+        // 🚀 REPARADO: Añadimos los corchetes [] para que coincida con el @RequestParam del Backend
         idsHijas.forEach(id => params.append("idsMesasHijas[]", id));
 
         try {
-            const res = await fetch("/admin/mesas/unificar", { method: "POST", body: params });
+            // 🚀 OPTIMIZADO: Dejamos que el navegador maneje el Content-Type automáticamente al pasarle params
+            const res = await fetch("/admin/mesas/unificar", {
+                method: "POST",
+                body: params
+            });
+
             AppUtils.showLoading(false);
             if (res.ok) {
                 AppUtils.showNotification("Mesas unificadas correctamente", "success");
@@ -105,17 +120,19 @@ function actualizarPanelGruposUnificados(numeroMesaPadre, numerosHijasArray, ped
     const avisoVacio = document.getElementById('grupo-vacio-aviso');
     if (avisoVacio) avisoVacio.remove();
 
+    // 🛡️ REPARADO: Sincronización estricta con la máquina de estados del Enum del Backend
     let claseCromatica = 'disponible';
     let iconoClase     = 'bi-person-check-fill';
 
-    if (pedidoEstado === 'EN_COCINA' || pedidoEstado === 'PENDIENTE') {
+    if (pedidoEstado === 'EN_COCINA' || pedidoEstado === 'PENDIENTE' || pedidoEstado === 'AGRUPADO') {
         claseCromatica = 'ocupada';
         iconoClase     = 'bi-cup-hot-fill';
-    } else if (pedidoEstado === 'LISTO_PARA_RECOGER') {
+    } else if (pedidoEstado === 'PREPARADO' || pedidoEstado === 'LISTO_PARA_RECOGER') {
         claseCromatica = 'lista-para-recoger';
         iconoClase     = 'bi-bell-fill';
-    } else if (pedidoEstado === 'LISTO_PARA_PAGAR') {
+    } else if (pedidoEstado === 'ENTREGADO' || pedidoEstado === 'LISTO_PARA_PAGAR') {
         claseCromatica = 'lista-para-pagar';
+        iconoClase     = 'bi-person-check-fill';
     }
 
     let badgesHijasHTML = '';
@@ -190,11 +207,9 @@ function procesarDesvincular() {
     });
 }
 
-// ─── 🚀 BOTÓN DESAGRUPAR TODO: REFACTORIZADO Y BLINDADO EN VIVO (SIN F5) ───
 function procesarDesfragmentacionGrupo() {
     if (!currentMesaId) return;
 
-    // 1. Extraemos dinámicamente los números de las mesas hijas desde los badges antes de disolver el grupo
     const tarjetaGrupo = document.querySelector(`#contenedor-tarjetas-unificadas [data-numero="${currentMesaNumero}"]`);
     let numerosHijas = [];
     if (tarjetaGrupo) {
@@ -215,16 +230,13 @@ function procesarDesfragmentacionGrupo() {
     }, async function () {
         AppUtils.showLoading(true);
         try {
-            // Detectamos en qué entorno de pestaña se encuentra operando el mesero (Salón o Reservas)
             const vistaActual = document.getElementById('vista-salon').classList.contains('d-none') ? 'reservas' : 'salon';
 
-            // 🛡️ ACTIVACIÓN DEL ESCUDO ANTI-WEBSOCKET EN LA MESA PADRE
             const tarjetaPadreDOM = document.getElementById(`mesa-card-${currentMesaId}`) || document.querySelector(`.mesa-box[data-numero="${currentMesaNumero}"]`);
             if (tarjetaPadreDOM) {
                 tarjetaPadreDOM.setAttribute('data-bloqueo-reserva-live', 'true');
             }
 
-            // 🛡️ ACTIVACIÓN DEL ESCUDO EN CADA UNA DE LAS MESAS HIJAS ENCONTRADAS
             let tarjetasHijasDOM = [];
             numerosHijas.forEach(num => {
                 const cajaHijaDOM = document.querySelector(`.mesa-box[data-numero="${num}"]`);
@@ -246,7 +258,6 @@ function procesarDesfragmentacionGrupo() {
                 if (dataText.includes("éxito")) {
                     AppUtils.showNotification("Grupo disuelto con éxito", "success");
 
-                    // Remoción limpia de la tarjeta colectiva del panel lateral
                     if (tarjetaGrupo) {
                         tarjetaGrupo.remove();
                         actualizarContadorBadgePestaña();
@@ -265,9 +276,6 @@ function procesarDesfragmentacionGrupo() {
                         }
                     }
 
-                    // ─── 🛠️ RE-CONSTRUCCIÓN SÍNCRONA COMPLETA (BYPASS DEL F5) ───
-
-                    // A. Restauración milimétrica de la Mesa Padre
                     if (tarjetaPadreDOM) {
                         tarjetaPadreDOM.setAttribute('data-es-padre', 'NO');
                         tarjetaPadreDOM.removeAttribute('data-id-mesa-padre');
@@ -294,7 +302,6 @@ function procesarDesfragmentacionGrupo() {
                         }
                     }
 
-                    // B. Restauración individual de cada una de las Mesas Hijas
                     tarjetasHijasDOM.forEach(hijaDOM => {
                         hijaDOM.setAttribute('data-es-padre', 'NO');
                         hijaDOM.removeAttribute('data-id-mesa-padre');
@@ -312,7 +319,6 @@ function procesarDesfragmentacionGrupo() {
                             else { colorHija = 'ocupada'; iconoHija = 'bi-cup-hot-fill'; }
                         }
 
-                        // Re-establecemos clases e iconos correspondientes según la pestaña activa
                         hijaDOM.className = `mesa-box shadow-sm ${colorHija}`;
                         const iconI = hijaDOM.querySelector('.mesa-icon-wrapper i');
                         if (iconI) iconI.className = `bi ${iconoHija}`;
@@ -335,7 +341,6 @@ function procesarDesfragmentacionGrupo() {
                 AppUtils.showNotification("Error de comunicación con el servidor.", "error");
             }
 
-            // 🛡️ LIBERACIÓN PROGRESIVA DE LOS CANDADOS PROTECTORES DE RED
             setTimeout(() => {
                 if (tarjetaPadreDOM) tarjetaPadreDOM.removeAttribute('data-bloqueo-reserva-live');
                 tarjetasHijasDOM.forEach(hijaDOM => hijaDOM.removeAttribute('data-bloqueo-reserva-live'));

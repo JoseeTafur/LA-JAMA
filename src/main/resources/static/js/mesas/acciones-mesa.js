@@ -5,6 +5,8 @@ function abrirModalAccionUnificado(modo) {
     modoAccionMesaActual      = modo;
     mesaDestinoSeleccionadaId = null;
 
+    if (mesaModal) mesaModal.hide();
+
     if (modo === 'DIVIDIR_PARCIAL') {
         const platosSeleccionados = document.querySelectorAll('.chk-mesa-confirmar:checked');
         if (platosSeleccionados.length === 0) {
@@ -201,6 +203,7 @@ function _ejecutarTrasladoCompleto(idMesaDestino) {
                         const esOrigenPadre = tarjetaOrigenDOM.getAttribute('data-es-padre') === 'SI';
                         renderizarControlesModal(esOrigenPadre, tarjetaOrigenDOM.classList.contains('unificada'), 'NINGUNO', tarjetaOrigenDOM);
                     }
+                    mantenerModalMesaCerrado = true;
                     if (mesaModal) mesaModal.hide();
                 }, 400);
             } else {

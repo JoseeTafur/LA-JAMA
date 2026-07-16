@@ -41,10 +41,10 @@ function cancelarModoReservaMasiva() {
     if (barraReservas) barraReservas.classList.add('d-none');
 
     document.querySelectorAll(".mesa-box").forEach(box => {
-        box.style.opacity       = "1";
-        box.style.pointerEvents = "auto";
-        box.style.border        = "2px solid transparent";
-        box.style.transform     = "none";
+        box.style.removeProperty('opacity');
+        box.style.removeProperty('pointer-events');
+        box.style.removeProperty('border');
+        box.style.removeProperty('transform');
         const check = box.querySelector(".check-reserva-masiva");
         if (check) check.checked = false;
         box.querySelector(".checkbox-seleccion-reserva-masiva")?.classList.add("d-none");
