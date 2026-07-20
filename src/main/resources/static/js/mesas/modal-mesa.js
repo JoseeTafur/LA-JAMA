@@ -123,7 +123,7 @@ const tienePlatosPorPagar = platosArray.some(d => !d.pagado);
                     const idCheckModalMesa = `cbx_mesa_modal_${d.id}`;
                     let checkboxHTML = '';
 
-                    const esInamovible = d.canceladoPorCliente || (d.pagado && d.entregado);
+                    const esInamovible = (d.pagado && d.entregado) || (d.canceladoPorCliente && d.pagado);
 
                     if (esInamovible) {
                         checkboxHTML = `<div class="cntr" style="margin-left: 10px; opacity: 0.35; cursor: not-allowed;">
@@ -131,7 +131,6 @@ const tienePlatosPorPagar = platosArray.some(d => !d.pagado);
                             <label for="${idCheckModalMesa}" class="cbx" style="cursor: not-allowed;"></label>
                         </div>`;
                     } else {
-                        // Si está pagado pero NO entregado (pre-pago en cocina), queda libre para seleccionarse y dividirse
                         checkboxHTML = `<div class="cntr" style="margin-left: 10px;">
                             <input type="checkbox" id="${idCheckModalMesa}" class="hidden-xs-up chk-mesa-confirmar" value="${d.id}" data-precio="${precioSeguro}" data-estado-plato="${badgeTexto}" data-ya-pagado="${d.pagado}" onchange="evaluarBotonConfirmarPago()">
                             <label for="${idCheckModalMesa}" class="cbx"></label>

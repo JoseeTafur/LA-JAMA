@@ -34,7 +34,6 @@ function extraerPlatosDelModal() {
 
     // 🚀 ADUANA 1: Si venimos desde el mostrador de caja con el DTO JSON activo, leemos directo de memoria
     if (typeof datosPedidoActualCaja !== 'undefined' && datosPedidoActualCaja && datosPedidoActualCaja.detalles) {
-        console.log("🎯 [La Jama POS] Procesando platos directamente desde el objeto JSON del pedido...");
 
         datosPedidoActualCaja.detalles.forEach((d) => {
             if (d.canceladoPorCliente || d.pagado) return;
@@ -68,8 +67,6 @@ function extraerPlatosDelModal() {
         });
 
     } else {
-        // 🍽️ FALLBACK SALÓN: Si se ejecuta desde el plano de mesas físico, mantiene tu escaneo original
-        console.log("🍽️ [La Jama Salón] Ejecutando escaneo físico del DOM de mesas...");
         document.querySelectorAll('#lista-platos-previsualizar > div').forEach((row) => {
             if(row.style.backgroundColor.includes('rgb(255, 229, 229)')) return;
 

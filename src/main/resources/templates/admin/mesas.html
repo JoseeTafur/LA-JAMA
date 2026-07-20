@@ -540,7 +540,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // haya sido parseado por completo por el navegador antes de invocar la auditoría.
     setTimeout(() => {
         if (typeof _auditarPanelReservasVacio === 'function') {
-            console.log("📅 [La Jama Boot Hook] Ejecutando auditoría de reservas inicial por defecto.");
             _auditarPanelReservasVacio();
         }
     }, 150);

@@ -68,7 +68,6 @@ async function abrirPanelTimbrado(idPedido, preferencia, documento) {
 }
 
 function verTicketTermico(pedidoId) {
-    console.log(`🖨️ [La Jama] Despachando comando de impresión para la Nota de Venta #${pedidoId}`);
 
     // Construimos la ruta exacta apuntando al motor del ticket de venta que renderiza en 80mm
     const urlTicket = `/admin/caja/ticket-venta/${pedidoId}`;

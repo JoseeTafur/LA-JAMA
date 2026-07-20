@@ -51,7 +51,7 @@ public class GroqService {
         );
 
         Map<String, Object> body = new HashMap<>();
-        body.put("model", "meta-llama/llama-4-scout-17b-16e-instruct");
+        body.put("model", "qwen/qwen3.6-27b");
         body.put("messages", List.of(message));
         body.put("temperature", 0.1);
         body.put("max_tokens", 512);

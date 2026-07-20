@@ -4,13 +4,13 @@
 <th:block th:fragment="modalCobro">
 
     <div class="modal fade" id="modalFacturacion" data-bs-backdrop="static" aria-hidden="true">
-            <div class="modal-dialog modal-fullscreen">
+        <div class="modal-dialog modal-fullscreen">
             <div class="modal-content jama-modal-core">
 
                 <div class="modal-header jama-header">
                     <h5 class="modal-title jama-title">
                         <i class="bi bi-receipt-cutoff text-jama-gold"></i>
-                        Caja Centralizada — Mesa #<span id="cobroNumMesa"></span>
+                        Caja — Mesa #<span id="cobroNumMesa"></span>
                     </h5>
                     <button type="button" class="jama-btn-close" data-bs-dismiss="modal" onclick="limpiarInstanciaCaja()">&times;</button>
                 </div>
@@ -64,17 +64,18 @@
                         </div>
 
                         <div class="jama-panel-contenido">
-                            <div id="contenedor-tickets-dinamicos" class="jama-horizontal-carousel mb-4">
+                            <div class="jama-carousel-wrapper">
+                                <div id="contenedor-tickets-dinamicos" class="jama-horizontal-carousel">
+                                </div>
                             </div>
 
-                            <div class="jama-card-container accent-border mt-3 p-3 bg-white">
+                            <div class="jama-card-container accent-border mt-3 p-3 bg-white jama-preview-card">
                                 <div class="jama-card-header-sm d-flex justify-content-between align-items-center mb-2" style="border-bottom: 2px solid var(--lajama-peach);">
-                                    <span><i class="bi bi-printer-fill text-dark"></i> VISTA PREVIA DE IMPRESIÓN (TICKET FISCAL)</span>
-                                    <span class="badge bg-dark text-light">Formato Térmico 80mm</span>
+                                    <span><i class="bi bi-printer-fill text-dark"></i> VISTA PREVIA (TICKET FISCAL)</span>
+                                    <span class="badge bg-dark text-light format-badge">Térmico 80mm</span>
                                 </div>
 
-                                <div id="visualizador-ticket-cajero" class="p-3 bg-light rounded shadow-inner"
-                                     style="font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: #000; white-space: pre; overflow-x: auto; max-height: 250px;">
+                                <div id="visualizador-ticket-cajero" class="p-3 bg-light rounded shadow-inner code-terminal">
                                     Selecciona o distribuye consumos para previsualizar el ticket del cajero...
                                 </div>
                             </div>
@@ -82,8 +83,6 @@
 
                     </div>
                 </div>
-
-
 
             </div>
         </div>

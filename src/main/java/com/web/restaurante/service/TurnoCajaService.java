@@ -1,9 +1,11 @@
 package com.web.restaurante.service;
 
 import com.web.restaurante.model.MovimientoCaja;
+import com.web.restaurante.model.Pedido;
 import com.web.restaurante.model.TurnoCaja;
 import com.web.restaurante.model.enums.TipoMovimientoCaja;
 import com.web.restaurante.repository.MovimientoCajaRepository;
+import com.web.restaurante.repository.PedidoRepository;
 import com.web.restaurante.repository.TurnoCajaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +26,7 @@ public class TurnoCajaService {
     private final TurnoSequenceService turnoSequenceService;
     private final MovimientoSequenceService movimientoSequenceService;
     private final CierreCajaSequenceService cierreCajaSequenceService;
+    private final PedidoRepository pedidoRepository;
 
     public Optional<TurnoCaja> obtenerTurnoActivo() {
         return turnoCajaRepository.findByActivoTrue();
@@ -64,10 +68,7 @@ public class TurnoCajaService {
 
         turnoCajaRepository.save(turno);
 
-        // Generamos la secuencia atómica de apertura
         String serieApertura = turnoSequenceService.generarSiguienteTurno();
-
-        // 🔥 CORRECCIÓN: Pasamos 'serieApertura' en vez de 'null'
         registrarMovimiento(turno, TipoMovimientoCaja.APERTURA, "Fondo inicial", montoApertura, serieApertura);
         return turno;
     }
@@ -102,39 +103,74 @@ public class TurnoCajaService {
 
         List<MovimientoCaja> movimientos = movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(turno.getId());
 
-        double totalVendido = movimientos.stream()
-                .filter(m -> m.getTipo() == TipoMovimientoCaja.INGRESO_VENTA)
-                .mapToDouble(MovimientoCaja::getMonto)
-                .sum();
+        // 🔍 ───────── INICIO DEL RADAR DE AUDITORÍA EN CONSOLA ─────────
+        System.out.println("\n==================================================================");
+        System.out.println("🔍 [RADAR LA JAMA] AUDITORÍA DE ARQUEO PARA TURNO ID: #" + turno.getId());
+        System.out.println("==================================================================");
+        System.out.println(String.format("💵 Fondo de Apertura Inicial : S/. %.2f", turno.getMontoApertura()));
 
-        double totalIngresos = movimientos.stream()
-                .filter(m -> m.getTipo() == TipoMovimientoCaja.INGRESO_MANUAL)
-                .mapToDouble(MovimientoCaja::getMonto)
-                .sum();
+        // 🎯 1. Extracción e inspección de Pedidos / Notas de Venta
+        List<Pedido> pedidosTurno = pedidoRepository.findAll().stream()
+                .filter(p -> p.getTurnoCaja() != null && p.getTurnoCaja().getId().equals(turno.getId()))
+                .filter(p -> com.web.restaurante.model.enums.EstadoPago.PAGADO.equals(p.getEstadoPago()))
+                .filter(p -> p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
+                .collect(Collectors.toList());
 
-        double totalEgresos = movimientos.stream()
-                .filter(m -> m.getTipo() != null && m.getTipo().getGrupoMacro().equals("EGRESO"))
-                .mapToDouble(MovimientoCaja::getMonto)
-                .sum();
+        System.out.println("\n🛒 --- COMANDAS / NOTAS DE VENTA LIQUIDADAS DETECTADAS ---");
+        double totalVendido = 0.0;
+        if (pedidosTurno.isEmpty()) {
+            System.out.println("   (Ninguna comanda pagada detectada para este turno)");
+        } else {
+            for (Pedido p : pedidosTurno) {
+                double monto = p.getMontoTotal() != null ? p.getMontoTotal() : 0.0;
+                totalVendido += monto;
+                System.out.println(String.format("   👉 Pedido ID: #%-4d | Comprobante: %-10s | Monto: S/. %.2f",
+                        p.getId(),
+                        p.getComprobanteNotaNumero() != null ? p.getComprobanteNotaNumero() : "SIN COMPR.",
+                        monto));
+            }
+        }
+        System.out.println(String.format("💰 Subtotal Ventas del Turno : S/. %.2f", totalVendido));
 
-        double saldoTeorico = turno.getMontoApertura() + totalVendido + totalIngresos + totalEgresos;
+        // 🎯 2. Extracción e inspección de Ingresos y Egresos Manuales
+        System.out.println("\n📊 --- MOVIMIENTOS MANUALES REGISTRADOS EN BITÁCORA ---");
+        double totalIngresosManuales = 0.0;
+        double totalEgresosManuales = 0.0;
+
+        for (MovimientoCaja m : movimientos) {
+            if (m.getTipo() == TipoMovimientoCaja.INGRESO_MANUAL) {
+                totalIngresosManuales += m.getMonto();
+                System.out.println(String.format("   🟩 [INGRESO MANUAL] ID: #%-4d | Concepto: %-30s | Monto: +S/. %.2f", m.getId(), m.getConcepto(), m.getMonto()));
+            } else if (m.getTipo() != null && m.getTipo().getGrupoMacro().equals("EGRESO") && m.getTipo() != TipoMovimientoCaja.CIERRE) {
+                totalEgresosManuales += m.getMonto();
+                System.out.println(String.format("   🟥 [EGRESO MANUAL]  ID: #%-4d | Concepto: %-30s | Monto: S/. %.2f", m.getId(), m.getConcepto(), m.getMonto()));
+            }
+        }
+
+        // 🎯 3. Balance matemático final
+        double saldoTeorico = turno.getMontoApertura() + totalVendido + totalIngresosManuales + totalEgresosManuales;
         double diferencia = montoCierre - saldoTeorico;
 
+        System.out.println("\n🧮 --- FORMULACIÓN MATEMÁTICA DEL ARQUEO ---");
+        System.out.println(String.format("   Apertura(%.2f) + Ventas(%.2f) + IngresosMan(%.2f) + EgresosMan(%.2f)",
+                turno.getMontoApertura(), totalVendido, totalIngresosManuales, totalEgresosManuales));
+        System.out.println(String.format("   👉 Saldo Teórico Esperado en Sistema   : S/. %.2f", saldoTeorico));
+        System.out.println(String.format("   👉 Arqueo Físico Digitado por Cajero   : S/. %.2f", montoCierre));
+        System.out.println(String.format("   🚨 DESCUADRE FINAL REGISTRADO         : S/. %.2f", diferencia));
+        System.out.println("==================================================================\n");
+        // 🔍 ────────── FIN DEL RADAR DE AUDITORÍA EN CONSOLA ──────────
+
+        // Registro del movimiento de cierre estricto
+        String serieCierre = cierreCajaSequenceService.generarSiguienteCierreCaja();
+        registrarMovimiento(turno, TipoMovimientoCaja.CIERRE, "Cierre estricto de caja por el operador", montoCierre, serieCierre);
+
+        // Asentamos los valores en la entidad del turno que va al Historial Cerrado
         turno.setMontoCierre(montoCierre);
         turno.setTotalVendido(totalVendido);
         turno.setDiferencia(diferencia);
         turno.setObservaciones(observaciones);
         turno.setFechaCierre(LocalDateTime.now());
         turno.setActivo(false);
-
-        String serieCierre = cierreCajaSequenceService.generarSiguienteCierreCaja();
-        registrarMovimiento(turno, TipoMovimientoCaja.CIERRE, "Cierre estricto de caja por el operador", montoCierre, serieCierre);
-
-        if (Math.abs(diferencia) > 0.1) {
-            System.out.println("[ALERTA DE SEGURIDAD CONTABLE - LA JAMA]");
-            System.out.println("Se ha detectado un descuadre en el arqueo del turno ID #" + turno.getId());
-            System.out.println("Diferencia registrada: S/. " + diferencia);
-        }
 
         return turnoCajaRepository.save(turno);
     }
@@ -144,7 +180,7 @@ public class TurnoCajaService {
                                      String concepto, Double monto, String comprobante) {
         MovimientoCaja mov = new MovimientoCaja();
         mov.setTurno(turno);
-        mov.setTipo(tipo); // 🛡️ Recibe el objeto Enum de manera rigurosa y tipada
+        mov.setTipo(tipo);
         mov.setConcepto(concepto);
         mov.setMonto(monto);
         mov.setComprobante(comprobante);

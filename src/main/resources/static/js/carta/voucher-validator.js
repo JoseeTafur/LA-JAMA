@@ -54,9 +54,6 @@ export async function procesarYVerificarVoucher(event, tipoMetodo) {
 
         const data = await res.json();
 
-        // 🎯 REINYECTAMOS TU LOG RADAR DE CONTROL
-        console.log("🎯 === [RESPUESTA DEL SERVIDOR DESDE GROQ] ===", data);
-
         if (!res.ok) {
             // 🚨 DETECTAMOS TU ALERTA PERSONALIZADA DE CORRESPONDENCIA EQUIVOCADA
             if (data.reason === "METODO_EQUIVOCADO") {

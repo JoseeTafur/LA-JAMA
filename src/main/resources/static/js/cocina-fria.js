@@ -3,7 +3,6 @@ var socket = new SockJS('/ws-restaurante');
 var stompClient = Stomp.over(socket);
 
 stompClient.connect({}, function (frame) {
-    console.log('Monitor de Barra Fría Conectado: ' + frame);
     stompClient.subscribe('/topic/notificaciones', function (notificacion) {
         procesarAlertaCocina(notificacion.body);
     });
@@ -97,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         const tarjetasVivas = document.querySelectorAll('.pedidos-grid .card-pedido');
         if (!Swal.isVisible() && tarjetasVivas.length === 0) {
-            console.log("Sincronizando monitor de barra fría en background...");
             location.reload();
         }
     }, 45000);
