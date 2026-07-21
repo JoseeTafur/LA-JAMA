@@ -20,18 +20,15 @@ public class MiPerfilController {
 
     @GetMapping("/MiPerfil")
     public String verPerfil(HttpSession session, Model model) {
-        // 1. Recuperamos el usuario real que el LoginController guardó en sesión
         Usuario usuarioLogueado = (Usuario) session.getAttribute("usuarioLogueado");
         String rol = (String) session.getAttribute("rol");
 
         if (usuarioLogueado == null) {
-            return "redirect:/login"; // Seguridad perimetral básica
+            return "redirect:/login";
         }
 
-        // 2. Buscamos su empleado asociado si existe
         Optional<Empleado> empOpt = empleadoService.obtenerPorUsuario(usuarioLogueado);
 
-        // 3. Enviamos los datos reales directo a la plantilla
         model.addAttribute("usuario", usuarioLogueado);
         model.addAttribute("rol", rol);
         model.addAttribute("empleado", empOpt.orElse(null));

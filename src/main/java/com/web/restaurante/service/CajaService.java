@@ -151,24 +151,20 @@ public class CajaService {
         metricas.put("pedidosLiquidados", pedidosHistorialVisual);
         metricas.put("pedidosDiario", pedidosDelTurnoActivo);
 
-        System.out.println("📥 [AUDITORÍA FLUJO INTEGRAL] Turno: " + turnoActivo.getId() + " | Ventas Cuadradas: S/. " + totalVentasPedidos);
         return metricas;
     }
 
     @Transactional
     public Pedido guardarVentaDirectaPOS(Pedido pedido) {
 
-        // 🟩 ELIMINAMOS LA HORA FALSA: Seteamos la fecha y hora actual real del sistema
         LocalDateTime ahora = LocalDateTime.now();
 
         pedido.setFechaCreacion(ahora);
         pedido.setFechaEntrega(ahora);
 
-        // Nace como ENTREGADO para mostrador directo
         pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.ENTREGADO);
         pedido.setTicketImpresoCocina(true);
 
-        // 🛡️ BUSCAMOS EL TURNO ACTIVO USANDO EL CAMPO 'isActivo()' REAL
         try {
             TurnoCaja turnoActivo = turnoCajaRepository.findAll().stream()
                     .filter(TurnoCaja::isActivo)
@@ -178,7 +174,6 @@ public class CajaService {
                 pedido.setTurnoCaja(turnoActivo);
             }
         } catch (Exception e) {
-            System.out.println("⚠️ No se pudo asignar el turno de caja: " + e.getMessage());
         }
 
         String siguienteNota = notaVentaSequenceService.generarSiguienteNota();
@@ -193,11 +188,9 @@ public class CajaService {
                 detalle.setPedido(pedido);
                 detalle.setPagado(true);
 
-                // Sincronizamos los detalles como despachados
                 detalle.setEntregado(true);
                 detalle.setCocinado(true);
 
-                // Escudo de inventario original intacto
                 insumoProductoRepository.findByProductoId(productoReal.getId()).forEach(ip -> {
                     if (ip.getInsumo() != null) {
                         Insumo insumo = ip.getInsumo();
@@ -230,7 +223,6 @@ public class CajaService {
             String turnoFiltro,
             Pageable pageable) {
 
-        // 1. Extraemos los pedidos aplicando las reglas cronológicas estándar
         List<Pedido> todosLosPedidos = pedidoRepository.findAll().stream()
                 .filter(p -> p.getFechaCreacion() != null
                         && !p.getFechaCreacion().isBefore(inicio)
@@ -257,7 +249,6 @@ public class CajaService {
                 })
                 .collect(Collectors.toList());
 
-        // 2. Aplicación de filtros dinámicos (Método y Origen)
         List<Pedido> pedidosFiltrados = todosLosPedidos.stream()
                 .filter(p -> {
                     if (metodoPago != null) {
@@ -290,7 +281,6 @@ public class CajaService {
                 .sorted(Comparator.comparing(Pedido::getId).reversed())
                 .collect(Collectors.toList());
 
-        // 3. Paginación manual
         int totalElementos = pedidosFiltrados.size();
         int desde = (int) pageable.getOffset();
         int hasta = Math.min(desde + pageable.getPageSize(), totalElementos);
@@ -302,7 +292,6 @@ public class CajaService {
 
         int totalPaginas = (int) Math.ceil((double) totalElementos / pageable.getPageSize());
 
-        // 4. MAPEO AL DTO BLINDADO (Con la misma aduana de cálculo del ojito)
         List<Map<String, Object>> listaDTO = subListaPaginada.stream().map(p -> {
             Map<String, Object> dto = new HashMap<>();
 
@@ -316,7 +305,6 @@ public class CajaService {
             dto.put("hora", p.getFechaCreacion().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
             dto.put("fechaHoraOrden", p.getFechaCreacion().toString());
 
-            // ── 🎯 EL ESCUDO DE PROTECCIÓN REPLICADO DEL OJITO ──
             double montoFinalFila = p.getMontoTotal() != null ? p.getMontoTotal() : 0.0;
             if (montoFinalFila <= 0.0 && p.getListaDetalles() != null) {
                 montoFinalFila = p.getListaDetalles().stream()
@@ -358,7 +346,6 @@ public class CajaService {
     public void aprobarYAsignarNotaVentaWeb(Long pedidoId) {
         Pedido pedido = pedidoRepository.findById(pedidoId).orElse(null);
         if (pedido != null) {
-            // Asignamos la Nota de Venta de la secuencia nativa
             if (pedido.getComprobanteNotaNumero() == null || pedido.getComprobanteNotaNumero().isEmpty()) {
                 String siguienteNota = notaVentaSequenceService.generarSiguienteNota();
                 pedido.setComprobanteNotaNumero(siguienteNota);
@@ -366,11 +353,9 @@ public class CajaService {
 
             pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
 
-            // 🚀 PASO SUPREMO: El pedido despierta y se va de forma legítima a producción
             pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.PENDIENTE);
             pedidoRepository.saveAndFlush(pedido);
 
-            // Disparamos la ráfaga al monitor de la cocina para que el plato se dibuje sin dar F5
             messagingTemplate.convertAndSend("/topic/cocina", "{\"pedidoId\":" + pedidoId + ", \"status\":\"NUEVO\"}");
         }
     }
@@ -378,7 +363,6 @@ public class CajaService {
     public List<Map<String, Object>> consolidarDataParaReporte(LocalDateTime inicio, LocalDateTime fin, String turnoFiltro) {
         Pageable ilimitado = PageRequest.of(0, Integer.MAX_VALUE);
 
-        // 1. Extraemos los comprobantes comerciales del método existente
         Map<String, Object> dataBase = obtenerHistorialComprobantesFiltrosAvanzados(inicio, fin, null, null, turnoFiltro, ilimitado);
         List<Map<String, Object>> listaReporteMaster = new ArrayList<>();
 
@@ -391,7 +375,6 @@ public class CajaService {
             }
         }
 
-        // 2. Extraemos e integramos los movimientos manuales puros del rango
         try {
             List<TurnoCaja> turnos = turnoCajaRepository.findAll().stream()
                     .filter(t -> t.getFechaApertura() != null
@@ -438,10 +421,8 @@ public class CajaService {
                 }
             }
         } catch (Exception ex) {
-            System.out.println("⚠️ No se pudo inyectar la bitácora al reporte: " + ex.getMessage());
         }
 
-        // 3. Orden cronológico descendente idéntico a la pantalla
         listaReporteMaster.sort((a, b) -> {
             Long idA = Long.parseLong(a.get("id").toString());
             Long idB = Long.parseLong(b.get("id").toString());
@@ -456,24 +437,18 @@ public class CajaService {
         LocalDateTime ahora = LocalDateTime.now();
         pedido.setFechaCreacion(ahora);
 
-        // 🛡️ [LA JAMA SHIELD] ¡AÑADE ESTA LÍNEA AQUÍ PARA BLINDAR LA HORA!
-        // Al igual que en venta directa POS, igualamos la entrega para que no viaje en null
         pedido.setFechaEntrega(ahora);
 
-        // 🚀 CANAL INTERNO DIRECTO: Va a cocina directo sin aduanas de aprobación
         pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
-        pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO); // Validado por el cajero
-        pedido.setTicketImpresoCocina(false); // Esperando impresión física del chef
+        pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
+        pedido.setTicketImpresoCocina(false);
 
-        // Asignamos secuencia formal correlativa de Nota de Venta
         String siguienteNota = notaVentaSequenceService.generarSiguienteNota();
         pedido.setComprobanteNotaNumero(siguienteNota);
 
-        // Asociamos el turno de caja activo
         try {
             turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
         } catch (Exception e) {
-            System.out.println("⚠️ [La Jama] No se pudo amarrar el turno de caja en el delivery manual: " + e.getMessage());
         }
 
         if (pedido.getListaDetalles() != null) {
@@ -485,7 +460,6 @@ public class CajaService {
                 detalle.setPedido(pedido);
                 detalle.setPagado(true);
 
-                // 🍳 EN COLA DE PRODUCCIÓN: El cocinero se encargará del descuento al despachar
                 detalle.setCocinado(false);
                 detalle.setEntregado(false);
             }
@@ -493,7 +467,6 @@ public class CajaService {
 
         Pedido pedidoGuardado = pedidoRepository.save(pedido);
 
-        // Registramos la venta comercial en el balance de la caja
         if (pedidoGuardado.getMontoTotal() != null && pedidoGuardado.getMontoTotal() > 0) {
             String conceptoCpe = "Delivery Manual Cajero POS (" + pedidoGuardado.getMetodoPago() + ") - " + pedidoGuardado.getComprobanteNotaNumero();
             turnoCajaService.registrarVenta(conceptoCpe, pedidoGuardado.getMontoTotal());
@@ -504,11 +477,9 @@ public class CajaService {
 
     public long contarItemsVendidosEnTurno(Long turnoId) {
         try {
-            // Ejecuta un conteo directo en el repositorio sumando la cantidad de platos de pedidos válidos del turno
             Long cantidad = pedidoRepository.countCantidadProductosPorTurno(turnoId);
             return cantidad != null ? cantidad : 0L;
         } catch (Exception e) {
-            System.out.println("⚠️ No se pudo contar los platos del turno: " + e.getMessage());
             return 0L;
         }
     }

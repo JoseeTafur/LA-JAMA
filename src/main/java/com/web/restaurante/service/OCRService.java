@@ -17,7 +17,6 @@ public class OCRService {
     public void procesarYValidarVoucherIA(Pedido pedido, String urlImagenVoucher) throws Exception {
         String metodoEsperado = pedido.getMetodoPago() != null ? pedido.getMetodoPago().name() : "EFECTIVO";
 
-        // 1. Llamar al servicio de Groq
         Map<String, Object> datosIA = groqService.analizarImagenVoucher(urlImagenVoucher);
         System.out.println("🎯 [OCR SERVICE - IA DATA] === " + datosIA);
 
@@ -31,13 +30,11 @@ public class OCRService {
         Number anioNum = (Number) datosIA.get("anio");
         String mesIA = (String) datosIA.get("mes");
 
-        // 2. ADUANA DE MONTO CONTROLADO (Tolerancia de 20 céntimos)
         double totalEsperado = pedido.getMontoTotal();
         if (Math.abs(montoIA - totalEsperado) > 0.20) {
             throw new IllegalArgumentException("🚨 Fraude/Error: El monto del voucher (S/ " + montoIA + ") no coincide con el total del pedido (S/ " + totalEsperado + ").");
         }
 
-        // 3. ADUANA DE MÉTODO DE PAGO Y DESTINO
         if ("YAPE".equalsIgnoreCase(metodoEsperado) && !"YAPE".equalsIgnoreCase(destinoIA)) {
             throw new IllegalArgumentException("🚨 Validación fallida: Seleccionaste YAPE pero el voucher analizado no corresponde a Yape.");
         }
@@ -45,7 +42,6 @@ public class OCRService {
             throw new IllegalArgumentException("🚨 Validación fallida: Seleccionaste PLIN pero el voucher analizado no corresponde a Plin.");
         }
 
-        // 4. ADUANA DE FECHA DE SERVIDOR INTERNA
         LocalDateTime ahora = LocalDateTime.now();
         int diaHoy = ahora.getDayOfMonth();
         int anioHoyShort = ahora.getYear() % 100;
@@ -59,7 +55,6 @@ public class OCRService {
             throw new IllegalArgumentException("🚨 Fraude Detectado: El voucher no pertenece a la fecha de hoy (" + diaHoy + "-" + mesHoy + "-" + anioHoyShort + ").");
         }
 
-        // 5. CONTROL STRICT DE DUPLICADOS EN BASE DE DATOS
         if (nroOperacion == null || nroOperacion.trim().isEmpty()) {
             throw new IllegalArgumentException("🚨 Error de Lectura: La IA no pudo detectar de forma nítida el número de operación.");
         }
@@ -68,7 +63,6 @@ public class OCRService {
             throw new IllegalArgumentException("🚨 Fraude Mapeado: Este número de operación (" + nroOperacion + ") ya fue registrado y aprobado el día de hoy.");
         }
 
-        // Si todo es válido, actualizamos el payload del pedido con el código legítimo extraído por la IA
         pedido.setCodigoPagoOperacion(nroOperacion.trim());
         System.out.println("🛡️ [ADUANA BACKEND PASADA]: Voucher aprobado de forma legítima.");
     }

@@ -32,9 +32,8 @@ public class DetallePedido {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Producto producto;
 
-    // --- VARIABLES DE ESTADO MICROSCOPICO ---
     private boolean cocinado = false;
-    private boolean entregado = false; // Indica si el mozo ya lo dejó en la mesa del cliente
+    private boolean entregado = false;
     private boolean canceladoPorCliente = false;
     private boolean impresoEnCocina = false;
     private boolean pagado = false;

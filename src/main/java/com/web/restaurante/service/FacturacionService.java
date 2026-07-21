@@ -23,7 +23,6 @@ import java.util.List;
 @Service
 public class FacturacionService {
 
-    // 🌟 INYECCIÓN DINÁMICA DESDE EL PROPERTIES
     @Value("${miapi.facturacion.url.comprobante}")
     private String urlComprobante;
 
@@ -33,7 +32,6 @@ public class FacturacionService {
     @Value("${miapi.facturacion.token}")
     private String apiToken;
 
-    // ── CANAL 1: EMISIÓN DE COMPROBANTES ESTÁNDAR ──
     public FacturaResponse.RespuestaData emitirComprobanteSunat(Pedido pedido, String correlativoPuro) {
         try {
             RestTemplate restTemplate = new RestTemplate();
@@ -148,7 +146,6 @@ public class FacturacionService {
             headers.set("Authorization", "Bearer " + apiToken);
 
             HttpEntity<FacturaRequest> entity = new HttpEntity<>(request, headers);
-            // 🌟 USAMOS LA URL DEL PROPERTIES
             ResponseEntity<FacturaResponse> response = restTemplate.postForEntity(urlComprobante, entity, FacturaResponse.class);
 
             if (response.getBody() != null && response.getBody().getRespuesta() != null) {
@@ -161,7 +158,6 @@ public class FacturacionService {
         return null;
     }
 
-    // ── CANAL 2: GESTIÓN DE NOTAS DE CRÉDITO ──
     public String obtenerClaveSecretaConfigurada() {
         return this.apiToken;
     }
@@ -176,7 +172,6 @@ public class FacturacionService {
 
             HttpEntity<NotaCreditoRequest> entity = new HttpEntity<>(request, headers);
 
-            // 1. Recibimos la respuesta como un String crudo
             ResponseEntity<String> response = restTemplate.postForEntity(urlNota, entity, String.class);
             String rawResponse = response.getBody();
 
@@ -187,8 +182,6 @@ public class FacturacionService {
                 return errorRes;
             }
 
-            // 🌟 DEPURACIÓN DE ADVERTENCIAS PHP (Quirúrgica):
-            // Buscamos dónde inicia verdaderamente el objeto JSON '{' ignorando los Warnings de miapi.cloud
             int jsonStartIndex = rawResponse.indexOf("{");
             if (jsonStartIndex == -1) {
                 System.err.println("❌ RESPUESTA SIN FORMATO JSON VÁLIDO: " + rawResponse);
@@ -198,37 +191,30 @@ public class FacturacionService {
                 return errorRes;
             }
 
-            // Recortamos el String para quedarnos puramente con las llaves del JSON
             String cleanJson = rawResponse.substring(jsonStartIndex);
-            System.out.println("🟢 JSON SANEADO Y FILTRADO CON ÉXITO: " + cleanJson);
 
-            // 2. Parseo inteligente usando ObjectMapper
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(cleanJson);
 
             NotaCreditoResponse respuestaCalibrada = new NotaCreditoResponse();
 
-            // miapi.cloud te devuelve el nodo "respuesta" directamente
             if (root.has("respuesta")) {
                 com.fasterxml.jackson.databind.JsonNode respNode = root.get("respuesta");
 
-                // Verificamos éxito por el código HTTP status 200 o bandera success que vino en tu log
                 boolean ok = (respNode.has("status") && respNode.get("status").asInt() == 200)
                         || (respNode.has("success") && respNode.get("success").asBoolean());
 
                 respuestaCalibrada.setOkey(ok);
 
                 if (ok) {
-                    // Extraemos los nombres reales de los enlaces con guiones del log oficial
                     String xmlFirmadoUrl = respNode.has("xml-firmado") ? respNode.get("xml-firmado").asText() : "";
 
-                    // Extraemos el número correlativo deduciéndolo del nombre del archivo XML (Ej: 20000000001-07-BC01-00000005.XML)
                     String numeroNotaDetectado = "NC-EMITIDA";
                     if (!xmlFirmadoUrl.isEmpty()) {
                         String[] segmentos = xmlFirmadoUrl.split("-");
                         if (segmentos.length >= 4) {
-                            String serieNC = segmentos[2]; // BC01
-                            String correlativoNC = segmentos[3].toUpperCase().replace(".XML", ""); // 00000005
+                            String serieNC = segmentos[2];
+                            String correlativoNC = segmentos[3].toUpperCase().replace(".XML", "");
                             numeroNotaDetectado = serieNC + "-" + correlativoNC;
                         }
                     }
@@ -236,7 +222,7 @@ public class FacturacionService {
                     respuestaCalibrada.setNumeroNota(numeroNotaDetectado);
                     respuestaCalibrada.setPdfTicket(respNode.has("pdf-ticket") ? respNode.get("pdf-ticket").asText() : "");
                     respuestaCalibrada.setPdfA4(respNode.has("pdf-a4") ? respNode.get("pdf-a4").asText() : "");
-                    respuestaCalibrada.setXmlFirmado(xmlFirmadoUrl); // Guardamos la URL directa del XML
+                    respuestaCalibrada.setXmlFirmado(xmlFirmadoUrl);
 
                 } else {
                     respuestaCalibrada.setMensaje(respNode.has("mensaje") ? respNode.get("mensaje").asText() : "Error en proceso.");

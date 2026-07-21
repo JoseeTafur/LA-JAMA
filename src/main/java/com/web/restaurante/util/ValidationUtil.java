@@ -2,10 +2,6 @@ package com.web.restaurante.util;
 
 import java.time.LocalDate;
 
-/**
- * Utilidad global de validaciones para todo el sistema La Jama.
- * Los mismos límites aplican en frontend (validation.js) y backend.
- */
 public class ValidationUtil {
 
     // ── Límites globales del sistema ──────────────────────────────────────────

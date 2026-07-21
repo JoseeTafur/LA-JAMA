@@ -49,7 +49,6 @@ public class InsumoService {
             insumo.setUnidadMedida(dto.getUnidadMedida());
             insumo.setStockMinimo(dto.getStockMinimo());
         } else {
-            // Si es nuevo, usamos el mapper normal
             insumo = insumoMapper.toEntity(dto);
             insumo.setCategoria(dto.getCategoria());
         }
@@ -88,17 +87,12 @@ public class InsumoService {
         Insumo insumo = insumoRepository.findById(idInsumo)
                 .orElseThrow(() -> new RuntimeException("Insumo no mapeado"));
 
-        // 1. Rompemos con las recetas
         insumoProductoRepository.deleteByInsumoId(idInsumo);
 
-        // 2. Rompemos con el Kardex
         movimientoRepository.deleteByInsumoId(idInsumo);
 
-        // 3. 🔥 NUEVO: Rompemos con los lotes registrados en la BD
         loteInsumoRepository.deleteByInsumoId(idInsumo);
-        // (Asegúrate de agregar '' en su interfaz correspondiente)
 
-        // 4. 🚀 Ahora sí, la tabla madre queda libre de ataduras y se borra física y completamente
         insumoRepository.delete(insumo);
     }
 
@@ -110,15 +104,12 @@ public class InsumoService {
                 .collect(Collectors.toList());
     }
 
-    // 🌟 MÉTODO CORREGIDO Y BLINDADO CONTRA CAMPOS NULOS DE ABARROTES GENERALES
     @Transactional
     public void registrarLote(java.util.Map<String, Object> payload) {
         Long idInsumo = Long.valueOf(payload.get("idInsumo").toString());
         Double kgComprados = Double.valueOf(payload.get("kgComprados").toString());
         Double costoTotal = payload.get("costoTotal") != null ? Double.valueOf(payload.get("costoTotal").toString()) : 0.0;
         String observacion = payload.get("observacion") != null ? payload.get("observacion").toString() : "";
-
-        // 🛡️ CONTROL DE NULOS: Si no viene porcionesPorKg (Insumo general), le asignamos 0.0 por defecto
         Double porcionesPorKg = (payload.get("porcionesPorKg") != null && !payload.get("porcionesPorKg").toString().trim().isEmpty())
                 ? Double.valueOf(payload.get("porcionesPorKg").toString())
                 : 0.0;
@@ -132,15 +123,12 @@ public class InsumoService {
         String detalleKardex = "";
 
         if (!"PROTEINA".equalsIgnoreCase(insumo.getCategoria())) {
-            // 🛒 CASO GENERAL (Arroz, Vegetales):
-            // 🌟 CAMBIO: El stock actual se REEMPLAZA por la cantidad del nuevo lote ingresado
             nuevoStock = kgComprados;
             insumo.setStockActual(nuevoStock);
             cantidadMovimientoKardex = kgComprados;
             detalleKardex = "Apertura de Lote (Stock Reiniciado): " + kgComprados + " " + insumo.getUnidadMedida() +
                     (observacion.trim().isEmpty() ? "" : " — " + observacion);
         } else {
-            // 🥩 CASO PROTEÍNAS: Mantiene su comportamiento acumulativo por porciones calculadas
             double porcionesNuevas = Math.round(kgComprados * porcionesPorKg);
             nuevoStock = stockAnterior + porcionesNuevas;
             insumo.setStockActual(nuevoStock);
@@ -150,15 +138,11 @@ public class InsumoService {
             detalleKardex = "Ingreso Lote: " + kgComprados + " Kg (Rendimiento: " + porcionesPorKg + " porc/Kg)";
         }
 
-        // Guardamos el maestro actualizado con flush forzado
         insumoRepository.saveAndFlush(insumo);
 
-        // Dejamos huella limpia en el Kardex general
         MovimientoInsumo mov = new MovimientoInsumo();
         mov.setInsumo(insumo);
         mov.setCantidad(cantidadMovimientoKardex);
-
-        // 🌟 DOBLE CAPA: Seteamos tanto origen como tipo para que se acople al JS del Kardex que armamos
         mov.setTipo("INGRESO");
         mov.setMotivo(detalleKardex);
         mov.setStockResultante(nuevoStock);
@@ -268,8 +252,6 @@ public class InsumoService {
                     MovimientoInsumoDTO dto = new MovimientoInsumoDTO();
                     dto.setId(m.getId());
                     dto.setFecha(m.getFecha() != null ? m.getFecha().format(formatter) : "Sin Fecha");
-
-                    // 🚨 ¡EL PEQUEÑO DETALLE ESTÁ AQUÍ! 🚨
                     dto.setTipo(m.getTipo());
                     dto.setCantidad(m.getCantidad());
                     dto.setMotivo(m.getMotivo());
@@ -319,15 +301,12 @@ public class InsumoService {
 
     @Transactional
     public void eliminarProductoYDesvincularInsumos(Long idProducto) {
-        // Paso A: Purgamos el historial de comandas de pruebas (pedido_detalle)
         detallePedidoRepository.deleteByProductoId(idProducto);
         System.out.println("[La Jama - Logística] Historial de comandas eliminado para el producto ID: " + idProducto);
 
-        // Paso B: Purgamos la matriz de recetas (insumo_producto)
         insumoProductoRepository.deleteByProductoId(idProducto);
         System.out.println("[La Jama - Logística] Receta desvinculada para el producto ID: " + idProducto);
 
-        // Paso C: Ahora que el registro padre no tiene amarras en ninguna tabla, se elimina físicamente
         productoRepository.deleteById(idProducto);
         System.out.println("[La Jama - Catálogo] Producto eliminado físicamente de forma exitosa.");
     }

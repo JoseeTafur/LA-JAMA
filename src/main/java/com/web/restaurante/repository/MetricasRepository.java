@@ -13,7 +13,6 @@ public interface MetricasRepository extends JpaRepository<Pedido, Long> {
     @Query(value = "SELECT fecha_apertura FROM turno_caja ORDER BY fecha_apertura DESC LIMIT 1 OFFSET 9", nativeQuery = true)
     LocalDateTime obtenerFechaAperturaHace10Turnos();
 
-    // 🚀 TOP PLATOS: Solo suma detalles de pedidos con Comprobante / Nota de Venta activa
     @Query("SELECT dp.producto.nombre AS nombre, SUM(dp.cantidad) AS total " +
             "FROM DetallePedido dp " +
             "WHERE dp.pedido.estado NOT IN (com.web.restaurante.model.enums.EstadoPedido.CANCELADO, com.web.restaurante.model.enums.EstadoPedido.PENDIENTE) " +
@@ -36,7 +35,6 @@ public interface MetricasRepository extends JpaRepository<Pedido, Long> {
             "GROUP BY me.estado")
     List<Map<String, Object>> kpiEstadoMesasActual();
 
-    // 🚀 TOTAL PEDIDOS: Cuenta estrictamente las órdenes del día que posean Nota de Venta
     @Query("SELECT COUNT(p) AS total " +
             "FROM Pedido p " +
             "WHERE p.estado NOT IN (com.web.restaurante.model.enums.EstadoPedido.CANCELADO, com.web.restaurante.model.enums.EstadoPedido.PENDIENTE) " +
@@ -45,7 +43,6 @@ public interface MetricasRepository extends JpaRepository<Pedido, Long> {
             "AND p.fechaCreacion >= :fecha")
     Long kpiTotalPedidosAtendidosHoy(@Param("fecha") LocalDateTime fecha);
 
-    // 🚀 CANALES DE VENTA: Divide el pastel estadístico basándose únicamente en ventas formales
     @Query("SELECT p.tipoPedido AS canal, COUNT(p) AS total " +
             "FROM Pedido p " +
             "WHERE p.estado NOT IN (com.web.restaurante.model.enums.EstadoPedido.CANCELADO, com.web.restaurante.model.enums.EstadoPedido.PENDIENTE) " +

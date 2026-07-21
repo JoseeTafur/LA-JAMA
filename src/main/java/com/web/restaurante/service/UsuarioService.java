@@ -40,27 +40,20 @@ public class UsuarioService {
 
     @Transactional
     public Usuario guardar(Usuario usuario) {
-        // 🛡️ ADUANA PREVENTIVA ANTI-NULLPOINTER:
-        // Si el cliente no seleccionó ningún rol, frenamos el proceso antes de que toque Hibernate
         if (usuario.getPerfil() == null || usuario.getPerfil().getId() == null) {
             throw new IllegalArgumentException("El perfil / rol de acceso es obligatorio para registrar un usuario.");
         }
 
-        // ========================================================
-        // 🔄 CASO A: EDICIÓN / ACTUALIZACIÓN DE USUARIO EXISTENTE
-        // ========================================================
         if (usuario.getId() != null) {
             Usuario existente = usuarioRepository.findById(usuario.getId())
                     .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado para actualizar"));
 
-            // 🛡️ ADUANA COLECTIVA: Validamos si el nuevo rol viola el límite de 3 administradores
             String perfilNuevoNombre = perfilRepository.findById(usuario.getPerfil().getId())
                     .map(p -> p.getNombre().toUpperCase()).orElse("");
 
             String perfilActualNombre = existente.getPerfil() != null
                     ? existente.getPerfil().getNombre().toUpperCase() : "";
 
-            // Solo contamos si el usuario NO era Administrador antes y AHORA quiere escalar a Administrador
             if (perfilNuevoNombre.contains("ADMINISTRADOR") && !perfilActualNombre.contains("ADMINISTRADOR")) {
                 long totalAdmins = usuarioRepository.countByPerfil_NombreIgnoreCaseAndEstadoNot("Administrador", 2);
                 if (totalAdmins >= 3) {
@@ -74,7 +67,6 @@ public class UsuarioService {
             existente.setCorreo(usuario.getCorreo().trim());
             existente.setPerfil(usuario.getPerfil());
 
-            // Conservamos la clave original de la BD si el campo del modal viajó vacío
             if (!esClaveVacia(usuario.getClave())) {
                 existente.setClave(passwordEncoder.encode(usuario.getClave().trim()));
             }
@@ -82,13 +74,9 @@ public class UsuarioService {
             return usuarioRepository.save(existente);
         }
 
-        // ========================================================
-        // 🆕 CASO B: REGISTRO DE UN NUEVO USUARIO EN EL SISTEMA
-        // ========================================================
         validarDuplicados(usuario);
         validarClave(usuario.getClave());
 
-        // 🛡️ CANDADO EXCLUSIVO DE CREACIÓN: Máximo 3 administradores activos
         perfilRepository.findById(usuario.getPerfil().getId()).ifPresent(perfil -> {
             if ("Administrador".equalsIgnoreCase(perfil.getNombre())) {
                 long totalAdmins = usuarioRepository.countByPerfil_NombreIgnoreCaseAndEstadoNot("Administrador", 2);
@@ -146,21 +134,16 @@ public class UsuarioService {
     }
 
     private boolean esUsuarioDuplicado(String username, Long id) {
-        // Buscamos todos los usuarios activos que coincidan con el login
         List<Usuario> coincidencias = usuarioRepository.findByUsuarioIgnoreCase(username);
 
-        // Es un duplicado real si hay coincidencia, no está eliminado (estado != 2)
-        // y pertenece a un ID diferente al que estamos editando actualmente
         return coincidencias.stream()
                 .filter(u -> u.getEstado() != 2)
                 .anyMatch(u -> !u.getId().equals(id));
     }
 
     private boolean esCorreoDuplicado(String correo, Long id) {
-        // Buscamos todas las coincidencias de correo en la base de datos
         List<Usuario> coincidencias = usuarioRepository.findByCorreoIgnoreCase(correo);
 
-        // Es duplicado si el correo ya existe en una cuenta viva que no sea la nuestra
         return coincidencias.stream()
                 .filter(u -> u.getEstado() != 2)
                 .anyMatch(u -> !u.getId().equals(id));

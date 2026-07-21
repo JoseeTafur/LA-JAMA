@@ -57,9 +57,6 @@ public class CocinaController {
         if ("caliente".equals(tipoLimpio)) {
             List<Pedido> pedidosCalientes = pedidoService.listarPedidosCalientes();
 
-            // ========================================================
-            // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
-            // ========================================================
             model.addAttribute("activeUri", "/admin/cocina/caliente");
             model.addAttribute("titleHeader", "Monitor de Cocina Caliente");
 
@@ -70,9 +67,6 @@ public class CocinaController {
         } else if ("fria".equals(tipoLimpio)) {
             List<Pedido> pedidosFrios = pedidoService.listarPedidosFrios();
 
-            // ========================================================
-            // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
-            // ========================================================
             model.addAttribute("activeUri", "/admin/cocina/fria");
             model.addAttribute("titleHeader", "Monitor de Cocina Fría / Frescos");
 
@@ -89,7 +83,6 @@ public class CocinaController {
     public String verTicketPDF(@PathVariable Long pedidoId, @PathVariable String tipo, Model model) {
         Pedido pedido = pedidoService.obtenerPorId(pedidoId);
 
-        // 1. Filtramos SOLO los platos que NO se han impreso, que NO son mermas y que son de esta estación
         List<DetallePedido> detallesAImprimir = pedido.getListaDetalles().stream()
                 .filter(d -> !d.isCanceladoPorCliente() && !d.isImpresoEnCocina())
                 .filter(d -> {
@@ -104,7 +97,6 @@ public class CocinaController {
                 })
                 .toList();
 
-        // 2. Si no hay nada nuevo (el chef le dio a reimprimir por si acaso), le mandamos todos los activos
         if (detallesAImprimir.isEmpty()) {
             detallesAImprimir = pedido.getListaDetalles().stream()
                     .filter(d -> !d.isCanceladoPorCliente())
@@ -118,19 +110,13 @@ public class CocinaController {
                         return "caliente".equalsIgnoreCase(tipo) ? cat.contains("CALIENTE") : (cat.contains("FRI") || cat.contains("FRÍ"));
                     }).toList();
         } else {
-            // 3. Si SÍ había platos nuevos, los marcamos como impresos
             for (DetallePedido d : detallesAImprimir) {
                 d.setImpresoEnCocina(true);
             }
         }
 
-        // =====================================================================
-        // 🍳 REGLA DE ORO AUTOMÁTICA: Activamos el candado para habilitar el pago en Caja
-        // =====================================================================
         pedido.setTicketImpresoCocina(true);
 
-        // 🛑 CAMBIO DE SEGURIDAD: Solo pasamos a EN_COCINA si el pedido estaba ENVIADO
-        // Importamos tu enum: com.web.restaurante.model.enums.EstadoPedido;
         if (pedido.getEstado() == com.web.restaurante.model.enums.EstadoPedido.ENVIADO) {
             pedido.setEstado(com.web.restaurante.model.enums.EstadoPedido.EN_COCINA);
             System.out.println("DEBUG COCINA: El pedido #" + pedidoId + " cambió de ENVIADO a EN_COCINA por impresión.");
@@ -155,7 +141,6 @@ public class CocinaController {
 
         String msgNotif = "🔔 ¡Lote Completo! La " + identificadorMesa + " tiene su sección de cocina " + tipoEstacion.toUpperCase() + " en barra.";
 
-        // 🌟 CORRECCIÓN PERSISTENTE: Guardamos físicamente en la BD
         Notificacion n = new Notificacion();
         n.setMensaje(msgNotif);
         n.setTipo("SUCCESS");
@@ -163,7 +148,6 @@ public class CocinaController {
         n.setLeido(false);
         notificacionRepository.save(n);
 
-        // Disparo al canal de tiempo real
         messagingTemplate.convertAndSend("/topic/notificaciones/mozos", msgNotif);
 
         return "redirect:/admin/cocina/" + tipoEstacion + "?success";
@@ -184,10 +168,8 @@ public class CocinaController {
 
         String identificadorMesa = (p.getNumeroMesa() != null) ? "Mesa N° " + p.getNumeroMesa() : "Carta/Delivery";
 
-        // Mapeamos el string que el escáner del JS de los mozos ya sabe interpretar automáticamente con el ícono de cocina (🍳)
         String msgNotif = "🍳 ¡Listo para servir! " + nombrePlato + " asignado a la " + identificadorMesa;
 
-        // 🌟 CORRECCIÓN PERSISTENTE: Guardamos en base de datos antes de despachar
         Notificacion n = new Notificacion();
         n.setMensaje(msgNotif);
         n.setTipo("SUCCESS");
@@ -195,7 +177,6 @@ public class CocinaController {
         n.setLeido(false);
         notificacionRepository.save(n);
 
-        // Disparo al WebSocket
         messagingTemplate.convertAndSend("/topic/notificaciones/mozos", msgNotif);
 
         return "OK";

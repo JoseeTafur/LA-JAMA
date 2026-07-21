@@ -41,12 +41,9 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             "AND ((:categoria = 'FRI' AND p.frioListo = false) OR (:categoria = 'CALIENTE' AND p.calienteListo = false))")
     List<Pedido> buscarPedidosPorCocina(@Param("categoria") String categoria);
 
-    // 🚀 REPARADO: La caja busca por cobrar aquellos cuya cuenta esté financieramente PENDIENTE
     @Query("SELECT p FROM Pedido p WHERE " +
-            // 1. 🌐 FLUJO CARTA DIGITAL (Delivery / Recojo): Órdenes operando en producción
             "(p.numeroMesa IS NULL AND p.estado IN (com.web.restaurante.model.enums.EstadoPedido.EN_COCINA, com.web.restaurante.model.enums.EstadoPedido.PREPARADO)) " +
             "OR " +
-            // 2. 🍽️ FLUJO PRESENCIAL (Salón): El estado de pago sigue PENDIENTE en mesa
             "(p.numeroMesa IS NOT NULL AND p.estadoPago = com.web.restaurante.model.enums.EstadoPago.PENDIENTE AND (p.comprobanteNumero IS NULL OR p.comprobanteNumero = '')) " +
             "ORDER BY p.fechaCreacion ASC")
     List<Pedido> listarPedidosPorCobrar();
@@ -74,7 +71,6 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             "ORDER BY p.fechaCreacion ASC")
     List<Pedido> findPedidosPendientesDeCarta();
 
-    // 🚀 REPARADO: Evalúa el lote contable de hoy usando el canal financiero (PAGADO / EXTORNADO)
     @Query("SELECT p FROM Pedido p WHERE p.fechaCreacion > :fechaApertura AND ("
             + "(p.numeroMesa IS NOT NULL AND p.estadoPago IN (com.web.restaurante.model.enums.EstadoPago.PAGADO, com.web.restaurante.model.enums.EstadoPago.EXTORNADO)) OR "
             + "(p.numeroMesa IS NULL AND p.estadoPago IN (com.web.restaurante.model.enums.EstadoPago.PAGADO, com.web.restaurante.model.enums.EstadoPago.EXTORNADO) "
@@ -82,7 +78,6 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             + ") ORDER BY p.fechaCreacion DESC")
     List<Pedido> findPedidosParaComprobantesHoy(@Param("fechaApertura") LocalDateTime fechaApertura);
 
-    // 🚀 REPARADO: El historial visual de comprobantes filtra por estados de pago válidos (Finanzas)
     @Query("SELECT p FROM Pedido p WHERE "
             + "CAST(p.fechaCreacion AS date) BETWEEN :fechaInicio AND :fechaFin AND "
             + "( "
@@ -94,7 +89,6 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             @Param("fechaFin") LocalDate fechaFin,
             Pageable pageable);
 
-    // 🚀 REPARADO: Las notas de venta históricas evalúan el flujo financiero de caja
     @Query("SELECT p FROM Pedido p WHERE "
             + "CAST(p.fechaCreacion AS date) BETWEEN :fechaInicio AND :fechaFin AND "
             + "( "
@@ -110,7 +104,6 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     List<Pedido> findByFechaCreacionBetweenOrderByFechaCreacionDesc(
             LocalDateTime inicio, LocalDateTime fin);
 
-    // Agrega esto en tu PedidoRepository.java
     @Query("SELECT COALESCE(SUM(d.cantidad), 0) FROM Pedido p JOIN p.listaDetalles d " +
             "WHERE p.turnoCaja.id = :turnoId AND p.estadoPago != 'EXTORNADO' AND p.estado != 'CANCELADO'")
     Long countCantidadProductosPorTurno(@Param("turnoId") Long turnoId);

@@ -80,10 +80,10 @@ public class Pedido {
     private Double montoTotal;
 
     @Column(name = "comprobante_tipo", length = 20)
-    private String comprobanteTipo; // "BOLETA" o "FACTURA"
+    private String comprobanteTipo;
 
     @Column(name = "comprobante_numero", length = 30)
-    private String comprobanteNumero; // Correlativo, ej: "B001-000045"
+    private String comprobanteNumero;
 
     @Column(name = "documento_cliente", length = 15)
     private String documentoCliente;

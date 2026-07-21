@@ -7,6 +7,5 @@ import java.util.List;
 public interface ProduccionPorcionesRepository extends JpaRepository<ProduccionPorciones, Long> {
     List<ProduccionPorciones> findByLoteIdOrderByFechaProduccionDesc(Long loteId);
 
-    // 🔥 Agregado Top50 para la consulta unificada por ID de Insumo
     List<ProduccionPorciones> findTop50ByLoteInsumoIdOrderByFechaProduccionDesc(Long insumoId);
 }

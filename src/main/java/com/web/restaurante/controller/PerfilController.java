@@ -22,10 +22,7 @@ public class PerfilController {
 
     @GetMapping
     public String mostrarPagina(Model model) {
-        // ========================================================
-        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
-        // ========================================================
-        model.addAttribute("activeUri", "/perfiles"); // Asegura el foco en el Sidebar
+        model.addAttribute("activeUri", "/perfiles");
         model.addAttribute("titleHeader", "Gestión de Perfiles y Accesos");
 
         return "perfiles";
@@ -54,7 +51,6 @@ public class PerfilController {
                     perfilData.put("descripcion", perfil.getDescripcion());
                     perfilData.put("estado", perfil.getEstado());
 
-                    // 🌟 CORRECCIÓN DE LA FIRMA JSON: Devolvemos objetos completos con id para que Jackson no se rompa
                     List<Map<String, Object>> opcionesMapeadas = perfil.getOpciones().stream()
                             .map(op -> {
                                 Map<String, Object> opMap = new HashMap<>();

@@ -47,7 +47,6 @@ public class ReporteController {
             @RequestParam String fin,
             @RequestParam(required = false, defaultValue = "TODOS") String turno) {
 
-        // 🚀 CORRECCIÓN CLAVE: Llama al nuevo método estructurado para arqueos puros
         byte[] data = reporteService.generarReporteHistorialCierres(formato, inicio, fin, turno);
         return crearResponseBinario(data, "reporte_historial_cierres", formato);
     }
@@ -81,7 +80,6 @@ public class ReporteController {
 
         if (formato.equalsIgnoreCase("excel") || formato.equalsIgnoreCase("csv")) {
             extension = "csv";
-            // 💡 Indispensable forzar UTF-8 en la descarga binaria
             mediaType = MediaType.parseMediaType("text/csv;charset=UTF-8");
         }
 
@@ -101,7 +99,6 @@ public class ReporteController {
             @RequestParam(required = false, defaultValue = "TODOS") String metodo,
             @RequestParam(required = false, defaultValue = "TODOS") String origen) {
 
-        // pestaña recibirá: "PENDIENTES", "EMITIDOS" o "ANULADOS"
         byte[] data = reporteComprobantesService.generarReporteComprobantes(
                 pestaña, formato, inicio, fin, texto, metodo, origen
         );

@@ -15,10 +15,6 @@ public class CloudinaryService {
 
     private final Cloudinary cloudinary;
 
-    /**
-     * 🍔 Método 1: Para las imágenes del menú (Productos)
-     * Mantiene tu lógica intacta para no romper el módulo de catálogo.
-     */
     public String subirImagen(MultipartFile archivo) throws IOException {
         if (archivo.isEmpty()) return null;
 
@@ -32,14 +28,9 @@ public class CloudinaryService {
         return resultado.get("secure_url").toString();
     }
 
-    /**
-     * 📱 Método 2: Para los Vouchers de Pago Digital (Yape / Plin)
-     * Fuerza la subida a 'vouchers-lajama' respetando el nombre exacto sin sufijos.
-     */
     public String subirImagen(MultipartFile archivo, String carpetaDestino) throws IOException {
         if (archivo.isEmpty()) return null;
 
-        // Extraemos el nombre original del voucher sin la extensión (.png/.jpg)
         String nombreOriginal = archivo.getOriginalFilename();
         if (nombreOriginal != null && nombreOriginal.contains(".")) {
             nombreOriginal = nombreOriginal.substring(0, nombreOriginal.lastIndexOf("."));
@@ -49,11 +40,11 @@ public class CloudinaryService {
 
         // 🔥 Configuración estricta para la auditoría de La Jama
         Map<?, ?> opciones = ObjectUtils.asMap(
-                "folder", carpetaDestino,          // 📁 Pasarás "vouchers-lajama"
-                "public_id", nombreOriginal,       // 🎯 Nombre exacto (ej: 0.50)
-                "use_filename", true,              // 📝 Usa el nombre provisto
-                "unique_filename", false,          // ⛔ Desactiva el sufijo aleatorio como _vd3lua
-                "overwrite", true                  // 🔄 Si se vuelve a subir, lo reemplaza cleanly
+                "folder", carpetaDestino,
+                "public_id", nombreOriginal,
+                "use_filename", true,
+                "unique_filename", false,
+                "overwrite", true
         );
 
         Map<?, ?> resultado = cloudinary.uploader().upload(archivo.getBytes(), opciones);

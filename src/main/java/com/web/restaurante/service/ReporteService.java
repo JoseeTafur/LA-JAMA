@@ -41,7 +41,6 @@ public class ReporteService {
     @Autowired
     private PedidoRepository pedidoRepository;
 
-    // 🚨 CORRECCIÓN CLAVE: Inyectamos con @Autowired individual para fulminar el NullPointerException
     @Autowired
     private MovimientoCajaRepository movimientoCajaRepository;
 
@@ -51,23 +50,17 @@ public class ReporteService {
     public byte[] generarReporteLiquidados(String formato, String texto, String metodo, String origen) {
         List<Pedido> filtrados = new ArrayList<>();
 
-        // 🚀 SINCRONIZACIÓN CONTABLE PERFECTA: Buscamos el turno activo de la caja
-        // para jalar exactamente los mismos pedidos liquidados que pinta el panel web.
         turnoCajaRepository.findByActivoTrue().ifPresent(turnoActivo -> {
 
             List<Pedido> listaBase = pedidoRepository.findAll().stream()
-                    // Aduana temporal del turno activo
                     .filter(p -> p.getFechaCreacion() != null
                             && turnoActivo.getFechaApertura() != null
                             && p.getFechaCreacion().isAfter(turnoActivo.getFechaApertura()))
-                    // 🛡️ CONDICIÓN SOLICITADA: Excluir tajantemente los que no tengan comprobante_nota_numero
                     .filter(p -> p.getComprobanteNotaNumero() != null && !p.getComprobanteNotaNumero().trim().isEmpty())
-                    // Solo entran los estados financieros de liquidación reales
                     .filter(p -> com.web.restaurante.model.enums.EstadoPago.PAGADO.equals(p.getEstadoPago())
                             || com.web.restaurante.model.enums.EstadoPago.EXTORNADO.equals(p.getEstadoPago()))
                     .collect(Collectors.toList());
 
-            // Aplicamos los filtros dinámicos de texto, método de pago y origen sobre la data real
             List<Pedido> procesados = listaBase.stream().filter(p -> {
                 boolean cumpleTexto = true;
                 if (texto != null && !texto.trim().isEmpty()) {
@@ -99,7 +92,6 @@ public class ReporteService {
             filtrados.addAll(procesados);
         });
 
-        // Orden cronológico descendente (Lo más nuevo arriba en la hoja)
         filtrados.sort((a, b) -> b.getId().compareTo(a.getId()));
 
         return procesarReporteEstructurado(filtrados, formato);
@@ -121,7 +113,6 @@ public class ReporteService {
                     Pedido pSimulado = new Pedido();
                     pSimulado.setId(m.getId());
 
-                    // 🛡️ FORMATEO FORMAL: AC01-00000002
                     if (m.getTipo() == com.web.restaurante.model.enums.TipoMovimientoCaja.APERTURA || conceptoUpper.contains("FONDO INICIAL")) {
                         String correlativoFormateado = String.format("%08d", turno.getId());
                         pSimulado.setComprobanteNotaNumero("AC01-" + correlativoFormateado);
@@ -156,7 +147,6 @@ public class ReporteService {
         LocalDateTime inicioDT = fechaInicio.atStartOfDay();
         LocalDateTime finDT = fechaFin.atTime(java.time.LocalTime.MAX);
 
-        // Extraemos estrictamente los turnos cerrados en el rango horacio
         List<TurnoCaja> turnos = turnoCajaRepository.findAll().stream()
                 .filter(t -> t.getFechaApertura() != null
                         && !t.getFechaApertura().isBefore(inicioDT)
@@ -173,33 +163,28 @@ public class ReporteService {
                 if (!tipoTurnoReal.equals(filtroCotejar)) continue;
             }
 
-            // Simulamos un objeto Pedido estructurado para heredar de forma transparente tus estilos Excel/PDF
             Pedido pSimulado = new Pedido();
             pSimulado.setId(t.getId());
-            pSimulado.setComprobanteNotaNumero("#" + t.getId()); // Identificador estético del Turno
+            pSimulado.setComprobanteNotaNumero("#" + t.getId());
 
             String badgeTurnoTxt = tipoTurnoReal.equals("DIA") ? "TURNO: DÍA" : "TURNO: NOCHE";
             pSimulado.setCliente(badgeTurnoTxt + " | Obs: " + (t.getObservaciones() != null ? t.getObservaciones() : "Sin apuntes"));
             pSimulado.setFechaCreacion(t.getFechaApertura());
 
-            // Pasamos los montos financieros clave encapsulados en campos seguros
-            pSimulado.setMontoTotal(t.getTotalVendido() != null ? t.getTotalVendido() : 0.0); // Columna Monto Cobrado
+            pSimulado.setMontoTotal(t.getTotalVendido() != null ? t.getTotalVendido() : 0.0);
 
-            // Guardamos metadatos adicionales en campos string libres para pintarlos de forma descriptiva
             String fCierreStr = t.getFechaCierre() != null ? t.getFechaCierre().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")) : "Abierto";
             pSimulado.setDireccion("Apertura: S/ " + String.format("%.2f", t.getMontoApertura()) + " | Cierre: " + fCierreStr);
 
             double descuadre = t.getDiferencia() != null ? t.getDiferencia() : 0.0;
             pSimulado.setClienteCorreo(descuadre >= 0 ? "DESCUADRE: +S/ " + String.format("%.2f", descuadre) : "DESCUADRE: S/ " + String.format("%.2f", descuadre));
 
-            // Control de color: si hay un descuadre negativo fuerte, se marcará con el fondo arena/anulado de advertencia
             pSimulado.setEstadoPago(descuadre < -0.05 ? com.web.restaurante.model.enums.EstadoPago.EXTORNADO : com.web.restaurante.model.enums.EstadoPago.PAGADO);
             pSimulado.setMetodoPago(com.web.restaurante.model.enums.MetodoPago.EFECTIVO);
 
             resumenTurnosSimulados.add(pSimulado);
         }
 
-        // Ordenamos para que los cierres más recientes encabecen la primera línea del reporte
         resumenTurnosSimulados.sort((a, b) -> b.getId().compareTo(a.getId()));
         return procesarReporteEstructurado(resumenTurnosSimulados, formato);
     }
@@ -274,7 +259,6 @@ public class ReporteService {
                     return true;
                 }).collect(Collectors.toList());
 
-        // 🛡️ ADUANA CRÍTICA EN LOS MOVIMIENTOS MANUALES DEL REPORTE:
         if ("TODOS".equals(metodoUpper) || "EFECTIVO".equals(metodoUpper)) {
             if ("TODOS".equals(origenUpper) || "SALON".equals(origenUpper) || "LOCAL".equals(origenUpper)) {
 
@@ -299,7 +283,6 @@ public class ReporteService {
                         String concepto = m.getConcepto() != null ? m.getConcepto() : "";
                         String conceptoUpper = concepto.toUpperCase();
 
-                        // 🚨 FILTRO ATÓMICO: Si el concepto tiene palabras clave de ventas manuales, NO se agrega como "M-"
                         if (!(conceptoUpper.contains("LIQUIDACIÓN") ||
                                 conceptoUpper.contains("LIQUIDACION") ||
                                 conceptoUpper.contains("EXTORNO") ||
@@ -532,9 +515,7 @@ public class ReporteService {
 
                 String metadata = p.getClienteCorreo() != null ? p.getClienteCorreo().toUpperCase() : "";
 
-                // ── 🎯 CANDADO FINANCIERO: Si empieza con CC01 o es metadata de CIERRE, aporta 0 al Flujo Neto Real ──
                 if (nroDoc.startsWith("CC01-") || metadata.contains("CIERRE_CAJA")) {
-                    // Sigue de largo y no acumula monto en totalNetoFlujoExcel
                 } else if (nroDoc.startsWith("M-") || nroDoc.startsWith("AC01-")) {
                     if ("EGRESO".equals(tipoOperacion)) {
                         totalNetoFlujoExcel -= monto;
@@ -660,9 +641,7 @@ public class ReporteService {
 
                 String metadata = p.getClienteCorreo() != null ? p.getClienteCorreo().toUpperCase() : "";
 
-                // ── 🎯 CANDADO FINANCIERO: Si empieza con CC01 o es metadata de CIERRE, aporta 0 al Flujo Neto Real ──
                 if (nroDoc.startsWith("CC01-") || metadata.contains("CIERRE_CAJA")) {
-                    // Salta el acumulador del pie de página
                 } else if (nroDoc.startsWith("M-") || nroDoc.startsWith("AC01-")) {
                     if ("EGRESO".equals(tipoOperacion)) totalNetoFlujo -= monto;
                     else totalNetoFlujo += monto;

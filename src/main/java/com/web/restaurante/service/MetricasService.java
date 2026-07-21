@@ -1,6 +1,6 @@
 package com.web.restaurante.service;
 
-import com.web.restaurante.model.TurnoCaja; // Asegúrate de importar tu modelo TurnoCaja
+import com.web.restaurante.model.TurnoCaja;
 import com.web.restaurante.repository.MetricasRepository;
 import com.web.restaurante.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
@@ -106,20 +106,17 @@ public class MetricasService {
         if (turnoActivoOpt.isPresent()) {
             TurnoCaja turno = turnoActivoOpt.get();
 
-            // 🔄 CALCULAMOS LA SUMA REAL DE LAS VENTAS COBRADAS EN ESTE TURNO
-            // Usamos los mismos filtros rigurosos de tu historial: excluir anulados/cancelados
             Double sumaViva = pedidoRepository.sumMontoTotalPorTurno(turno.getId());
 
             if (sumaViva != null && sumaViva > 0) {
                 totalVendidoTurno = sumaViva;
             } else {
-                // Si la suma viva da null o cero, usamos por si acaso el valor del objeto por defecto
                 totalVendidoTurno = turno.getTotalVendido() != null ? turno.getTotalVendido() : 0.0;
             }
 
-            System.out.println("📊 [La Jama API] Turno Activo ID: " + turno.getId() + " | Ventas Reales Calculadas: S/. " + totalVendidoTurno);
+            System.out.println("Turno Activo ID: " + turno.getId() + " | Ventas Reales Calculadas: S/. " + totalVendidoTurno);
         } else {
-            System.out.println("⚠️ [La Jama API] Alerta: No hay ningún turno operativo abierto.");
+            System.out.println("Alerta: No hay ningún turno operativo abierto.");
         }
 
         kpis.put("totalVentasHoy", totalVendidoTurno);

@@ -1,11 +1,14 @@
-// api-client.js
 import { carrito, actualizarUI } from './core-cart.js';
 import { estadoCheckout } from './checkout-wizard.js';
 
-let mapa = null; let marcador = null;
+let mapa = null;
+let marcador = null;
 
 export function iniciarMapa() {
-    if (mapa) { setTimeout(() => mapa.invalidateSize(), 200); return; }
+    if (mapa) {
+        setTimeout(() => mapa.invalidateSize(), 200);
+        return;
+    }
     mapa = L.map('mapa-pedido').setView([-6.7768, -79.8428], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapa);
 
@@ -20,7 +23,6 @@ export function iniciarMapa() {
                     data.display_name.split(',').slice(0, 3).join(',').trim();
             }
         } catch (err) {
-            console.warn("No se pudo recuperar la dirección de texto del mapa:", err);
         }
     });
 
@@ -38,7 +40,10 @@ function configurarAutocompletado() {
     const input = document.getElementById('direccionCliente');
     const lista = document.getElementById('sugerencias-dir');
     input.addEventListener('input', () => {
-        if (input.value.trim().length < 3) { lista.style.display = 'none'; return; }
+        if (input.value.trim().length < 3) {
+            lista.style.display = 'none';
+            return;
+        }
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input.value)}&countrycodes=pe&limit=5`)
             .then(res => res.json()).then(data => {
                 lista.innerHTML = data.map(r => `<li onclick="window.seleccionarSugerencia(${r.lat}, ${r.lon}, '${r.display_name.replace(/'/g, "\\'")}')">${r.display_name}</li>`).join('');
@@ -101,7 +106,6 @@ export async function enviarPedidoFinal() {
         const res = await fetch('/carta/pedido', { method: 'POST', body: formData });
         if (!res.ok) throw new Error("Error al asentar el pedido.");
 
-        // 1. Limpieza de memoria y carrito local
         localStorage.removeItem("carrito");
         carrito.length = 0;
         if (typeof actualizarUI === 'function') actualizarUI();
@@ -109,7 +113,6 @@ export async function enviarPedidoFinal() {
         const modalCarrito = document.getElementById('modalCarrito');
         if (modalCarrito) modalCarrito.classList.remove('show');
 
-        // 2. 🛡️ LIMPIEZA DE ARTEFACTOS Y VISTAS PREVIAS DEL CHECKOUT EN EL DOM
         ['Yape', 'Plin'].forEach(sufijo => {
             const preview = document.getElementById(`imgPrevia${sufijo}`);
             if (preview) {
@@ -118,20 +121,17 @@ export async function enviarPedidoFinal() {
             }
         });
 
-        // Limpiar inputs de carga de archivos (vouchers)
         document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
 
-        // Limpiar inputs de texto del formulario para el próximo cliente
         const camposFormulario = ['nombreCliente', 'direccionCliente', 'latCliente', 'lngCliente', 'clienteCorreo', 'numeroDocumento'];
         camposFormulario.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
                 el.value = '';
-                el.removeAttribute("readonly"); // Desbloqueamos por si se quedó en modo API
+                el.removeAttribute("readonly");
             }
         });
 
-        // 3. REINICIO TOTAL DE MÁQUINA DE ESTADOS (Local e Inyectado)
         window.estadoCheckout = null;
         if (estadoCheckout) {
             estadoCheckout.etapa = 1;
@@ -141,7 +141,6 @@ export async function enviarPedidoFinal() {
             delete estadoCheckout.imgUrlVoucher;
         }
 
-        // Devolver los pasos visuales del asistente al paso 1
         document.querySelectorAll('.jama-checkout-step').forEach(step => step.classList.add('d-none'));
         const primerPaso = document.getElementById('checkout-step-1');
         if (primerPaso) primerPaso.classList.remove('d-none');

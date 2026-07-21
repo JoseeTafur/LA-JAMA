@@ -49,9 +49,6 @@ public class ComprobanteAdminController {
 
         List<Pedido> historialCaja = new ArrayList<>(pedidoService.obtenerPedidosPorRangoEmision(inicio, fin));
 
-        // =========================================================================
-        // 🎯 INYECCIÓN MAESTRA: BACKLOG HISTÓRICO DE COMPROBANTES POR EMITIR
-        // =========================================================================
         List<Pedido> backlogPendientes = pedidoRepository.findAll().stream()
                 .filter(p -> p.getComprobanteNumero() == null
                         && p.getComprobanteNotaNumero() != null
@@ -63,7 +60,6 @@ public class ComprobanteAdminController {
                         && !p.getFechaCreacion().toLocalDate().isAfter(fin))
                 .toList();
 
-        // Fusionamos los pendientes históricos en la lista general evitando duplicados por ID
         java.util.Set<Long> idsExistentes = historialCaja.stream().map(Pedido::getId).collect(Collectors.toSet());
         for (Pedido p : backlogPendientes) {
             if (!idsExistentes.contains(p.getId())) {
@@ -71,7 +67,6 @@ public class ComprobanteAdminController {
             }
         }
 
-        // Segmentación en memoria original (permanece intacta)
         List<Pedido> pendientes = historialCaja.stream()
                 .filter(p -> p.getComprobanteNumero() == null)
                 .collect(Collectors.toList());
@@ -184,8 +179,6 @@ public class ComprobanteAdminController {
             String numeroNotaCompleto = comprobanteSequenceService.generarSiguienteNumero(tipoSolicitadoNota);
             compDto.setCorrelativo(numeroNotaCompleto.split("-")[1]);
 
-            // 🎯 TRADUCCIÓN DINÁMICA DE CATÁLOGO SUNAT (CORREGIDO):
-            // Evaluamos el valor que viaja en el parámetro 'motivo' y asignamos el código oficial SUNAT.
             String codigoMotivoSunat = "01";
             if ("ERROR_CLIENTE".equals(motivo)) {
                 codigoMotivoSunat = "02";
@@ -339,7 +332,6 @@ public class ComprobanteAdminController {
     public String renderizarNotaA4Local(@PathVariable("id") Long id, Model model) {
         Pedido pedido = pedidoService.obtenerPorId(id);
 
-        // 🚀 ADUANA FLEXIBLE DEFENSIVA: Verifica cualquiera de los dos Enums de muerte comercial de la orden
         if (pedido == null ||
                 (!"ANULADO".equals(pedido.getEstado().name())
                         && !"CANCELADO".equals(pedido.getEstado().name())
@@ -402,7 +394,6 @@ public class ComprobanteAdminController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "El pedido no cuenta con un comprobante emitido."));
             }
 
-            // Regla de los 7 días
             if (pedidoOriginal.getFechaCreacion() != null) {
                 java.time.LocalDate fechaEmision = pedidoOriginal.getFechaCreacion().toLocalDate();
                 long diasTranscurridos = java.time.temporal.ChronoUnit.DAYS.between(fechaEmision, java.time.LocalDate.now());
@@ -485,7 +476,7 @@ public class ComprobanteAdminController {
 
                 AuditoriaAnulacion auditoria = new AuditoriaAnulacion();
                 auditoria.setPedido(pedidoOriginal);
-                auditoria.setMotivo(motivo); // O setMotivo según tu modelo
+                auditoria.setMotivo(motivo);
                 auditoria.setMotivo(motivo);
                 auditoria.setTipoNota("TOTAL");
                 auditoria.setSustento(sustento);
@@ -537,7 +528,6 @@ public class ComprobanteAdminController {
                 nuevoCliente = "CLIENTE";
             }
 
-            // 🟩 NORMALIZACIÓN: Si el casillero viene vacío o con espacios, se limpia a null de forma lícita
             if (nuevoCorreo != null && nuevoCorreo.isEmpty()) {
                 nuevoCorreo = null;
             }
@@ -630,7 +620,6 @@ public class ComprobanteAdminController {
                 pedidoOriginal.setComprobanteENumero("REEMITIDO");
                 pedidoService.guardar(pedidoOriginal);
 
-                // 🟩 ESCUDO DE CORREO ASÍNCRONO: Solo despacha el hilo si el correo no es null ni está vacío
                 final Pedido nuevoPedidoParaEmail = nuevoPedido;
                 if (nuevoPedidoParaEmail.getClienteCorreo() != null && !nuevoPedidoParaEmail.getClienteCorreo().isEmpty()) {
                     java.util.concurrent.CompletableFuture.runAsync(() -> {
@@ -669,8 +658,6 @@ public class ComprobanteAdminController {
 
         lista.addAll(pedidoService.obtenerPedidosPorRangoEmision(inicio, fin));
 
-// El backlog de "Por Emitir" también respeta el mismo rango de fechas —
-// ya no aparece incondicionalmente sin importar el filtro.
         List<Pedido> backlogPendientes = pedidoRepository.findAll().stream()
                 .filter(p -> p.getComprobanteNumero() == null
                         && p.getComprobanteNotaNumero() != null
@@ -689,7 +676,6 @@ public class ComprobanteAdminController {
             }
         }
 
-// 🎯 Orden por fecha de emisión/anulación real, más reciente primero
         lista.sort((a, b) -> {
             java.time.LocalDateTime fechaA = (a.getComprobanteNumero() != null && a.getFechaEntrega() != null) ? a.getFechaEntrega() : a.getFechaCreacion();
             java.time.LocalDateTime fechaB = (b.getComprobanteNumero() != null && b.getFechaEntrega() != null) ? b.getFechaEntrega() : b.getFechaCreacion();

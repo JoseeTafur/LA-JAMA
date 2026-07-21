@@ -14,19 +14,15 @@ public class ComprobanteSequenceService {
 
     @Transactional
     public String generarSiguienteNumero(String tipoComprobante) {
-        // Buscamos la fila de la serie con bloqueo seguro
         ComprobanteSerie serieControl = comprobanteSerieRepository.obtenerSerieParaIncrementar(tipoComprobante)
                 .orElseThrow(() -> new RuntimeException("🚨 Error Fiscal: No existe la serie configurada para " + tipoComprobante));
 
-        // Incrementamos el contador numérico
         int nuevoCorrelativo = serieControl.getUltimoCorrelativo() + 1;
         serieControl.setUltimoCorrelativo(nuevoCorrelativo);
         comprobanteSerieRepository.save(serieControl);
 
-        // Formateamos los ceros exigidos por SUNAT (Ejemplo: "00000045")
         String correlativoFormateado = String.format("%08d", nuevoCorrelativo);
 
-        // Retornamos el string completo combinado (Ejemplo: "B001-00000045")
         return serieControl.getSerie() + "-" + correlativoFormateado;
     }
 }

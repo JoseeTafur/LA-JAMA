@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ClienteNotaDTO {
     @JsonProperty("tipoDoc")
-    private String tipoDoc; // "6" para RUC, "1" para DNI
+    private String tipoDoc;
 
     @JsonProperty("numDoc")
     private String numDoc;

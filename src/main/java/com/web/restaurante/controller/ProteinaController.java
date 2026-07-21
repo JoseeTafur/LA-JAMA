@@ -20,12 +20,8 @@ public class ProteinaController {
 
     private final ProteinaService proteinaService;
 
-    // ─── VISTAS ───────────────────────────────────────────────
-
     @GetMapping
     public String vistaProteinas(Model model) {
-        // Los insumos de categoría PROTEINA los filtramos desde el service de insumos
-        // que ya tienes — los pasamos al modelo desde allá o agregamos un método
         return "proteinas";
     }
 

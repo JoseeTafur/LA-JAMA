@@ -31,9 +31,8 @@ public class InsumoController {
         model.addAttribute("activeUri", "/insumos");
         model.addAttribute("titleHeader", "Gestión de Almacén e Insumos");
 
-        // 🟢 INYECCIÓN DINÁMICA DE PLANILLAS
-        model.addAttribute("insumos", insumoService.listarInsumos()); // Estado 1 (Activos)
-        model.addAttribute("insumosArchivados", insumoService.listarInsumosArchivados()); // Estado 0 (Cementerio de datos temporal)
+        model.addAttribute("insumos", insumoService.listarInsumos());
+        model.addAttribute("insumosArchivados", insumoService.listarInsumosArchivados());
 
         model.addAttribute("productos", productoRepository.findAll());
         model.addAttribute("insumosProductos", insumoService.listarTodosLosInsumosProducto());
@@ -77,10 +76,6 @@ public class InsumoController {
         return "redirect:/insumos?tab=catalogo";
     }
 
-    /**
-     * 🛡️ ENTRADA DE ARCHIVADO ASÍNCRONO (Para ADMIN y SUPER_ADMIN)
-     * Cambia el estado a 0. No rompe recetas ni borra historial.
-     */
     @PostMapping("/eliminar/{id}")
     @ResponseBody
     public ResponseEntity<?> eliminarInsumoAsincrono(@PathVariable Long id) {
@@ -97,16 +92,11 @@ public class InsumoController {
         }
     }
 
-    /**
-     * 🔒 ENDPOINT EXCLUSIVO: PURGA DE SEGURIDAD (Solo SUPER_ADMIN)
-     * Desvence por completo las llaves foráneas y remueve el insumo (estado -1).
-     */
     @PostMapping("/purgar/{id}")
     @ResponseBody
     public ResponseEntity<?> purgarInsumoDefinitivoAsincrono(@PathVariable Long id, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
 
-        // Aduana perimetral en el controlador por si intentan saltearse el JS
         String rol = session.getAttribute("rol") != null ? session.getAttribute("rol").toString() : "INVITADO";
         if (!"SUPER_ADMIN".equals(rol)) {
             response.put("success", false);
@@ -115,7 +105,6 @@ public class InsumoController {
         }
 
         try {
-            // ✅ EJECUCIÓN MAESTRA: Limpieza integral de fórmulas y estado -1
             insumoService.purgarInsumoDefinitivo(id);
             response.put("success", true);
             response.put("message", "El insumo ha sido purgado permanentemente del sistema de forma segura.");

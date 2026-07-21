@@ -10,28 +10,28 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ComprobanteNotaDTO {
     @JsonProperty("tipoDoc")
-    private String tipoDoc = "07"; // Nota de Crédito fija
+    private String tipoDoc = "07";
 
     @JsonProperty("serie")
-    private String serie;          // Ej: FC01 o BC01
+    private String serie;
 
     @JsonProperty("correlativo")
     private String correlativo;
 
     @JsonProperty("codmotivo")
-    private String codmotivo;      // Ej: "01" por Anulación
+    private String codmotivo;
 
     @JsonProperty("descripcion")
-    private String descripcion;    // Ej: "ERROR DE EMISION"
+    private String descripcion;
 
     @JsonProperty("serieRef")
-    private String serieRef;       // Documento afectado (Ej: F001)
+    private String serieRef;
 
     @JsonProperty("correlativoRef")
-    private String correlativoRef; // Correlativo afectado (Ej: 1)
+    private String correlativoRef;
 
     @JsonProperty("tipoCompRef")
-    private String tipoCompRef;    // "01" Factura, "03" Boleta
+    private String tipoCompRef;
 
     @JsonProperty("fechaEmision")
     private String fechaEmision;

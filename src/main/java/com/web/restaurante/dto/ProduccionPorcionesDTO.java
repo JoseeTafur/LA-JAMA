@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public class ProduccionPorcionesDTO {
     private Long id;
     private Long idLote;
-    private String nombreInsumo;   // para mostrarlo en la tabla
+    private String nombreInsumo;
     private LocalDateTime fechaProduccion;
     private Double kgProcesados;
     private Integer porcionesEsperadas;

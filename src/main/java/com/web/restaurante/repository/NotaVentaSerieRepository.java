@@ -11,7 +11,6 @@ import java.util.Optional;
 @Repository
 public interface NotaVentaSerieRepository extends JpaRepository<NotaVentaSerie, Long> {
 
-    // 🚀 BLINDAJE NATIVO MARIADB: Escribimos el SQL exacto para bloquear la fila sin alias conflictivos
     @Query(value = "SELECT * FROM nota_venta_serie WHERE serie = :serie FOR UPDATE", nativeQuery = true)
     Optional<NotaVentaSerie> findBySerieConBloqueoNativo(@Param("serie") String serie);
 }

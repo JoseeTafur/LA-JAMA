@@ -24,7 +24,6 @@ public class MovimientoCaja {
         @Column(name = "concepto", nullable = false, length = 200)
         private String concepto;
 
-        // positivo = ingreso, negativo = egreso
         @Column(name = "monto", nullable = false)
         private Double monto;
 

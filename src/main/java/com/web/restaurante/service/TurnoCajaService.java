@@ -103,13 +103,6 @@ public class TurnoCajaService {
 
         List<MovimientoCaja> movimientos = movimientoCajaRepository.findByTurnoIdOrderByFechaAsc(turno.getId());
 
-        // 🔍 ───────── INICIO DEL RADAR DE AUDITORÍA EN CONSOLA ─────────
-        System.out.println("\n==================================================================");
-        System.out.println("🔍 [RADAR LA JAMA] AUDITORÍA DE ARQUEO PARA TURNO ID: #" + turno.getId());
-        System.out.println("==================================================================");
-        System.out.println(String.format("💵 Fondo de Apertura Inicial : S/. %.2f", turno.getMontoApertura()));
-
-        // 🎯 1. Extracción e inspección de Pedidos / Notas de Venta
         List<Pedido> pedidosTurno = pedidoRepository.findAll().stream()
                 .filter(p -> p.getTurnoCaja() != null && p.getTurnoCaja().getId().equals(turno.getId()))
                 .filter(p -> com.web.restaurante.model.enums.EstadoPago.PAGADO.equals(p.getEstadoPago()))
@@ -132,7 +125,6 @@ public class TurnoCajaService {
         }
         System.out.println(String.format("💰 Subtotal Ventas del Turno : S/. %.2f", totalVendido));
 
-        // 🎯 2. Extracción e inspección de Ingresos y Egresos Manuales
         System.out.println("\n📊 --- MOVIMIENTOS MANUALES REGISTRADOS EN BITÁCORA ---");
         double totalIngresosManuales = 0.0;
         double totalEgresosManuales = 0.0;
@@ -147,7 +139,6 @@ public class TurnoCajaService {
             }
         }
 
-        // 🎯 3. Balance matemático final
         double saldoTeorico = turno.getMontoApertura() + totalVendido + totalIngresosManuales + totalEgresosManuales;
         double diferencia = montoCierre - saldoTeorico;
 
@@ -158,13 +149,10 @@ public class TurnoCajaService {
         System.out.println(String.format("   👉 Arqueo Físico Digitado por Cajero   : S/. %.2f", montoCierre));
         System.out.println(String.format("   🚨 DESCUADRE FINAL REGISTRADO         : S/. %.2f", diferencia));
         System.out.println("==================================================================\n");
-        // 🔍 ────────── FIN DEL RADAR DE AUDITORÍA EN CONSOLA ──────────
 
-        // Registro del movimiento de cierre estricto
         String serieCierre = cierreCajaSequenceService.generarSiguienteCierreCaja();
         registrarMovimiento(turno, TipoMovimientoCaja.CIERRE, "Cierre estricto de caja por el operador", montoCierre, serieCierre);
 
-        // Asentamos los valores en la entidad del turno que va al Historial Cerrado
         turno.setMontoCierre(montoCierre);
         turno.setTotalVendido(totalVendido);
         turno.setDiferencia(diferencia);

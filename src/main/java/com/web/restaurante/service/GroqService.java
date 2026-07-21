@@ -41,7 +41,6 @@ public class GroqService {
                 "  \"monto\": número decimal (float) " +
                 "}";
 
-        // Estructuración del body para Groq usando la URL segura de Cloudinary
         Map<String, Object> textContent = Map.of("type", "text", "text", promptEstrategico);
         Map<String, Object> imageContent = Map.of("type", "image_url", "image_url", Map.of("url", urlImagenSecure));
 
@@ -65,11 +64,9 @@ public class GroqService {
                 throw new RuntimeException("Error en respuesta de Groq Cloud HTTP: " + response.getStatusCode());
             }
 
-            // Parsear la respuesta de la API de Groq
             JsonNode rootNode = objectMapper.readTree(response.getBody());
             String jsonContenidoString = rootNode.path("choices").get(0).path("message").path("content").asText();
 
-            // Mapear el JSON interno que devolvió la IA a un mapa de Java
             return objectMapper.readValue(jsonContenidoString, Map.class);
         } catch (Exception e) {
             System.err.println("💥 [GroqService Error]: " + e.getMessage());

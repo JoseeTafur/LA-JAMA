@@ -74,25 +74,19 @@ public class MesaController {
             mesaService.desagruparGrupoCompleto(idMesaPadre);
             return ResponseEntity.ok("Grupo disuelto con éxito");
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
 
-    // 🟢 REEMPLAZAR ESTE MÉTODO EN TU MesaController.java
     @PostMapping("/comanda/eliminar-item")
     @ResponseBody
     public ResponseEntity<String> eliminarItemComanda(
             @RequestParam Long pedidoId,
             @RequestParam Long detalleId,
-            @RequestParam(value = "esMerma", defaultValue = "false") boolean esMerma) { // 🛡️ CAPTURAMOS LA BANDERA DEL JS
+            @RequestParam(value = "esMerma", defaultValue = "false") boolean esMerma) {
         try {
-            System.out.println("🛰️ [La Jama - Escudo] Interceptando anulación en Salón. Pedido #" + pedidoId + " | Ítem #" + detalleId + " | ¿Es Merma?: " + esMerma);
-
-            // 🔥 LA INYECCIÓN MAESTRA: Ejecutamos el servicio contable de inventario que reduce el comprometido y actualiza proteínas
             pedidoService.eliminarItemComanda(pedidoId, detalleId, esMerma);
 
-            // Volvemos a consultar el estado para la auto-liberación visual del salón
             Pedido pedidoActualizado = pedidoRepository.findById(pedidoId)
                     .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
@@ -124,7 +118,6 @@ public class MesaController {
             return ResponseEntity.ok("Producto removido correctamente y transformado en merma cobrable");
 
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
@@ -155,27 +148,22 @@ public class MesaController {
     @ResponseBody
     public ResponseEntity<String> unificarMesas(
             @RequestParam("idMesaPrincipal") Long idMesaPrincipal,
-            @RequestParam(value = "idsMesasHijas[]", required = false) List<String> idsMesasHijas) { // 🎯 Recibimos como String para evitar el rebote 400
+            @RequestParam(value = "idsMesasHijas[]", required = false) List<String> idsMesasHijas) {
         try {
-            // 🛡️ ADUANA PREVENTIVA DE CONTROL
             if (idsMesasHijas == null || idsMesasHijas.isEmpty()) {
                 return ResponseEntity.badRequest().body("Error: No se seleccionaron mesas hijas para realizar la unificación.");
             }
 
-            // Parseo seguro y explícito a Long libre de anomalías de binding
             List<Long> idsMesasHijasLong = idsMesasHijas.stream()
                     .map(id -> Long.parseLong(id.trim()))
                     .toList();
 
-            // Invocamos al service; aquí sí saltarán tus excepciones controladas de la política
             mesaService.unificarMesas(idMesaPrincipal, idsMesasHijasLong);
 
             return ResponseEntity.ok("Mesas unificadas con éxito");
         } catch (IllegalArgumentException e) {
-            // 🎯 CAPTURA DE POLÍTICA: Retorna tus mensajes personalizados ("No se puede unificar...") con un HTTP 400 controlado
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error al unificar: " + e.getMessage());
         }
     }
@@ -186,11 +174,8 @@ public class MesaController {
             @PathVariable Long pedidoId,
             @RequestParam Long mesaId,
             @RequestParam String matrizTickets,
-            @RequestParam(required = false) String idsDetallesPagados) { // 🟩 Cambiado a String para blindar la recepción
+            @RequestParam(required = false) String idsDetallesPagados) {
         try {
-            System.out.println("🛰️ [MESA CONTROLLER] Procesando pago masivo para Pedido #" + pedidoId);
-
-            // 1. Transformación manual y segura de los IDs separados por comas
             List<Long> listaIdsLong = new java.util.ArrayList<>();
             if (idsDetallesPagados != null && !idsDetallesPagados.trim().isEmpty()) {
                 for (String idStr : idsDetallesPagados.split(",")) {
@@ -200,26 +185,20 @@ public class MesaController {
                 }
             }
 
-            // 2. Parsear la matriz de tickets dinámicos enviados por el carrusel móvil
             ObjectMapper mapper = new ObjectMapper();
             List<TicketDTO> listaTickets;
             try {
                 listaTickets = mapper.readValue(matrizTickets,
                         new com.fasterxml.jackson.core.type.TypeReference<List<TicketDTO>>() {});
             } catch (Exception jsonEx) {
-                System.err.println("❌ Error crítico al parsear matrizTickets JSON: " + jsonEx.getMessage());
                 return ResponseEntity.badRequest().body("Error en formato de tickets: " + jsonEx.getMessage());
             }
 
-            // 3. Delegar la fragmentación y liquidación contable al Service con la lista procesada
             mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, listaIdsLong);
 
-            System.out.println("🎉 [MESA CONTROLLER] Liquidación multiticket completada con éxito.");
             return ResponseEntity.ok("Cobro multiticket procesado e independizado correctamente");
 
         } catch (Exception e) {
-            System.err.println("💥 Falló el procesamiento de liquidación: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
@@ -257,7 +236,6 @@ public class MesaController {
             Mesa mesaDestino = mesaRepository.findByNumero(numeroMesaDestino)
                     .orElseThrow(() -> new RuntimeException("La mesa N° " + numeroMesaDestino + " no existe en el plano."));
 
-            // Enviamos la lista de Longs perfectamente casteada al Service
             mesaService.dividirYTrasladarPlatos(idMesaOrigen, mesaDestino.getId(), idsDetallesLong);
 
             return ResponseEntity.ok("Platos divididos correctamente");
@@ -267,7 +245,6 @@ public class MesaController {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
-
 
     @PostMapping("/api/trasladar-a-reserva-masivo")
     @ResponseBody
@@ -280,7 +257,6 @@ public class MesaController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // Delegamos la mudanza física al servicio
             mesaService.mudarMesasAReservaEnBloque(idsMesas);
 
             response.put("success", true);
@@ -294,9 +270,6 @@ public class MesaController {
         }
     }
 
-    // =========================================================================
-    // 🟩 MASIVO 2: QUITAR CUSTODIA Y DEVOLVER LOTE DE MESAS AL SALÓN ORDINARIO
-    // =========================================================================
     @PostMapping("/api/quitar-de-reserva-masivo")
     @ResponseBody
     public ResponseEntity<?> quitarDeReservaMasivo(@RequestParam("idsMesas") List<Long> idsMesas) {
@@ -308,7 +281,6 @@ public class MesaController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // Delegamos la liberación al servicio
             mesaService.liberarMesasDeReservaEnBloque(idsMesas);
 
             response.put("success", true);

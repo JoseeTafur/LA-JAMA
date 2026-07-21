@@ -51,8 +51,6 @@ public class ReservaService {
         reserva.setNumeroMesa(mesasDisponibles.get(0).getNumero());
         reserva.setEstado(Reserva.EstadoReserva.CONFIRMADA);
         reserva.setCantidadPersonas(reserva.getNumeroPersonas());
-
-        // 🚫 Eliminada la notificación inmediata para que solo el reloj maneje los tiempos
         return reservaRepository.save(reserva);
     }
 
@@ -97,13 +95,11 @@ public class ReservaService {
         return reservaRepository.save(reserva);
     }
 
-    // Cronómetro interno de La Jama - Escaneo operativo constante
     @Scheduled(fixedRate = 10000)
     @Transactional
     public void vigilarRelojDeReservas() {
         LocalDateTime ahora = LocalDateTime.now();
 
-        // Buscamos los registros que requieran atención de tiempo
         List<Reserva> activas = reservaRepository.findAll().stream()
                 .filter(r -> r.getEstado() == Reserva.EstadoReserva.CONFIRMADA
                         || r.getEstado() == Reserva.EstadoReserva.PENDIENTE)
@@ -112,21 +108,17 @@ public class ReservaService {
         for (Reserva r : activas) {
             LocalDateTime horaPactada = r.getFechaHoraReserva();
 
-            // 🔍 CASO 1: Alerta de proximidad (5 minutos antes de la hora)
             if (r.getEstado() == Reserva.EstadoReserva.CONFIRMADA
                     && ahora.isAfter(horaPactada.minusMinutes(5)) && ahora.isBefore(horaPactada)) {
 
                 long mins = java.time.Duration.between(ahora, horaPactada).toMinutes() + 1;
                 String msg = "⏳ La reserva de " + r.getNombreCliente() + " está por empezar en " + mins + " minutos. Coordinar espacios.";
 
-                // Transición para que no repita el bucle en el próximo ciclo de 10s
                 r.setEstado(Reserva.EstadoReserva.PENDIENTE);
                 reservaRepository.save(r);
 
                 registrarAlertaFisica(msg, "INFO", "MESERO");
             }
-
-            // 🔍 CASO 2: Tolerancia de llegada activa (Cambiado de 15 a 2 minutos para testing)
             else if (r.getEstado() == Reserva.EstadoReserva.PENDIENTE
                     && !ahora.isBefore(horaPactada)
                     && ahora.isBefore(horaPactada.plusMinutes(2))) {
@@ -134,15 +126,12 @@ public class ReservaService {
                 int mesasEstimadas = (int) Math.ceil((double) r.getNumeroPersonas() / CAPACIDAD_POR_MESA);
                 String msg = "🚨 ¡La reserva de " + r.getNombreCliente() + " ya empezó! Se requieren " + mesasEstimadas + " mesas libres. Comunícate con caja.";
 
-                // 🌟 CORRECCIÓN CRÍTICA: Rompemos el ciclo infinito transicionándolo a COMPLETADA u otro estado para pruebas
-                // Si tienes un estado "EN_ESPERA" o "PROCESANDO" úsalo, si no, lo dejamos en COMPLETADA para simular descarte
                 r.setEstado(Reserva.EstadoReserva.COMPLETADA);
                 reservaRepository.save(r);
 
                 registrarAlertaFisica(msg, "RESERVA", "MESERO");
             }
 
-            // 🔍 CASO 3: Expiración definitiva automática (Cambiado de 15 a 2 minutos para testing)
             else if (r.getEstado() == Reserva.EstadoReserva.PENDIENTE && ahora.isAfter(horaPactada.plusMinutes(2))) {
                 r.setEstado(Reserva.EstadoReserva.EXPIRADA);
                 reservaRepository.save(r);
@@ -207,7 +196,7 @@ public class ReservaService {
         n.setMensaje(mensaje);
         n.setTipo(tipo);
         n.setDestinoPerfil(perfil);
-        n.setLeido(false); // Aseguramos que nazca activa en BD para el F5
+        n.setLeido(false);
         notificacionRepository.save(n);
 
         messagingTemplate.convertAndSend("/topic/notificaciones/mozos", mensaje);

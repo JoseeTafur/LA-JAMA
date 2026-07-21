@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class MovimientoInsumoDTO {
     private Long id;
-    private String fecha; // Formateada para la vista
+    private String fecha;
     private String tipo;
     private Double cantidad;
     private String motivo;

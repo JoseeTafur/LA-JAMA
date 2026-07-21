@@ -4,7 +4,7 @@ import com.web.restaurante.model.Empleado;
 import com.web.restaurante.service.EmpleadoService;
 import com.web.restaurante.service.UsuarioService;
 import com.web.restaurante.util.ValidationUtil;
-import jakarta.servlet.http.HttpSession; // 🌟 Control de sesiones nativo
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,9 +26,6 @@ public class EmpleadoController {
 
     @GetMapping
     public String mostrarPagina(Model model) {
-        // ========================================================
-        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
-        // ========================================================
         model.addAttribute("activeUri", "/empleados");
         model.addAttribute("titleHeader", "Control de Empleados y Planillas");
 
@@ -98,7 +95,6 @@ public class EmpleadoController {
     public ResponseEntity<?> guardar(@RequestBody Empleado empleado, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 🛡️ ADUANA JERÁRQUICA: Solo SUPER_ADMIN y ADMIN pueden modificar la planilla
             String rol = session.getAttribute("rol") != null ? session.getAttribute("rol").toString().toUpperCase() : "";
             if (!"SUPER_ADMIN".equals(rol) && !"ADMIN".equals(rol)) {
                 response.put("success", false);
@@ -106,11 +102,6 @@ public class EmpleadoController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
             }
 
-            // ========================================================
-            // 🛡️ CONTROL DE VALIDACIONES EXCLUSIVAS (MÉTODO ESTRICTO)
-            // ========================================================
-
-            // 1. Nombre obligatorio y formato limpio
             if (empleado.getNombre() == null || empleado.getNombre().isBlank()) {
                 response.put("success", false);
                 response.put("message", "El nombre del empleado es obligatorio.");
@@ -127,7 +118,6 @@ public class EmpleadoController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // 2. Apellido obligatorio y formato limpio
             if (empleado.getApellido() == null || empleado.getApellido().isBlank()) {
                 response.put("success", false);
                 response.put("message", "El apellido del empleado es obligatorio.");
@@ -144,7 +134,6 @@ public class EmpleadoController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // 3. Teléfono: Celular peruano obligatorio de 9 dígitos
             if (empleado.getTelefono() == null || empleado.getTelefono().isBlank()) {
                 response.put("success", false);
                 response.put("message", "El número de teléfono es obligatorio.");
@@ -156,16 +145,12 @@ public class EmpleadoController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // 4. Fecha de ingreso coherente con el negocio
             if (empleado.getFechaIngreso() != null && !ValidationUtil.fechaDentroDeRango(empleado.getFechaIngreso())) {
                 response.put("success", false);
                 response.put("message", "La fecha de ingreso no es válida. No puede ser una fecha futura.");
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // ========================================================
-            // 💾 PERSISTENCIA SEGURA EN BASE DE DATOS
-            // ========================================================
             Empleado guardado = empleadoService.guardar(empleado);
             response.put("success", true);
             response.put("data", guardado);
@@ -190,7 +175,6 @@ public class EmpleadoController {
     public ResponseEntity<?> cambiarEstado(@PathVariable Long id, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 🛡️ ADUANA JERÁRQUICA: Solo el dueño (SUPER_ADMIN) puede dar de baja personal
             String rol = session.getAttribute("rol") != null ? session.getAttribute("rol").toString().toUpperCase() : "";
             if (!"SUPER_ADMIN".equals(rol)) {
                 response.put("success", false);
@@ -219,7 +203,6 @@ public class EmpleadoController {
     public ResponseEntity<?> eliminar(@PathVariable Long id, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 🛡️ ADUANA JERÁRQUICA ULTRA-ESTRICTA: Bloqueo de eliminación total salvo para SUPER_ADMIN
             String rol = session.getAttribute("rol") != null ? session.getAttribute("rol").toString().toUpperCase() : "";
             if (!"SUPER_ADMIN".equals(rol)) {
                 response.put("success", false);

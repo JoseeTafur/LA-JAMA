@@ -26,9 +26,6 @@ public class UsuarioController {
 
     @GetMapping
     public String mostrarPagina(Model model) {
-        // ========================================================
-        // 🔒 CONFIGURACIÓN ESTRUCTURAL DE RUTA (PERSISTENCIA F5)
-        // ========================================================
         model.addAttribute("activeUri", "/usuarios");
         model.addAttribute("titleHeader", "Gestión de Usuarios de Sistema");
 
@@ -57,7 +54,6 @@ public class UsuarioController {
         return ResponseEntity.ok(response);
     }
 
-    /** 🔑 API para que el Javascript del cliente conozca los límites del usuario en sesión */
     @GetMapping("/api/rol-sesion")
     @ResponseBody
     public ResponseEntity<?> getRolSesion(HttpSession session) {
@@ -75,7 +71,6 @@ public class UsuarioController {
     public ResponseEntity<?> guardarUsuarioAjax(@RequestBody Usuario usuario, BindingResult bindingResult, HttpSession session) {
         Map<String, Object> response = new HashMap<>();
 
-        // 🛡️ 1. ADUANA DE DATOS ESTRUCTURALES (Spring Validation)
         if (bindingResult.hasErrors()) {
             Map<String, String> errores = new HashMap<>();
             bindingResult.getFieldErrors().forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
@@ -86,14 +81,12 @@ public class UsuarioController {
         }
 
         try {
-            // 🛡️ 2. ADUANA DE CONTROL DE ACCESOS (Seguridad de Jerarquías de La Jama)
             String rol = session.getAttribute("rol") != null
                     ? session.getAttribute("rol").toString().trim().toUpperCase() : "";
             boolean esSuperAdmin = "SUPER_ADMIN".equals(rol);
             boolean esAdmin = "ADMIN".equals(rol);
 
             if (usuario.getId() != null) {
-                // Edición de un usuario existente
                 Usuario existente = usuarioService.obtenerPorId(usuario.getId())
                         .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado en el sistema."));
 
@@ -102,17 +95,12 @@ public class UsuarioController {
                 boolean objetivoEsAdmin = perfilExistente.contains("ADMIN") || perfilExistente.contains("ADMINISTRADOR");
 
                 if (esSuperAdmin) {
-                    // El Super Admin tiene control total de los hilos de personal
                 } else if (esAdmin) {
                     if (objetivoEsAdmin) {
-                        // Un ADMIN no puede sabotear ni alterar a otro ADMIN o SUPER_ADMIN
                         response.put("success", false);
                         response.put("message", "Operación rechazada: No tienes permisos para modificar cuentas administradoras.");
                         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
                     }
-
-                    // 🛡️ CONTROL ADAPTATIVO PARA EL ADMIN PLANO:
-                    // Si un ADMIN altera datos de operarios, forzamos la preservación de clave y perfil originales
                     usuario.setClave(existente.getClave());
                     usuario.setPerfil(existente.getPerfil());
                 } else {
@@ -122,9 +110,7 @@ public class UsuarioController {
                 }
             }
 
-            // 🛡️ 3. BLOQUEO DE AUTO-ESCALACIÓN: Evitamos el casteo conflictivo de Long.valueOf()
             if (!esSuperAdmin && usuario.getPerfil() != null && usuario.getPerfil().getId() != null) {
-                // Extraemos el ID como Long nativo directamente sin envoltorios redundantes
                 perfilService.obtenerPorId(usuario.getPerfil().getId()).ifPresent(p -> {
                     if (p.getNombre().toUpperCase().replace(" ", "_").contains("SUPER_ADMIN")) {
                         throw new IllegalArgumentException("Violación de seguridad: No puedes asignar rangos del tipo SUPER_ADMIN.");
@@ -132,13 +118,10 @@ public class UsuarioController {
                 });
             }
 
-            // 🛡️ 4. LIMPIEZA DE ENTRADA: Si la clave viene vacía en una edición, la seteamos a null
-            // para que la lógica adaptativa de tu UsuarioService la ignore y conserve la de la BD
             if (usuario.getId() != null && (usuario.getClave() == null || usuario.getClave().trim().isEmpty())) {
                 usuario.setClave(null);
             }
 
-            // Delegamos la persistencia final al Service
             Usuario usuarioGuardado = usuarioService.guardar(usuario);
 
             response.put("success", true);
@@ -152,7 +135,7 @@ public class UsuarioController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
         } catch (Exception e) {
             System.err.println("💥 COLLAPSE AT GUARDAR_USUARIO: " + e.getMessage());
-            e.printStackTrace(); // Pintamos el árbol de fallos real en la consola de tu IDE
+            e.printStackTrace();
             response.put("success", false);
             response.put("message", "Error interno del servidor: " + e.getMessage());
             return ResponseEntity.internalServerError().body(response);
@@ -186,14 +169,12 @@ public class UsuarioController {
             String rolSesion = session.getAttribute("rol") != null
                     ? session.getAttribute("rol").toString().trim().toUpperCase() : "";
 
-            // 🛡️ Autoprotección: Bloquea el intento de apagarse a uno mismo
             if (Objects.equals(usuarioLogueado.getId(), id)) {
                 response.put("success", false);
                 response.put("message", "Operación no permitida: No puedes desactivar tu propia cuenta.");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
             }
 
-            // 🛡️ Jerarquía: Bloquea si un Admin plano intenta tumbar a otro Administrador o SuperAdmin
             Usuario objetivo = usuarioService.obtenerPorId(id).orElse(null);
             if (objetivo != null && objetivo.getPerfil() != null) {
                 String perfilObjetivo = objetivo.getPerfil().getNombre().toUpperCase().replace(" ", "_");
@@ -241,7 +222,6 @@ public class UsuarioController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
 
-            // 🛡️ 1. Autoprotección: Bloquea el harakiri informático
             if (Objects.equals(usuarioLogueado.getId(), id)) {
                 response.put("success", false);
                 response.put("message", "Operación inválida: No puedes eliminar la cuenta con la que estás firmado.");
@@ -251,14 +231,12 @@ public class UsuarioController {
             if (objetivo.getPerfil() != null) {
                 String perfilObjetivo = objetivo.getPerfil().getNombre().toUpperCase().replace(" ", "_");
 
-                // 🛡️ 2. ESCUDO ABSOLUTO: Nadie (absolutamente nadie, ni otro admin) puede borrar la cuenta maestra SUPER_ADMIN
                 if (perfilObjetivo.contains("SUPER_ADMIN")) {
                     response.put("success", false);
                     response.put("message", "Violación de jerarquía: La cuenta maestra SUPER_ADMIN es inmutable y no puede ser removida.");
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
                 }
 
-                // 🛡️ 3. REGLA OPERATIVA DE ADMISTRADORES: Un Admin plano NO borra a otro Administrador, pero el SUPER_ADMIN sí puede
                 if ((perfilObjetivo.contains("ADMIN") || perfilObjetivo.contains("ADMINISTRADOR")) && !"SUPER_ADMIN".equals(rolSesion)) {
                     response.put("success", false);
                     response.put("message", "Operación denegada: Solo el rango SUPER_ADMIN posee privilegios para purgar cuentas administradoras.");
@@ -266,7 +244,6 @@ public class UsuarioController {
                 }
             }
 
-            // Si pasa todas las aduanas de rango, se ejecuta el borrado lógico
             usuarioService.eliminar(id);
             response.put("success", true);
             response.put("message", "Usuario eliminado correctamente de los registros.");

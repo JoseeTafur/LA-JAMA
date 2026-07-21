@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface DetallePedidoRepository extends JpaRepository<DetallePedido, Long> {
 
-    // 🚀 PURGA DE COMANDAS: Limpia el historial de este plato para abrir la llave foránea
     @Modifying
     @Transactional
     @Query("DELETE FROM DetallePedido dp WHERE dp.producto.id = ?1")

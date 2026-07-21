@@ -24,14 +24,12 @@ export async function procesarYVerificarVoucher(event, tipoMetodo) {
     const file = input.files[0];
     if (!file) return;
 
-    // 1. Mostrar vista previa estética de inmediato
     const reader = new FileReader();
     reader.onload = () => {
         if (preview) { preview.src = reader.result; preview.style.display = 'block'; }
     };
     reader.readAsDataURL(file);
 
-    // 2. Encender Loader de Escaneo de La Jama
     if (loader) loader.classList.add('show');
     if (btnFinalizar) {
         btnFinalizar.disabled = true;
@@ -39,7 +37,6 @@ export async function procesarYVerificarVoucher(event, tipoMetodo) {
         btnFinalizar.style.pointerEvents = "none";
     }
 
-    // 3. Preparar el payload asíncrono
     const totalCarrito = obtenerTotalEsperado();
     const formData = new FormData();
     formData.append("voucher", file);
@@ -55,21 +52,18 @@ export async function procesarYVerificarVoucher(event, tipoMetodo) {
         const data = await res.json();
 
         if (!res.ok) {
-            // 🚨 DETECTAMOS TU ALERTA PERSONALIZADA DE CORRESPONDENCIA EQUIVOCADA
             if (data.reason === "METODO_EQUIVOCADO") {
                 throw new Error("¡Subiste el comprobante en el método de pago equivocado! Revisa tu captura.");
             }
             throw new Error(data.message || "Error al verificar comprobante.");
         }
 
-        // 4. APROBADO: Almacenamos los datos auditados en el estado dinámico del checkout
         if (!window.estadoCheckout) {
             window.estadoCheckout = {};
         }
         window.estadoCheckout.codigoOperacion = data.numeroOperacion;
         window.estadoCheckout.imgUrlVoucher = data.imgUrl;
 
-        // 5. Mutación de la UI: Activamos el botón de confirmación final
         if (btnFinalizar) {
             btnFinalizar.disabled = false;
             btnFinalizar.style.opacity = "1";
@@ -81,9 +75,6 @@ export async function procesarYVerificarVoucher(event, tipoMetodo) {
         }
 
     } catch (error) {
-        console.error("🚨 [RECHAZO DE ADUANA]:", error);
-
-        // Limpiamos los inputs ante el fraude o error
         input.value = '';
         if (preview) { preview.src = ''; preview.style.display = 'none'; }
 

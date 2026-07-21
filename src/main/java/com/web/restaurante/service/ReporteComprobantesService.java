@@ -50,7 +50,6 @@ public class ReporteComprobantesService {
         List<Pedido> todasLasOrdenes = pedidoRepository.findAll();
         List<Pedido> filtrados;
 
-        // 1. Clasificación base por Pestaña Operativa
         if ("PENDIENTES".equalsIgnoreCase(pestaña)) {
             filtrados = todasLasOrdenes.stream()
                     .filter(p -> p.getComprobanteNumero() == null
@@ -65,7 +64,7 @@ public class ReporteComprobantesService {
                             && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO
                             && p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.EXTORNADO)
                     .collect(Collectors.toList());
-        } else { // ANULADOS
+        } else {
             filtrados = todasLasOrdenes.stream()
                     .filter(p -> p.getComprobanteNumero() != null
                             && (p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.CANCELADO
@@ -73,7 +72,6 @@ public class ReporteComprobantesService {
                     .collect(Collectors.toList());
         }
 
-        // 2. Motor de Filtrado Cruzado Asíncrono (Misma lógica que la UI)
         final String txtLimpio = texto != null ? texto.toLowerCase().trim() : "";
         final String metodoUpper = metodo != null ? metodo.toUpperCase().trim() : "TODOS";
         final String origenUpper = origen != null ? origen.toUpperCase().trim() : "TODOS";
@@ -83,7 +81,6 @@ public class ReporteComprobantesService {
 
         filtrados = filtrados.stream()
                 .filter(p -> {
-                    // Filtro de Rango Cronológico (La pestaña PENDIENTES ignora rangos históricos por regla de negocio)
                     if (!"PENDIENTES".equalsIgnoreCase(pestaña)) {
                         LocalDateTime fEfectiva = fechaEfectiva(p);
                         if (fEfectiva != null) {
@@ -93,7 +90,6 @@ public class ReporteComprobantesService {
                         }
                     }
 
-                    // Filtro de Texto (Nombre, Serie CPE, Serie Nota de Venta, DNI/RUC)
                     if (!txtLimpio.isEmpty()) {
                         String cliente = p.getCliente() != null ? p.getCliente().toLowerCase() : "";
                         String cpe = p.getComprobanteNumero() != null ? p.getComprobanteNumero().toLowerCase() : "";
@@ -105,23 +101,17 @@ public class ReporteComprobantesService {
                         }
                     }
 
-                    // Filtro de Método de Pago con Desacoplamiento de Billeteras Digitales
                     if (!"TODOS".equals(metodoUpper)) {
                         String mp = p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO";
 
                         if ("YAPE".equals(metodoUpper)) {
-                            // Si se pide YAPE, se excluye drásticamente a PLIN
                             if (!"YAPE".equals(mp) && !"YAPE_PLIN".equals(mp)) return false;
                         } else if ("PLIN".equals(metodoUpper)) {
-                            // Si se pide PLIN, se excluye drásticamente a YAPE
                             if (!"PLIN".equals(mp) && !"YAPE_PLIN".equals(mp)) return false;
                         } else {
-                            // Para EFECTIVO o TARJETA de forma exacta
                             if (!mp.equals(metodoUpper)) return false;
                         }
                     }
-
-                    // Filtro de Origen o Canal del Pedido
                     if (!"TODOS".equals(origenUpper)) {
                         String tipo = p.getTipoPedido() != null ? p.getTipoPedido().name() : "SALON";
                         if (!tipo.equals(origenUpper)) return false;
@@ -131,7 +121,6 @@ public class ReporteComprobantesService {
                 })
                 .collect(Collectors.toList());
 
-        // Ordenamos cronológicamente descendente (Lo más nuevo arriba)
         filtrados.sort((a, b) -> {
             LocalDateTime fechaA = fechaEfectiva(a);
             LocalDateTime fechaB = fechaEfectiva(b);
@@ -153,10 +142,9 @@ public class ReporteComprobantesService {
             XSSFSheet sheet = workbook.createSheet("Comprobantes Fiscales");
             sheet.setDisplayGridlines(true);
 
-            // Paleta de Colores de La Jama
-            byte[] rgbPrimario = new byte[]{(byte) 27, (byte) 58, (byte) 44};     // #1B3A2C
-            byte[] rgbFilaPar = new byte[]{(byte) 245, (byte) 247, (byte) 245};  // #F5F7F5
-            byte[] rgbAnulado = new byte[]{(byte) 255, (byte) 242, (byte) 242};  // #FFF2F2
+            byte[] rgbPrimario = new byte[]{(byte) 27, (byte) 58, (byte) 44};
+            byte[] rgbFilaPar = new byte[]{(byte) 245, (byte) 247, (byte) 245};
+            byte[] rgbAnulado = new byte[]{(byte) 255, (byte) 242, (byte) 242};
 
             XSSFColor colorPrimario = new XSSFColor(rgbPrimario, null);
             XSSFColor colorFilaPar = new XSSFColor(rgbFilaPar, null);
@@ -174,7 +162,6 @@ public class ReporteComprobantesService {
             fontTotal.setBold(true);
             fontTotal.setFontHeightInPoints((short) 11);
 
-            // Estilos de Celda
             XSSFCellStyle styleHeader = workbook.createCellStyle();
             styleHeader.setFillForegroundColor(colorPrimario);
             styleHeader.setFillPattern(FillPatternType.SOLID_FOREGROUND);
@@ -199,7 +186,6 @@ public class ReporteComprobantesService {
             styleDataAnulado.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             styleDataAnulado.setFont(fontDatos);
 
-            // Formato Numérico Contable
             DataFormat df = workbook.createDataFormat();
             short formatoMoneda = df.getFormat("\"S/.\" #,##0.00");
 
@@ -233,7 +219,6 @@ public class ReporteComprobantesService {
             styleTotalMonto.setBorderTop(BorderStyle.THIN);
             styleTotalMonto.setBorderBottom(BorderStyle.DOUBLE);
 
-            // Construcción de Cabeceras
             org.apache.poi.ss.usermodel.Row rHeader = sheet.createRow(0);
             rHeader.setHeightInPoints(24);
             String[] cabeceras = {"Nota Venta", "CPE SUNAT", "Nota Crédito", "Cliente", "Fecha / Hora", "Origen", "Método", "Monto Total"};
@@ -271,7 +256,6 @@ public class ReporteComprobantesService {
                 row.createCell(5).setCellValue(origenTxt);
                 row.createCell(6).setCellValue(p.getMetodoPago() != null ? p.getMetodoPago().name() : "EFECTIVO");
 
-                // Inyección de celdas con sus respectivos estilos corporativos
                 for (int i = 0; i <= 6; i++) {
                     row.getCell(i).setCellStyle(currentStyle);
                 }
@@ -312,13 +296,12 @@ public class ReporteComprobantesService {
             Document doc = new Document(pdf);
             doc.setMargins(30, 36, 30, 36);
 
-            DeviceRgb colorPrimario = new DeviceRgb(27, 58, 44);      // #1B3A2C
-            DeviceRgb colorSecundario = new DeviceRgb(147, 61, 45);   // #933D2D
+            DeviceRgb colorPrimario = new DeviceRgb(27, 58, 44);
+            DeviceRgb colorSecundario = new DeviceRgb(147, 61, 45);
             DeviceRgb colorTextoCelda = new DeviceRgb(40, 40, 40);
             DeviceRgb colorFilaPar = new DeviceRgb(245, 247, 245);
             DeviceRgb colorFondoAnulado = new DeviceRgb(255, 242, 242);
 
-            // Encabezado Estilizado
             Table headerTable = new Table(new float[]{340f, 160f}).setWidth(UnitValue.createPercentValue(100));
             headerTable.addCell(new Cell().add(new Paragraph("LA JAMA").setFontSize(22).setBold().setFontColor(colorPrimario).setMarginBottom(2))
                     .add(new Paragraph("SISTEMA DE AUDITORÍA Y CONTROL CONTABLE").setFontSize(9).setBold().setFontColor(new DeviceRgb(120, 120, 120)))
@@ -332,7 +315,6 @@ public class ReporteComprobantesService {
             doc.add(new Paragraph("SUB-REPORTE OPERATIVO: COMPROBANTES [" + titulo.toUpperCase() + "]").setFontSize(9).setItalic().setFontColor(colorPrimario).setMarginTop(8));
             doc.add(new Paragraph("").setMarginTop(2).setMarginBottom(15).setBorderBottom(new SolidBorder(colorPrimario, 1f)));
 
-            // Grilla de Datos
             float[] widths = {65f, 65f, 65f, 110f, 85f, 55f, 55f, 60f};
             Table table = new Table(widths).setWidth(UnitValue.createPercentValue(100));
 
@@ -374,7 +356,6 @@ public class ReporteComprobantesService {
 
             doc.add(table);
 
-            // Pie de Página con Balance Final de Sección
             Table footerTable = new Table(new float[]{300f, 200f}).setWidth(UnitValue.createPercentValue(100)).setMarginTop(20);
             footerTable.addCell(new Cell().add(new Paragraph("Fin del reporte de auditoría de comprobantes fiscales electrónicos.").setFontSize(8).setItalic().setFontColor(new DeviceRgb(140, 140, 140))).setBorder(Border.NO_BORDER));
 

@@ -17,10 +17,10 @@ public class Notificacion {
     private String mensaje;
 
     @Column(nullable = false, length = 30)
-    private String tipo; // 'INFO', 'ALERTA', 'MERMA', 'RESERVA'
+    private String tipo;
 
     @Column(nullable = false, length = 30)
-    private String destinoPerfil; // 'TODOS', 'ADMIN', 'MESERO'
+    private String destinoPerfil;
 
     private boolean leido = false;
     private LocalDateTime fechaCreacion = LocalDateTime.now();

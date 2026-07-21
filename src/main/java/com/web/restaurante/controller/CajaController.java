@@ -131,7 +131,6 @@ public class CajaController {
 
     @PostMapping("/movimiento")
     public String registrarMovimientoManual(@RequestParam String tipo, @RequestParam String concepto, @RequestParam Double monto) {
-        // 🚨 CANDADO CONTABLE INTERNO: Validar que los egresos no dejen la caja en negativo
         if ("EGRESO".equalsIgnoreCase(tipo)) {
             Optional<TurnoCaja> turnoOpt = turnoCajaService.obtenerTurnoActivo();
             if (turnoOpt.isPresent()) {
@@ -145,7 +144,6 @@ public class CajaController {
             }
             turnoCajaService.registrarEgreso(concepto, monto);
         } else if ("INGRESO".equalsIgnoreCase(tipo)) {
-            // 🔥 CORRECCIÓN: Usamos el nuevo método nativo de ingresos
             turnoCajaService.registrarIngresoManual("Manual: " + concepto, Math.abs(monto));
         }
 
@@ -158,36 +156,29 @@ public class CajaController {
                              jakarta.servlet.http.HttpSession session,
                              Model model) {
 
-        // 1. Recuperamos las credenciales directamente de la aduana de sesión
         Usuario usuarioLogueado = (Usuario) session.getAttribute("usuarioLogueado");
         String rol = (String) session.getAttribute("rol");
-        String turno = (String) session.getAttribute("empleadoTurno"); // Inyectado dinámicamente
+        String turno = (String) session.getAttribute("empleadoTurno");
 
-        // Failsafe preventivo: si por alguna razón la sesión expiró
         if (usuarioLogueado == null || rol == null) {
             return "redirect:/login?error=sesion_expirada";
         }
 
-        // 2. 🛡️ EXCEPCIÓN DE RANGO: Si es ADMIN o SUPER_ADMIN, se salta cualquier bloqueo de hora
         if ("ADMIN".equals(rol) || "SUPER_ADMIN".equals(rol)) {
             turnoCajaService.cerrarTurno(montoCierre, observaciones);
             return "redirect:/admin/caja?cierreOk";
         }
 
-        // 3. VALIDACIÓN HORARIA ESTRICTA PARA PERSONAL DE CAJA
         LocalTime horaActual = LocalTime.now();
         boolean fueraDeHorario = false;
         String mensajeError = "";
 
         if ("DIA".equalsIgnoreCase(turno)) {
-            // El Turno Día solo puede cerrar a partir de las 06:00 PM (18:00)
             if (horaActual.isBefore(LocalTime.of(18, 0))) {
                 fueraDeHorario = true;
                 mensajeError = "No puedes cerrar la caja antes de finalizar tu turno (Hora permitida: desde las 06:00 PM).";
             }
         } else if ("NOCHE".equalsIgnoreCase(turno)) {
-            // El Turno Noche solo puede cerrar a partir de las 07:00 AM (07:00) hasta la tarde
-            // Validamos que no intente cerrar a mitad de la madrugada (ej: entre las 7pm y las 6:59am)
             if (horaActual.isAfter(LocalTime.of(19, 0)) || horaActual.isBefore(LocalTime.of(7, 0))) {
                 fueraDeHorario = true;
                 mensajeError = "No puedes cerrar la caja antes de finalizar tu turno (Hora permitida: desde las 07:00 AM del día siguiente).";
@@ -195,11 +186,9 @@ public class CajaController {
         }
 
         if (fueraDeHorario) {
-            // Rebotamos el flujo al panel de caja con un flag de error controlado
             return "redirect:/admin/caja?errorCierreTurno&msg=" + java.net.URLEncoder.encode(mensajeError, java.nio.charset.StandardCharsets.UTF_8);
         }
 
-        // Si pasó todas las aduanas contables, se procede a la clausura del turno
         turnoCajaService.cerrarTurno(montoCierre, observaciones);
         return "redirect:/admin/caja?cierreOk";
     }
@@ -227,9 +216,6 @@ public class CajaController {
                 for (String idStr : idsDetallesPagados.split(",")) idsDetalles.add(Long.parseLong(idStr.trim()));
             }
 
-            // ── 🛡️ ESCUDO DE RESPALDO PARA EL MESERO (ANTI MONTO EN CERO) ──
-            // Si el terminal del mesero envió los IDs vacíos por problemas de escaneo del DOM,
-            // el propio servidor se auto-abastece recuperando todos los detalles activos sin pagar del pedido padre.
             if (idsDetalles.isEmpty()) {
                 pedidoRepository.findById(pedidoId).ifPresent(p -> {
                     if (p.getListaDetalles() != null) {
@@ -247,44 +233,35 @@ public class CajaController {
                     matrizTickets, new com.fasterxml.jackson.core.type.TypeReference<>() {}
             );
 
-            // 1. Ejecutamos la liquidación nativa del sistema
             mesaService.procesarLiquidacionMultiticket(pedidoId, mesaId, listaTickets, idsDetalles);
 
-            // 2. 🛡️ BARRIDO CONTABLE POST-LIQUIDACIÓN BLINDADO: FORZAR NÚMERO DE MESA Y PRECIO
             try {
-                // Obtenemos el número real de la mesa directamente desde el repositorio
                 Integer numeroMesaReal = mesaRepository.findById(mesaId)
                         .map(Mesa::getNumero).orElse(null);
 
                 turnoCajaService.obtenerTurnoActivo().ifPresent(turnoActivo -> {
-                    // Jalamos el monto original de la comanda de la mesa como resguardo de seguridad
                     double montoOriginalMesa = pedidoRepository.findById(pedidoId)
                             .map(p -> p.getMontoTotal() != null ? p.getMontoTotal() : 0.0).orElse(0.0);
 
-                    // Buscamos las Notas de Venta recién creadas que pertenezcan a este turno
                     List<Pedido> notasVentaPorCorregir = pedidoRepository.findAll().stream()
                             .filter(p -> p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.PAGADO || p.getEstadoPago() == com.web.restaurante.model.enums.EstadoPago.PAGADO)
                             .filter(p -> p.getTurnoCaja() == null || p.getMontoTotal() == null || p.getMontoTotal() <= 0.0 || p.getNumeroMesa() == null)
                             .collect(Collectors.toList());
 
                     for (Pedido nv : notasVentaPorCorregir) {
-                        // Amarramos el turno operativo activo si le faltaba
                         if (nv.getTurnoCaja() == null) {
                             nv.setTurnoCaja(turnoActivo);
                         }
 
-                        // Forzamos el origen de salón si llegó huérfano
                         if (nv.getTipoPedido() == null) {
                             nv.setTipoPedido(com.web.restaurante.model.enums.TipoPedido.SALON);
                         }
 
-                        // 🎯 FORZADO SEGURO DEL NÚMERO DE MESA
                         if (nv.getNumeroMesa() == null && numeroMesaReal != null) {
                             nv.setNumeroMesa(numeroMesaReal);
                             System.out.println("🛡️ [LA JAMA SHIELD] Forzando Mesa #" + numeroMesaReal + " a la NV ID: " + nv.getId());
                         }
 
-                        // El candado financiero del monto por si acaso
                         if (nv.getMontoTotal() == null || nv.getMontoTotal() <= 0.0) {
                             double totalCalculado = 0.0;
                             if (nv.getListaDetalles() != null && !nv.getListaDetalles().isEmpty()) {
@@ -320,18 +297,13 @@ public class CajaController {
                     .filter(p -> p.getNumeroMesa() != null && p.getNumeroMesa().equals(numeroMesa))
                     .filter(p -> p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
                     .filter(p -> {
-                        // 🍔 REGLA DE ADUANA DE CONTROL OPERATIVO:
-                        // Verificamos si al pedido aún le faltan platos físicos por despachar al cliente
                         boolean tienePlatosPendientesDeEntrega = p.getListaDetalles() != null &&
                                 p.getListaDetalles().stream().anyMatch(d -> !d.isCanceladoPorCliente() && !d.isEntregado());
 
-                        // Caso A: El pedido sigue debiendo dinero (Flujo tradicional)
                         if (p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.PAGADO) {
                             return true;
                         }
 
-                        // Caso B: El pedido ya se pagó en caja (Prepago), pero la comida sigue activa en producción.
-                        // Debe seguir pintándose dentro del modal de la mesa.
                         return tienePlatosPendientesDeEntrega;
                     })
                     .collect(Collectors.toList());
@@ -362,7 +334,6 @@ public class CajaController {
             Map<String, Object> response = new HashMap<>();
             response.put("id", pedido.getId());
 
-            // 🛡️ ADUANA ANTI-NULL Y ANTI-TILDES DE BASE DE DATOS
             com.web.restaurante.model.enums.TipoPedido tipo = pedido.getTipoPedido();
             boolean tieneMesaFisica = pedido.getNumeroMesa() != null && pedido.getNumeroMesa() > 0;
 
@@ -377,7 +348,6 @@ public class CajaController {
                 canalFinal = "Virtual";
             }
 
-            // Inyectamos las propiedades limpias que espera leer tu JS y tus Modales
             response.put("tipoPedido", tipoServicioFinal);
             response.put("canal", canalFinal);
             response.put("numeroMesa", pedido.getNumeroMesa());
@@ -444,11 +414,8 @@ public class CajaController {
     @ResponseBody
     public ResponseEntity<?> guardarPedidoCajeroDirecto(@RequestBody Pedido pedido) {
         try {
-            // 1. Guardamos la orden con la lógica limpia libre de comprometidos
             Pedido pedidoGuardado = cajaService.guardarDeliveryManualCajero(pedido);
 
-            // 2. 🛰️ RÁFAGA WEBSOCKET REACTIVA:
-            // Notificamos al monitor de cocina de forma inmediata sin exigir F5 en la pantalla del chef
             try {
                 messagingTemplate.convertAndSend("/topic/cocina", "{\"pedidoId\":" + pedidoGuardado.getId() + ", \"status\":\"NUEVO\"}");
                 System.out.println("🛰️ [La Jama STOMP] Alerta enviada a cocina para el Delivery Manual #" + pedidoGuardado.getId());
@@ -502,7 +469,6 @@ public class CajaController {
             LocalDateTime inicioDT = inicio.atStartOfDay();
             LocalDateTime finDT = fin.atTime(LocalTime.MAX);
 
-            // 1. Extraemos los turnos en orden cronológico ascendente (el más antiguo primero)
             List<TurnoCaja> turnos = turnoCajaRepository.findTurnosCerradosEnRangoHorario(inicioDT, finDT).stream()
                     .sorted(Comparator.comparing(TurnoCaja::getId))
                     .collect(Collectors.toList());
@@ -510,7 +476,6 @@ public class CajaController {
             List<Map<String, Object>> respuestaFiltradaPrevia = new ArrayList<>();
             final String turnoFiltroUpper = (turno != null) ? turno.toUpperCase().trim() : "TODOS";
 
-            // 2. Filtramos primero los turnos que calzan con el criterio de búsqueda
             for (TurnoCaja t : turnos) {
                 if (t == null) continue;
 
@@ -524,13 +489,11 @@ public class CajaController {
                 }
 
                 Map<String, Object> dto = new HashMap<>();
-                // Guardamos temporalmente los datos
                 dto.put("objetoOriginal", t);
                 dto.put("turnoCalculado", turnoCalculado);
                 respuestaFiltradaPrevia.add(dto);
             }
 
-            // 3. 🎯 ENUMERACIÓN DE SECUENCIA: Asignamos el correlativo incremental (1, 2, 3...)
             List<Map<String, Object>> respuestaFinalCronologica = new ArrayList<>();
             int correlativoSecuencia = 1;
 
@@ -539,7 +502,6 @@ public class CajaController {
 
                 Map<String, Object> dtoFinal = new HashMap<>();
 
-                // REGLA DE SECUENCIA: Reemplazamos el ID nativo por el contador ordenado de aperturas
                 dtoFinal.put("id", correlativoSecuencia++);
 
                 dtoFinal.put("turnoCalculado", itemPre.get("turnoCalculado"));
@@ -554,7 +516,6 @@ public class CajaController {
                 respuestaFinalCronologica.add(dtoFinal);
             }
 
-            // 4. Invertimos el orden final para que el arqueo más reciente salga ARRIBA en tu tabla
             Collections.reverse(respuestaFinalCronologica);
 
             return ResponseEntity.ok(respuestaFinalCronologica);
@@ -832,7 +793,6 @@ public class CajaController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "No existe la NV."));
             }
 
-            // ── 🛡️ ADUANA FISCAL DE CONTROL: Impedir extornos de CPEs ya timbrados ──
             if (pedidoReal.getComprobanteNumero() != null && !pedidoReal.getComprobanteNumero().trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "success", false,
@@ -844,7 +804,6 @@ public class CajaController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Ya fue extornada."));
             }
 
-            // Cambiamos los estados de facturación del Pedido Padre de forma limpia
             pedidoReal.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.EXTORNADO);
             pedidoReal.setEstado(com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
 

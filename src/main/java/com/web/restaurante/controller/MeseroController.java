@@ -12,7 +12,7 @@ import com.web.restaurante.repository.PedidoRepository;
 import com.web.restaurante.repository.ProductoRepository;
 import com.web.restaurante.repository.InsumoProductoRepository;
 import com.web.restaurante.service.PedidoService;
-import com.web.restaurante.service.TurnoCajaService; // 🚀 INYECTADO
+import com.web.restaurante.service.TurnoCajaService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -35,11 +35,8 @@ public class MeseroController {
     private final MesaRepository mesaRepository;
     private final PedidoRepository pedidoRepository;
     private final InsumoProductoRepository insumoProductoRepository;
-    private final TurnoCajaService turnoCajaService; // 🚀 Guardian Contable inyectado
+    private final TurnoCajaService turnoCajaService;
 
-    // =========================================================================
-    // 🛡️ NÚCLEO OPERATIVO: CONTROL DE ENTRADA CON TRADUCTOR DE ENTORNO ANTI-NULL
-    // =========================================================================
     @GetMapping("/nuevo")
     public String nuevoPedido(Model model, HttpSession session,
                               @RequestParam(required = false) Long mesaId,
@@ -72,11 +69,9 @@ public class MeseroController {
 
             for (InsumoProducto ip : receta) {
                 if (ip.getInsumo() != null && "PROTEINA".equalsIgnoreCase(ip.getInsumo().getCategoria())) {
-                    //Obtenemos el stock disponible real aplicando la resta (Físico - Comprometido)
                     double stockDisponibleReal = ip.getInsumo().getStockDisponible() != null ? ip.getInsumo().getStockDisponible() : 0.0;
                     double cantidadRequerida = ip.getCantidadUsada() != null ? ip.getCantidadUsada() : 0.0;
 
-                    // Si el stock disponible real es menor a lo que necesita una porción, el plato se marca agotado
                     if (stockDisponibleReal < cantidadRequerida) {
                         agotado = true;
                         break;
@@ -146,7 +141,6 @@ public class MeseroController {
                 }
             }
 
-            // 🛡️ CANDADO A: Asegurar turno de caja en la creación de comandas de salón
             if (pedidoFinal.getTurnoCaja() == null) {
                 turnoCajaService.obtenerTurnoActivo().ifPresent(pedidoFinal::setTurnoCaja);
             }
@@ -198,10 +192,8 @@ public class MeseroController {
             }
             pedidoFinal.setMontoTotal(totalAcumulado);
 
-            // Guardamos a través del service de forma completa
             pedidoService.guardarPedido(pedidoFinal);
 
-            // 🛡️ CANDADO B: Si es adición, volvemos a asegurar que no se limpie el turno en cascada
             if (pedidoFinal.getId() != null) {
                 Pedido pedidoSeguro = pedidoRepository.findById(pedidoFinal.getId()).orElse(pedidoFinal);
                 turnoCajaService.obtenerTurnoActivo().ifPresent(pedidoSeguro::setTurnoCaja);
@@ -236,7 +228,6 @@ public class MeseroController {
             pedido.setFechaSalida(LocalDateTime.now());
             pedido.setEstado(EstadoPedido.ASIGNADO);
 
-            // 🛡️ CANDADO CONTABLE MANTENIDO
             if (pedido.getTurnoCaja() == null) {
                 turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
             }
@@ -263,7 +254,6 @@ public class MeseroController {
                 turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
             }
 
-            // Solo libera si ya está pagado
             if (EstadoPago.PAGADO.equals(pedido.getEstadoPago())) {
                 pedido.setNumeroMesa(null);
                 if (mesaId != null) {
@@ -272,7 +262,6 @@ public class MeseroController {
                     mesaRepository.save(mesa);
                 }
             }
-            // Si NO está pagado, sigue en el plano con estado ENTREGADO esperando cobro
 
             pedidoRepository.save(pedido);
             return ResponseEntity.ok("OK");

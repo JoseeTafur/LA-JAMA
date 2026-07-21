@@ -25,7 +25,7 @@ public class MovimientoPorciones {
     private LocalDateTime fecha;
 
     @Column(nullable = false)
-    private String tipo; // INGRESO | EGRESO
+    private String tipo;
 
     @Column(nullable = false)
     private Integer cantidadPorciones;

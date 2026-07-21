@@ -49,7 +49,7 @@ public class MesaService {
     public List<Pedido> obtenerPedidosActivos() {
         return pedidoRepository.findAll().stream()
                 .filter(p -> p.getNumeroMesa() != null)
-                .filter(p -> !p.isEsNotaVenta()) // 🛡️ Capa de protección añadida
+                .filter(p -> !p.isEsNotaVenta())
                 .filter(p -> !com.web.restaurante.model.enums.EstadoPedido.CANCELADO.equals(p.getEstado()))
                 .filter(p -> {
                     boolean yaPagado = com.web.restaurante.model.enums.EstadoPago.PAGADO.equals(p.getEstadoPago());
@@ -62,7 +62,7 @@ public class MesaService {
     @Transactional
     public void entregarPlatoEnMesa(Integer idMesa) {
         List<Pedido> pedidosPendientes = pedidoRepository.findByNumeroMesa(idMesa).stream()
-                .filter(p -> !p.isEsNotaVenta()) // 🛡️ Filtro estructural añadido
+                .filter(p -> !p.isEsNotaVenta())
                 .filter(p -> p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.EN_COCINA
                         || p.getEstado() == com.web.restaurante.model.enums.EstadoPedido.PREPARADO)
                 .toList();
@@ -115,8 +115,8 @@ public class MesaService {
         Mesa mesaPrincipal = (mesaClickeada.getMesaPadre() != null) ? mesaClickeada.getMesaPadre() : mesaClickeada;
 
         List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesa(mesaPrincipal.getNumero()).stream()
-                .filter(p -> !p.isEsNotaVenta()) // 🛡️ Agregado para consistencia
-                .filter(p -> p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.PAGADO // 🛠️ Corregido el método de acceso
+                .filter(p -> !p.isEsNotaVenta())
+                .filter(p -> p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.PAGADO
                         && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
                 .toList();
 
@@ -170,7 +170,7 @@ public class MesaService {
             }
 
             pedidoActivo.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
-            pedidoActivo.setEsNotaVenta(true); // 🚀 Lo marcamos al archivar manualmente
+            pedidoActivo.setEsNotaVenta(true);
             pedidoRepository.save(pedidoActivo);
         }
 
@@ -236,7 +236,7 @@ public class MesaService {
             pedidoActivo.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
             pedidoActivo.setEstado(com.web.restaurante.model.enums.EstadoPedido.ENTREGADO);
             pedidoActivo.setFechaEntrega(LocalDateTime.now());
-            pedidoActivo.setEsNotaVenta(true); // 🚀 Consistencia total en el cierre automático
+            pedidoActivo.setEsNotaVenta(true);
         }
 
         pedidoActivo.setMontoTotal(consumoTotalHistorico);
@@ -291,7 +291,7 @@ public class MesaService {
 
             if (todoEntregado || pedido.getEstado() == EstadoPedido.ENTREGADO) {
                 pedido.setFechaEntrega(LocalDateTime.now());
-                pedido.setEsNotaVenta(true); // 🚀 Consistencia al cerrar cuenta por cobro directo
+                pedido.setEsNotaVenta(true);
 
                 Mesa mesaPrincipal = mesaRepository.findById(mesaId)
                         .orElseThrow(() -> new RuntimeException("Mesa no encontrada"));
@@ -331,7 +331,7 @@ public class MesaService {
 
         List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesa(padre.getNumero()).stream()
                 .filter(p -> p.getMontoTotal() > 0 && p.getNumeroMesa() != null
-                        && !p.isEsNotaVenta() // 🛡️ Agregado para seguridad en la disolución
+                        && !p.isEsNotaVenta()
                         && p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.PAGADO
                         && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
                 .toList();
@@ -378,31 +378,25 @@ public class MesaService {
                     .filter(p -> !p.isEsNotaVenta() && !com.web.restaurante.model.enums.EstadoPedido.CANCELADO.equals(p.getEstado()))
                     .toList();
 
-            // 🛡️ ELIMINACIÓN DE ADUANA PROHIBITIVA: Ya no se bloquean platos pagados/pendientes.
-            // El sistema procesa lotes híbridos con total soltura.
-
             hija.setMesaPadre(mesaPadre);
             hija.setEstado("UNIFICADA");
             mesaRepository.save(hija);
 
             for (Pedido pHija : pedidosHija) {
                 if (pedidoPadreActivo == null) {
-                    // Si la mesa principal no tenía consumo, la comanda de la hija pasa a ser la cabecera controladora
                     pHija.setNumeroMesa(mesaPadre.getNumero());
                     pedidoRepository.save(pHija);
                     pedidoPadreActivo = pHija;
                 } else {
-                    // 🛡️ REASIGNACIÓN BIDIRECCIONAL BLINDADA DE PLATOS MIXTOS (JPA/Hibernate friendly)
                     if (pHija.getListaDetalles() != null) {
                         List<DetallePedido> detallesAMover = new ArrayList<>(pHija.getListaDetalles());
 
                         for (DetallePedido detalle : detallesAMover) {
-                            pHija.getListaDetalles().remove(detalle); // Desacopla de la hija
-                            detalle.setPedido(pedidoPadreActivo);    // Cambia el puntero al Padre
-                            pedidoPadreActivo.getListaDetalles().add(detalle); // Acopla al Padre
+                            pHija.getListaDetalles().remove(detalle);
+                            detalle.setPedido(pedidoPadreActivo);
+                            pedidoPadreActivo.getListaDetalles().add(detalle);
                         }
 
-                        // Vaciamos, cancelamos y desvinculamos el cascarón de la mesa hija de forma limpia
                         pHija.getListaDetalles().clear();
                         pHija.setEstado(com.web.restaurante.model.enums.EstadoPedido.CANCELADO);
                         pHija.setNumeroMesa(null);
@@ -413,21 +407,17 @@ public class MesaService {
             }
         }
 
-        // 📊 BALANCÍN CONTABLE CONSOLIDADO EN EL PEDIDO PADRE
         if (pedidoPadreActivo != null) {
-            // El total de deuda viva de la comanda colectiva solo sumará los platos pendientes
             double nuevoTotalDeudaPadre = pedidoPadreActivo.getListaDetalles().stream()
                     .filter(d -> !d.isCanceladoPorCliente() && !d.isPagado())
                     .mapToDouble(d -> d.getSubtotal() != null ? d.getSubtotal() : 0.0)
                     .sum();
             pedidoPadreActivo.setMontoTotal(nuevoTotalDeudaPadre);
 
-            // Sincronizamos dinámicamente las banderas financieras macros del Pedido Padre
             boolean tienePendientesPago = pedidoPadreActivo.getListaDetalles().stream()
                     .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isPagado());
             pedidoPadreActivo.setEstadoPago(tienePendientesPago ? EstadoPago.PENDIENTE : EstadoPago.PAGADO);
 
-            // Sincronizamos prioridades del monitor de cocina colectiva
             boolean tienePlatosSinCocinar = pedidoPadreActivo.getListaDetalles().stream()
                     .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isCocinado());
             if (tienePlatosSinCocinar) {
@@ -475,14 +465,14 @@ public class MesaService {
         Mesa mesaPrincipal = (mesaClickeada.getMesaPadre() != null) ? mesaClickeada.getMesaPadre() : mesaClickeada;
 
         List<Pedido> pedidosActivos = pedidoRepository.findByNumeroMesa(mesaPrincipal.getNumero()).stream()
-                .filter(p -> !p.isEsNotaVenta()) // 🛡️ Protección añadida
+                .filter(p -> !p.isEsNotaVenta())
                 .filter(p -> p.getEstadoPago() != com.web.restaurante.model.enums.EstadoPago.PAGADO
                         && p.getEstado() != com.web.restaurante.model.enums.EstadoPedido.CANCELADO)
                 .toList();
 
         for (Pedido p : pedidosActivos) {
             p.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
-            p.setEsNotaVenta(true); // 🚀 Asegura que muera del mapa activo al forzar
+            p.setEsNotaVenta(true);
             p.setNumeroMesa(null);
             p.setFechaEntrega(LocalDateTime.now());
             pedidoRepository.save(p);
@@ -513,9 +503,6 @@ public class MesaService {
                 .filter(p -> !com.web.restaurante.model.enums.EstadoPedido.CANCELADO.equals(p.getEstado()) && !p.isEsNotaVenta())
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No hay comanda activa registrada en la mesa origen"));
-
-        // 🛡️ REFACTORIZACIÓN SMART EN CASCADA (INTEGRIDAD CONTABLE)
-        // Clasificamos qué elementos pueden mudarse físicamente del balde de detalles
         List<Long> idsDetallesMovibles = pedidoOrigen.getListaDetalles().stream()
                 .filter(d -> !d.isCanceladoPorCliente() && !(d.isPagado() && d.isEntregado()))
                 .map(DetallePedido::getId)
@@ -524,27 +511,22 @@ public class MesaService {
         boolean tienePlatosInamovibles = pedidoOrigen.getListaDetalles().stream()
                 .anyMatch(d -> d.isCanceladoPorCliente() || (d.isPagado() && d.isEntregado()));
 
-        // 🔀 BYPASS AUTOMÁTICO EN CALIENTE:
-        // Si la mesa es híbrida (tiene consumos inamovibles pero también platos vivos)
         if (tienePlatosInamovibles && !idsDetallesMovibles.isEmpty()) {
             System.out.println("🔀 [La Jama Smart-Bypass] Traslado híbrido detectado. Moviendo de forma transparente solo elementos activos...");
             dividirYTrasladarPlatos(idMesaOrigen, idMesaDestino, idsDetallesMovibles);
-            return; // El motor de división se encarga de todo el trabajo sucio
+            return;
         }
 
-        // 🔒 CANDADO ABSOLUTO RESIDUAL: Si literalmente TODO ya está cerrado/consumido
         if (idsDetallesMovibles.isEmpty()) {
             throw new IllegalArgumentException("La comanda seleccionada no contiene ningún plato activo o pendiente para trasladar. Proceda a 'Liberar Mesa'.");
         }
 
-        // Caso base: Si no hay platos inamovibles, se traslada el pedido completo de forma tradicional
         Pedido pedidoDestino = pedidoRepository.findByNumeroMesa(destino.getNumero()).stream()
                 .filter(p -> !com.web.restaurante.model.enums.EstadoPedido.CANCELADO.equals(p.getEstado()) && !p.isEsNotaVenta())
                 .findFirst()
                 .orElse(null);
 
         if (pedidoDestino == null) {
-            // Caso A: Mesa destino vacía, solo mudamos la cabecera
             pedidoOrigen.setNumeroMesa(destino.getNumero());
             pedidoOrigen.setCliente("Mesa " + destino.getNumero());
             pedidoRepository.saveAndFlush(pedidoOrigen);
@@ -552,7 +534,6 @@ public class MesaService {
             boolean esDestinoGrupo = (destino.getMesasHijas() != null && !destino.getMesasHijas().isEmpty());
             destino.setEstado(esDestinoGrupo ? "UNIFICADA" : "OCUPADA");
         } else {
-            // Caso B: Fusión de comandas tradicional
             System.out.println("🔮 [La Jama] Fusionando lotes mixtos en Mesa N° " + destino.getNumero());
 
             List<DetallePedido> detallesOrigen = new ArrayList<>(pedidoOrigen.getListaDetalles());
@@ -620,13 +601,10 @@ public class MesaService {
                             .anyMatch(idMover -> idMover != null && idMover.longValue() == idDetalleDb);
 
                     if (existeEnSeleccionados) {
-                        // 🔒 CANDADO N°1: Bloqueo de Consumos Cerrados (Ya comió y ya pagó)
                         if (d.isPagado() && d.isEntregado()) {
                             throw new IllegalArgumentException("Violación operativa: El plato '"
                                     + d.getProducto().getNombre() + "' ya fue entregado y pagado en la mesa de origen. No se puede trasladar.");
                         }
-
-                        // 🔒 CANDADO N°2: Bloqueo de Mermas / Cancelados
                         if (d.isCanceladoPorCliente()) {
                             throw new IllegalArgumentException("Violación logística: El plato '"
                                     + d.getProducto().getNombre() + "' está marcado como merma o cancelado. Debe permanecer en la mesa de origen para auditoría.");
@@ -781,7 +759,7 @@ public class MesaService {
             pedidoComprobante.setTipoPedido(pedidoPadre.getTipoPedido() != null ? pedidoPadre.getTipoPedido() : com.web.restaurante.model.enums.TipoPedido.SALON);
             pedidoComprobante.setEstado(EstadoPedido.ENTREGADO);
             pedidoComprobante.setEstadoPago(EstadoPago.PAGADO);
-            pedidoComprobante.setEsNotaVenta(true); // 🎯 Copia archivada/fiscal inmutable
+            pedidoComprobante.setEsNotaVenta(true);
             pedidoComprobante.setPreferenciaComprobante(t.getTipoDoc() != null ? t.getTipoDoc().toUpperCase() : "BOLETA");
             pedidoComprobante.setDocumentoCliente(t.getNumDoc() != null ? t.getNumDoc().trim() : "SIN DOCUMENTO");
 
@@ -867,7 +845,7 @@ public class MesaService {
                 pedidoPadre.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
                 pedidoPadre.setEstado(com.web.restaurante.model.enums.EstadoPedido.ENTREGADO);
                 pedidoPadre.setFechaEntrega(LocalDateTime.now());
-                pedidoPadre.setEsNotaVenta(true); // 🎯 ARCHIVADO ABSOLUTO: La comanda original pasa a ser registro histórico completo
+                pedidoPadre.setEsNotaVenta(true);
 
                 pedidoRepository.saveAndFlush(pedidoPadre);
 
@@ -948,7 +926,7 @@ public class MesaService {
                 .toList();
 
         boolean todoServidoYPagado = pedidosActivos.stream().allMatch(p ->
-                com.web.restaurante.model.enums.EstadoPago.PAGADO.equals(p.getEstadoPago()) // 🛠️ Corregido método de acceso
+                com.web.restaurante.model.enums.EstadoPago.PAGADO.equals(p.getEstadoPago())
                         && com.web.restaurante.model.enums.EstadoPedido.ENTREGADO.equals(p.getEstado()));
 
         if (pedidosActivos.isEmpty() || todoServidoYPagado) {

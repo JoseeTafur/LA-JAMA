@@ -100,9 +100,6 @@ public class PagoDigitalController {
         );
     }
 
-    // =========================================================================
-// UBICACIÓN: Método actualizarDatosManuales en PagoDigitalController.java
-// =========================================================================
     @PutMapping("/api/actualizar-datos/{id}")
     @ResponseBody
     @jakarta.transaction.Transactional
@@ -113,20 +110,16 @@ public class PagoDigitalController {
 
             Pedido pedido = pago.getPedido();
 
-            // 1. Corregimos el correo si cambió
             if (pedido != null) {
                 pedido.setClienteCorreo(payload.get("clienteCorreo"));
                 pedido.setDocumentoCliente(payload.get("numDocumento"));
                 pedidoRepository.save(pedido);
             }
 
-            // 2. Procesamos la imagen si cargaron un archivo físico desde el modal
             String imagenBase64 = payload.get("imagenBase64");
             if (imagenBase64 != null && !imagenBase64.isBlank()) {
-                // Decodificamos la cadena Base64 a bytes puros
                 byte[] imagenBytes = java.util.Base64.getDecoder().decode(imagenBase64);
 
-                // 🚀 EL TRUCO: Creamos un MultipartFile en memoria utilizando una clase anónima
                 MultipartFile archivoMultipartCustom = new MultipartFile() {
                     @Override
                     public String getName() { return "voucher_editado.jpg"; }
@@ -150,10 +143,8 @@ public class PagoDigitalController {
                     }
                 };
 
-                // 3. Invocamos TU método original de CloudinaryService
                 String urlSeguraCloudinary = cloudinaryService.subirImagen(archivoMultipartCustom);
 
-                // Guardamos la URL devuelta en la columna img_url de tu tabla
                 pago.setImgUrl(urlSeguraCloudinary);
             }
 

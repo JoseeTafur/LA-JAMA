@@ -145,7 +145,6 @@ public class ProteinaService {
         insumo.setStockActual((double) nuevoStock);
         insumoRepository.save(insumo);
 
-        // 🌟 CORREGIDO: Los ajustes manuales no generan merma de balanza, pasamos 0.0 explícito
         return proteinaMapper.toDTO(registrarMovimiento(insumo, cantidad, tipo, motivo, nuevoStock, 0.0));
     }
 
@@ -212,7 +211,6 @@ public class ProteinaService {
                             prod.getPorcionesObtenidas() + " porc.",
                             null
                     );
-                    // 🌟 MAPEADO: Pasamos la merma de la producción al DTO unificado
                     dto.setMermaKg(prod.getMermaKg());
                     linea.add(dto);
                 });
@@ -221,8 +219,6 @@ public class ProteinaService {
         movimientoPorcionesRepository.findTop50ByInsumoIdOrderByFechaDesc(idInsumo)
                 .forEach(mov -> {
                     LocalDateTime fecha = mov.getFecha() != null ? mov.getFecha() : LocalDateTime.now();
-
-                    // 🌟 CORREGIDO: Usamos .startsWith("VENTA") para capturar "VENTA_SALA - Despacho..."
                     String tipoOperacion = "AJUSTE";
                     if (mov.getMotivo() != null && (mov.getMotivo().startsWith("VENTA") || mov.getMotivo().equals("VENTA"))) {
                         tipoOperacion = "VENTA";
@@ -236,8 +232,6 @@ public class ProteinaService {
                             mov.getCantidadPorciones() + " porc.",
                             mov.getStockResultante()
                     );
-
-                    // 🌟 MAPEADO: Pasamos la merma del movimiento (ajustes/ventas) al DTO unificado
                     dto.setMermaKg(mov.getMermaKg());
                     linea.add(dto);
                 });
@@ -249,7 +243,6 @@ public class ProteinaService {
 
     @Transactional
     public void registrarKardexPorVenta(Long insumoId, double cantidad, Long pedidoId) {
-        // 🚀 BLOQUEO EXCLUSIVO: Traemos el insumo maestro directamente de la BD
         Insumo insumo = insumoRepository.findById(insumoId)
                 .orElseThrow(() -> new RuntimeException("Insumo no encontrado"));
 
@@ -260,12 +253,9 @@ public class ProteinaService {
         if (nuevoStock < 0) {
             System.out.println("[La Jama - Alerta] Procesando venta en negativo para control de comandas.");
         }
-
-        // Seteamos y persistimos de inmediato en la tabla madre
         insumo.setStockActual((double) nuevoStock);
         insumoRepository.saveAndFlush(insumo);
 
-        // 🛡️ Guardamos en la tabla de porciones que lee tu Kardex de Proteínas
         MovimientoPorciones mov = new MovimientoPorciones();
         mov.setInsumo(insumo);
         mov.setCantidadPorciones(cantidadResta);

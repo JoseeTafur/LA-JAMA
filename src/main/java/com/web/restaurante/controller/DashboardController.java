@@ -23,8 +23,8 @@ import java.util.Optional;
 public class DashboardController {
     private final UsuarioService usuarioService;
     private final EmpleadoService empleadoService;
-    private final TurnoCajaService turnoCajaService; // 🛡️ Conexión al estado operativo del turno
-    private final CajaService cajaService;           // 📊 Acceso a los cálculos dinámicos de ventas
+    private final TurnoCajaService turnoCajaService;
+    private final CajaService cajaService;
 
     @GetMapping("/dashboard")
     public String mostrarPagina(Model model, HttpSession session) {
@@ -36,7 +36,6 @@ public class DashboardController {
         model.addAttribute("titleHeader", "Panel de Control Principal");
         model.addAttribute("rol", rol);
 
-        // 📊 KPIs COMERCIALES CONECTADOS AL TURNO ACTIVO
         if ("SUPER_ADMIN".equals(rol) || "ADMIN".equals(rol) || "CAJERO".equals(rol)) {
             Optional<TurnoCaja> turnoActivoOpt = turnoCajaService.obtenerTurnoActivo();
 
@@ -45,11 +44,7 @@ public class DashboardController {
 
             if (turnoActivoOpt.isPresent()) {
                 TurnoCaja turno = turnoActivoOpt.get();
-                // 🚀 Extraemos el total acumulado de ventas del turno usando la lógica que ya calcula caja
                 totalVendidoTurno = turno.getTotalVendido() != null ? turno.getTotalVendido() : 0.0;
-
-                // Si tu CajaService calcula la cantidad de órdenes o platos del turno, lo mapeamos aquí.
-                // Por ahora, usaremos una consulta rápida filtrando por el ID del turno activo.
                 platosVendidosTurno = cajaService.contarItemsVendidosEnTurno(turno.getId());
             }
 
@@ -58,7 +53,6 @@ public class DashboardController {
             model.addAttribute("turnoAbierto",      turnoActivoOpt.isPresent());
         }
 
-        // 👥 KPIS DE AUDITORÍA DE PERSONAL
         if ("SUPER_ADMIN".equals(rol) || "ADMIN".equals(rol)) {
             model.addAttribute("totalUsuarios",   usuarioService.contar());
             model.addAttribute("totalEmpleados",  empleadoService.contar());
@@ -67,7 +61,6 @@ public class DashboardController {
         return "dashboard";
     }
 
-    /** 🔄 Endpoint AJAX reactivo conectado al Turno de Caja */
     @GetMapping("/dashboard/kpis")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> obtenerKpis(HttpSession session) {

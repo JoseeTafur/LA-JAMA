@@ -45,7 +45,6 @@ public class LoginController {
 
         Optional<Usuario> existente = usuarioService.encontrarPorUsuario(usuario);
 
-        // 🟩 OPTIMIZADO: Retorno directo de vista con error (Evita el Status 302 y duplicación de tokens)
         if (existente.isEmpty()) {
             model.addAttribute("error", "Usuario no encontrado.");
             return "login";
@@ -53,7 +52,6 @@ public class LoginController {
 
         Usuario usuarioEncontrado = existente.get();
 
-        // 🟩 OPTIMIZADO: Retorno directo sin redirección externa
         if (usuarioEncontrado.getEstado() != 1) {
             model.addAttribute("error", "Este usuario se encuentra inactivo.");
             return "login";
@@ -67,7 +65,6 @@ public class LoginController {
 
             String rolParaSesion = "INVITADO";
 
-            // 🛡️ ADUANA ORDENADA: Validamos primero SUPER_ADMIN para evitar falsos positivos con contains("ADMIN")
             if (nombrePerfil.contains("SUPER_ADMIN")) {
                 rolParaSesion = "SUPER_ADMIN";
             } else if (nombrePerfil.contains("ADMIN")) {
@@ -83,7 +80,7 @@ public class LoginController {
                     rolParaSesion = "CAJERO";
                 } else if (nombreCargo.contains("MESERO")) {
                     rolParaSesion = "MESERO";
-                } else if (nombreCargo.contains("CONTADOR")) { // 🌟 NUEVO: Captura al empleado Contador
+                } else if (nombreCargo.contains("CONTADOR")) {
                     rolParaSesion = "CONTADOR";
                 }
             } else {
@@ -93,16 +90,13 @@ public class LoginController {
             session.setAttribute("rol", rolParaSesion);
             empOpt.ifPresent(empleado -> {
                 session.setAttribute("empleadoLogueado", empleado);
-                // Inyectamos el turno real ("DIA" o "NOCHE") al buzón de sesión para habilitar el candado del layout
                 session.setAttribute("empleadoTurno", empleado.getTurno() != null ? empleado.getTurno().toUpperCase().trim() : "DIA");
             });
 
-// Carga inicial completa de opciones mapeadas en la BD
             List<Opcion> opcionesMenu = usuarioEncontrado.getPerfil().getOpciones().stream()
                     .sorted(Comparator.comparing(Opcion::getId))
                     .collect(Collectors.toList());
 
-// Filtros de seguridad según el rol de la sesión
             if ("REPARTIDOR".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") || op.getRuta().contains("/entregas") || op.getRuta().contains("/MiPerfil"))
@@ -117,7 +111,7 @@ public class LoginController {
                                 op.getRuta().contains("/productos") ||
                                 op.getRuta().contains("/pagos-digitales") ||
                                 op.getRuta().contains("/comprobantes") ||
-                                op.getRuta().contains("/reservas") || // ➔ Asegurado aquí
+                                op.getRuta().contains("/reservas") ||
                                 op.getRuta().contains("/MiPerfil"))
                         .collect(Collectors.toList());
 
@@ -130,10 +124,10 @@ public class LoginController {
                                 op.getRuta().contains("/MiPerfil"))
                         .collect(Collectors.toList());
 
-            } else if ("CONTADOR".equals(rolParaSesion)) { // 🌟 NUEVO: Filtro restrictivo para la vista del Contador
+            } else if ("CONTADOR".equals(rolParaSesion)) {
                 opcionesMenu = opcionesMenu.stream()
                         .filter(op -> op.getRuta().equals("/dashboard") ||
-                                op.getRuta().contains("/comprobantes") || // Acceso a su módulo principal
+                                op.getRuta().contains("/comprobantes") ||
                                 op.getRuta().contains("/MiPerfil"))
                         .collect(Collectors.toList());
 
@@ -143,10 +137,8 @@ public class LoginController {
                         .filter(op -> {
                             String ruta = op.getRuta();
 
-                            // 1. Siempre permitimos el acceso al Dashboard base
                             if (ruta.equals("/dashboard")) return true;
 
-                            // 2. Filtro restrictivo por subtipo de cocina (Caliente / Fría)
                             if (ruta.contains("/cocina/")) {
                                 if (cargoExacto.contains("FRÍO") || cargoExacto.contains("FRIO")) {
                                     return ruta.equals("/admin/cocina/fria");
@@ -156,9 +148,6 @@ public class LoginController {
                                 }
                                 return false;
                             }
-
-                            // 3. ✨ LA LLAVE MAESTRA: Si tiene cualquier otra ruta asignada en la BD
-                            // (como /insumos, /inventarios, etc.), la dejamos pasar limpia.
                             return true;
                         })
                         .collect(Collectors.toList());
@@ -171,11 +160,9 @@ public class LoginController {
             Map<String, List<Opcion>> menuAgrupado = new LinkedHashMap<>();
             List<Opcion> opcionesIndependientes = new ArrayList<>();
 
-// 🔄 SISTEMA DE AGRUPACIÓN REMASTERIZADO (ADIÓS "ADMIN", BIENVENIDO "RESERVAS" A CAJERO)
             for (Opcion opcion : opcionesMenu) {
                 String ruta = opcion.getRuta();
 
-                // Solución Mi Perfil Independiente
                 if (ruta.contains("/MiPerfil")) {
                     opcionesIndependientes.add(opcion);
                     continue;
@@ -194,11 +181,9 @@ public class LoginController {
                     } else if (ruta.contains("/comprobantes")) {
                         grupo = "Contabilidad";
                     }
-                    // 🚀 LA CARPETA EXCLUSIVA SEMÁNTICA PARA LAS ENTREGAS:
                     else if (ruta.contains("/entregas") || ruta.contains("/repartidor")) {
-                        grupo = "Distribuidor"; // ➔ Creará la carpeta "Distribuidor" limpia
+                        grupo = "Distribuidor";
                     }
-                    // 💳 FLUJO DE CAJA UNIFICADO
                     else if (ruta.contains("/caja") || ruta.contains("/cajero") ||
                             ruta.contains("/delivery") || ruta.contains("/despacho") ||
                             ruta.contains("/pagos-digitales") || ruta.contains("/reservas")) {
@@ -228,7 +213,6 @@ public class LoginController {
             session.setAttribute("opcionesIndependientes", opcionesIndependientes);
             session.setAttribute("menuOpciones", opcionesMenu);
 
-            // Redirecciones dinámicas lícitas de entrada
             if ("MESERO".equals(rolParaSesion)) return "redirect:/admin/mesas";
             if ("REPARTIDOR".equals(rolParaSesion)) return "redirect:/admin/entregas/mis-pedidos";
             if ("CAJERO".equals(rolParaSesion)) return "redirect:/admin/despacho";
@@ -242,7 +226,6 @@ public class LoginController {
             return "redirect:/dashboard";
 
         } else {
-            // 🟩 OPTIMIZADO: Contraseña incorrecta controlada en el mismo hilo de petición
             model.addAttribute("error", "Contraseña incorrecta.");
             return "login";
         }

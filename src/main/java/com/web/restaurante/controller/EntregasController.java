@@ -35,7 +35,6 @@ public class EntregasController {
             return "admin/mis-pedidos";
         }
 
-        // Flujo normal ordinario para el Distribuidor autenticado en su moto
         Empleado repartidor = empleadoService.obtenerPorUsuario(usuario)
                 .orElseThrow(() -> new RuntimeException("Empleado no vinculado"));
 

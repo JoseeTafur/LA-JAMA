@@ -109,7 +109,6 @@ public class PedidoService {
             pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PENDIENTE);
         }
 
-        // 🚀 CANDADO ADICIONAL: Si el pedido no viene con turno (como los de salón nuevos), le asignamos el activo
         if (pedido.getTurnoCaja() == null) {
             turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
         }
@@ -136,7 +135,6 @@ public class PedidoService {
             pedido.setFechaCreacion(LocalDateTime.now());
         }
 
-        // 🚀 CANDADO ADICIONAL: Aseguramos el turno de caja de entrada para el flujo QR
         if (pedido.getTurnoCaja() == null) {
             turnoCajaService.obtenerTurnoActivo().ifPresent(pedido::setTurnoCaja);
         }
@@ -154,7 +152,6 @@ public class PedidoService {
             }
         }
 
-        // 🚀 RESTAURACIÓN: Mantenemos el estado PENDIENTE puro para que aparezca en Aprobación de Caja
         pedido.setEstado(EstadoPedido.PENDIENTE);
         pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PENDIENTE);
 
@@ -204,7 +201,6 @@ public class PedidoService {
             });
         }
 
-        // 🛡️ RECUENTOS CORREGIDOS: Se ignora explícitamente a las mermas
         boolean tieneFrioPendiente = p.getListaDetalles().stream()
                 .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isCocinado() && (d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRI")
                         || d.getProducto().getCategoria().getNombre().toUpperCase().contains("FRÍ")));
@@ -245,22 +241,15 @@ public class PedidoService {
         if (todosEntregados) {
             p.setEstado(EstadoPedido.ENTREGADO);
 
-            // 🛡️ RESPALDO DE SEGURIDAD CONTABLE:
-            // Si el estado de pago ya es PAGADO (Prepago/Adelantado), procedemos a desvincular
-            // y a liberar la entidad Mesa físicamente en las tablas de MySQL
             if (EstadoPago.PAGADO.equals(p.getEstadoPago())) {
                 Integer numeroMesaRespaldo = p.getNumeroMesa();
 
-                p.setNumeroMesa(null); // Desvinculamos el pedido de la mesa física
+                p.setNumeroMesa(null);
                 p.setFechaEntrega(LocalDateTime.now());
 
                 if (numeroMesaRespaldo != null) {
                     mesaRepository.findByNumero(numeroMesaRespaldo).ifPresent(mesa -> {
-                        // Si la mesa es parte de una unificación, liberamos la principal
                         Mesa mesaPrincipal = (mesa.getMesaPadre() != null) ? mesa.getMesaPadre() : mesa;
-
-                        // 🚀 LA INYECCIÓN PERSISTENTE:
-                        // Forzamos el cambio de estado de la entidad física a DISPONIBLE en disco duro
                         mesaPrincipal.setEstado("DISPONIBLE");
                         mesaRepository.save(mesaPrincipal);
                         System.out.println("🧹 [La Jama BD] Mesa N° " + numeroMesaRespaldo + " guardada en BD como DISPONIBLE pos-entrega final.");
@@ -368,14 +357,10 @@ public class PedidoService {
 
     @Transactional
     public void cobrarPedido(Long id) {
-        // 1. Buscamos el pedido completo en la base de datos
         Pedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("No se encontró el pedido con ID: " + id));
-
-        // 2. Le inyectamos el estado cobrado
         pedido.setEstadoPago(com.web.restaurante.model.enums.EstadoPago.PAGADO);
 
-        // 3. 🛡️ CANDADO CONTABLE: Amarramos el pedido al turno de caja activo en este microsegundo
         try {
             turnoCajaService.obtenerTurnoActivo().ifPresent(turnoActivo -> {
                 pedido.setTurnoCaja(turnoActivo);
@@ -384,7 +369,6 @@ public class PedidoService {
             System.out.println("⚠️ [ERROR CONTABLE] No se pudo amarrar el turno de caja al cobrar la mesa: " + e.getMessage());
         }
 
-        // 4. Guardamos el pedido actualizado de forma íntegra
         pedidoRepository.save(pedido);
         System.out.println("✅ [CAJA] Pedido #" + id + " cobrado con éxito y asociado al turno correspondiente.");
     }
@@ -481,7 +465,6 @@ public class PedidoService {
 
         if (pedido.getListaDetalles() == null) return;
 
-        // Localizamos la fila exacta del plato que se desea remover
         DetallePedido detalleTarget = pedido.getListaDetalles().stream()
                 .filter(d -> d.getId().equals(detalleId))
                 .findFirst()
@@ -499,7 +482,6 @@ public class PedidoService {
             detalleTarget.setPedido(null);
         }
 
-        // CONTROL DE INVENTARIO ABSOLUTO
         if (!detalleTarget.isCocinado()) {
             insumoProductoRepository.findByProductoId(detalleTarget.getProducto().getId()).forEach(ip -> {
                 if (ip.getInsumo() != null) {
@@ -507,15 +489,11 @@ public class PedidoService {
                     double cantidadUsada = (ip.getCantidadUsada() != null) ? ip.getCantidadUsada() : 0.0;
                     double totalInsumo = cantidadUsada * detalleTarget.getCantidad();
 
-                    // 1. Siempre liberamos la porción del stock comprometido
                     double comprometidoActual = (insumo.getStockComprometido() != null) ? insumo.getStockComprometido() : 0.0;
                     insumo.setStockComprometido(Math.max(0.0, comprometidoActual - totalInsumo));
 
-                    // 2. 🛡️ FILTRADO DE PROTEÍNAS ATÓMICO CORREGIDO:
                     if (esMermaReal) {
                         if (insumo.getCategoria() != null && insumo.getCategoria().toUpperCase().contains("PROTEIN")) {
-                            // 🎯 CORRECCIÓN: Eliminamos el 'insumo.setStockActual(...)' manual de aquí
-                            // porque registrarKardexPorVenta ya disminuye el Stock Actual de forma nativa en la BD.
                             proteinaService.registrarKardexPorVenta(insumo.getId(), detalleTarget.getCantidad(), pedido.getId());
                             System.out.println("🥩 [KARDEX CONFORME] Reduciendo stock por merma de proteína únicamente a través de la transacción: " + insumo.getNombre());
                         } else {
@@ -529,7 +507,6 @@ public class PedidoService {
 
         recalcularTotalesPedido(pedido);
 
-        // Auto-cierre operativo de comandas vacías
         boolean tienePlatosActivosPendientes = pedido.getListaDetalles().stream()
                 .anyMatch(d -> !d.isCanceladoPorCliente() && !d.isCocinado());
 
@@ -544,16 +521,10 @@ public class PedidoService {
     }
 
     private void recalcularTotalesPedido(Pedido pedido) {
-        // 🚀 LA CORRECCIÓN CONTABLE DEFENSIVA:
-        // Sumamos los platos activos normales Y TAMBIÉN las mermas impresas que NO han sido pagadas.
-        // De esta forma, el total del Pedido nunca baja a 0 si hay mermas deudoras,
-        // impidiendo que el frontend o el controller disuelvan la mesa.
         double nuevoTotal = pedido.getListaDetalles().stream()
                 .filter(d -> !d.isCanceladoPorCliente() || (d.isCanceladoPorCliente() && !d.isPagado()))
                 .mapToDouble(d -> d.getPrecioUnitario() * d.getCantidad())
                 .sum();
-
-        // Seteamos el valor de auditoría real mapeado en tu entidad
         pedido.setMontoTotal(nuevoTotal);
         System.out.println("📊 [La Jama ORM] Recalculando comanda #" + pedido.getId() + " con mermas por cobrar. Nuevo total: S/. " + nuevoTotal);
     }
@@ -574,13 +545,12 @@ public class PedidoService {
 
     @Transactional(readOnly = true)
     public List<Pedido> listarAbsolutamenteTodoParaDebug() {
-        return pedidoRepository.findAll(); // Trae todo sin filtros de estado ni tipo
+        return pedidoRepository.findAll();
     }
 
     @Transactional(readOnly = true)
     public boolean existeNumeroOperationHoy(String firmaVoucher) {
         LocalDateTime inicioHoy = java.time.LocalDate.now().atStartOfDay();
-        // Buscamos si existe algún pedido registrado hoy con este hash estructural único
         return pedidoRepository.findAll().stream()
                 .filter(p -> p.getFechaCreacion() != null && p.getFechaCreacion().isAfter(inicioHoy))
                 .anyMatch(p -> firmaVoucher.equalsIgnoreCase(p.getDocumentoCliente()));
@@ -592,13 +562,7 @@ public class PedidoService {
         java.time.LocalDateTime inicioRangoContable = (turnoOpt.isPresent() && turnoOpt.get().getFechaApertura() != null)
                 ? turnoOpt.get().getFechaApertura()
                 : java.time.LocalDate.now().atStartOfDay();
-
-        System.out.println("🛰️ [SQL REPOSITORY] Extrayendo estrictamente comprobantes validados desde: " + inicioRangoContable);
-
-        // 🚀 Invocación indexada a MySQL: Retorna únicamente la data exacta a pintar en la interfaz
         List<Pedido> comprobantesValidos = pedidoRepository.findPedidosParaComprobantesHoy(inicioRangoContable);
-
-        System.out.println("📦 [SERVICE] Elementos cargados directamente en memoria: " + comprobantesValidos.size());
         return comprobantesValidos;
     }
 
@@ -630,8 +594,6 @@ public class PedidoService {
 
         return pedidoRepository.findAll().stream()
                 .filter(p -> {
-                    // 🎯 Fecha efectiva: si ya es un comprobante emitido, usamos cuándo se timbró (fechaEntrega).
-                    // Si sigue siendo solo Nota de Venta, usamos cuándo se creó (fechaCreacion).
                     LocalDateTime fechaEfectiva = (p.getComprobanteNumero() != null && p.getFechaEntrega() != null)
                             ? p.getFechaEntrega()
                             : p.getFechaCreacion();

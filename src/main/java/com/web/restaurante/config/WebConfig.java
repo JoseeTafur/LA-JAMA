@@ -21,7 +21,6 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/favicon.png").addResourceLocations("classpath:/static/").setCachePeriod(0);
         registry.addResourceHandler("/img/**").addResourceLocations("classpath:/static/img/").setCachePeriod(0);
 
-        // 🌟 SOLUCIÓN 1: Registrar la carpeta de videos estáticos
         registry.addResourceHandler("/video/**")
                 .addResourceLocations("classpath:/static/video/")
                 .setCachePeriod(0);

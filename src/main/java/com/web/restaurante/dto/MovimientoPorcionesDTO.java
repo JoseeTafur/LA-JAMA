@@ -13,7 +13,7 @@ public class MovimientoPorcionesDTO {
     private Long idInsumo;
     private String nombreInsumo;
     private LocalDateTime fecha;
-    private String tipo;            // INGRESO | EGRESO
+    private String tipo;
     private Integer cantidadPorciones;
     private String motivo;
     private Integer stockResultante;

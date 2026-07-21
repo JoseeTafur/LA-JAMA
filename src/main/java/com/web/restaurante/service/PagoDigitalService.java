@@ -23,7 +23,7 @@ public class PagoDigitalService {
     private final PagoDigitalRepository pagoDigitalRepository;
     private final PagoDigitalMapper pagoDigitalMapper;
     private final PedidoService pedidoService;
-    private final TurnoCajaService turnoCajaService; // 🚀 INYECTADO: Para acceder al flujo de caja
+    private final TurnoCajaService turnoCajaService;
 
     @Transactional(readOnly = true)
     public List<PagoDigitalDTO> listarTodos() {
@@ -83,12 +83,7 @@ public class PagoDigitalService {
 
         Pedido pedido = pago.getPedido();
 
-        // 1. Cambiamos el estado del pedido y lo mandamos directo a producción (Cocina)
         pedidoService.aprobarPedidoACocina(pedido.getId());
-
-        // Eliminamos el registro automático en el Libro Diario y la inyección a caja desde aquí.
-        // Ahora el pedido fluirá de manera normal hacia la bandeja de comandos por cobrar/facturar,
-        // donde el cajero ejecutará el timbrado real con SUNAT y el asiento contable de forma manual.
 
         return pagoDigitalMapper.toDTO(pagoDigitalRepository.save(pago));
     }

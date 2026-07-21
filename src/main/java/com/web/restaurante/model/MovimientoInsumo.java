@@ -17,10 +17,8 @@ public class    MovimientoInsumo {
 
     private LocalDateTime fecha;
 
-    // "INGRESO" o "EGRESO"
     private String tipo;
 
-    // "COMPRA", "CONSUMO_RECETA", "MERMA", "AJUSTE"
     private String motivo;
 
     private Double cantidad;

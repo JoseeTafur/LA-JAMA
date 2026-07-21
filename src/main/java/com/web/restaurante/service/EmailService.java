@@ -3,7 +3,7 @@ package com.web.restaurante.service;
 import com.web.restaurante.model.Pedido;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value; // 🚀 IMPORTANTE
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -15,14 +15,12 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    // 🌟 INYECCIÓN DINÁMICA DEL DOMINIO ACTIVO (Localhost o Railway)
     @Value("${app.base-url}")
     private String appBaseUrl;
 
     @Async
     public void enviarComprobante(String destinatario, Pedido pedido) {
         if (destinatario == null || destinatario.trim().isEmpty()) {
-            System.out.println("⚠️ [EMAIL OMITIDO] El pedido #" + pedido.getId() + " no cuenta con una dirección de correo válida.");
             return;
         }
 
@@ -30,33 +28,22 @@ public class EmailService {
                 || com.web.restaurante.model.enums.EstadoPedido.CANCELADO.equals(pedido.getEstado());
 
         if (!esAnulacion && (pedido.getComprobantePdfUrl() == null || pedido.getComprobantePdfUrl().trim().isEmpty())) {
-            System.out.println("⚠️ [EMAIL OMITIDO] El pedido VIVO #" + pedido.getId() + " no tiene URLs de CPE generadas.");
             return;
         }
 
         if (esAnulacion && (pedido.getComprobanteNotaNumero() == null || pedido.getComprobanteNotaNumero().trim().isEmpty())) {
-            System.out.println("⚠️ [EMAIL OMITIDO] El pedido ANULADO #" + pedido.getId() + " no registra número de Nota de Crédito.");
             return;
         }
 
-        // ── 🛡️ INICIO DE MONITOR CRONOMETRADO ASÍNCRONO ──
-        System.out.println("=========================================================");
-        System.out.println("📧 [La Jama Email] >>> INICIANDO PROCESO DE ENVÍO <<<");
-        System.out.println("📬 Destinatario: " + destinatario + " | NV #" + pedido.getId());
-        System.out.println("=========================================================");
-
-        // Bandera atómica para detener el contador cuando termine el envío
         java.util.concurrent.atomic.AtomicBoolean envioTerminado = new java.util.concurrent.atomic.AtomicBoolean(false);
         long tiempoInicio = System.currentTimeMillis();
 
-        // Creamos un hilo de asistencia temporal exclusivo para el conteo de segundos
         java.util.concurrent.ScheduledExecutorService cronometro = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
         cronometro.scheduleAtFixedRate(() -> {
             if (!envioTerminado.get()) {
                 long transcurrido = (System.currentTimeMillis() - tiempoInicio) / 1000;
-                System.out.println("⏳ [La Jama Crono] El correo de la NV #" + pedido.getId() + " sigue en tránsito... Tiempo transcurrido: " + transcurrido + " segundos.");
             }
-        }, 5, 5, java.util.concurrent.TimeUnit.SECONDS); // Ejecuta cada 5 segundos
+        }, 5, 5, java.util.concurrent.TimeUnit.SECONDS);
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -184,26 +171,15 @@ public class EmailService {
             helper.setSubject(asunto);
             helper.setText(htmlContent, true);
 
-            // 📦 GATILLO SMTP DE GMAIL (Bloquea el hilo secundario asíncrono hasta completar la subida)
             mailSender.send(message);
 
-            // 🏁 FINALIZACIÓN EXITOSA: Detenemos el cronómetro de inmediato
             envioTerminado.set(true);
             cronometro.shutdown();
             long tiempoTotal = (System.currentTimeMillis() - tiempoInicio) / 1000;
 
-            System.out.println("=========================================================");
-            System.out.println("✅ [EMAIL ENTREGADO] Correo entregado correctamente a: " + destinatario);
-            System.out.println("⏱️ Tiempo Total de Respuesta SMTP: " + tiempoTotal + " segundos.");
-            System.out.println("=========================================================");
-
         } catch (Exception e) {
             envioTerminado.set(true);
             cronometro.shutdown();
-            System.out.println("=========================================================");
-            System.out.println("💥 [EMAIL ERROR] Error en la entrega hacia: " + destinatario);
-            System.out.println("📝 Detalle Técnico: " + e.getMessage());
-            System.out.println("=========================================================");
         }
     }
 }

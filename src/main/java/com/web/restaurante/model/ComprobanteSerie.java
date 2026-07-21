@@ -17,10 +17,10 @@ public class ComprobanteSerie {
     private Long id;
 
     @Column(name = "tipo_comprobante", nullable = false, unique = true)
-    private String tipoComprobante; // "BOLETA" o "FACTURA"
+    private String tipoComprobante;
 
     @Column(name = "serie", nullable = false, length = 4)
-    private String serie; // "B001" o "F001"
+    private String serie;
 
     @Column(name = "ultimo_correlativo", nullable = false)
     private Integer ultimoCorrelativo;

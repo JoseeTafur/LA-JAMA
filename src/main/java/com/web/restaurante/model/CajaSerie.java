@@ -17,7 +17,7 @@ public class CajaSerie {
     private Long id;
 
     @Column(name = "serie", nullable = false, length = 4, unique = true)
-    private String serie; // Ej: "AC01"
+    private String serie;
 
     @Column(name = "ultimo_correlativo", nullable = false)
     private Integer ultimoCorrelativo;

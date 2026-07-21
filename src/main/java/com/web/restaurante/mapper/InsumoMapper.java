@@ -21,7 +21,6 @@ public interface InsumoMapper {
     @Mapping(source = "insumo.unidadMedida", target = "unidadMedida")
     @Mapping(source = "producto.id", target = "idProducto")
     @Mapping(source = "producto.nombre", target = "nombreProducto")
-    // 🛡️ ENLACES DINÁMICOS MAESTROS PARA EL CONTROL DE STOCK DE LA JAMA:
     @Mapping(source = "insumo.categoria", target = "categoriaInsumo")
     @Mapping(source = "insumo.stockActual", target = "stockActual")
     @Mapping(source = "insumo.stockComprometido", target = "stockComprometido")

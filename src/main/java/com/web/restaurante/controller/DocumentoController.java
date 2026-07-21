@@ -41,12 +41,10 @@ public class DocumentoController {
             headers.set("Authorization", "Bearer " + apiToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // Simular agente de navegación para evitar bloqueos por defecto
             headers.add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
 
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            // Ejecutar el intercambio con el servidor externo
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
             return ResponseEntity.ok(response.getBody());

@@ -21,9 +21,6 @@ public class NotificacionController {
 
     private final NotificacionRepository notificacionRepository;
 
-    /**
-     * 🛰️ ENDPOINT API: Solo trae las que tengan LEIDO = 0 (o false)
-     */
     @GetMapping("/api/listar-no-leidas")
     @ResponseBody
     public ResponseEntity<?> obtenerAlertasActivasApi(HttpSession session) {
@@ -35,17 +32,14 @@ public class NotificacionController {
         String perfil = user.getPerfil().getNombre().toUpperCase();
         List<Notificacion> lista;
 
-        // NOTA: Si usas findByDestinoPerfilIn... añade que filtre por leido = false si es necesario,
-        // o lo filtramos aquí velozmente con Stream para no romper tus firmas del Repository:
         if (perfil.contains("ADMIN") || perfil.contains("SUPER")) {
             lista = notificacionRepository.findAllByOrderByFechaCreacionDesc();
         } else {
             lista = notificacionRepository.findByDestinoPerfilInOrderByFechaCreacionDesc(Arrays.asList("TODOS", "MESERO"));
         }
 
-        // 🛡️ Filtro de seguridad: Solo enviamos las que NO han sido leídas
         List<Notificacion> noLeidas = lista.stream()
-                .filter(n -> !n.isLeido()) // Asegúrate si tu entidad usa getLeido() o isLeido()
+                .filter(n -> !n.isLeido())
                 .toList();
 
         return ResponseEntity.ok(Map.of(
@@ -55,9 +49,6 @@ public class NotificacionController {
         ));
     }
 
-    /**
-     * ❌ ELIMINACIÓN INDIVIDUAL: Cambia el estado de una sola notificación por ID
-     */
     @PostMapping("/api/marcar-leido-individual/{id}")
     @ResponseBody
     public ResponseEntity<?> marcarLeidoIndividual(@PathVariable Long id) {
@@ -78,7 +69,6 @@ public class NotificacionController {
     @ResponseBody
     public ResponseEntity<?> marcarTodoComoLeido() {
         List<Notificacion> pendientes = notificacionRepository.findAll();
-        // Solo modificamos las que siguen activas
         List<Notificacion> modificar = pendientes.stream().filter(n -> !n.isLeido()).toList();
         modificar.forEach(n -> n.setLeido(true));
         notificacionRepository.saveAll(modificar);

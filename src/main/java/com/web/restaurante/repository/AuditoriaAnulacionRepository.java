@@ -7,6 +7,5 @@ import java.util.List;
 
 @Repository
 public interface AuditoriaAnulacionRepository extends JpaRepository<AuditoriaAnulacion, Long> {
-    // Busca todas las notas de crédito que pertenezcan a un pedido específico
     List<AuditoriaAnulacion> findByPedidoId(Long pedidoId);
 }
